@@ -3,8 +3,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap">
 <style>
+/* дневной режим — основной; ночной включается кнопкой в подсказках */
 :root{
-  --stage:#EDEDE8;
+  --stage:#E9E9E4;
   --plan-bg:#FDFDFB;
   --diary-bg:#FAF5EC;
   --ink:#1C2128;
@@ -18,24 +19,7 @@
   --d1:#2F5FA8; --d2:#2E7D57; --d3:#8A6A12; --d4:#6B4E9E;
   --d5:#B0403A; --d6:#2C7E96; --d7:#C06A22;
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --stage:#0D1116;
-    --plan-bg:#14191F;
-    --diary-bg:#1B1812;
-    --ink:#E8EBEE;
-    --ink-soft:#A3ACB7;
-    --ink-faint:#69717C;
-    --rule:#2A3037;
-    --rule-soft:#222830;
-    --accent:#8FB3E8;
-    --chrome:#191F26;
-    --shadow:0 2px 4px rgba(0,0,0,.4),0 20px 50px -28px rgba(0,0,0,.9);
-    --d1:#7FA6E0; --d2:#6FBF95; --d3:#D4AE55; --d4:#A88FD6;
-    --d5:#E08B84; --d6:#6FC0D6; --d7:#E0A06A;
-  }
-}
-:root[data-theme="dark"]{
+:root.night{
   --stage:#0D1116; --plan-bg:#14191F; --diary-bg:#1B1812;
   --ink:#E8EBEE; --ink-soft:#A3ACB7; --ink-faint:#69717C;
   --rule:#2A3037; --rule-soft:#222830; --accent:#8FB3E8; --chrome:#191F26;
@@ -44,11 +28,8 @@
   --d5:#E08B84; --d6:#6FC0D6; --d7:#E0A06A;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{
-  background:var(--stage);color:var(--ink);
-  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  font-size:16px;line-height:1.5;margin:0;
-}
+body{background:var(--stage);color:var(--ink);margin:0;
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.5}
 button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 
@@ -56,189 +37,196 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
   padding-inline:16px;padding-block:28px 40px;max-width:1000px;margin:0 auto}
 
 /* ---------- телефон ---------- */
-.phone{
-  width:100%;max-width:392px;height:min(820px,calc(100dvh - 68px));min-height:600px;
-  display:flex;flex-direction:column;overflow:hidden;
-  background:var(--plan-bg);border:1px solid var(--rule);border-radius:26px;box-shadow:var(--shadow);
-}
+.phone{position:relative;width:100%;max-width:392px;height:min(830px,calc(100dvh - 68px));
+  min-height:600px;display:flex;flex-direction:column;overflow:hidden;background:var(--plan-bg);
+  border:1px solid var(--rule);border-radius:26px;box-shadow:var(--shadow)}
 .phone.diary{background:var(--diary-bg)}
 
 .appbar{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;
-  padding:10px 8px 8px;background:var(--chrome);border-bottom:1px solid var(--rule)}
-.appbar button{width:44px;height:36px;display:flex;align-items:center;justify-content:center;
-  font-size:19px;color:var(--ink-soft)}
+  padding:12px 8px 2px;background:var(--chrome)}
+.appbar button{width:44px;height:38px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-soft)}
 .appbar button.on{color:var(--accent)}
-.datewrap{text-align:center;line-height:1.15}
-.daynav{display:flex;align-items:center;justify-content:center;gap:10px}
-.daynav button{width:28px;height:28px;font-size:16px;color:var(--ink-faint)}
-.dateline{font-family:"IBM Plex Mono",monospace;font-size:14px;letter-spacing:.02em}
-.weekday{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:500}
-.daybar{height:2px;width:46px;margin:5px auto 0;border-radius:2px}
+.screenname{text-align:center;font-size:23px;font-weight:600;letter-spacing:-.01em;line-height:1.1}
 
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px 0;background:var(--chrome)}
-.tab{position:relative;padding:9px 0 10px;text-align:center;font-size:13px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--ink-faint);background:var(--chrome);
-  border:1px solid var(--rule);border-bottom:none;border-radius:10px 10px 0 0}
+.subbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;gap:10px;
+  padding:3px 18px 10px;background:var(--chrome);border-bottom:1px solid var(--rule)}
+.subbar .y{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-faint);text-align:left}
+.subbar .d{font-size:15px;color:var(--ink-soft);text-align:center;white-space:nowrap}
+.subbar .w{font-size:12.5px;text-align:right;letter-spacing:.05em}
+.subbar.none{display:none}
+
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:9px 12px 0;background:var(--chrome)}
+.tab{padding:9px 0 10px;text-align:center;font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint);background:var(--chrome);border:1px solid var(--rule);border-bottom:none;
+  border-radius:10px 10px 0 0}
 .tab[aria-selected="true"]{color:var(--ink);font-weight:600;background:var(--plan-bg);
   box-shadow:0 1px 0 0 var(--plan-bg)}
 .phone.diary .tab[aria-selected="true"]{background:var(--diary-bg);box-shadow:0 1px 0 0 var(--diary-bg)}
 .tabs::after{content:"";grid-column:1/-1;height:1px;background:var(--rule);margin-top:-1px}
+.tabs.none{display:none}
 
-main{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;-webkit-overflow-scrolling:touch}
+/* область содержимого — шторка живёт только внутри неё */
+.canvas{position:relative;flex:1;min-height:0;overflow:hidden}
+main{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.canvas.locked main{overflow:hidden}
 
 /* ---------- план ---------- */
 .planhead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px}
-.planhead .hint{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);
-  letter-spacing:.04em}
-.add{width:34px;height:34px;border:1px solid var(--rule);border-radius:50%;font-size:21px;
-  line-height:1;display:flex;align-items:center;justify-content:center;color:var(--accent);
-  background:var(--plan-bg)}
+.planhead .hint{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);letter-spacing:.04em}
+.add{width:34px;height:34px;border:1px solid var(--rule);border-radius:50%;font-size:21px;line-height:1;
+  display:flex;align-items:center;justify-content:center;color:var(--accent)}
 ul.tasks{list-style:none;margin:0;padding:0 0 4px}
-li.task{display:grid;grid-template-columns:22px 1fr 20px;gap:0 8px;align-items:start;
-  padding:9px 0 9px 12px;border-bottom:1px solid var(--rule-soft);position:relative}
-.num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint);
-  padding-top:3px;text-align:right;font-variant-numeric:tabular-nums}
-.body{min-width:0}
-.meta{display:flex;align-items:center;gap:7px;margin-bottom:1px}
+li.task{display:grid;grid-template-columns:22px 1fr 18px;gap:0 8px;align-items:start;
+  padding:10px 0 10px 12px;border-bottom:1px solid var(--rule-soft);position:relative}
+.num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint);padding-top:2px;
+  text-align:right;font-variant-numeric:tabular-nums}
+.body{min-width:0;font-size:15px;line-height:1.45}
 .time{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-soft);
-  font-variant-numeric:tabular-nums;letter-spacing:.01em}
-input.time{background:var(--plan-bg);border:1px solid var(--rule);border-radius:4px;
-  padding:1px 4px;width:110px;color:var(--ink)}
-.bell{color:var(--ink-faint);line-height:0;opacity:.55;display:flex}
+  font-variant-numeric:tabular-nums;margin-right:5px}
+input.time{background:var(--plan-bg);border:1px solid var(--rule);border-radius:4px;padding:0 4px;
+  width:112px;color:var(--ink);vertical-align:baseline}
+.bell{display:inline-flex;vertical-align:-2px;margin-right:7px;color:var(--ink-faint);opacity:.55}
 .bell.on{color:var(--d7);opacity:1}
-.txt{font-size:15px;line-height:1.42;color:var(--ink);word-break:break-word;
-  transition:color .35s ease,opacity .35s ease}
+.txt{display:inline;color:var(--ink);word-break:break-word;transition:color .35s ease}
 .txt[contenteditable="true"]{outline:none;border-bottom:1px dashed var(--rule)}
 li.task.done .txt,li.task.done .time,li.task.done .num{color:var(--ink-faint)}
-li.task.done .bell{opacity:.35}
+li.task.done .bell{opacity:.3}
 main.past li.task .txt,main.past li.task .time,main.past li.task .num{color:var(--ink-faint)}
-main.past .bell{opacity:.35}
-main.past .planhead .add{opacity:.35;pointer-events:none}
+main.past .bell{opacity:.3}
+main.past .planhead .add{opacity:.3;pointer-events:none}
 
-/* закладка «Детали» */
-.detailtab{position:absolute;right:0;top:7px;bottom:7px;width:16px;overflow:hidden;
-  border:1px solid var(--rule);border-right:none;border-radius:5px 0 0 5px;
-  background:var(--chrome);display:flex;align-items:center;justify-content:center;
-  font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-faint)}
+/* закладка «Детали» — выглядывает из-за правого края */
+.detailtab{position:absolute;right:0;top:7px;bottom:7px;width:23px;overflow:hidden;
+  border:1px solid var(--rule);border-right:none;border-radius:6px 0 0 6px;background:var(--chrome);
+  display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:13px}
 .detailtab.filled{background:var(--rule);color:var(--ink-soft);border-color:var(--ink-faint)}
-.detailtab::after{content:"›";font-size:12px;line-height:1}
 
-/* режим изменений */
-.editmode li.task{background:linear-gradient(90deg,transparent,var(--rule-soft) 140%)}
-.rowtools{display:none;gap:2px;padding-top:2px}
-.editmode .rowtools{display:flex;flex-direction:column}
-.rowtools button{width:20px;height:17px;font-size:11px;color:var(--ink-faint);line-height:1}
-.editmode .detailtab{opacity:.3}
+.rowtools{display:none;gap:2px}
+.editmode .rowtools{display:flex;flex-direction:column;padding-top:1px}
+.rowtools button{width:18px;height:16px;font-size:10px;color:var(--ink-faint);line-height:1}
+.editmode li.task{background:linear-gradient(90deg,transparent,var(--rule-soft) 150%)}
+.editmode .detailtab{opacity:.25}
 .editbanner{display:none;margin:10px 12px 0;padding:8px 11px;border:1px dashed var(--accent);
   border-radius:7px;font-size:12.5px;color:var(--accent);line-height:1.4}
 .editmode .editbanner{display:block}
 .editbanner button{text-decoration:underline;font-size:12.5px}
-
-.stat{padding:12px 14px 18px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+.stat{padding:12px 14px 20px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
   color:var(--ink-faint);letter-spacing:.03em}
 .empty{padding:40px 22px;text-align:center;color:var(--ink-faint);font-size:14px;line-height:1.6}
 
 /* ---------- дневник ---------- */
 .diarywrap{padding:14px 16px 20px;font-family:Literata,Georgia,serif}
-.dtitle{font-family:Literata,Georgia,serif;font-size:19px;font-weight:600;color:var(--ink);
-  width:100%;background:none;border:none;border-bottom:1px solid var(--rule);
-  padding:0 0 7px;outline:none}
+.dtitle{font-family:Literata,Georgia,serif;font-size:19px;font-weight:600;color:var(--ink);width:100%;
+  background:none;border:none;border-bottom:1px solid var(--rule);padding:0 0 7px;outline:none}
 .dtitle::placeholder{color:var(--ink-faint);font-weight:400}
-.askhead{font-family:"IBM Plex Sans",sans-serif;font-size:12px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--ink-soft);margin:18px 0 8px}
-.asklist{list-style:none;margin:0 0 6px;padding:0}
-.asklist li{padding:7px 0;border-bottom:1px solid var(--rule-soft);font-size:15px;line-height:1.45}
-.asklist .lead{color:var(--ink-soft)}
-.asklist .cmt{outline:none;display:inline;color:var(--ink)}
+.askhead{font-family:"IBM Plex Sans",sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-soft);margin:18px 0 6px}
+.asklist{list-style:none;margin:0;padding:0}
+.asklist li{padding:8px 0;border-bottom:1px solid var(--rule-soft)}
+.asklist .lead{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:14.5px;color:var(--ink-soft)}
+.asklist .cmt{display:block;outline:none;font-size:15px;color:var(--ink);padding:3px 0 0 14px;min-height:1.5em}
 .asklist .cmt:empty::before{content:"…";color:var(--ink-faint)}
-.dtext{width:100%;min-height:180px;background:none;border:none;outline:none;resize:none;
-  font-family:Literata,Georgia,serif;font-size:15.5px;line-height:1.7;color:var(--ink);
-  margin-top:16px}
+.dtext{width:100%;min-height:170px;background:none;border:none;outline:none;resize:none;
+  font-family:Literata,Georgia,serif;font-size:15.5px;line-height:1.7;color:var(--ink);margin-top:16px}
 .dtext::placeholder{color:var(--ink-faint)}
 main.past .diarywrap{opacity:.55}
 
 /* ---------- нижние панели ---------- */
-.attachbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--rule);
-  background:var(--chrome)}
-.attachbar button{padding:7px 0 6px;display:flex;flex-direction:column;align-items:center;gap:2px;
+.attachbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--rule);background:var(--chrome)}
+.attachbar button{padding:8px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;
   font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);
   border-right:1px solid var(--rule)}
 .attachbar button:last-child{border-right:none}
 .attachbar .ic{line-height:0;display:flex}
 .attachbar .ic svg{width:16px;height:16px}
+.attachbar.none{display:none}
 .tabbar{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--rule);
   background:var(--chrome);padding-bottom:4px}
-.tabbar button{padding:7px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;
-  font-size:10px;letter-spacing:.03em;color:var(--ink-faint)}
+.tabbar button{padding:7px 0;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:10px;color:var(--ink-faint)}
 .tabbar button .ic{line-height:0;display:flex}
 .tabbar button.on{color:var(--accent);font-weight:500}
 
 /* ---------- календарь и поиск ---------- */
 .cal{padding:14px 12px 20px}
-.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
-  font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-soft)}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
-.grid .wd{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);
-  padding-bottom:4px}
-.cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:2px;border-radius:7px;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink)}
-.cell.out{color:var(--ink-faint);opacity:.4}
+.grid .wd{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:4px}
+.cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  border-radius:7px;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink)}
+.cell.out{opacity:0}
 .cell.today{border:1.5px solid var(--accent)}
 .cell .dot{width:4px;height:4px;border-radius:50%;background:var(--ink-faint)}
+.note-s{font-size:13px;color:var(--ink-faint);line-height:1.5;padding:16px 4px 0}
 .filters{display:flex;gap:6px;padding:12px 12px 8px;overflow-x:auto}
-.filters button{white-space:nowrap;padding:5px 11px;border:1px solid var(--rule);border-radius:14px;
+.filters button{white-space:nowrap;padding:5px 12px;border:1px solid var(--rule);border-radius:14px;
   font-size:12.5px;color:var(--ink-soft)}
 .filters button.on{background:var(--accent);border-color:var(--accent);color:var(--plan-bg)}
 .searchrow{padding:0 12px 10px}
-.searchrow input{width:100%;padding:8px 12px;border:1px solid var(--rule);border-radius:9px;
+.searchrow input{width:100%;padding:9px 12px;border:1px solid var(--rule);border-radius:9px;
   background:var(--plan-bg);color:var(--ink);font-size:14px;outline:none}
 .results{list-style:none;margin:0;padding:0 12px 20px}
 .results li{padding:11px 0;border-bottom:1px solid var(--rule-soft);display:grid;
   grid-template-columns:1fr 52px;gap:10px;align-items:start}
-.results .rdate{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);
-  margin-bottom:3px}
+.results .rdate{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);margin-bottom:3px}
 .results .rtext{font-size:14px;line-height:1.45;color:var(--ink-soft)}
 .thumb{height:44px;border-radius:5px;background:var(--rule);display:flex;align-items:center;
-  justify-content:center;font-size:15px;color:var(--ink-faint)}
+  justify-content:center;color:var(--ink-faint)}
 
-/* ---------- шторка деталей ---------- */
-.scrim{position:fixed;inset:0;background:rgba(15,20,26,.32);opacity:0;pointer-events:none;
-  transition:opacity .22s ease;z-index:20}
+/* ---------- шторка «Подробности» ---------- */
+.scrim{position:absolute;inset:0;background:rgba(15,20,26,.28);opacity:0;pointer-events:none;
+  transition:opacity .22s ease;z-index:5}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;height:100%;width:min(300px,82vw);background:var(--chrome);
-  border-left:1px solid var(--rule);transform:translateX(101%);transition:transform .26s ease;
-  z-index:21;display:flex;flex-direction:column;box-shadow:-12px 0 34px -18px rgba(0,0,0,.5)}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(298px,80%);background:var(--chrome);
+  border-left:1px solid var(--rule);border-radius:10px 0 0 10px;transform:translateX(101%);
+  transition:transform .26s ease;z-index:6;display:flex;flex-direction:column;
+  box-shadow:-14px 0 34px -20px rgba(0,0,0,.5)}
 .drawer.on{transform:translateX(0)}
-.drawer h3{margin:0;padding:16px 16px 4px;font-family:"IBM Plex Sans",sans-serif;font-size:12px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
-.drawer .of{padding:0 16px 10px;font-size:14.5px;color:var(--ink);line-height:1.45}
-.drawer textarea{flex:1;margin:0 16px 16px;padding:11px;border:1px solid var(--rule);border-radius:8px;
+.drawerhead{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:13px 12px 4px}
+.drawerhead h3{margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-faint);font-weight:500;padding-top:4px}
+.drawerhead .x{width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  font-size:17px;color:var(--ink-soft);border:1px solid var(--rule);border-radius:6px;flex:none}
+.drawer .of{padding:2px 12px 10px;font-size:14.5px;color:var(--ink);line-height:1.4}
+.drawer textarea{flex:1;margin:0 12px 14px;padding:11px;border:1px solid var(--rule);border-radius:8px;
   background:var(--plan-bg);color:var(--ink);font:inherit;font-size:14.5px;line-height:1.55;
   resize:none;outline:none}
-.drawer:not(.on) .close{display:none}
-.drawer .close{position:absolute;left:-1px;top:50%;transform:translate(-100%,-50%);
-  width:16px;height:80px;background:var(--chrome);border:1px solid var(--rule);border-right:none;
-  border-radius:6px 0 0 6px}
+
+/* ---------- меню страницы ---------- */
+.sheet{position:absolute;inset:0;background:var(--plan-bg);z-index:9;display:none;flex-direction:column}
+.sheet.on{display:flex}
+.sheethead{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;padding:12px 8px;
+  background:var(--chrome);border-bottom:1px solid var(--rule)}
+.sheethead .t{text-align:center;font-size:19px;font-weight:600}
+.sheethead button{width:44px;height:38px;display:flex;align-items:center;justify-content:center;
+  font-size:19px;color:var(--ink-soft)}
+.sheet ul{list-style:none;margin:0;padding:6px 0}
+.sheet li button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;
+  padding:15px 18px;border-bottom:1px solid var(--rule-soft);font-size:15.5px;text-align:left}
+.sheet li button .sub{font-size:12.5px;color:var(--ink-faint)}
+.sheet li button.active{color:var(--accent);font-weight:500}
+.sheet .foot{padding:14px 18px;font-size:13px;color:var(--ink-faint);line-height:1.5}
 
 #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--ink);
-  color:var(--stage);padding:8px 15px;border-radius:18px;font-size:13px;opacity:0;
+  color:var(--plan-bg);padding:8px 15px;border-radius:18px;font-size:13px;opacity:0;
   transition:opacity .2s,transform .2s;pointer-events:none;z-index:40;max-width:80vw;text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 
 /* ---------- подсказки ---------- */
 .hints{flex:1 1 300px;max-width:400px;font-size:14px;line-height:1.6}
-.hints h2{font-family:"IBM Plex Sans",sans-serif;font-size:13px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
-.hints h2+ol,.hints h2+ul{margin-top:0}
+.hints h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);
+  font-weight:500;margin:0 0 10px}
 .hints ol,.hints ul{padding-left:19px;margin:0 0 22px}
 .hints li{margin:7px 0}
-.hints b{font-weight:600}
-.hints .note{padding:12px 14px;border:1px solid var(--rule);border-radius:8px;
-  background:var(--chrome);font-size:13px;color:var(--ink-soft);margin-bottom:22px}
+.hints .note{padding:12px 14px;border:1px solid var(--rule);border-radius:8px;background:var(--chrome);
+  font-size:13px;color:var(--ink-soft);margin-bottom:22px}
+.hints .tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.hints .tools button{padding:7px 13px;border:1px solid var(--rule);border-radius:8px;font-size:13px;
+  color:var(--ink-soft);background:var(--chrome)}
 @media (max-width:860px){
-  .stage{padding-block:0 28px;gap:20px}
+  .stage{padding:0 0 28px;gap:20px}
   .phone{border-radius:0;border-left:none;border-right:none;height:100dvh;max-width:none;box-shadow:none}
-  .stage{padding-inline:0}
   .hints{padding-inline:16px;max-width:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -247,19 +235,19 @@ main.past .diarywrap{opacity:.55}
 <div class="stage" lang="ru">
   <div class="phone" id="phone">
     <div class="appbar">
-      <button id="gear" title="Настройки">⚙</button>
-      <div class="datewrap">
-        <div class="daynav">
-          <button id="prev" aria-label="Предыдущий день">‹</button>
-          <div>
-            <div class="weekday" id="wd">ПЯТНИЦА</div>
-            <div class="dateline" id="dl">12 сентября 2026</div>
-          </div>
-          <button id="next" aria-label="Следующий день">›</button>
-        </div>
-        <div class="daybar" id="daybar"></div>
-      </div>
-      <button id="dots" title="Меню страницы">⋯</button>
+      <button id="gear" aria-label="Настройки">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 008.6 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 8.6a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+      <div class="screenname" id="sname">Сегодня</div>
+      <button id="dots" aria-label="Меню страницы">
+        <svg viewBox="0 0 20 20" width="19" height="19" fill="currentColor"><circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/></svg>
+      </button>
+    </div>
+
+    <div class="subbar" id="subbar">
+      <div class="y" id="sy">2026</div>
+      <div class="d" id="sd">12 сентября</div>
+      <div class="w" id="sw">суббота</div>
     </div>
 
     <div class="tabs" id="tabs">
@@ -267,94 +255,112 @@ main.past .diarywrap{opacity:.55}
       <button class="tab" id="tabDiary" role="tab" aria-selected="false">Дневник</button>
     </div>
 
-    <main id="screen"></main>
+    <div class="canvas" id="canvas">
+      <main id="screen"></main>
+      <div class="scrim" id="scrim"></div>
+      <aside class="drawer" id="drawer">
+        <div class="drawerhead">
+          <h3>Подробности</h3>
+          <button class="x" id="drawerClose" aria-label="Закрыть">✕</button>
+        </div>
+        <div class="of" id="drawerOf"></div>
+        <textarea id="drawerText" placeholder="Адрес, дорога, стоимость, с кем…"></textarea>
+      </aside>
+    </div>
 
     <div class="attachbar" id="attachbar">
-      <button data-a="Фото и видео"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M2.5 13l4-4 3.5 3.5L13 10l4.5 4"/><circle cx="7" cy="8" r="1.1"/></svg></span>фото</button>
-      <button data-a="Аудиозапись"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="2.5" width="5" height="9" rx="2.5"/><path d="M4.5 9.5a5.5 5.5 0 0011 0M10 15v2.5"/></svg></span>аудио</button>
-      <button data-a="Файлы"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h6l4 4v11H5z"/><path d="M11 2.5v4h4"/><path d="M7.5 11h5M7.5 13.5h5"/></svg></span>файлы</button>
-      <button data-a="Геоточка"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17.5s5.5-5 5.5-9a5.5 5.5 0 10-11 0c0 4 5.5 9 5.5 9z"/><circle cx="10" cy="8.4" r="2"/></svg></span>геоточка</button>
+      <button data-a="Фото и видео"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M2.5 13l4-4 3.5 3.5L13 10l4.5 4"/><circle cx="7" cy="8" r="1.1"/></svg></span>фото</button>
+      <button data-a="Аудиозапись"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="2.5" width="5" height="9" rx="2.5"/><path d="M4.5 9.5a5.5 5.5 0 0011 0M10 15v2.5"/></svg></span>аудио</button>
+      <button data-a="Файлы"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h6l4 4v11H5z"/><path d="M11 2.5v4h4M7.5 11h5M7.5 13.5h5"/></svg></span>файлы</button>
+      <button data-a="Геоточка"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17.5s5.5-5 5.5-9a5.5 5.5 0 10-11 0c0 4 5.5 9 5.5 9z"/><circle cx="10" cy="8.4" r="2"/></svg></span>геоточка</button>
     </div>
 
     <div class="tabbar">
-      <button data-s="calendar"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="13" rx="2"/><path d="M2.5 8h15M6.5 2.5v3M13.5 2.5v3"/><circle cx="7" cy="11.5" r=".8" fill="currentColor" stroke="none"/><circle cx="10" cy="11.5" r=".8" fill="currentColor" stroke="none"/></svg></span>Календарь</button>
-      <button data-s="today" class="on"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.4 4.4l1.4 1.4M14.2 14.2l1.4 1.4M15.6 4.4l-1.4 1.4M5.8 14.2l-1.4 1.4"/></svg></span>Сегодня</button>
-      <button data-s="search"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.8" cy="8.8" r="5.3"/><path d="M12.8 12.8l4 4"/></svg></span>Поиск</button>
+      <button data-s="calendar"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="2.5" y="4" width="15" height="13" rx="2"/><path d="M2.5 8h15M6.5 2.5v3M13.5 2.5v3"/><circle cx="7" cy="11.5" r=".8" fill="currentColor" stroke="none"/><circle cx="10" cy="11.5" r=".8" fill="currentColor" stroke="none"/></svg></span>Календарь</button>
+      <button data-s="today" class="on"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="10" cy="10" r="3.4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.4 4.4l1.4 1.4M14.2 14.2l1.4 1.4M15.6 4.4l-1.4 1.4M5.8 14.2l-1.4 1.4"/></svg></span>Сегодня</button>
+      <button data-s="search"><span class="ic"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="8.8" cy="8.8" r="5.3"/><path d="M12.8 12.8l4 4"/></svg></span>Поиск</button>
+    </div>
+
+    <div class="sheet" id="sheet">
+      <div class="sheethead">
+        <span></span><div class="t">Меню страницы</div>
+        <button id="sheetClose" aria-label="Закрыть">✕</button>
+      </div>
+      <ul>
+        <li><button data-m="edit"><span id="editLabel">Режим изменений</span><span class="sub" id="editState">выключен</span></button></li>
+        <li><button data-m="stub">Перенести дело на другой день<span class="sub">→</span></button></li>
+        <li><button data-m="stub">Показать файл этого дня<span class="sub">→</span></button></li>
+        <li><button data-m="stub">Поделиться днём<span class="sub">→</span></button></li>
+        <li><button data-m="stub">Удалить день<span class="sub">→</span></button></li>
+      </ul>
+      <div class="foot">В режиме изменений можно править текст дела, менять порядок и удалять. Обычные действия — отметить дело сделанным — доступны и без него, одним касанием.</div>
     </div>
   </div>
 
   <aside class="hints">
     <h2>Что проверить</h2>
     <ol>
-      <li><b>Тап вместо галочки.</b> Коснитесь строки дела — текст затенится. Ещё раз — вернётся. Ощущается ли это как «сделано»?</li>
-      <li><b>Выцветшее прошлое.</b> Стрелка ‹ у даты или свайп вправо — вчерашний день. Все дела приглушены одинаково: сделанные и нет. Успокаивает или лишает нужного?</li>
-      <li><b>«Как прошло?».</b> Вкладка «Дневник» на сегодняшнем дне: дела из плана с двоеточиями. Допишите комментарий прямо в строке.</li>
-      <li><b>Закладка «Детали».</b> Узкая полоска у правого края каждого дела. Достаточно ли она заметна и не мешает ли тапу по делу?</li>
-      <li><b>Режим изменений.</b> Три точки справа вверху. Только в нём можно править текст дела, двигать и удалять. Не раздражает ли лишний шаг?</li>
-      <li><b>Две вкладки.</b> Переключите «План» и «Дневник». Достаточно ли различаются — и не слишком ли?</li>
+      <li><b>Тап вместо галочки.</b> Коснитесь строки дела — текст затенится.</li>
+      <li><b>Выцветшее прошлое.</b> Свайп вправо или стрелка ← на клавиатуре — вчерашний день, приглушённый целиком.</li>
+      <li><b>«Как прошло?».</b> Вкладка «Дневник»: дела одной строкой, комментарий пишется под каждым.</li>
+      <li><b>Закладка «Детали».</b> Полоска у правого края дела. Шторка не закрывает вкладки и нижние кнопки, список под ней не ездит.</li>
+      <li><b>Меню страницы.</b> Три точки — отдельная страница поверх экрана, в ней включается режим изменений.</li>
+      <li><b>Кнопка «Сегодня».</b> С любой даты возвращает на текущий день.</li>
     </ol>
+
+    <div class="tools">
+      <button id="night">Ночной режим</button>
+      <button id="reset">Сбросить прототип</button>
+    </div>
 
     <h2>Чего прототип не умеет</h2>
     <div class="note">
-      Это страница в браузере, а не приложение. Она не откроет клавиатуру сама при запуске, не покажет виджет на экране блокировки и не сохранит файлы в папку. Перетаскивание дел заменено стрелками ↑↓. Вложения, календарь и поиск — заглушки с примерными данными.
-      <br><br>Всё, что вы наберёте, хранится только в этом браузере и никуда не уходит.
+      Это страница в браузере, а не приложение: она не откроет клавиатуру сама при запуске, не покажет виджет на экране блокировки и не сохранит файлы в папку. Перетаскивание дел заменено стрелками ↑↓. Вложения, календарь и поиск — заглушки. Всё набранное хранится только в этом браузере.
     </div>
 
     <h2>Заложено из решений</h2>
     <ul>
-      <li>Граница суток 4:00 — до четырёх утра день считается текущим.</li>
+      <li>Граница суток 4:00.</li>
       <li>Невыполненное не переносится и ничем не выделяется.</li>
       <li>Ежедневное действие — одно касание; правка — через режим изменений.</li>
-      <li>Цвет дня недели: полоска под датой.</li>
+      <li>Цвет дня недели — в названии дня справа.</li>
     </ul>
-    <p style="color:var(--ink-faint);font-size:13px"><button id="reset" style="text-decoration:underline">Сбросить и начать заново</button></p>
   </aside>
 </div>
-
-<div class="scrim" id="scrim"></div>
-<aside class="drawer" id="drawer">
-  <button class="close" id="drawerClose" aria-label="Закрыть"></button>
-  <h3>Подробности</h3>
-  <div class="of" id="drawerOf"></div>
-  <textarea id="drawerText" placeholder="Адрес, дорога, стоимость, с кем…"></textarea>
-</aside>
 <div id="toast" role="status"></div>
 
 <script>
 (function(){
   "use strict";
-  var KEY="paperlife-proto-v2";
+  var KEY="paperlife-proto-v3";
   var MONTHS=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
-  var WD=["ВОСКРЕСЕНЬЕ","ПОНЕДЕЛЬНИК","ВТОРНИК","СРЕДА","ЧЕТВЕРГ","ПЯТНИЦА","СУББОТА"];
+  var MONTHN=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+  var WD=["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
   var WDS=["вс","пн","вт","ср","чт","пт","сб"];
   var DCOL=["var(--d7)","var(--d1)","var(--d2)","var(--d3)","var(--d4)","var(--d5)","var(--d6)"];
-  var BOUNDARY=4; // граница суток, час
-  var PHOTO_IC='<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M2.5 13l4-4 3.5 3.5L13 10l4.5 4"/><circle cx="7" cy="8" r="1.1"/></svg>',AUDIO_IC='<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="2.5" width="5" height="9" rx="2.5"/><path d="M4.5 9.5a5.5 5.5 0 0011 0M10 15v2.5"/></svg>',FILES_IC='<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h6l4 4v11H5z"/><path d="M11 2.5v4h4"/><path d="M7.5 11h5M7.5 13.5h5"/></svg>';
-  var BELL='<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" '+
-    'stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">'+
-    '<path d="M3.6 11.4c.6-.8 1-1.7 1-3.2V7a3.4 3.4 0 016.8 0v1.2c0 1.5.4 2.4 1 3.2z"/>'+
-    '<path d="M6.6 13.2h2.8"/></svg>';
+  var BOUNDARY=4;
+  var BELL='<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 11.4c.6-.8 1-1.7 1-3.2V7a3.4 3.4 0 016.8 0v1.2c0 1.5.4 2.4 1 3.2z"/><path d="M6.6 13.2h2.8"/></svg>';
+  var TH={photo:'<svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M2.5 13l4-4 3.5 3.5L13 10l4.5 4"/></svg>'};
 
   function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
   function parse(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
   function shift(s,n){var d=parse(s);d.setDate(d.getDate()+n);return iso(d);}
-  function todayISO(){var n=new Date();if(n.getHours()<BOUNDARY){n.setDate(n.getDate()-1);}return iso(n);}
-
-  var TODAY=todayISO(), YEST=shift(TODAY,-1), TOMO=shift(TODAY,1);
+  function todayISO(){var n=new Date();if(n.getHours()<BOUNDARY)n.setDate(n.getDate()-1);return iso(n);}
+  var TODAY=todayISO(),YEST=shift(TODAY,-1),TOMO=shift(TODAY,1);
 
   function seed(){
     var d={};
     d[YEST]={tasks:[
-      {t:"08:30",x:"Отвезти документы в нотариус",done:true,bell:false,det:"Ул. Малая Бронная 12, второй этаж. Взять оригинал доверенности."},
+      {t:"08:30",x:"Отвезти документы нотариусу",done:true,bell:false,det:"Малая Бронная 12, второй этаж. Взять оригинал доверенности."},
       {t:"13:00",x:"Обед с Ириной",done:true,bell:true,det:""},
-      {t:"19:00",x:"Разобрать коробки в кладовке",done:false,bell:false,det:""}
-    ],title:"Длинный день",text:"Дождь начался ровно в тот момент, когда я вышел из метро без зонта. Почему-то это меня развеселило.",cmts:{}};
+      {t:"19:00",x:"Разобрать коробки в кладовке",done:false,bell:false,det:""}],
+      title:"Длинный день",text:"Дождь начался ровно в тот момент, когда я вышел из метро без зонта. Почему-то это меня развеселило.",cmts:{}};
     d[TODAY]={tasks:[
       {t:"07:00",x:"Проснуться в хорошем настроении",done:true,bell:false,det:""},
       {t:"11:30",x:"Позвонить в поликлинику, записаться к врачу",done:false,bell:true,det:"Регистратура 8 (495) 000-00-00. Спросить про талон на четверг."},
       {t:"15:00",x:"Дописать вторую главу",done:false,bell:false,det:""},
-      {t:"20:00",x:"Купить хлеб, молоко и что-нибудь к чаю",done:false,bell:false,det:""}
-    ],title:"",text:"",cmts:{}};
+      {t:"20:00",x:"Купить хлеб, молоко и что-нибудь к чаю",done:false,bell:false,det:""}],
+      title:"",text:"",cmts:{}};
     d[TOMO]={tasks:[],title:"",text:"",cmts:{}};
     return d;
   }
@@ -362,150 +368,117 @@ main.past .diarywrap{opacity:.55}
   var S={days:null,date:TODAY,tab:"plan",screen:"today",edit:false,editing:-1,filter:"Всё",drawer:-1};
   try{var raw=localStorage.getItem(KEY);S.days=raw?JSON.parse(raw):seed();}catch(e){S.days=seed();}
   if(!S.days||!S.days[TODAY])S.days=seed();
-
   function save(){try{localStorage.setItem(KEY,JSON.stringify(S.days));}catch(e){}}
   function day(k){if(!S.days[k])S.days[k]={tasks:[],title:"",text:"",cmts:{}};return S.days[k];}
   function isPast(){return S.date<TODAY;}
 
-  var $=function(id){return document.getElementById(id);};
-  var screen=$("screen"),phone=$("phone"),attachbar=$("attachbar");
-
+  var $=function(i){return document.getElementById(i);};
+  var screen=$("screen"),phone=$("phone"),canvas=$("canvas");
   function toast(m){var t=$("toast");t.textContent=m;t.classList.add("on");
     clearTimeout(t._x);t._x=setTimeout(function(){t.classList.remove("on");},1900);}
-
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
 
-  /* ---------- шапка ---------- */
   function renderHeader(){
-    var d=parse(S.date),w=d.getDay();
-    $("wd").textContent=WD[w];
-    $("wd").style.color=DCOL[w];
-    $("dl").textContent=d.getDate()+" "+MONTHS[d.getMonth()]+" "+d.getFullYear();
-    $("daybar").style.background=DCOL[w];
+    var t=S.screen==="today",sb=$("subbar");
+    $("sname").textContent=t?"Сегодня":(S.screen==="calendar"?"Календарь":"Поиск");
+    $("tabs").classList.toggle("none",!t);
+    $("attachbar").classList.toggle("none",!t);
     $("dots").classList.toggle("on",S.edit);
-    var onToday=S.screen==="today";
-    $("prev").style.visibility=onToday?"visible":"hidden";
-    $("next").style.visibility=onToday?"visible":"hidden";
-    $("tabs").style.display=onToday?"":"none";
-    attachbar.style.display=onToday?"":"none";
-    if(!onToday){
-      $("wd").textContent=S.screen==="calendar"?"КАЛЕНДАРЬ":"ПОИСК";
-      $("wd").style.color="var(--ink-soft)";
-      $("dl").textContent=S.screen==="calendar"?"сентябрь 2026":"по записям и вложениям";
-      $("daybar").style.background="transparent";
-    }
+    if(t){
+      var d=parse(S.date),w=d.getDay();
+      sb.classList.remove("none");
+      $("sy").textContent=d.getFullYear();
+      $("sd").textContent=d.getDate()+" "+MONTHS[d.getMonth()];
+      $("sw").textContent=WD[w];$("sw").style.color=DCOL[w];
+    }else if(S.screen==="calendar"){
+      var c=parse(S.date);
+      sb.classList.remove("none");
+      $("sy").textContent=c.getFullYear();
+      $("sd").textContent=MONTHN[c.getMonth()];
+      $("sw").textContent="";
+    }else sb.classList.add("none");
   }
 
-  /* ---------- план ---------- */
   function renderPlan(){
     var D=day(S.date),past=isPast();
-    var h='<div class="editbanner">Режим изменений: можно править текст, двигать и удалять дела. '+
-          '<button id="editOff">Выйти</button></div>'+
-          '<div class="planhead"><span class="hint">'+(past?"день закрыт":"дела на день")+
-          '</span><button class="add" id="addBtn" aria-label="Новое дело">+</button></div>';
+    var h='<div class="editbanner">Режим изменений: правка текста, порядок, удаление. '+
+      '<button id="editOff">Выйти</button></div>'+
+      '<div class="planhead"><span class="hint">'+(past?"день закрыт":"дела на день")+
+      '</span><button class="add" id="addBtn" aria-label="Новое дело">+</button></div>';
     if(!D.tasks.length){
-      h+='<div class="empty">На этот день ничего не запланировано.<br>Нажмите «+», чтобы вписать дело.</div>';
+      h+='<div class="empty">На этот день ничего не запланировано.'+(past?"":"<br>Нажмите «+», чтобы вписать дело.")+'</div>';
     }else{
       h+='<ul class="tasks">';
       D.tasks.forEach(function(t,i){
         var ed=S.edit||S.editing===i;
         h+='<li class="task'+(t.done?" done":"")+'" data-i="'+i+'">'+
-             '<div class="num">'+(i+1)+'</div>'+
-             '<div class="body">'+
-               '<div class="meta">'+
-                 (S.edit?'<input class="time" type="time" step="60" lang="ru" value="'+t.t+'" data-i="'+i+'">':'<span class="time">'+t.t+'</span>')+
-                 '<button class="bell'+(t.bell?" on":"")+'" data-bell="'+i+'" aria-label="Напоминание">'+BELL+'</button>'+
-               '</div>'+
-               '<div class="txt" data-t="'+i+'"'+(ed?' contenteditable="true"':"")+'>'+esc(t.x)+'</div>'+
-             '</div>'+
-             '<div class="rowtools">'+
-               '<button data-up="'+i+'" aria-label="Выше">▲</button>'+
-               '<button data-dn="'+i+'" aria-label="Ниже">▼</button>'+
-               '<button data-del="'+i+'" aria-label="Удалить">✕</button>'+
-             '</div>'+
-             '<button class="detailtab'+(t.det?" filled":"")+'" data-d="'+i+'" aria-label="Подробности"></button>'+
-           '</li>';
+          '<div class="num">'+(i+1)+'</div><div class="body">'+
+          (S.edit?'<input class="time" type="time" step="60" value="'+t.t+'" data-i="'+i+'">'
+                 :'<span class="time">'+t.t+'</span>')+
+          '<button class="bell'+(t.bell?" on":"")+'" data-bell="'+i+'" aria-label="Напоминание">'+BELL+'</button>'+
+          '<span class="txt" data-t="'+i+'"'+(ed?' contenteditable="true"':"")+'>'+esc(t.x)+'</span>'+
+          '</div><div class="rowtools">'+
+          '<button data-up="'+i+'" aria-label="Выше">▲</button>'+
+          '<button data-dn="'+i+'" aria-label="Ниже">▼</button>'+
+          '<button data-del="'+i+'" aria-label="Удалить">✕</button></div>'+
+          '<button class="detailtab'+(t.det?" filled":"")+'" data-d="'+i+'" aria-label="Подробности">›</button></li>';
       });
-      h+='</ul>';
-      var done=D.tasks.filter(function(t){return t.done;}).length;
-      h+='<div class="stat">Запланировано '+D.tasks.length+' · сделано '+done+'</div>';
+      h+='</ul><div class="stat">Запланировано '+D.tasks.length+' · сделано '+
+         D.tasks.filter(function(t){return t.done;}).length+'</div>';
     }
     screen.className=(past?"past ":"")+(S.edit?"editmode":"");
     screen.innerHTML=h;
-
     if(S.editing>-1){
       var el=screen.querySelector('[data-t="'+S.editing+'"]');
-      if(el){el.focus();
-        var r=document.createRange();r.selectNodeContents(el);r.collapse(false);
+      if(el){el.focus();var r=document.createRange();r.selectNodeContents(el);r.collapse(false);
         var sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);}
     }
   }
 
-  /* ---------- дневник ---------- */
   function renderDiary(){
     var D=day(S.date),past=isPast();
-    var h='<div class="diarywrap">'+
-      '<input class="dtitle" id="dTitle" placeholder="Заголовок дня" value="'+esc(D.title)+'">';
+    var h='<div class="diarywrap"><input class="dtitle" id="dTitle" placeholder="Заголовок дня" value="'+esc(D.title)+'">';
     if(D.tasks.length){
       h+='<div class="askhead">Как прошло?</div><ul class="asklist">';
       D.tasks.forEach(function(t,i){
-        h+='<li><span class="lead">'+esc(t.x)+':</span> '+
-           '<span class="cmt" contenteditable="true" data-c="'+i+'">'+esc(D.cmts[i]||"")+'</span></li>';
-      });
+        h+='<li><span class="lead">'+esc(t.x)+':</span>'+
+           '<span class="cmt" contenteditable="true" data-c="'+i+'">'+esc(D.cmts[i]||"")+'</span></li>';});
       h+='</ul>';
     }
     h+='<textarea class="dtext" id="dText" placeholder="'+
-       (D.tasks.length?"И что ещё было в этот день…":"Что было сегодня…")+
-       '">'+esc(D.text)+'</textarea></div>';
-    screen.className=past?"past":"";
-    screen.innerHTML=h;
+       (D.tasks.length?"И что ещё было в этот день…":"Что было сегодня…")+'">'+esc(D.text)+'</textarea></div>';
+    screen.className=past?"past":"";screen.innerHTML=h;
   }
 
-  /* ---------- календарь ---------- */
   function renderCalendar(){
     var base=parse(S.date),y=base.getFullYear(),m=base.getMonth();
-    var first=new Date(y,m,1),start=(first.getDay()+6)%7;
-    var dim=new Date(y,m+1,0).getDate();
-    var h='<div class="cal"><div class="calhead"><span>'+
-      MONTHS[m].replace(/я$|а$/,function(c){return c==="я"?"ь":"";})+' '+y+
-      '</span><span>'+dim+' дней</span></div><div class="grid">';
+    var start=(new Date(y,m,1).getDay()+6)%7,dim=new Date(y,m+1,0).getDate();
+    var h='<div class="cal"><div class="grid">';
     ["пн","вт","ср","чт","пт","сб","вс"].forEach(function(w){h+='<div class="wd">'+w+'</div>';});
     for(var i=0;i<start;i++)h+='<div class="cell out"></div>';
     for(var dn=1;dn<=dim;dn++){
       var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dn).padStart(2,"0");
       var has=S.days[k]&&S.days[k].tasks&&S.days[k].tasks.length;
-      h+='<button class="cell'+(k===TODAY?" today":"")+'" data-go="'+k+'">'+dn+
-         (has?'<span class="dot"></span>':'')+'</button>';
+      h+='<button class="cell'+(k===TODAY?" today":"")+'" data-go="'+k+'">'+dn+(has?'<span class="dot"></span>':'')+'</button>';
     }
-    h+='</div><p style="font-size:13px;color:var(--ink-faint);margin-top:16px;line-height:1.5">'+
-       'Упрощённый календарь для прототипа. Точка — день, в котором есть дела. '+
-       'Нажмите дату, чтобы открыть её на экране «Сегодня».</p></div>';
+    h+='</div><p class="note-s">Упрощённый календарь. Точка — день, в котором есть дела. Нажмите дату, чтобы открыть её на экране «Сегодня»; кнопка «Сегодня» внизу вернёт на текущий день.</p></div>';
     screen.className="";screen.innerHTML=h;
   }
 
-  /* ---------- поиск ---------- */
   function renderSearch(){
-    var f=S.filter;
     var h='<div class="filters">';
     ["Всё","Фото","Видео","Аудио","Файлы"].forEach(function(x){
-      h+='<button data-f="'+x+'"'+(x===f?' class="on"':"")+'>'+x+'</button>';});
-    h+='</div><div class="searchrow"><input placeholder="Поиск по словам" id="q"></div><ul class="results">';
-    var keys=Object.keys(S.days).sort().reverse();
+      h+='<button data-f="'+x+'"'+(x===S.filter?' class="on"':"")+'>'+x+'</button>';});
+    h+='</div><div class="searchrow"><input placeholder="Поиск по словам"></div><ul class="results">';
     var any=false;
-    keys.forEach(function(k){
-      var D=S.days[k];
-      var line=D.title||D.text||(D.tasks[0]&&D.tasks[0].x)||"";
-      if(!line)return;
-      any=true;
-      var d=parse(k);
+    Object.keys(S.days).sort().reverse().forEach(function(k){
+      var D=S.days[k],line=D.title||D.text||(D.tasks[0]&&D.tasks[0].x)||"";
+      if(!line)return;any=true;var d=parse(k);
       h+='<li><div><div class="rdate">'+WDS[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]+
-         '</div><div class="rtext">'+esc(line.slice(0,110))+'</div></div>'+
-         '<div class="thumb">'+(f==="Аудио"?"🎙":f==="Файлы"?"📄":"🖼")+'</div></li>';
-    });
-    if(!any)h+='<li><div class="rtext">Пока нечего искать — напишите что-нибудь в дневнике.</div><div></div></li>';
-    h+='</ul><p style="padding:0 12px 20px;font-size:13px;color:var(--ink-faint);line-height:1.5">'+
-       'Фильтр и поиск в прототипе не работают по-настоящему — показан вид экрана.</p>';
+        '</div><div class="rtext">'+esc(line.slice(0,110))+'</div></div><div class="thumb">'+TH.photo+'</div></li>';});
+    if(!any)h+='<li><div class="rtext">Пока нечего искать.</div><div></div></li>';
+    h+='</ul><p class="note-s" style="padding-inline:12px">Фильтр и поиск в прототипе показаны видом, но не работают.</p>';
     screen.className="";screen.innerHTML=h;
   }
 
@@ -516,96 +489,106 @@ main.past .diarywrap{opacity:.55}
     $("tabDiary").setAttribute("aria-selected",S.tab==="diary");
     document.querySelectorAll(".tabbar button").forEach(function(b){
       b.classList.toggle("on",b.dataset.s===S.screen);});
-    if(S.screen==="calendar")return renderCalendar();
-    if(S.screen==="search")return renderSearch();
-    if(S.tab==="plan")renderPlan();else renderDiary();
+    $("editState").textContent=S.edit?"включён":"выключен";
+    $("sheet").querySelector('[data-m="edit"]').classList.toggle("active",S.edit);
+    if(S.screen==="calendar")renderCalendar();
+    else if(S.screen==="search")renderSearch();
+    else if(S.tab==="plan")renderPlan();else renderDiary();
   }
 
-  /* ---------- события ---------- */
   screen.addEventListener("click",function(e){
     var el;
     if((el=e.target.closest("[data-go]"))){S.screen="today";S.date=el.dataset.go;S.tab="plan";return render();}
     if((el=e.target.closest("[data-f]"))){S.filter=el.dataset.f;return render();}
     if(e.target.id==="editOff"){S.edit=false;S.editing=-1;return render();}
     if(e.target.id==="addBtn")return addTask();
-    if((el=e.target.closest("[data-d]"))){return openDrawer(+el.dataset.d);}
+    if((el=e.target.closest("[data-d]")))return openDrawer(+el.dataset.d);
     if((el=e.target.closest("[data-bell]"))){
       if(isPast()&&!S.edit)return toast("День закрыт. Изменения — через режим изменений.");
       var t=day(S.date).tasks[+el.dataset.bell];t.bell=!t.bell;save();return render();}
-    if((el=e.target.closest("[data-up]"))){return move(+el.dataset.up,-1);}
-    if((el=e.target.closest("[data-dn]"))){return move(+el.dataset.dn,1);}
-    if((el=e.target.closest("[data-del]"))){
-      var D=day(S.date);D.tasks.splice(+el.dataset.del,1);save();return render();}
+    if((el=e.target.closest("[data-up]")))return move(+el.dataset.up,-1);
+    if((el=e.target.closest("[data-dn]")))return move(+el.dataset.dn,1);
+    if((el=e.target.closest("[data-del]"))){day(S.date).tasks.splice(+el.dataset.del,1);save();return render();}
     if((el=e.target.closest("[data-t]"))){
-      if(S.edit||S.editing===+el.dataset.t)return;
+      var i=+el.dataset.t;
+      if(S.edit||S.editing===i)return;
       if(isPast())return toast("День закрыт. Отметить задним числом — через режим изменений.");
-      var i=+el.dataset.t,D2=day(S.date);
-      D2.tasks[i].done=!D2.tasks[i].done;save();return render();}
+      var D=day(S.date);D.tasks[i].done=!D.tasks[i].done;save();return render();}
   });
 
   screen.addEventListener("input",function(e){
     var D=day(S.date),el=e.target;
-    if(el.id==="dTitle"){D.title=el.value;save();}
-    else if(el.id==="dText"){D.text=el.value;save();}
-    else if(el.dataset.c!==undefined){D.cmts[el.dataset.c]=el.textContent;save();}
-    else if(el.classList.contains("time")){D.tasks[+el.dataset.i].t=el.value;save();}
+    if(el.id==="dTitle")D.title=el.value;
+    else if(el.id==="dText")D.text=el.value;
+    else if(el.dataset.c!==undefined)D.cmts[el.dataset.c]=el.textContent;
+    else if(el.classList.contains("time"))D.tasks[+el.dataset.i].t=el.value;
+    else return;
+    save();
   });
   screen.addEventListener("blur",function(e){
     if(e.target.dataset&&e.target.dataset.t!==undefined){
       var i=+e.target.dataset.t,D=day(S.date);
       var v=e.target.textContent.replace(/\s+/g," ").trim();
-      if(S.editing===i&&!v){D.tasks.splice(i,1);}else{D.tasks[i].x=v||D.tasks[i].x;}
-      S.editing=-1;save();render();
-    }
+      if(S.editing===i&&!v)D.tasks.splice(i,1);else D.tasks[i].x=v||D.tasks[i].x;
+      S.editing=-1;save();render();}
   },true);
 
-  function move(i,d){
-    var D=day(S.date),j=i+d;
-    if(j<0||j>=D.tasks.length)return;
-    var tmp=D.tasks[i];D.tasks[i]=D.tasks[j];D.tasks[j]=tmp;save();render();
-  }
+  function move(i,d){var D=day(S.date),j=i+d;if(j<0||j>=D.tasks.length)return;
+    var t=D.tasks[i];D.tasks[i]=D.tasks[j];D.tasks[j]=t;save();render();}
   function addTask(){
     if(isPast())return toast("Прошедший день не пополняется.");
     var D=day(S.date),n=new Date();
-    var hh=String(Math.min(23,n.getHours()+1)).padStart(2,"0");
-    D.tasks.push({t:hh+":00",x:"",done:false,bell:false,det:""});
-    S.editing=D.tasks.length-1;save();render();
-  }
+    D.tasks.push({t:String(Math.min(23,n.getHours()+1)).padStart(2,"0")+":00",x:"",done:false,bell:false,det:""});
+    S.editing=D.tasks.length-1;save();render();}
+
   function openDrawer(i){
     S.drawer=i;var t=day(S.date).tasks[i];
     $("drawerOf").textContent=t.x||"Без названия";
     $("drawerText").value=t.det||"";
-    $("drawer").classList.add("on");$("scrim").classList.add("on");
-  }
+    $("drawer").classList.add("on");$("scrim").classList.add("on");canvas.classList.add("locked");}
   function closeDrawer(){
     if(S.drawer>-1){day(S.date).tasks[S.drawer].det=$("drawerText").value;save();}
-    S.drawer=-1;$("drawer").classList.remove("on");$("scrim").classList.remove("on");render();
-  }
+    S.drawer=-1;$("drawer").classList.remove("on");$("scrim").classList.remove("on");
+    canvas.classList.remove("locked");render();}
   $("scrim").addEventListener("click",closeDrawer);
   $("drawerClose").addEventListener("click",closeDrawer);
 
+  function openSheet(){$("sheet").classList.add("on");}
+  function closeSheet(){$("sheet").classList.remove("on");}
+  $("dots").addEventListener("click",openSheet);
+  $("sheetClose").addEventListener("click",closeSheet);
+  $("sheet").addEventListener("click",function(e){
+    var b=e.target.closest("[data-m]");if(!b)return;
+    if(b.dataset.m==="edit"){S.edit=!S.edit;S.editing=-1;closeSheet();render();}
+    else{closeSheet();toast("В прототипе не сделано");}});
+
   $("tabPlan").addEventListener("click",function(){S.tab="plan";S.screen="today";render();});
   $("tabDiary").addEventListener("click",function(){S.tab="diary";S.screen="today";render();});
-  $("prev").addEventListener("click",function(){S.date=shift(S.date,-1);S.edit=false;render();});
-  $("next").addEventListener("click",function(){S.date=shift(S.date,1);S.edit=false;render();});
-  $("dots").addEventListener("click",function(){S.edit=!S.edit;S.editing=-1;render();});
   $("gear").addEventListener("click",function(){toast("Настройки в прототипе не сделаны");});
   document.querySelectorAll(".tabbar button").forEach(function(b){
-    b.addEventListener("click",function(){S.screen=b.dataset.s;S.edit=false;render();});});
-  attachbar.addEventListener("click",function(e){
+    b.addEventListener("click",function(){
+      if(b.dataset.s==="today"){
+        if(S.screen==="today"&&S.date!==TODAY)toast("Вернулись на сегодня");
+        S.date=TODAY;S.tab=S.tab||"plan";}
+      S.screen=b.dataset.s;S.edit=false;closeSheet();render();});});
+  $("attachbar").addEventListener("click",function(e){
     var b=e.target.closest("button");if(b)toast(b.dataset.a+" — в прототипе не работает");});
   $("reset").addEventListener("click",function(){
-    S.days=seed();S.date=TODAY;S.tab="plan";S.screen="today";S.edit=false;save();render();
-    toast("Прототип сброшен");});
+    S.days=seed();S.date=TODAY;S.tab="plan";S.screen="today";S.edit=false;save();render();toast("Прототип сброшен");});
+  $("night").addEventListener("click",function(){
+    var n=document.documentElement.classList.toggle("night");
+    this.textContent=n?"Дневной режим":"Ночной режим";});
 
+  function go(n){if(S.screen!=="today")return;S.date=shift(S.date,n);S.edit=false;render();}
+  document.addEventListener("keydown",function(e){
+    if(e.target.isContentEditable||/INPUT|TEXTAREA/.test(e.target.tagName))return;
+    if(e.key==="ArrowLeft")go(-1);else if(e.key==="ArrowRight")go(1);});
   var sx=null,sy=null;
-  screen.addEventListener("touchstart",function(e){
-    sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  screen.addEventListener("touchstart",function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
   screen.addEventListener("touchend",function(e){
-    if(sx===null||S.screen!=="today")return;
+    if(sx===null||S.screen!=="today"||S.drawer>-1)return;
     var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
-    if(Math.abs(dx)>64&&Math.abs(dx)>Math.abs(dy)*1.6){
-      S.date=shift(S.date,dx<0?1:-1);S.edit=false;render();}
+    if(Math.abs(dx)>64&&Math.abs(dx)>Math.abs(dy)*1.6)go(dx<0?1:-1);
     sx=null;},{passive:true});
 
   render();
