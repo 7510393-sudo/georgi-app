@@ -8,7 +8,11 @@
 
 | Файл | Содержание |
 |---|---|
+| [docs/00-concept.md](docs/00-concept.md) | Исходная концепция автора, без правок. Источник истины по замыслу |
 | [docs/01-competitive-analysis.md](docs/01-competitive-analysis.md) | Анализ рынка и конкурентов, оценка конкурентоспособности, разбор концепции: что нового, что лишнее, что недостаточно проявлено |
-| [docs/02-roadmap-and-estimates.md](docs/02-roadmap-and-estimates.md) | Дорожная карта, приоритезация v1.0, оценка трудозатрат и сроков, сценарии по бюджету, технологический выбор |
+| [docs/02-roadmap-and-estimates.md](docs/02-roadmap-and-estimates.md) | Дорожная карта, приоритезация v1.0, трудозатраты и сроки, сценарии по бюджету, технологический выбор |
+| [docs/03-architecture-principles.md](docs/03-architecture-principles.md) | Принцип независимости, почему конкуренты выбрали базу данных и неизбежен ли их путь |
+| [docs/04-decisions.md](docs/04-decisions.md) | Журнал решений и открытые вопросы |
+| [docs/wireframes/](docs/wireframes/) | Эскизы экранов |
 
 Статус: концепция. Кода пока нет.
