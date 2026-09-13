@@ -43,9 +43,10 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
   padding-inline:16px;padding-block:28px 40px;max-width:1000px;margin:0 auto}
 
 /* ---------- телефон ---------- */
-.phone{position:relative;width:100%;max-width:392px;height:min(830px,calc(100dvh - 68px));
+.phone{--dayTint:var(--plan-bg);position:relative;width:100%;max-width:392px;height:min(830px,calc(100dvh - 68px));
   min-height:600px;display:flex;flex-direction:column;overflow:hidden;background:var(--plan-bg);
   border:1px solid var(--rule);border-radius:26px;box-shadow:var(--shadow)}
+.phone{background:var(--dayTint)}
 .phone.diary{background:var(--diary-bg)}
 
 .appbar{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;
@@ -63,11 +64,13 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:9px 12px 0;background:var(--chrome);
   position:relative;z-index:2}
 .tab{position:relative;margin-bottom:-1px;padding:9px 0 10px;text-align:center;font-size:13px;
-  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);background:var(--chrome);
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);
   border:1px solid var(--rule);border-radius:10px 10px 0 0}
-.tab[aria-selected="true"]{z-index:3;color:var(--ink);font-weight:600;background:var(--plan-bg);
-  border-bottom-color:var(--plan-bg)}
-.phone.diary .tab[aria-selected="true"]{background:var(--diary-bg);border-bottom-color:var(--diary-bg)}
+#tabPlan{background:var(--dayTint)}
+#tabDiary{background:var(--diary-bg)}
+.tab[aria-selected="true"]{z-index:3;color:var(--ink);font-weight:600}
+#tabPlan[aria-selected="true"]{border-bottom-color:var(--dayTint)}
+#tabDiary[aria-selected="true"]{border-bottom-color:var(--diary-bg)}
 .tabs.none{display:none}
 
 /* область содержимого — шторка живёт только внутри неё */
@@ -77,10 +80,10 @@ main{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflo
 
 /* ---------- план ---------- */
 .planhead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;
-  position:sticky;top:0;z-index:4;background:var(--plan-bg)}
+  position:sticky;top:0;z-index:4;background:var(--dayTint)}
 .planhead .hint{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);letter-spacing:.04em}
 .add{width:34px;height:34px;border:1px solid var(--rule);border-radius:50%;font-size:21px;line-height:1;
-  display:flex;align-items:center;justify-content:center;color:var(--accent)}
+  display:flex;align-items:center;justify-content:center;color:var(--accent);background:var(--plan-bg)}
 ul.tasks{list-style:none;margin:0;padding:0 0 4px}
 li.task{display:grid;grid-template-columns:28px 1fr 18px;gap:0 8px;align-items:start;
   padding:10px 0 10px 12px;border-bottom:1px solid var(--rule-soft);position:relative}
@@ -148,14 +151,14 @@ main.past .diarywrap{opacity:.55}
   border-right:1px solid var(--rule)}
 .attachbar button:last-child{border-right:none}
 .attachbar .ic{line-height:0;display:flex}
-.attachbar .ic svg{width:16px;height:16px}
+.attachbar .ic svg{width:22px;height:22px}
 .attachbar.none{display:none}
 .tabbar{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--rule);
   background:var(--chrome);padding-bottom:6px}
 .tabbar button{padding:11px 0 10px;display:flex;flex-direction:column;align-items:center;gap:5px;
   font-size:13px;color:var(--ink-faint)}
 .tabbar button .ic{line-height:0;display:flex}
-.tabbar button .ic svg{width:25px;height:25px}
+.tabbar button .ic svg{width:28px;height:28px}
 .tabbar button.on{color:var(--accent);font-weight:500}
 
 /* ---------- календарь и поиск ---------- */
@@ -193,10 +196,8 @@ main.past .diarywrap{opacity:.55}
 .mlist .row{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:8px 8px;
   border-bottom:1px solid var(--rule-soft);align-items:start;text-align:left;width:100%;
   border-radius:6px}
-.mlist .row.w1{background:var(--w1)} .mlist .row.w2{background:var(--w2)}
-.mlist .row.w3{background:var(--w3)} .mlist .row.w4{background:var(--w4)}
-.mlist .row.w5{background:var(--w5)} .mlist .row.w6{background:var(--w6)}
-.mlist .row.w7{background:var(--w7)}
+.mlist .row.wend{border-bottom:2px solid var(--ink-faint)}
+.mlist .dt .wn{font-weight:600}
 .mlist .dt{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-soft);padding-top:1px}
 .mlist .dt.today{color:var(--accent);font-weight:500}
 .mlist .ls{min-width:0;font-size:13.5px;line-height:1.45;color:var(--ink-soft)}
@@ -204,13 +205,10 @@ main.past .diarywrap{opacity:.55}
 .mlist .ls div.d{color:var(--ink-faint)}
 .mlist .ls .em{color:var(--ink-faint);opacity:.5}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
-.grid .wd{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:4px}
+.grid .wd{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;padding-bottom:5px}
 .cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   border-radius:7px;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink)}
 .cell.out{opacity:0}
-.cell.w1{background:var(--w1)} .cell.w2{background:var(--w2)} .cell.w3{background:var(--w3)}
-.cell.w4{background:var(--w4)} .cell.w5{background:var(--w5)} .cell.w6{background:var(--w6)}
-.cell.w7{background:var(--w7)}
 .cell.today{border:1.5px solid var(--accent)}
 .cell.sel{background:var(--accent);color:var(--plan-bg)}
 .cell.sel .dot{background:var(--plan-bg)}
@@ -255,15 +253,17 @@ main.past .diarywrap{opacity:.55}
 /* ---------- меню страницы ---------- */
 .sheetscrim{position:absolute;inset:0;z-index:8;display:none}
 .sheetscrim.on{display:block}
-.sheet{position:absolute;top:42px;right:6px;width:min(262px,72%);z-index:9;display:none;
+.sheet{position:absolute;top:0;right:0;width:min(262px,72%);z-index:9;display:none;
   flex-direction:column;background:var(--sticker);border:1px solid var(--sticker-edge);
-  border-radius:4px 4px 10px 10px;box-shadow:0 10px 26px -12px rgba(20,25,32,.5);overflow:hidden}
+  border-top:none;border-right:none;border-radius:0 0 0 12px;
+  box-shadow:0 12px 28px -12px rgba(20,25,32,.5);overflow:hidden}
 .sheet.on{display:flex}
-.sheethead{display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:9px 8px 7px 14px;border-bottom:1px solid var(--sticker-edge)}
-.sheethead .t{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
-.sheethead button{width:26px;height:24px;display:flex;align-items:center;justify-content:center;
-  font-size:14px;color:var(--ink-soft)}
+.sheethead{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;
+  padding:0 8px 7px 14px;border-bottom:1px solid var(--sticker-edge)}
+.sheethead .t{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);
+  padding-top:22px}
+.sheethead button{width:44px;height:38px;margin-top:12px;flex:none;display:flex;
+  align-items:center;justify-content:center;font-size:19px;color:var(--ink-soft)}
 .sheet ul{list-style:none;margin:0;padding:2px 0}
 .sheet li button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;
   padding:9px 14px;font-size:14px;text-align:left;line-height:1.3}
@@ -401,7 +401,7 @@ main.past .diarywrap{opacity:.55}
       <li><b>Закладка «Детали».</b> Полоска у правого края дела. Шторка не закрывает вкладки и нижние кнопки, список под ней не ездит.</li>
       <li><b>Меню страницы.</b> Три точки — отдельная страница поверх экрана, в ней включается режим изменений.</li>
       <li><b>Кнопка «Сегодня».</b> С любой даты возвращает на текущий день.</li>
-      <li><b>Календарь.</b> Три вида: год, месяц, список — кнопками или свайпом влево-вправо. В «Месяце» первый тап по дате показывает дела внизу, второй — открывает день. Дни недели окрашены.</li>
+      <li><b>Календарь.</b> Виды переключаются кнопками, свайп листает месяц (в виде «Год» — год). Цветом набраны названия дней недели. В «Списке» черта отмечает конец недели.</li>
       <li><b>Время дела.</b> Коснитесь самого времени — откроется выбор. Работает без режима изменений.</li>
     </ol>
 
@@ -595,12 +595,12 @@ main.past .diarywrap{opacity:.55}
     var y=d.getFullYear(),m=d.getMonth();
     var start=(new Date(y,m,1).getDay()+6)%7,dim=new Date(y,m+1,0).getDate();
     var h='<div class="calbody"><div class="grid">';
-    ["пн","вт","ср","чт","пт","сб","вс"].forEach(function(w){h+='<div class="wd">'+w+'</div>';});
+    ["пн","вт","ср","чт","пт","сб","вс"].forEach(function(w,wi){
+      h+='<div class="wd" style="color:'+DCOL[(wi+1)%7]+'">'+w+'</div>';});
     for(var i=0;i<start;i++)h+='<div class="cell out"></div>';
     for(var dn=1;dn<=dim;dn++){
       var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dn).padStart(2,"0");
-      var wd=new Date(y,m,dn).getDay();
-      h+='<button class="cell w'+(wd===0?7:wd)+(k===TODAY?" today":"")+(k===S.calSel?" sel":"")+
+      h+='<button class="cell'+(k===TODAY?" today":"")+(k===S.calSel?" sel":"")+
          '" data-pick="'+k+'">'+dn+(tasksOf(k).length?'<span class="dot"></span>':'')+'</button>';
     }
     h+='</div>';
@@ -623,9 +623,10 @@ main.past .diarywrap{opacity:.55}
     for(var dn=1;dn<=dim;dn++){
       var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dn).padStart(2,"0");
       var dt=new Date(y,m,dn),ts=tasksOf(k);
-      h+='<button class="row w'+(dt.getDay()===0?7:dt.getDay())+'" data-open="'+k+'">'+
-         '<span class="dt'+(k===TODAY?" today":"")+'">'+
-         dn+" "+WDS[dt.getDay()]+'</span><span class="ls">';
+      h+='<button class="row'+(dt.getDay()===0?" wend":"")+'" data-open="'+k+'">'+
+         '<span class="dt'+(k===TODAY?" today":"")+'">'+dn+' '+
+         '<span class="wn" style="color:'+DCOL[dt.getDay()]+'">'+WDS[dt.getDay()]+'</span></span>'+
+         '<span class="ls">';
       if(!ts.length)h+='<div class="em">—</div>';
       else ts.slice(0,3).forEach(function(t){
         h+='<div'+(t.done?' class="d"':"")+'>'+t.t+"  "+esc(t.x)+'</div>';});
@@ -653,6 +654,8 @@ main.past .diarywrap{opacity:.55}
 
   function render(){
     renderHeader();
+    var wdi=parse(S.date).getDay();
+    phone.style.setProperty("--dayTint",S.screen==="today"?"var(--w"+(wdi===0?7:wdi)+")":"var(--plan-bg)");
     phone.classList.toggle("diary",S.screen==="today"&&S.tab==="diary");
     $("tabPlan").setAttribute("aria-selected",S.tab==="plan");
     $("tabDiary").setAttribute("aria-selected",S.tab==="diary");
@@ -809,15 +812,15 @@ main.past .diarywrap{opacity:.55}
     if(e.key==="ArrowLeft")go(-1);else if(e.key==="ArrowRight")go(1);});
   var sx=null,sy=null;
   screen.addEventListener("touchstart",function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
-  var VIEWS=["year","month","list"];
   screen.addEventListener("touchend",function(e){
     if(sx===null||S.drawer>-1)return;
     var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
     var horiz=Math.abs(dx)>64&&Math.abs(dx)>Math.abs(dy)*1.6;
     if(horiz&&S.screen==="today")go(dx<0?1:-1);
     else if(horiz&&S.screen==="calendar"){
-      var i=VIEWS.indexOf(S.calView)+(dx<0?1:-1);
-      if(i>=0&&i<VIEWS.length){S.calView=VIEWS[i];render();slide(dx<0?1:-1);}
+      var n=dx<0?1:-1,d=parse(S.calMonth);
+      d.setMonth(d.getMonth()+(S.calView==="year"?12*n:n));
+      S.calMonth=iso(d);render();slide(n);
     }
     sx=null;},{passive:true});
 
