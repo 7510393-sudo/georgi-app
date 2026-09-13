@@ -142,9 +142,12 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
 .asklist .lead{color:var(--ink-soft)}
 .asklist .cmt{outline:none;color:var(--ink)}
 .asklist .cmt:empty::before{content:" …";color:var(--ink-faint)}
-.dtext{width:100%;min-height:150px;background:none;border:none;outline:none;resize:none;
-  font-family:Literata,Georgia,serif;font-size:15.5px;line-height:1.7;color:var(--ink);margin-top:16px}
-.dtext::placeholder{color:var(--ink-faint)}
+.dtext{width:100%;min-height:150px;background:none;border:none;outline:none;
+  font-family:Literata,Georgia,serif;font-size:15.5px;line-height:1.7;color:var(--ink);
+  margin-top:16px;white-space:pre-wrap;word-break:break-word}
+.dtext:empty::before{content:attr(data-ph);color:var(--ink-faint)}
+.dtext .ts{font-family:"IBM Plex Mono",monospace;font-size:.84em;color:var(--ink-faint);
+  letter-spacing:.02em}
 main.past .diarywrap{opacity:.55}
 
 /* ---------- нижние панели ---------- */
@@ -403,6 +406,7 @@ main.past .diarywrap{opacity:.55}
       <li><b>Тап вместо галочки.</b> Коснитесь строки дела — текст затенится.</li>
       <li><b>Выцветшее прошлое.</b> Свайп вправо или стрелка ← на клавиатуре — вчерашний день, приглушённый целиком.</li>
       <li><b>«Как прошло?».</b> Вкладка «Дневник»: вопрос, три дела по строке, ниже заголовок и текст. Сегодня дел четыре — четвёртого нет намеренно.</li>
+      <li><b>Время записи.</b> Когда вы начинаете писать, в начале строки бледно встаёт час, текст идёт следом. Если вернуться к записи больше чем через час, отметка появится заново. Чтобы не ждать час, нажмите «Как будто прошёл час» и вернитесь в дневник. Вчерашняя запись уже с двумя отметками.</li>
       <li><b>Колокольчик.</b> Открывает выбор времени напоминания отдельной панелью.</li>
       <li><b>Новое дело.</b> После «+» можно сразу поставить время и напоминание, ещё не написав название. Пустая строка исчезнет сама, если уйти со страницы, не заполнив её.</li>
       <li><b>Закладка «Детали».</b> Полоска у правого края дела. Шторка не закрывает вкладки и нижние кнопки, список под ней не ездит.</li>
@@ -413,6 +417,7 @@ main.past .diarywrap{opacity:.55}
     </ol>
 
     <div class="tools">
+      <button id="hour">Как будто прошёл час</button>
       <button id="night">Ночной режим</button>
       <button id="reset">Сбросить прототип</button>
     </div>
@@ -458,7 +463,9 @@ main.past .diarywrap{opacity:.55}
       {t:"08:30",x:"Отвезти документы нотариусу",done:true,bell:false,det:"Малая Бронная 12, второй этаж. Взять оригинал доверенности."},
       {t:"13:00",x:"Обед с Ириной",done:true,bell:"12:30",det:""},
       {t:"19:00",x:"Разобрать коробки в кладовке",done:false,bell:false,det:""}],
-      title:"Длинный день",text:"Дождь начался ровно в тот момент, когда я вышел из метро без зонта. Почему-то это меня развеселило.",cmts:{}};
+      title:"Длинный день",
+      text:"08:40 Вышел из метро без зонта ровно в тот момент, когда начался дождь. Почему-то это меня развеселило.\n\n22:15 Коробки так и стоят. Зато нашёл в одной из них старые письма и полвечера читал.",
+      cmts:{},lastEdit:0};
     d[TODAY]={tasks:[
       {t:"07:00",x:"Проснуться в хорошем настроении",done:true,bell:false,det:""},
       {t:"11:30",x:"Позвонить в поликлинику, записаться к врачу",done:false,bell:"11:00",det:"Регистратура 8 (495) 000-00-00. Спросить про талон на четверг."},
@@ -541,6 +548,16 @@ main.past .diarywrap{opacity:.55}
     }
   }
 
+  // отметка времени в начале строки — бледная, текст идёт следом через пробел
+  function fmtDiary(t){
+    return String(t||"").split("\n").map(function(line){
+      var m=line.match(/^(\d{2}:\d{2})(\s?)([\s\S]*)$/);
+      return m?'<span class="ts">'+m[1]+'</span> '+esc(m[3]):esc(line);
+    }).join("\n");
+  }
+  function nowHHMM(){var t=new Date();
+    return String(t.getHours()).padStart(2,"0")+":"+String(t.getMinutes()).padStart(2,"0");}
+
   function renderDiary(){
     var D=day(S.date),past=isPast();
     var h='<div class="diarywrap">';
@@ -553,8 +570,8 @@ main.past .diarywrap{opacity:.55}
       h+='</ul>';
     }
     h+='<input class="dtitle" id="dTitle" placeholder="Заголовок дня" value="'+esc(D.title)+'">';
-    h+='<textarea class="dtext" id="dText" placeholder="'+
-       (D.tasks.length?"И что ещё было в этот день…":"Что было сегодня…")+'">'+esc(D.text)+'</textarea></div>';
+    h+='<div class="dtext" id="dText" contenteditable="true" data-ph="'+
+       (D.tasks.length?"И что ещё было в этот день…":"Что было сегодня…")+'">'+fmtDiary(D.text)+'</div></div>';
     screen.className=past?"past":"";screen.innerHTML=h;
   }
 
@@ -712,13 +729,30 @@ main.past .diarywrap{opacity:.55}
       var D=day(S.date);D.tasks[i].done=!D.tasks[i].done;save();return render();}
   });
 
+  var GAP=60*60*1000; // час
+  function maybeStamp(){
+    var D=day(S.date);
+    if(isPast())return;
+    var body=(D.text||"").replace(/\s+$/,"");
+    var need=!body||!D.lastEdit||(Date.now()-D.lastEdit)>GAP;
+    if(!need)return;
+    D.text=(body?body+"\n\n":"")+nowHHMM()+" ";
+    D.lastEdit=Date.now();save();render();
+    var el=$("dText");
+    if(el){el.focus();
+      var r=document.createRange();r.selectNodeContents(el);r.collapse(false);
+      var sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);}
+  }
+  screen.addEventListener("focusin",function(e){
+    if(e.target.id==="dText")maybeStamp();
+  });
   screen.addEventListener("keydown",function(e){
     if(e.target.id==="dTitle"&&e.key==="Enter"){e.preventDefault();var t=$("dText");if(t)t.focus();}
   });
   screen.addEventListener("input",function(e){
     var D=day(S.date),el=e.target;
     if(el.id==="dTitle")D.title=el.value;
-    else if(el.id==="dText")D.text=el.value;
+    else if(el.id==="dText"){D.text=el.innerText.replace(/\u00a0/g," ");D.lastEdit=Date.now();}
     else if(el.dataset.c!==undefined){D.cmts[el.dataset.c]=el.textContent;
       if(el.textContent)el.parentNode.classList.add("wrap");}
     else if(el.classList.contains("time"))D.tasks[+el.dataset.i].t=el.value;
@@ -815,6 +849,9 @@ main.past .diarywrap{opacity:.55}
     var b=e.target.closest("button");if(b)toast(b.dataset.a+" — в прототипе не работает");});
   $("reset").addEventListener("click",function(){
     S.days=seed();S.date=TODAY;S.tab="plan";S.screen="today";S.edit=false;save();render();toast("Прототип сброшен");});
+  $("hour").addEventListener("click",function(){
+    day(S.date).lastEdit=Date.now()-GAP-1000;save();
+    toast("Теперь при возврате в дневник встанет новая отметка времени");});
   $("night").addEventListener("click",function(){
     var n=document.documentElement.classList.toggle("night");
     this.textContent=n?"Дневной режим":"Ночной режим";});
