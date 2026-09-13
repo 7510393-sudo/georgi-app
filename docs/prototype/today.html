@@ -56,18 +56,18 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .subbar .w{font-size:12.5px;text-align:right;letter-spacing:.05em}
 .subbar.none{display:none}
 
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:9px 12px 0;background:var(--chrome)}
-.tab{padding:9px 0 10px;text-align:center;font-size:13px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--ink-faint);background:var(--chrome);border:1px solid var(--rule);border-bottom:none;
-  border-radius:10px 10px 0 0}
-.tab[aria-selected="true"]{color:var(--ink);font-weight:600;background:var(--plan-bg);
-  box-shadow:0 1px 0 0 var(--plan-bg)}
-.phone.diary .tab[aria-selected="true"]{background:var(--diary-bg);box-shadow:0 1px 0 0 var(--diary-bg)}
-.tabs::after{content:"";grid-column:1/-1;height:1px;background:var(--rule);margin-top:-1px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:9px 12px 0;background:var(--chrome);
+  position:relative;z-index:2}
+.tab{position:relative;margin-bottom:-1px;padding:9px 0 10px;text-align:center;font-size:13px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);background:var(--chrome);
+  border:1px solid var(--rule);border-radius:10px 10px 0 0}
+.tab[aria-selected="true"]{z-index:3;color:var(--ink);font-weight:600;background:var(--plan-bg);
+  border-bottom-color:var(--plan-bg)}
+.phone.diary .tab[aria-selected="true"]{background:var(--diary-bg);border-bottom-color:var(--diary-bg)}
 .tabs.none{display:none}
 
 /* область содержимого — шторка живёт только внутри неё */
-.canvas{position:relative;flex:1;min-height:0;overflow:hidden}
+.canvas{position:relative;flex:1;min-height:0;overflow:hidden;border-top:1px solid var(--rule)}
 main{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .canvas.locked main{overflow:hidden}
 
@@ -84,8 +84,12 @@ li.task{display:grid;grid-template-columns:22px 1fr 18px;gap:0 8px;align-items:s
 .body{min-width:0;font-size:15px;line-height:1.45}
 .time{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-soft);
   font-variant-numeric:tabular-nums;margin-right:5px}
-input.time{background:var(--plan-bg);border:1px solid var(--rule);border-radius:4px;padding:0 4px;
-  width:112px;color:var(--ink);vertical-align:baseline}
+input.time{background:none;border:none;padding:0;width:auto;color:var(--ink-soft);
+  vertical-align:baseline;border-bottom:1px dotted var(--ink-faint);border-radius:0;
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+input.time::-webkit-calendar-picker-indicator{display:none}
+input.time:disabled{border-bottom:none;color:var(--ink-faint);opacity:1}
+li.task.done input.time{color:var(--ink-faint)}
 .bell{display:inline-flex;vertical-align:-2px;margin-right:7px;color:var(--ink-faint);opacity:.55}
 .bell.on{color:var(--d7);opacity:1}
 .txt{display:inline;color:var(--ink);word-break:break-word;transition:color .35s ease}
@@ -150,13 +154,51 @@ main.past .diarywrap{opacity:.55}
 .tabbar button.on{color:var(--accent);font-weight:500}
 
 /* ---------- календарь и поиск ---------- */
-.cal{padding:14px 12px 20px}
+.cal{padding:0 0 20px}
+.calviews{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:12px 12px 10px}
+.calviews button{padding:6px 0;border:1px solid var(--rule);border-radius:8px;font-size:13px;
+  color:var(--ink-soft);background:var(--plan-bg)}
+.calviews button.on{background:var(--accent);border-color:var(--accent);color:var(--plan-bg)}
+.monthnav{display:flex;align-items:center;justify-content:space-between;padding:0 14px 8px;
+  font-size:15px;color:var(--ink-soft)}
+.monthnav button{width:34px;height:30px;font-size:17px;color:var(--ink-faint)}
+.calbody{padding:0 12px}
+.daylist{border-top:1px solid var(--rule);margin-top:12px;padding-top:10px}
+.daylist .dhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:0 2px 6px;font-size:13px;color:var(--ink-faint)}
+.daylist .dhead button{font-size:13px;color:var(--accent)}
+.daylist ul{list-style:none;margin:0;padding:0}
+.daylist li{display:grid;grid-template-columns:46px 1fr;gap:8px;padding:7px 2px;
+  border-bottom:1px solid var(--rule-soft);font-size:14.5px;line-height:1.35}
+.daylist .lt{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint);padding-top:2px}
+.daylist li.d .lx{color:var(--ink-faint)}
+.daylist .none{padding:10px 2px;color:var(--ink-faint);font-size:14px}
+.year{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 8px;padding:4px 12px}
+.ym{text-align:left}
+.ym .nm{font-size:12px;color:var(--ink-soft);margin-bottom:4px;padding-left:2px}
+.ym .g{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.ym .g span{font-size:8.5px;line-height:1.35;text-align:center;color:var(--ink-soft);
+  font-family:"IBM Plex Mono",monospace}
+.ym .g span.o{opacity:0}
+.ym .g span.t{background:var(--accent);color:var(--plan-bg);border-radius:2px}
+.ym .g span.h{font-weight:600;color:var(--ink)}
+.mlist{padding:0 12px}
+.mlist .row{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:8px 2px;
+  border-bottom:1px solid var(--rule-soft);align-items:start;text-align:left;width:100%}
+.mlist .dt{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-soft);padding-top:1px}
+.mlist .dt.today{color:var(--accent);font-weight:500}
+.mlist .ls{min-width:0;font-size:13.5px;line-height:1.45;color:var(--ink-soft)}
+.mlist .ls div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mlist .ls div.d{color:var(--ink-faint)}
+.mlist .ls .em{color:var(--ink-faint);opacity:.5}
 .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
 .grid .wd{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:4px}
 .cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   border-radius:7px;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink)}
 .cell.out{opacity:0}
 .cell.today{border:1.5px solid var(--accent)}
+.cell.sel{background:var(--accent);color:var(--plan-bg)}
+.cell.sel .dot{background:var(--plan-bg)}
 .cell .dot{width:4px;height:4px;border-radius:50%;background:var(--ink-faint)}
 .note-s{font-size:13px;color:var(--ink-faint);line-height:1.5;padding:16px 4px 0}
 .filters{display:flex;gap:6px;padding:12px 12px 8px;overflow-x:auto}
@@ -178,7 +220,7 @@ main.past .diarywrap{opacity:.55}
 .scrim{position:absolute;inset:0;background:rgba(15,20,26,.28);opacity:0;pointer-events:none;
   transition:opacity .22s ease;z-index:5}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:absolute;top:0;right:0;bottom:0;width:min(298px,80%);background:var(--chrome);
+.drawer{position:absolute;top:0;right:0;bottom:var(--kb,0px);width:min(324px,88%);background:var(--chrome);
   border-left:1px solid var(--rule);border-radius:10px 0 0 10px;transform:translateX(101%);
   transition:transform .26s ease;z-index:6;display:flex;flex-direction:column;
   box-shadow:-14px 0 34px -20px rgba(0,0,0,.5)}
@@ -306,6 +348,8 @@ main.past .diarywrap{opacity:.55}
       <li><b>Закладка «Детали».</b> Полоска у правого края дела. Шторка не закрывает вкладки и нижние кнопки, список под ней не ездит.</li>
       <li><b>Меню страницы.</b> Три точки — отдельная страница поверх экрана, в ней включается режим изменений.</li>
       <li><b>Кнопка «Сегодня».</b> С любой даты возвращает на текущий день.</li>
+      <li><b>Календарь.</b> Три вида: год, месяц, список. В «Месяце» первый тап по дате показывает дела внизу, второй — открывает день.</li>
+      <li><b>Время дела.</b> Коснитесь самого времени — откроется выбор. Работает без режима изменений.</li>
     </ol>
 
     <div class="tools">
@@ -365,7 +409,8 @@ main.past .diarywrap{opacity:.55}
     return d;
   }
 
-  var S={days:null,date:TODAY,tab:"plan",screen:"today",edit:false,editing:-1,filter:"Всё",drawer:-1};
+  var S={days:null,date:TODAY,tab:"plan",screen:"today",edit:false,editing:-1,filter:"Всё",drawer:-1,
+    calView:"month",calMonth:TODAY,calSel:TODAY};
   try{var raw=localStorage.getItem(KEY);S.days=raw?JSON.parse(raw):seed();}catch(e){S.days=seed();}
   if(!S.days||!S.days[TODAY])S.days=seed();
   function save(){try{localStorage.setItem(KEY,JSON.stringify(S.days));}catch(e){}}
@@ -379,9 +424,15 @@ main.past .diarywrap{opacity:.55}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
 
+  function dayDiff(k){return Math.round((parse(k)-parse(TODAY))/86400000);}
+  function dayTitle(k){
+    var n=dayDiff(k);
+    return {"-2":"Позавчера","-1":"Вчера","0":"Сегодня","1":"Завтра","2":"Послезавтра"}[String(n)]||
+      WD[parse(k).getDay()].replace(/^./,function(c){return c.toUpperCase();});
+  }
   function renderHeader(){
     var t=S.screen==="today",sb=$("subbar");
-    $("sname").textContent=t?"Сегодня":(S.screen==="calendar"?"Календарь":"Поиск");
+    $("sname").textContent=t?dayTitle(S.date):(S.screen==="calendar"?"Календарь":"Поиск");
     $("tabs").classList.toggle("none",!t);
     $("attachbar").classList.toggle("none",!t);
     $("dots").classList.toggle("on",S.edit);
@@ -390,13 +441,8 @@ main.past .diarywrap{opacity:.55}
       sb.classList.remove("none");
       $("sy").textContent=d.getFullYear();
       $("sd").textContent=d.getDate()+" "+MONTHS[d.getMonth()];
-      $("sw").textContent=WD[w];$("sw").style.color=DCOL[w];
-    }else if(S.screen==="calendar"){
-      var c=parse(S.date);
-      sb.classList.remove("none");
-      $("sy").textContent=c.getFullYear();
-      $("sd").textContent=MONTHN[c.getMonth()];
-      $("sw").textContent="";
+      var named=Math.abs(dayDiff(S.date))<=2;
+      $("sw").textContent=named?WD[w]:"";$("sw").style.color=DCOL[w];
     }else sb.classList.add("none");
   }
 
@@ -414,8 +460,7 @@ main.past .diarywrap{opacity:.55}
         var ed=S.edit||S.editing===i;
         h+='<li class="task'+(t.done?" done":"")+'" data-i="'+i+'">'+
           '<div class="num">'+(i+1)+'</div><div class="body">'+
-          (S.edit?'<input class="time" type="time" step="60" value="'+t.t+'" data-i="'+i+'">'
-                 :'<span class="time">'+t.t+'</span>')+
+          '<input class="time" type="time" step="60" value="'+t.t+'" data-i="'+i+'"'+(past&&!S.edit?" disabled":"")+'>'+
           '<button class="bell'+(t.bell?" on":"")+'" data-bell="'+i+'" aria-label="Напоминание">'+BELL+'</button>'+
           '<span class="txt" data-t="'+i+'"'+(ed?' contenteditable="true"':"")+'>'+esc(t.x)+'</span>'+
           '</div><div class="rowtools">'+
@@ -451,19 +496,86 @@ main.past .diarywrap{opacity:.55}
     screen.className=past?"past":"";screen.innerHTML=h;
   }
 
+  function monthName(k){var d=parse(k);return MONTHN[d.getMonth()]+" "+d.getFullYear();}
+  function tasksOf(k){var D=S.days[k];return D&&D.tasks?D.tasks:[];}
+
   function renderCalendar(){
-    var base=parse(S.date),y=base.getFullYear(),m=base.getMonth();
+    var h='<div class="cal"><div class="calviews">';
+    [["year","Год"],["month","Месяц"],["list","Список"]].forEach(function(v){
+      h+='<button data-cv="'+v[0]+'"'+(S.calView===v[0]?' class="on"':"")+'>'+v[1]+'</button>';});
+    h+='</div>';
+    if(S.calView==="year"){
+      h+='<div class="monthnav"><button data-mv="-12" aria-label="Предыдущий год">‹</button>'+
+         '<span>'+parse(S.calMonth).getFullYear()+'</span>'+
+         '<button data-mv="12" aria-label="Следующий год">›</button></div>';
+      h+=renderYear();
+    }else{
+      var d=parse(S.calMonth);
+      h+='<div class="monthnav"><button data-mv="-1" aria-label="Предыдущий месяц">‹</button>'+
+         '<span>'+monthName(S.calMonth)+'</span>'+
+         '<button data-mv="1" aria-label="Следующий месяц">›</button></div>';
+      h+=S.calView==="month"?renderMonth(d):renderMonthList(d);
+    }
+    h+='</div>';
+    screen.className="";screen.innerHTML=h;
+  }
+
+  function renderYear(){
+    var y=parse(S.calMonth).getFullYear(),h='<div class="year">';
+    for(var m=0;m<12;m++){
+      h+='<button class="ym" data-ym="'+m+'"><div class="nm">'+MONTHN[m]+'</div><div class="g">';
+      var start=(new Date(y,m,1).getDay()+6)%7,dim=new Date(y,m+1,0).getDate();
+      for(var i=0;i<start;i++)h+='<span class="o">0</span>';
+      for(var dn=1;dn<=dim;dn++){
+        var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dn).padStart(2,"0");
+        var cl=k===TODAY?"t":(tasksOf(k).length?"h":"");
+        h+='<span class="'+cl+'">'+dn+'</span>';
+      }
+      h+='</div></button>';
+    }
+    return h+'</div>';
+  }
+
+  function renderMonth(d){
+    var y=d.getFullYear(),m=d.getMonth();
     var start=(new Date(y,m,1).getDay()+6)%7,dim=new Date(y,m+1,0).getDate();
-    var h='<div class="cal"><div class="grid">';
+    var h='<div class="calbody"><div class="grid">';
     ["пн","вт","ср","чт","пт","сб","вс"].forEach(function(w){h+='<div class="wd">'+w+'</div>';});
     for(var i=0;i<start;i++)h+='<div class="cell out"></div>';
     for(var dn=1;dn<=dim;dn++){
       var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dn).padStart(2,"0");
-      var has=S.days[k]&&S.days[k].tasks&&S.days[k].tasks.length;
-      h+='<button class="cell'+(k===TODAY?" today":"")+'" data-go="'+k+'">'+dn+(has?'<span class="dot"></span>':'')+'</button>';
+      h+='<button class="cell'+(k===TODAY?" today":"")+(k===S.calSel?" sel":"")+'" data-pick="'+k+'">'+
+         dn+(tasksOf(k).length?'<span class="dot"></span>':'')+'</button>';
     }
-    h+='</div><p class="note-s">Упрощённый календарь. Точка — день, в котором есть дела. Нажмите дату, чтобы открыть её на экране «Сегодня»; кнопка «Сегодня» внизу вернёт на текущий день.</p></div>';
-    screen.className="";screen.innerHTML=h;
+    h+='</div>';
+    var sel=parse(S.calSel),ts=tasksOf(S.calSel);
+    h+='<div class="daylist"><div class="dhead"><span>'+WDS[sel.getDay()]+" "+sel.getDate()+" "+
+       MONTHS[sel.getMonth()]+'</span><button data-open="'+S.calSel+'">Открыть день →</button></div>';
+    if(!ts.length)h+='<div class="none">Дел на этот день нет.</div>';
+    else{
+      h+='<ul>';
+      ts.forEach(function(t){h+='<li'+(t.done?' class="d"':"")+'><span class="lt">'+t.t+
+        '</span><span class="lx">'+esc(t.x)+'</span></li>';});
+      h+='</ul>';
+    }
+    return h+'</div></div>';
+  }
+
+  function renderMonthList(d){
+    var y=d.getFullYear(),m=d.getMonth(),dim=new Date(y,m+1,0).getDate();
+    var h='<div class="mlist">';
+    for(var dn=1;dn<=dim;dn++){
+      var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dn).padStart(2,"0");
+      var dt=new Date(y,m,dn),ts=tasksOf(k);
+      h+='<button class="row" data-open="'+k+'"><span class="dt'+(k===TODAY?" today":"")+'">'+
+         dn+" "+WDS[dt.getDay()]+'</span><span class="ls">';
+      if(!ts.length)h+='<div class="em">—</div>';
+      else ts.slice(0,3).forEach(function(t){
+        h+='<div'+(t.done?' class="d"':"")+'>'+t.t+"  "+esc(t.x)+'</div>';});
+      if(ts.length>3)h+='<div class="em">ещё '+(ts.length-3)+'</div>';
+      h+='</span></button>';
+    }
+    return h+'</div>';
   }
 
   function renderSearch(){
@@ -498,7 +610,17 @@ main.past .diarywrap{opacity:.55}
 
   screen.addEventListener("click",function(e){
     var el;
-    if((el=e.target.closest("[data-go]"))){S.screen="today";S.date=el.dataset.go;S.tab="plan";return render();}
+    if((el=e.target.closest("[data-cv]"))){S.calView=el.dataset.cv;return render();}
+    if((el=e.target.closest("[data-mv]"))){
+      var d=parse(S.calMonth);d.setMonth(d.getMonth()+ +el.dataset.mv);S.calMonth=iso(d);return render();}
+    if((el=e.target.closest("[data-ym]"))){
+      var yd=parse(S.calMonth);yd.setMonth(+el.dataset.ym);yd.setDate(1);
+      S.calMonth=iso(yd);S.calView="month";return render();}
+    if((el=e.target.closest("[data-pick]"))){
+      var k=el.dataset.pick;
+      if(S.calSel===k){S.screen="today";S.date=k;S.tab="plan";return render();}
+      S.calSel=k;return render();}
+    if((el=e.target.closest("[data-open]"))){S.screen="today";S.date=el.dataset.open;S.tab="plan";return render();}
     if((el=e.target.closest("[data-f]"))){S.filter=el.dataset.f;return render();}
     if(e.target.id==="editOff"){S.edit=false;S.editing=-1;return render();}
     if(e.target.id==="addBtn")return addTask();
@@ -545,11 +667,11 @@ main.past .diarywrap{opacity:.55}
     S.drawer=i;var t=day(S.date).tasks[i];
     $("drawerOf").textContent=t.x||"Без названия";
     $("drawerText").value=t.det||"";
-    $("drawer").classList.add("on");$("scrim").classList.add("on");canvas.classList.add("locked");}
+    $("drawer").classList.add("on");$("scrim").classList.add("on");canvas.classList.add("locked");kbFix();}
   function closeDrawer(){
     if(S.drawer>-1){day(S.date).tasks[S.drawer].det=$("drawerText").value;save();}
     S.drawer=-1;$("drawer").classList.remove("on");$("scrim").classList.remove("on");
-    canvas.classList.remove("locked");render();}
+    canvas.classList.remove("locked");document.documentElement.style.setProperty("--kb","0px");render();}
   $("scrim").addEventListener("click",closeDrawer);
   $("drawerClose").addEventListener("click",closeDrawer);
 
@@ -569,7 +691,7 @@ main.past .diarywrap{opacity:.55}
     b.addEventListener("click",function(){
       if(b.dataset.s==="today"){
         if(S.screen==="today"&&S.date!==TODAY)toast("Вернулись на сегодня");
-        S.date=TODAY;S.tab=S.tab||"plan";}
+        S.date=TODAY;S.tab=S.tab||"plan";S.calMonth=TODAY;S.calSel=TODAY;}
       S.screen=b.dataset.s;S.edit=false;closeSheet();render();});});
   $("attachbar").addEventListener("click",function(e){
     var b=e.target.closest("button");if(b)toast(b.dataset.a+" — в прототипе не работает");});
@@ -579,7 +701,17 @@ main.past .diarywrap{opacity:.55}
     var n=document.documentElement.classList.toggle("night");
     this.textContent=n?"Дневной режим":"Ночной режим";});
 
-  function go(n){if(S.screen!=="today")return;S.date=shift(S.date,n);S.edit=false;render();}
+  var RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+  function slide(dir){
+    if(RM)return;
+    screen.style.transition="none";
+    screen.style.transform="translateX("+(dir*42)+"px)";
+    screen.style.opacity="0";
+    requestAnimationFrame(function(){requestAnimationFrame(function(){
+      screen.style.transition="transform .26s cubic-bezier(.22,.61,.36,1),opacity .26s ease";
+      screen.style.transform="translateX(0)";screen.style.opacity="1";});});
+  }
+  function go(n){if(S.screen!=="today")return;S.date=shift(S.date,n);S.edit=false;render();slide(n);}
   document.addEventListener("keydown",function(e){
     if(e.target.isContentEditable||/INPUT|TEXTAREA/.test(e.target.tagName))return;
     if(e.key==="ArrowLeft")go(-1);else if(e.key==="ArrowRight")go(1);});
@@ -590,6 +722,18 @@ main.past .diarywrap{opacity:.55}
     var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
     if(Math.abs(dx)>64&&Math.abs(dx)>Math.abs(dy)*1.6)go(dx<0?1:-1);
     sx=null;},{passive:true});
+
+  var vv=window.visualViewport;
+  function kbFix(){
+    if(!vv)return;
+    var over=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);
+    var bars=$("attachbar").offsetHeight+document.querySelector(".tabbar").offsetHeight;
+    var lift=S.drawer>-1?Math.max(0,over-bars):0;
+    document.documentElement.style.setProperty("--kb",lift+"px");
+  }
+  if(vv){vv.addEventListener("resize",kbFix);vv.addEventListener("scroll",kbFix);}
+  $("drawerText").addEventListener("focus",function(){setTimeout(kbFix,250);});
+  $("drawerText").addEventListener("blur",function(){setTimeout(kbFix,250);});
 
   render();
 })();
