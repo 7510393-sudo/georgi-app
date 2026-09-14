@@ -96,6 +96,7 @@ li.task{display:grid;grid-template-columns:28px 1fr 18px;gap:0 8px;align-items:s
 .time{font-family:"IBM Plex Mono",monospace;font-size:18.5px;color:var(--ink-soft);
   font-variant-numeric:tabular-nums;margin-right:7px}
 .time.tap{border-bottom:1px dotted var(--ink-faint);cursor:pointer}
+.time.none{color:var(--ink-faint);opacity:.6;letter-spacing:.04em}
 #hiddenTime{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;left:0;top:0}
 .bell{display:inline-flex;vertical-align:-4px;margin-right:8px;color:var(--ink-faint);opacity:.55}
 .bell svg{width:22px;height:22px}
@@ -281,23 +282,6 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
 .sheet li button.active{color:var(--accent);font-weight:500}
 .sheet .foot{display:none}
 
-.modal{position:absolute;inset:0;z-index:12;display:none;align-items:flex-end;
-  background:rgba(15,20,26,.32)}
-.modal.on{display:flex}
-.mbox{width:100%;background:var(--chrome);border-radius:14px 14px 0 0;padding:16px 16px 18px;
-  border-top:1px solid var(--rule)}
-.mhead{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);
-  text-align:center;margin-bottom:4px}
-.mof{text-align:center;font-size:14.5px;color:var(--ink-soft);margin-bottom:12px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#bellTime{display:block;margin:0 auto 16px;font-family:"IBM Plex Mono",monospace;font-size:30px;
-  background:var(--plan-bg);border:1px solid var(--rule);border-radius:10px;padding:8px 14px;
-  color:var(--ink);outline:none}
-#bellTime::-webkit-calendar-picker-indicator{display:none}
-.mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.mrow button{padding:11px 0;border:1px solid var(--rule);border-radius:9px;font-size:14.5px;
-  color:var(--ink-soft);background:var(--plan-bg)}
-.mrow button.pri{background:var(--accent);border-color:var(--accent);color:var(--plan-bg)}
 #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--ink);
   color:var(--plan-bg);padding:8px 15px;border-radius:18px;font-size:13px;opacity:0;
   transition:opacity .2s,transform .2s;pointer-events:none;z-index:40;max-width:80vw;text-align:center}
@@ -371,19 +355,7 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
     </div>
 
     <input type="time" step="60" id="hiddenTime">
-    <div class="modal" id="bellSheet">
-      <div class="mbox">
-        <div class="mhead">Напомнить</div>
-        <div class="mof" id="bellOf"></div>
-        <input type="time" step="60" id="bellTime">
-        <div class="mrow">
-          <button id="bellClear">Без напоминания</button>
-          <button id="bellOk" class="pri">Готово</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="sheetscrim" id="sheetScrim"></div>
+        <div class="sheetscrim" id="sheetScrim"></div>
     <div class="sheet" id="sheet">
       <div class="sheethead">
         <div class="t">Меню страницы</div>
@@ -407,8 +379,8 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
       <li><b>Выцветшее прошлое.</b> Свайп вправо или стрелка ← на клавиатуре — вчерашний день: план приглушён целиком, а записи в «Дневнике» остаются такими же контрастными, как сегодняшние.</li>
       <li><b>«Как прошло?».</b> Вкладка «Дневник»: вопрос, три дела по строке, ниже заголовок и текст. Сегодня дел четыре — четвёртого нет намеренно.</li>
       <li><b>Время записи.</b> Когда вы начинаете писать, в начале строки бледно встаёт час, текст идёт следом. Если вернуться к записи больше чем через час, отметка появится заново. Чтобы не ждать час, нажмите «Как будто прошёл час» и вернитесь в дневник. Вчерашняя запись уже с двумя отметками.</li>
-      <li><b>Колокольчик.</b> Открывает выбор времени напоминания отдельной панелью.</li>
-      <li><b>Новое дело.</b> После «+» можно сразу поставить время и напоминание, ещё не написав название. Пустая строка исчезнет сама, если уйти со страницы, не заполнив её.</li>
+      <li><b>Время и напоминание.</b> Касание по времени и касание по колокольчику открывают один и тот же системный ролик. Кнопка сброса на ролике означает отказ: дело останется без времени или без напоминания.</li>
+      <li><b>Новое дело.</b> Времени у него нет — вместо цифр стоит бледное «--:--». Время появляется только когда вы его поставите. Поставить час и напоминание можно и до того, как написано название.</li>
       <li><b>Закладка «Детали».</b> Полоска у правого края дела. Шторка не закрывает вкладки и нижние кнопки, список под ней не ездит.</li>
       <li><b>Меню страницы.</b> Три точки — отдельная страница поверх экрана, в ней включается режим изменений.</li>
       <li><b>Кнопка «Сегодня».</b> С любой даты возвращает на текущий день.</li>
@@ -477,7 +449,7 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
   }
 
   var S={days:null,date:TODAY,tab:"plan",screen:"today",edit:false,editing:-1,filter:"Всё",drawer:-1,
-    calView:"month",calMonth:TODAY,calSel:TODAY,bell:-1,timeFor:-1};
+    calView:"month",calMonth:TODAY,calSel:TODAY,timeFor:-1,timeMode:"task"};
   try{var raw=localStorage.getItem(KEY);S.days=raw?JSON.parse(raw):seed();}catch(e){S.days=seed();}
   if(!S.days||!S.days[TODAY])S.days=seed();
   Object.keys(S.days).forEach(function(k){(S.days[k].tasks||[]).forEach(function(t){
@@ -527,7 +499,8 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
         var ed=S.edit||S.editing===i;
         h+='<li class="task'+(t.done?" done":"")+'" data-i="'+i+'">'+
           '<div class="num">'+(i+1)+'</div><div class="body">'+
-          '<span class="time'+(past?"":" tap")+'" data-tt="'+i+'">'+t.t+'</span>'+
+          '<span class="time'+(past?"":" tap")+(t.t?"":" none")+'" data-tt="'+i+'">'+
+            (t.t||"--:--")+'</span>'+
           '<button class="bell'+(t.bell?" on":"")+'" data-bell="'+i+'" aria-label="Напоминание"'+(t.bell?' title="Напомнить в '+t.bell+'"':"")+'>'+BELL+'</button>'+
           '<span class="txt" data-t="'+i+'"'+(ed?' contenteditable="true"':"")+'>'+esc(t.x)+'</span>'+
           '</div><div class="rowtools">'+
@@ -807,8 +780,8 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
     var t=D.tasks[i];D.tasks[i]=D.tasks[j];D.tasks[j]=t;save();render();}
   function addTask(){
     if(isPast())return toast("Прошедший день не пополняется.");
-    var D=day(S.date),n=new Date();
-    D.tasks.push({t:String(Math.min(23,n.getHours()+1)).padStart(2,"0")+":00",x:"",done:false,bell:false,det:""});
+    var D=day(S.date);
+    D.tasks.push({t:"",x:"",done:false,bell:false,det:""});
     S.editing=D.tasks.length-1;save();render();}
 
   function openDrawer(i){
@@ -823,31 +796,27 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
   $("scrim").addEventListener("click",closeDrawer);
   $("drawerClose").addEventListener("click",closeDrawer);
 
-  function openTime(i){
-    S.timeFor=i;
-    var inp=$("hiddenTime");inp.value=day(S.date).tasks[i].t;
+  function openRoller(val){
+    var inp=$("hiddenTime");inp.value=val;
     if(inp.showPicker){try{inp.showPicker();}catch(e){inp.focus();}}else{inp.focus();inp.click();}
   }
+  function openTime(i){
+    S.timeMode="task";S.timeFor=i;
+    openRoller(day(S.date).tasks[i].t||"");
+  }
+  // пустое значение с ролика («сбросить») означает отказ от времени
   $("hiddenTime").addEventListener("change",function(){
-    if(S.timeFor>-1&&this.value){day(S.date).tasks[S.timeFor].t=this.value;save();render();}
+    if(S.timeFor>-1){
+      var t=day(S.date).tasks[S.timeFor];
+      if(t){if(S.timeMode==="bell")t.bell=this.value||false;else t.t=this.value||"";}
+      save();render();
+    }
     S.timeFor=-1;});
 
   function openBell(i){
-    S.bell=i;var t=day(S.date).tasks[i];
-    $("bellOf").textContent=t.x||"Без названия";
-    $("bellTime").value=t.bell||t.t;
-    $("bellSheet").classList.add("on");
-    var bt=$("bellTime");
-    if(bt.showPicker){try{bt.showPicker();}catch(e){bt.focus();}}else bt.focus();
+    S.timeMode="bell";S.timeFor=i;
+    openRoller(day(S.date).tasks[i].bell||"");
   }
-  function closeBell(v){
-    if(S.bell>-1){day(S.date).tasks[S.bell].bell=v;save();}
-    S.bell=-1;$("bellSheet").classList.remove("on");render();
-  }
-  $("bellOk").addEventListener("click",function(){closeBell($("bellTime").value||false);});
-  $("bellClear").addEventListener("click",function(){closeBell(false);});
-  $("bellSheet").addEventListener("click",function(e){
-    if(e.target===$("bellSheet"))closeBell(day(S.date).tasks[S.bell].bell);});
 
   function openSheet(){$("sheet").classList.add("on");$("sheetScrim").classList.add("on");}
   function closeSheet(){$("sheet").classList.remove("on");$("sheetScrim").classList.remove("on");}
