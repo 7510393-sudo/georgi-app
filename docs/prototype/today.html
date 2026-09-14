@@ -147,7 +147,7 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
   margin-top:16px;white-space:pre-wrap;word-break:break-word}
 .dtext:empty::before{content:attr(data-ph);color:var(--ink-faint)}
 .dtext .ts{font-family:"IBM Plex Mono",monospace;font-size:.84em;color:var(--ink-faint);
-  letter-spacing:.02em}
+  letter-spacing:.02em;margin-right:.15em}
 main.past .diarywrap{opacity:.55}
 
 /* ---------- нижние панели ---------- */
@@ -552,7 +552,7 @@ main.past .diarywrap{opacity:.55}
   function fmtDiary(t){
     return String(t||"").split("\n").map(function(line){
       var m=line.match(/^(\d{2}:\d{2})(\s?)([\s\S]*)$/);
-      return m?'<span class="ts">'+m[1]+'</span> '+esc(m[3]):esc(line);
+      return m?'<span class="ts">'+m[1]+'</span>&nbsp;'+esc(m[3]):esc(line);
     }).join("\n");
   }
   function nowHHMM(){var t=new Date();
@@ -570,7 +570,8 @@ main.past .diarywrap{opacity:.55}
       h+='</ul>';
     }
     h+='<input class="dtitle" id="dTitle" placeholder="Заголовок дня" value="'+esc(D.title)+'">';
-    h+='<div class="dtext" id="dText" contenteditable="true" data-ph="'+
+    h+='<div class="dtext" id="dText" contenteditable="true" autocapitalize="sentences" '+
+       'spellcheck="false" data-ph="'+
        (D.tasks.length?"И что ещё было в этот день…":"Что было сегодня…")+'">'+fmtDiary(D.text)+'</div></div>';
     screen.className=past?"past":"";screen.innerHTML=h;
   }
@@ -749,6 +750,29 @@ main.past .diarywrap{opacity:.55}
   screen.addEventListener("keydown",function(e){
     if(e.target.id==="dTitle"&&e.key==="Enter"){e.preventDefault();var t=$("dText");if(t)t.focus();}
   });
+
+  // первая буква строки после отметки времени набирается заглавной.
+  // beforeinput ловит и обычную клавиатуру, и телефонную с автозаменой
+  function caretAfterStamp(el){
+    var sel=window.getSelection();
+    if(!sel||!sel.rangeCount)return false;
+    var r=sel.getRangeAt(0);
+    if(!r.collapsed)return false;
+    var pre=document.createRange();
+    pre.selectNodeContents(el);
+    try{pre.setEnd(r.startContainer,r.startOffset);}catch(err){return false;}
+    return /^\d{2}:\d{2}[\s\u00a0]+$/.test(pre.toString().split("\n").pop());
+  }
+  screen.addEventListener("beforeinput",function(e){
+    if(e.target.id!=="dText")return;
+    if(e.inputType!=="insertText"||!e.data||e.data.length!==1)return;
+    if(!caretAfterStamp(e.target))return;
+    var up=e.data.toLocaleUpperCase("ru");
+    if(up===e.data)return;
+    e.preventDefault();
+    document.execCommand("insertText",false,up);
+  });
+
   screen.addEventListener("input",function(e){
     var D=day(S.date),el=e.target;
     if(el.id==="dTitle")D.title=el.value;
