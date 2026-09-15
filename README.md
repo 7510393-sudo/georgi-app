@@ -15,6 +15,7 @@
 | [docs/04-decisions.md](docs/04-decisions.md) | Журнал решений и открытые вопросы |
 | [docs/05-review-2026-09-12.md](docs/05-review-2026-09-12.md) | Замечания ко второй редакции концепции |
 | [docs/06-open-foundations.md](docs/06-open-foundations.md) | Что ещё стоит решить до начала разработки |
+| [docs/07-name-candidates.md](docs/07-name-candidates.md) | Полный список вариантов названия с исходом разбора |
 | [docs/wireframes/](docs/wireframes/) | Эскизы экранов |
 | [docs/prototype/today.html](docs/prototype/today.html) | Кликабельный прототип экрана «Сегодня» (открывается в браузере) |
 
