@@ -204,6 +204,7 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
   border-bottom:1px solid var(--rule-soft);align-items:start;text-align:left;width:100%;
   border-radius:6px}
 .mlist .row{position:relative}
+.mlist .row.sel{background:var(--rule-soft)}
 .mlist .row.wend{border-bottom:2px solid var(--ink-faint)}
 .mlist .row.wmid::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
   background:var(--ink-faint);opacity:.55}
@@ -384,7 +385,7 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
       <li><b>Закладка «Детали».</b> Полоска у правого края дела. Шторка не закрывает вкладки и нижние кнопки, список под ней не ездит.</li>
       <li><b>Меню страницы.</b> Три точки — отдельная страница поверх экрана, в ней включается режим изменений.</li>
       <li><b>Кнопка «Сегодня».</b> С любой даты возвращает на текущий день.</li>
-      <li><b>Календарь.</b> Виды переключаются кнопками, свайп листает месяц (в виде «Год» — год). Цветом набраны названия дней недели. В «Списке» черта отмечает конец недели.</li>
+      <li><b>Календарь.</b> Виды переключаются кнопками, свайп листает месяц (в виде «Год» — год). Цветом набраны названия дней недели, черта отмечает конец недели. И в «Месяце», и в «Списке» первое касание даты разворачивает дела дня, второе открывает день.</li>
       <li><b>Время дела.</b> Коснитесь самого времени — откроется выбор. Работает без режима изменений.</li>
     </ol>
 
@@ -624,14 +625,19 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
     for(var dn=1;dn<=dim;dn++){
       var k=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dn).padStart(2,"0");
       var dt=new Date(y,m,dn),ts=tasksOf(k);
-      h+='<button class="row'+(dt.getDay()===0?" wend":dt.getDay()===5?" wmid":"")+'" data-open="'+k+'">'+
+      var open=(k===S.calSel);
+      h+='<button class="row'+(dt.getDay()===0?" wend":dt.getDay()===5?" wmid":"")+
+         (open?" sel":"")+'" data-pickrow="'+k+'">'+
          '<span class="dt'+(k===TODAY?" today":"")+'">'+dn+' '+
          '<span class="wn" style="color:'+DCOL[dt.getDay()]+'">'+WDS[dt.getDay()]+'</span></span>'+
          '<span class="ls">';
-      if(!ts.length)h+='<div class="em">—</div>';
-      else ts.slice(0,3).forEach(function(t){
-        h+='<div'+(t.done?' class="d"':"")+'>'+t.t+"  "+esc(t.x)+'</div>';});
-      if(ts.length>3)h+='<div class="em">ещё '+(ts.length-3)+'</div>';
+      if(!ts.length)h+='<div class="em">'+(open?"Дел нет. Нажмите ещё раз, чтобы открыть день →":"—")+'</div>';
+      else{
+        (open?ts:ts.slice(0,3)).forEach(function(t){
+          h+='<div'+(t.done?' class="d"':"")+'>'+(t.t?t.t+"  ":"")+esc(t.x)+'</div>';});
+        if(!open&&ts.length>3)h+='<div class="em">ещё '+(ts.length-3)+'</div>';
+        if(open)h+='<div class="em">Нажмите ещё раз, чтобы открыть день →</div>';
+      }
       h+='</span></button>';
     }
     return h+'</div>';
@@ -678,6 +684,10 @@ main.past .planhead .add{opacity:.3;pointer-events:none}
     if((el=e.target.closest("[data-ym]"))){
       var yd=parse(S.calMonth);yd.setMonth(+el.dataset.ym);yd.setDate(1);
       S.calMonth=iso(yd);S.calSel="";S.calView="month";return render();}
+    if((el=e.target.closest("[data-pickrow]"))){
+      var rk=el.dataset.pickrow;
+      if(S.calSel===rk){prune();S.screen="today";S.date=rk;S.tab="plan";return render();}
+      S.calSel=rk;return render();}
     if((el=e.target.closest("[data-pick]"))){
       var k=el.dataset.pick;
       if(S.calSel===k){S.screen="today";S.date=k;S.tab="plan";return render();}
