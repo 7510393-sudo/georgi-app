@@ -14,6 +14,7 @@
 | [docs/03-architecture-principles.md](docs/03-architecture-principles.md) | Принцип независимости, почему конкуренты выбрали базу данных и неизбежен ли их путь |
 | [docs/04-decisions.md](docs/04-decisions.md) | Журнал решений и открытые вопросы |
 | [docs/05-review-2026-09-12.md](docs/05-review-2026-09-12.md) | Замечания ко второй редакции концепции |
+| [docs/06-open-foundations.md](docs/06-open-foundations.md) | Что ещё стоит решить до начала разработки |
 | [docs/wireframes/](docs/wireframes/) | Эскизы экранов |
 | [docs/prototype/today.html](docs/prototype/today.html) | Кликабельный прототип экрана «Сегодня» (открывается в браузере) |
 
