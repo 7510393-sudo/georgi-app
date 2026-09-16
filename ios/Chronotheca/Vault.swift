@@ -25,7 +25,60 @@ final class Vault: ObservableObject {
     private static let bookmarkKey = "vault.root.bookmark"
     private var accessing: URL?
 
-    init() { restore() }
+    init() {
+        if Vault.isPreview { usePreviewFolder() } else { restore() }
+    }
+
+    // MARK: - Режим показа
+
+    /// Запуск для снимков экрана: приложение берёт временную папку внутри
+    /// собственной песочницы и немного содержимого, чтобы экран было видно.
+    ///
+    /// Включается только переменной окружения, которую выставляет сборка снимков.
+    /// В руках человека этот путь недостижим: закладка не пишется, настоящая
+    /// папка не трогается.
+    static var isPreview: Bool {
+        ProcessInfo.processInfo.environment["CHRONOTHECA_PREVIEW"] == "1"
+    }
+
+    private func usePreviewFolder() {
+        let url = FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Показ")
+        do {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            try makeTree(in: url)
+            root = url
+            seedPreview()
+        } catch {
+            problem = error.localizedDescription
+        }
+    }
+
+    private func seedPreview() {
+        let today = Date()
+
+        var plan = DayFile(body: """
+        - [ ] 09:00 Отвезти документы нотариусу
+              Малая Бронная 12, второй этаж. Взять оригинал доверенности.
+        - [ ] Позвонить в поликлинику
+        - [ ] 15:00 Дописать вторую главу
+        - [ ] Забрать посылку до восьми
+        """)
+        plan.set("дата", Vault.stamp(today))
+        write(plan.text, to: .planner, for: today)
+
+        var diary = DayFile(body: """
+        08:15 Проснулся раньше будильника, впервые за неделю. Туман над полем\
+         такой плотный, что не видно второго ряда деревьев.
+
+        23:40 В поликлинику так и не собрался. Зато глава дописана, и\
+         кажется, что она вышла лучше первой.
+        """)
+        diary.set("дата", Vault.stamp(today))
+        diary.set("заголовок", "Туман")
+        write(diary.text, to: .diary, for: today)
+    }
 
     // MARK: - Папка
 

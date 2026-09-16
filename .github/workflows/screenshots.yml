@@ -1,0 +1,111 @@
+# Снимки экрана из настоящего симулятора.
+#
+# Собирает приложение, запускает его на симуляторе iPhone, снимает экраны и
+# кладёт картинки в docs/screens/. Запускается вручную.
+name: Снимки экрана
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Взять самый новый Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest/Contents/Developer"
+          xcodebuild -version
+
+      - name: Поставить XcodeGen
+        run: brew install xcodegen
+
+      - name: Собрать проект Xcode из project.yml
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Выбрать симулятор
+        id: sim
+        run: |
+          udid=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          runtimes = json.load(sys.stdin)['devices']
+          best = None
+          for runtime in sorted(runtimes, reverse=True):
+              for device in runtimes[runtime]:
+                  if device.get('isAvailable') and device['name'].startswith('iPhone'):
+                      best = (device['udid'], device['name'], runtime)
+                      break
+              if best:
+                  break
+          if not best:
+              sys.exit('нет доступного симулятора iPhone')
+          print(best[0])
+          print(best[1], best[2], file=sys.stderr)
+          ")
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+          echo "Симулятор: $udid"
+
+      - name: Собрать приложение
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Chronotheca.xcodeproj \
+            -scheme Chronotheca \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Снять экраны
+        working-directory: ios
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+          APP_ID: app.chronotheca.ios
+        run: |
+          set -e
+          mkdir -p ../docs/screens
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+          # Чистая строка состояния, как на снимках Apple
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularBars 4 --wifiBars 3 || true
+
+          xcrun simctl install "$UDID" \
+            build/Build/Products/Debug-iphonesimulator/Chronotheca.app
+
+          # 1. Первый запуск: приложение просит выбрать папку
+          xcrun simctl launch "$UDID" "$APP_ID"
+          sleep 6
+          xcrun simctl io "$UDID" screenshot ../docs/screens/01-выбор-папки.png
+          xcrun simctl terminate "$UDID" "$APP_ID" || true
+
+          # 2. День с содержимым: вкладка «План»
+          SIMCTL_CHILD_CHRONOTHECA_PREVIEW=1 xcrun simctl launch "$UDID" "$APP_ID"
+          sleep 8
+          xcrun simctl io "$UDID" screenshot ../docs/screens/02-план.png
+
+          xcrun simctl terminate "$UDID" "$APP_ID" || true
+          xcrun simctl shutdown "$UDID" || true
+
+          ls -la ../docs/screens
+
+      - name: Положить снимки в репозиторий
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screens
+          if git diff --cached --quiet; then
+            echo "снимки не изменились"
+          else
+            git commit -m "docs: снимки экрана из симулятора"
+            git push
+          fi
