@@ -1,0 +1,33 @@
+# Сборка в облаке. Проверяет, что приложение собирается, на каждый толчок в
+# репозиторий. Аккаунт Apple для этого не нужен: сборка для симулятора не
+# подписывается.
+name: Сборка iOS
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Поставить XcodeGen
+        run: brew install xcodegen
+
+      - name: Собрать проект Xcode из project.yml
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Собрать приложение
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Chronotheca.xcodeproj \
+            -scheme Chronotheca \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO

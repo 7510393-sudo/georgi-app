@@ -16,7 +16,19 @@
 | [docs/05-review-2026-09-12.md](docs/05-review-2026-09-12.md) | Замечания ко второй редакции концепции |
 | [docs/06-open-foundations.md](docs/06-open-foundations.md) | Что ещё стоит решить до начала разработки |
 | [docs/07-name-candidates.md](docs/07-name-candidates.md) | Полный список вариантов названия с исходом разбора |
+| [docs/08-build-and-release.md](docs/08-build-and-release.md) | Сборка в облаке, оформление аккаунта Apple, доставка через TestFlight |
 | [docs/wireframes/](docs/wireframes/) | Эскизы экранов |
 | [docs/prototype/today.html](docs/prototype/today.html) | Кликабельный прототип экрана «Сегодня» (открывается в браузере) |
 
-Статус: концепция. Кода пока нет.
+## Код
+
+| Каталог | Содержание |
+|---|---|
+| [ios/](ios/) | Приложение для iPhone. Проект Xcode собирается из `project.yml` программой XcodeGen |
+| [.github/workflows/](.github/workflows/) | Сборка в облаке и доставка в TestFlight |
+
+Рабочее название — **Chronotheca**, временное (решение M8).
+
+Статус: каркас. Приложение выбирает папку пользователя, создаёт в ней структуру
+подпапок, показывает один день с вкладками «План» и «Дневник» и пишет текст
+обычными файлами Markdown, которые читаются вне приложения.

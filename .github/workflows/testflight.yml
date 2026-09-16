@@ -1,0 +1,92 @@
+# Доставка на телефон через TestFlight.
+#
+# Запускается вручную и работает только после того, как оформлен аккаунт Apple
+# Developer и в настройках репозитория заведены четыре секрета:
+#
+#   APPSTORE_ISSUER_ID   — идентификатор издателя ключа App Store Connect
+#   APPSTORE_KEY_ID      — идентификатор ключа
+#   APPSTORE_PRIVATE_KEY — содержимое файла AuthKey_XXXX.p8 целиком
+#   APPLE_TEAM_ID        — идентификатор команды (10 знаков)
+#
+# До этого момента запуск будет падать на шаге подписи — это ожидаемо.
+name: Доставка в TestFlight
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deliver:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Поставить XcodeGen
+        run: brew install xcodegen
+
+      - name: Собрать проект Xcode из project.yml
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Положить ключ App Store Connect
+        env:
+          KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "$KEY" > ~/private_keys/AuthKey_${KEY_ID}.p8
+
+      - name: Номер сборки по номеру запуска
+        working-directory: ios
+        run: |
+          /usr/libexec/PlistBuddy -c "Print" /dev/null >/dev/null 2>&1 || true
+          sed -i '' "s/CURRENT_PROJECT_VERSION: \"1\"/CURRENT_PROJECT_VERSION: \"${GITHUB_RUN_NUMBER}\"/" project.yml
+          xcodegen generate
+
+      - name: Архив
+        working-directory: ios
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Chronotheca.xcodeproj \
+            -scheme Chronotheca \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Chronotheca.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPSTORE_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
+            DEVELOPMENT_TEAM="$TEAM_ID"
+
+      - name: Экспорт ipa
+        working-directory: ios
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath build/Chronotheca.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPSTORE_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }}
+
+      - name: Отправить в TestFlight
+        working-directory: ios
+        run: |
+          xcrun altool --upload-app -f build/export/*.ipa -t ios \
+            --apiKey ${{ secrets.APPSTORE_KEY_ID }} \
+            --apiIssuer ${{ secrets.APPSTORE_ISSUER_ID }}
