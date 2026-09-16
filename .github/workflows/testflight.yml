@@ -16,9 +16,22 @@ on:
 
 jobs:
   deliver:
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+
+      - name: Взять самый новый Xcode и проверить, что он годится для App Store
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest/Contents/Developer"
+          xcodebuild -version
+          sdk=$(xcodebuild -showsdks | sed -n 's/.*-sdk iphoneos\([0-9][0-9]*\).*/\1/p' | sort -n | tail -1)
+          echo "Самый новый iOS SDK на машине: $sdk"
+          if [ -z "$sdk" ] || [ "$sdk" -lt 26 ]; then
+            echo "::error::App Store принимает сборки только с iOS SDK 26 и новее (правило Apple с 28 апреля 2026). На этой машине максимум $sdk. Смените runs-on на образ с Xcode 26."
+            exit 1
+          fi
 
       - name: Поставить XcodeGen
         run: brew install xcodegen

@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+
+      - name: Взять самый новый Xcode на машине
+        run: |
+          latest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$latest/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i "iphoneos" || true
+
       - name: Поставить XcodeGen
         run: brew install xcodegen
 
