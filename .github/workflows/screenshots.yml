@@ -6,6 +6,10 @@ name: Снимки экрана
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/screenshots.yml'
 
 permissions:
   contents: write
