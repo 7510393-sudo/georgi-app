@@ -1,6 +1,6 @@
 name: Chronotheca
 options:
-  bundleIdPrefix: app.chronotheca
+  bundleIdPrefix: com.kobiashvili
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -17,7 +17,7 @@ targets:
       - path: Chronotheca
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.chronotheca.ios
+        PRODUCT_BUNDLE_IDENTIFIER: com.kobiashvili.diary
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Chronotheca
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

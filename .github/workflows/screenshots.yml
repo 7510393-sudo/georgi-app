@@ -70,7 +70,7 @@ jobs:
         working-directory: ios
         env:
           UDID: ${{ steps.sim.outputs.udid }}
-          APP_ID: app.chronotheca.ios
+          APP_ID: com.kobiashvili.diary
         run: |
           set -e
           mkdir -p ../docs/screens
