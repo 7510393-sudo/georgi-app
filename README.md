@@ -17,6 +17,7 @@
 | [docs/06-open-foundations.md](docs/06-open-foundations.md) | Что ещё стоит решить до начала разработки |
 | [docs/07-name-candidates.md](docs/07-name-candidates.md) | Полный список вариантов названия с исходом разбора |
 | [docs/08-build-and-release.md](docs/08-build-and-release.md) | Сборка в облаке, оформление аккаунта Apple, доставка через TestFlight |
+| [docs/09-apple-setup-checklist.md](docs/09-apple-setup-checklist.md) | Пошаговый список: что нажимать в аккаунте Apple и в GitHub |
 | [docs/wireframes/](docs/wireframes/) | Эскизы экранов |
 | [docs/prototype/today.html](docs/prototype/today.html) | Кликабельный прототип экрана «Сегодня» (открывается в браузере) |
 
