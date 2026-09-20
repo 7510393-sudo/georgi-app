@@ -75,13 +75,23 @@ jobs:
           grep CURRENT_PROJECT_VERSION project.yml
           xcodegen generate
 
-      - name: Положить ключ App Store Connect
+      - name: Положить ключ App Store Connect и убедиться, что он настоящий
         env:
           KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
         run: |
-          mkdir -p ~/private_keys
-          printf '%s\n' "$KEY" > ~/private_keys/AuthKey_${KEY_ID}.p8
-          chmod 600 ~/private_keys/AuthKey_${KEY_ID}.p8
+          mkdir -p "$HOME/private_keys"
+          printf '%s\n' "$KEY" > "$HOME/private_keys/AuthKey_${KEY_ID}.p8"
+          chmod 600 "$HOME/private_keys/AuthKey_${KEY_ID}.p8"
+          echo "KEY_PATH=$HOME/private_keys/AuthKey_${KEY_ID}.p8" >> "$GITHUB_ENV"
+
+          # Не печатаем содержимое — только размеры и итог разбора.
+          wc -l < "$HOME/private_keys/AuthKey_${KEY_ID}.p8" | sed 's/^/строк в ключе: /'
+          if openssl pkcs8 -in "$HOME/private_keys/AuthKey_${KEY_ID}.p8" -inform PEM -nocrypt -noout 2>/dev/null; then
+            echo "Ключ разбирается как закрытый ключ PKCS#8 — годен."
+          else
+            echo "::error::Файл ключа не разбирается. Скорее всего в секрет APPSTORE_PRIVATE_KEY попало не всё содержимое .p8 или добавились лишние символы."
+            exit 1
+          fi
 
       - name: Архив
         working-directory: ios
@@ -92,11 +102,13 @@ jobs:
             -scheme Chronotheca \
             -destination 'generic/platform=iOS' \
             -archivePath build/Chronotheca.xcarchive \
+            -configuration Release \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${KEY_ID}.p8 \
+            -authenticationKeyPath "$KEY_PATH" \
             -authenticationKeyID "$KEY_ID" \
             -authenticationKeyIssuerID "$ISSUER_ID" \
-            DEVELOPMENT_TEAM="$TEAM_ID"
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic
 
       - name: Экспорт ipa
         working-directory: ios
@@ -118,7 +130,7 @@ jobs:
             -exportPath build/export \
             -exportOptionsPlist ExportOptions.plist \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${KEY_ID}.p8 \
+            -authenticationKeyPath "$KEY_PATH" \
             -authenticationKeyID "$KEY_ID" \
             -authenticationKeyIssuerID "$ISSUER_ID"
           ls -la build/export
