@@ -18,6 +18,7 @@
 | [docs/07-name-candidates.md](docs/07-name-candidates.md) | Полный список вариантов названия с исходом разбора |
 | [docs/08-build-and-release.md](docs/08-build-and-release.md) | Сборка в облаке, оформление аккаунта Apple, доставка через TestFlight |
 | [docs/09-apple-setup-checklist.md](docs/09-apple-setup-checklist.md) | Пошаговый список: что нажимать в аккаунте Apple и в GitHub |
+| [docs/10-monetisation.md](docs/10-monetisation.md) | Модель денег и почему по объёму брать нельзя |
 | [docs/wireframes/](docs/wireframes/) | Эскизы экранов |
 | [docs/prototype/today.html](docs/prototype/today.html) | Кликабельный прототип экрана «Сегодня» (открывается в браузере) |
 
