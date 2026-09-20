@@ -20,6 +20,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.kobiashvili.diary
         GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Приложение не шифрует ничего. Без этой строки App Store Connect
+        # спрашивает про шифрование у каждой сборки и держит её до ответа.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_CFBundleDisplayName: Chronotheca
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
