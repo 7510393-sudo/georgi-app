@@ -77,6 +77,25 @@ def main():
     csr = open(f"{WORK}/csr.pem").read()
 
     # 2. Сертификат распространения
+    #
+    # Apple разрешает не больше трёх сертификатов распространения на аккаунт,
+    # а каждый запуск сборки заводит новый. Поэтому сначала убираем свои
+    # прежние — узнаём их по имени, которое сами и ставили.
+    existing_certs = api("/v1/certificates?limit=200", tok=tok).get("data", [])
+    dist = [c for c in existing_certs
+            if c["attributes"].get("certificateType") == "DISTRIBUTION"]
+    ours = [c for c in dist
+            if CERT_NAME in (c["attributes"].get("displayName") or "")
+            or CERT_NAME in (c["attributes"].get("name") or "")]
+    for c in ours:
+        print(f"  отзываю свой прежний сертификат {c['id']}")
+        api(f"/v1/certificates/{c['id']}", "DELETE", tok=tok)
+    strangers = [c for c in dist if c not in ours]
+    if len(strangers) >= 3:
+        print("::error::В аккаунте уже три сертификата распространения, и ни один "
+              "не наш. Отзовите лишние на developer.apple.com → Certificates.")
+        sys.exit(1)
+
     print("Прошу у Apple сертификат распространения…")
     try:
         made = api("/v1/certificates", "POST", {
@@ -163,9 +182,12 @@ def main():
         f.write(blob)
 
     # Имя файла — внутренний UUID профиля: так их называет сам Xcode.
-    plist = run("security", "cms", "-D", "-i", raw).stdout
+    # Плист внутри бывает двоичным, поэтому читаем его файлом, а не строкой.
     import plistlib
-    uuid = plistlib.loads(plist.encode("utf-8", "surrogateescape"))["UUID"]
+    decoded = f"{WORK}/profile.plist"
+    subprocess.run(["security", "cms", "-D", "-i", raw, "-o", decoded], check=True)
+    with open(decoded, "rb") as f:
+        uuid = plistlib.load(f)["UUID"]
 
     for folder in (
         "~/Library/Developer/Xcode/UserData/Provisioning Profiles",
