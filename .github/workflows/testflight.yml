@@ -1,25 +1,55 @@
 # Доставка на телефон через TestFlight.
 #
-# Запускается вручную и работает только после того, как оформлен аккаунт Apple
-# Developer и в настройках репозитория заведены четыре секрета:
+# Запускается двумя способами: вручную или метко́й вида `build-7`. Метка удобнее:
+# она остаётся в истории и видно, из какого состояния кода вышла сборка.
+#
+# Работает только после того, как оформлен аккаунт Apple Developer, создана
+# запись приложения в App Store Connect и заведены четыре секрета:
 #
 #   APPSTORE_ISSUER_ID   — идентификатор издателя ключа App Store Connect
 #   APPSTORE_KEY_ID      — идентификатор ключа
 #   APPSTORE_PRIVATE_KEY — содержимое файла AuthKey_XXXX.p8 целиком
 #   APPLE_TEAM_ID        — идентификатор команды (10 знаков)
-#
-# До этого момента запуск будет падать на шаге подписи — это ожидаемо.
 name: Доставка в TestFlight
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'build-*'
 
 jobs:
   deliver:
     runs-on: macos-26
+    env:
+      ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Проверить, что все четыре секрета на месте
+        env:
+          KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: |
+          missing=""
+          [ -n "$ISSUER_ID" ] || missing="$missing APPSTORE_ISSUER_ID"
+          [ -n "$KEY_ID" ]    || missing="$missing APPSTORE_KEY_ID"
+          [ -n "$TEAM_ID" ]   || missing="$missing APPLE_TEAM_ID"
+          [ -n "$KEY" ]       || missing="$missing APPSTORE_PRIVATE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Не заведены секреты:$missing. Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          case "$KEY" in
+            *"BEGIN PRIVATE KEY"*) ;;
+            *) echo "::error::APPSTORE_PRIVATE_KEY не похож на ключ: нет строки BEGIN PRIVATE KEY. Скопирован не весь файл .p8?"; exit 1 ;;
+          esac
+          case "$KEY" in
+            *"END PRIVATE KEY"*) ;;
+            *) echo "::error::В APPSTORE_PRIVATE_KEY нет строки END PRIVATE KEY — потеряна последняя строка файла."; exit 1 ;;
+          esac
+          echo "Все четыре на месте."
 
       - name: Взять самый новый Xcode и проверить, что он годится для App Store
         run: |
@@ -29,36 +59,31 @@ jobs:
           sdk=$(xcodebuild -showsdks | sed -n 's/.*-sdk iphoneos\([0-9][0-9]*\).*/\1/p' | sort -n | tail -1)
           echo "Самый новый iOS SDK на машине: $sdk"
           if [ -z "$sdk" ] || [ "$sdk" -lt 26 ]; then
-            echo "::error::App Store принимает сборки только с iOS SDK 26 и новее (правило Apple с 28 апреля 2026). На этой машине максимум $sdk. Смените runs-on на образ с Xcode 26."
+            echo "::error::App Store принимает сборки только с iOS SDK 26 и новее (правило Apple с 28 апреля 2026). На этой машине максимум $sdk."
             exit 1
           fi
 
       - name: Поставить XcodeGen
         run: brew install xcodegen
 
-      - name: Собрать проект Xcode из project.yml
+      - name: Номер сборки и проект Xcode
         working-directory: ios
-        run: xcodegen generate
+        run: |
+          # Номер сборки должен расти с каждой отправкой — берём номер запуска.
+          sed -i '' "s/CURRENT_PROJECT_VERSION: \".*\"/CURRENT_PROJECT_VERSION: \"${GITHUB_RUN_NUMBER}\"/" project.yml
+          grep CURRENT_PROJECT_VERSION project.yml
+          xcodegen generate
 
       - name: Положить ключ App Store Connect
         env:
           KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
-          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
         run: |
           mkdir -p ~/private_keys
-          printf '%s' "$KEY" > ~/private_keys/AuthKey_${KEY_ID}.p8
-
-      - name: Номер сборки по номеру запуска
-        working-directory: ios
-        run: |
-          /usr/libexec/PlistBuddy -c "Print" /dev/null >/dev/null 2>&1 || true
-          sed -i '' "s/CURRENT_PROJECT_VERSION: \"1\"/CURRENT_PROJECT_VERSION: \"${GITHUB_RUN_NUMBER}\"/" project.yml
-          xcodegen generate
+          printf '%s\n' "$KEY" > ~/private_keys/AuthKey_${KEY_ID}.p8
+          chmod 600 ~/private_keys/AuthKey_${KEY_ID}.p8
 
       - name: Архив
         working-directory: ios
-        env:
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
           xcodebuild archive \
@@ -67,15 +92,13 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath build/Chronotheca.xcarchive \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8 \
-            -authenticationKeyID ${{ secrets.APPSTORE_KEY_ID }} \
-            -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }} \
+            -authenticationKeyPath ~/private_keys/AuthKey_${KEY_ID}.p8 \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID"
 
       - name: Экспорт ipa
         working-directory: ios
-        env:
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cat > ExportOptions.plist <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -88,18 +111,22 @@ jobs:
           </dict>
           </plist>
           PLIST
+          set -o pipefail
           xcodebuild -exportArchive \
             -archivePath build/Chronotheca.xcarchive \
             -exportPath build/export \
             -exportOptionsPlist ExportOptions.plist \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8 \
-            -authenticationKeyID ${{ secrets.APPSTORE_KEY_ID }} \
-            -authenticationKeyIssuerID ${{ secrets.APPSTORE_ISSUER_ID }}
+            -authenticationKeyPath ~/private_keys/AuthKey_${KEY_ID}.p8 \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID"
+          ls -la build/export
 
       - name: Отправить в TestFlight
         working-directory: ios
         run: |
-          xcrun altool --upload-app -f build/export/*.ipa -t ios \
-            --apiKey ${{ secrets.APPSTORE_KEY_ID }} \
-            --apiIssuer ${{ secrets.APPSTORE_ISSUER_ID }}
+          ipa=$(ls build/export/*.ipa | head -1)
+          echo "Отправляю $ipa"
+          xcrun altool --upload-app -f "$ipa" -t ios \
+            --apiKey "$KEY_ID" \
+            --apiIssuer "$ISSUER_ID"
