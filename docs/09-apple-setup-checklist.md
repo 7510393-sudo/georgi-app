@@ -106,7 +106,11 @@ Apple записала `Georgi`, в паспорте `Georgii`. Имя учас�
 1. [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → **Users and Access** →
    вкладка **Integrations** → **App Store Connect API** → **Team Keys**.
 2. **Issuer ID** — длинная строка вверху страницы. Первое из трёх.
-3. **+** → **Name:** `GitHub Actions`, **Access:** `App Manager` → **Generate**.
+3. **+** → **Name:** `GitHub Actions`, **Access:** **Admin** (по-русски «Администратор») → **Generate**.
+
+   **Роль обязательно Admin.** «Менеджер приложения» умеет загружать сборки, но не умеет
+   подписывать их в облаке — [Apple требует для этого права администратора](https://developer.apple.com/forums/thread/698117).
+   Роль ключа **изменить нельзя**: ошиблись — заводите новый.
 4. **Key ID** в появившейся строке, десять знаков. Второе.
 5. **Download** → файл `AuthKey_XXXXXXXXXX.p8`. Третье.
 
