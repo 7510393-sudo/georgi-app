@@ -244,18 +244,21 @@ jobs:
         run: |
           set -o pipefail
           set -x   # показать команду целиком: не потерялись ли флаги на переносах
+          # Архив собираем без подписи. Подписывает этап выпуска, и это
+          # принципиально: при архивации Xcode просит профиль РАЗРАБОТКИ, который
+          # для нового аккаунта создать нельзя — в нём нет зарегистрированных
+          # устройств. Профиль распространения устройств не требует.
           xcodebuild archive \
             -project Chronotheca.xcodeproj \
             -scheme Chronotheca \
             -destination 'generic/platform=iOS' \
             -archivePath build/Chronotheca.xcarchive \
             -configuration Release \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$KEY_ID" \
-            -authenticationKeyIssuerID "$ISSUER_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS=""
 
       - name: Экспорт ipa
         working-directory: ios
@@ -286,6 +289,7 @@ jobs:
         working-directory: ios
         run: |
           ipa=$(ls build/export/*.ipa | head -1)
+          echo "### Сборка ${GITHUB_RUN_NUMBER} отправлена в TestFlight" >> "$GITHUB_STEP_SUMMARY"
           echo "Отправляю $ipa"
           xcrun altool --upload-app -f "$ipa" -t ios \
             --apiKey "$KEY_ID" \
