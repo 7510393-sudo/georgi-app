@@ -271,6 +271,8 @@ jobs:
             <key>method</key><string>app-store-connect</string>
             <key>teamID</key><string>${TEAM_ID}</string>
             <key>uploadSymbols</key><true/>
+            <!-- Без этой строки Xcode ищет готовый профиль, а не создаёт его. -->
+            <key>signingStyle</key><string>automatic</string>
           </dict>
           </plist>
           PLIST
