@@ -108,8 +108,11 @@ jobs:
 
       - name: Спросить у Apple, что она про нас знает
         run: |
-          python3 -m pip install --quiet --disable-pip-version-check pyjwt cryptography
-          python3 - <<'PY'
+          # Системный Python на образе защищён от установки пакетов (PEP 668),
+          # поэтому ставим их в отдельное окружение.
+          python3 -m venv /tmp/asc
+          /tmp/asc/bin/pip install --quiet --disable-pip-version-check pyjwt cryptography
+          /tmp/asc/bin/python - <<'PY'
           import json, os, time, urllib.request, urllib.error
           import jwt
 
