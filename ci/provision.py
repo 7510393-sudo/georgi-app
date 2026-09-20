@@ -200,9 +200,36 @@ def main():
             f.write(blob)
         print(f"  профиль положен: {path}")
 
+    # 6. Всё, что понадобится упаковщику: права из профиля и имя удостоверения.
+    #
+    # Дальше .ipa собирается вручную, а не через xcodebuild -exportArchive:
+    # тот ищет профиль в своих папках и упорно его не находит, сколько бы папок
+    # мы ни перепробовали. Подписать приложение можно и напрямую.
+    with open(decoded, "rb") as f:
+        entitlements = plistlib.load(f)["Entitlements"]
+    ent_path = f"{WORK}/entitlements.plist"
+    with open(ent_path, "wb") as f:
+        plistlib.dump(entitlements, f)
+    print(f"  права вынуты из профиля: {sorted(entitlements)}")
+
+    identities = run("security", "find-identity", "-v", "-p", "codesigning",
+                     KEYCHAIN).stdout
+    identity = None
+    for line in identities.splitlines():
+        if '"' in line:
+            identity = line.split('"')[1]
+            break
+    if not identity:
+        print("::error::В связке ключей нет удостоверения для подписи.")
+        sys.exit(1)
+    print(f"  подписывать будем как: {identity}")
+
     with open(os.environ["GITHUB_ENV"], "a") as f:
         f.write(f"PROFILE_NAME={PROFILE_NAME}\n")
         f.write(f"SIGNING_KEYCHAIN={KEYCHAIN}\n")
+        f.write(f"SIGNING_IDENTITY={identity}\n")
+        f.write(f"PROFILE_PATH={raw}\n")
+        f.write(f"ENTITLEMENTS_PATH={ent_path}\n")
     print(f"Готово. Профиль «{PROFILE_NAME}».")
 
 

@@ -193,36 +193,38 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS=""
 
-      - name: Экспорт ipa
+      - name: Подписать и упаковать ipa
         working-directory: ios
         run: |
-          cat > ExportOptions.plist <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key><string>app-store-connect</string>
-            <key>teamID</key><string>${TEAM_ID}</string>
-            <key>uploadSymbols</key><true/>
-            <key>signingStyle</key><string>manual</string>
-            <key>signingCertificate</key><string>Apple Distribution</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.kobiashvili.diary</key><string>${PROFILE_NAME}</string>
-            </dict>
-          </dict>
-          </plist>
-          PLIST
-          set -o pipefail
+          set -e
           security unlock-keychain -p chronotheca-ci "$SIGNING_KEYCHAIN"
-          xcodebuild -exportArchive \
-            -archivePath build/Chronotheca.xcarchive \
-            -exportPath build/export \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$KEY_ID" \
-            -authenticationKeyIssuerID "$ISSUER_ID"
+
+          APP="build/Chronotheca.xcarchive/Products/Applications/Chronotheca.app"
+          [ -d "$APP" ] || { echo "::error::В архиве нет приложения по пути $APP"; exit 1; }
+
+          # Профиль кладётся внутрь приложения — именно оттуда его читает iPhone.
+          cp "$PROFILE_PATH" "$APP/embedded.mobileprovision"
+
+          # Сначала вложенное (библиотеки Swift), потом само приложение:
+          # подпись внешнего рушится, если внутреннее переподписать после.
+          if [ -d "$APP/Frameworks" ]; then
+            find "$APP/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -print0 |
+              while IFS= read -r -d '' item; do
+                echo "подписываю вложенное: $(basename "$item")"
+                /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" \
+                  --keychain "$SIGNING_KEYCHAIN" --timestamp=none "$item"
+              done
+          fi
+
+          /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" \
+            --keychain "$SIGNING_KEYCHAIN" --timestamp=none \
+            --entitlements "$ENTITLEMENTS_PATH" "$APP"
+
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
+
+          rm -rf build/export && mkdir -p build/export/Payload
+          cp -R "$APP" build/export/Payload/
+          (cd build/export && zip -qry Chronotheca.ipa Payload && rm -rf Payload)
           ls -la build/export
 
       - name: Отправить в TestFlight
