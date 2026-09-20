@@ -106,6 +106,65 @@ jobs:
             exit 1
           fi
 
+      - name: Спросить у Apple, что она про нас знает
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pyjwt cryptography
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+          import jwt
+
+          key = open(os.environ["KEY_PATH"]).read()
+          now = int(time.time())
+          token = jwt.encode(
+              {"iss": os.environ["ISSUER_ID"], "iat": now, "exp": now + 900,
+               "aud": "appstoreconnect-v1"},
+              key, algorithm="ES256",
+              headers={"kid": os.environ["KEY_ID"], "typ": "JWT"})
+
+          def ask(path):
+              req = urllib.request.Request(
+                  "https://api.appstoreconnect.apple.com" + path,
+                  headers={"Authorization": "Bearer " + token})
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      return json.load(r)
+              except urllib.error.HTTPError as e:
+                  print("  ответ", e.code, e.read()[:400].decode("utf-8", "replace"))
+                  return None
+
+          print("Опознавательные знаки, заведённые в аккаунте:")
+          data = ask("/v1/bundleIds?limit=200")
+          if data is None:
+              raise SystemExit("::error::Ключ не принят Apple. Проверьте Issuer ID и Key ID.")
+          ids = [b["attributes"]["identifier"] for b in data.get("data", [])]
+          for i in sorted(ids):
+              print("   ", i)
+          if not ids:
+              print("    (ни одного)")
+
+          print("Записи приложений в App Store Connect:")
+          data = ask("/v1/apps?limit=200")
+          apps = [(a["attributes"]["bundleId"], a["attributes"]["name"])
+                  for a in (data or {}).get("data", [])]
+          for b, n in sorted(apps):
+              print("   ", b, "—", n)
+          if not apps:
+              print("    (ни одной)")
+
+          want = "com.kobiashvili.diary"
+          problems = []
+          if want not in ids:
+              problems.append("не заведён опознавательный знак " + want +
+                              " (developer.apple.com → Identifiers → App IDs)")
+          if want not in [b for b, _ in apps]:
+              problems.append("не создана запись приложения с " + want +
+                              " (App Store Connect → Apps → New App)")
+          if problems:
+              print("::error::" + "; ".join(problems))
+              raise SystemExit(1)
+          print("Знак заведён и запись приложения есть — обе стороны на месте.")
+          PY
+
       - name: Архив
         working-directory: ios
         run: |
