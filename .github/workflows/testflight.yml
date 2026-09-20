@@ -166,12 +166,44 @@ jobs:
               print("::error::" + "; ".join(problems))
               raise SystemExit(1)
           print("Знак заведён и запись приложения есть — обе стороны на месте.")
+
+          # Настоящий Team ID зашит в сертификат подписи: это поле OU в его теме.
+          # Если сертификатов ещё нет, сверить не с чем — так и скажем.
+          import base64, subprocess, tempfile
+          data = ask("/v1/certificates?limit=200")
+          teams = set()
+          for c in (data or {}).get("data", []):
+              blob = c["attributes"].get("certificateContent")
+              if not blob:
+                  continue
+              with tempfile.NamedTemporaryFile(suffix=".cer", delete=False) as f:
+                  f.write(base64.b64decode(blob))
+                  path = f.name
+              out = subprocess.run(
+                  ["openssl", "x509", "-inform", "DER", "-in", path, "-noout", "-subject"],
+                  capture_output=True, text=True).stdout
+              for part in out.replace("/", ",").split(","):
+                  part = part.strip()
+                  if part.startswith("OU="):
+                      teams.add(part[3:].strip())
+
+          mine = os.environ["TEAM_ID"]
+          if not teams:
+              print("Сертификатов в аккаунте пока нет — сверить Team ID не с чем.")
+          elif mine in teams:
+              print("Team ID в секрете совпадает с тем, что в сертификате аккаунта.")
+          else:
+              print("::error::APPLE_TEAM_ID не совпадает с командой, которой принадлежит "
+                    "ключ. Возьмите Team ID на developer.apple.com/account, карточка "
+                    "Membership details, и замените секрет.")
+              raise SystemExit(1)
           PY
 
       - name: Архив
         working-directory: ios
         run: |
           set -o pipefail
+          set -x   # показать команду целиком: не потерялись ли флаги на переносах
           xcodebuild archive \
             -project Chronotheca.xcodeproj \
             -scheme Chronotheca \
