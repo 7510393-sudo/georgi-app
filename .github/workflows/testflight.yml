@@ -50,6 +50,19 @@ jobs:
             *"END PRIVATE KEY"*) ;;
             *) echo "::error::В APPSTORE_PRIVATE_KEY нет строки END PRIVATE KEY — потеряна последняя строка файла."; exit 1 ;;
           esac
+          # Team ID — ровно десять знаков, заглавные латинские буквы и цифры.
+          if ! printf '%s' "$TEAM_ID" | grep -Eq '^[A-Z0-9]{10}$'; then
+            echo "::error::APPLE_TEAM_ID не похож на настоящий: должно быть ровно 10 знаков, заглавные латинские буквы и цифры. Возьмите его на developer.apple.com/account, карточка Membership details."
+            exit 1
+          fi
+          # Защита от самой обидной ошибки: скопирован пример из переписки, а не своё значение.
+          for sample in A1B2C3D4E5 ABCDE12345 1234567890; do
+            if [ "$TEAM_ID" = "$sample" ]; then
+              echo "::error::В APPLE_TEAM_ID попал образец из переписки ($sample), а не ваш настоящий Team ID."
+              exit 1
+            fi
+          done
+
           echo "Все четыре на месте."
 
       - name: Взять самый новый Xcode и проверить, что он годится для App Store
@@ -86,8 +99,8 @@ jobs:
 
           # Не печатаем содержимое — только размеры и итог разбора.
           wc -l < "$HOME/private_keys/AuthKey_${KEY_ID}.p8" | sed 's/^/строк в ключе: /'
-          if openssl pkcs8 -in "$HOME/private_keys/AuthKey_${KEY_ID}.p8" -inform PEM -nocrypt -noout 2>/dev/null; then
-            echo "Ключ разбирается как закрытый ключ PKCS#8 — годен."
+          if openssl pkey -in "$HOME/private_keys/AuthKey_${KEY_ID}.p8" -noout 2>/dev/null; then
+            echo "Ключ разбирается как закрытый ключ — годен."
           else
             echo "::error::Файл ключа не разбирается. Скорее всего в секрет APPSTORE_PRIVATE_KEY попало не всё содержимое .p8 или добавились лишние символы."
             exit 1
