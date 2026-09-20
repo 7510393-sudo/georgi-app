@@ -84,17 +84,20 @@ def main():
     existing_certs = api("/v1/certificates?limit=200", tok=tok).get("data", [])
     dist = [c for c in existing_certs
             if c["attributes"].get("certificateType") == "DISTRIBUTION"]
-    ours = [c for c in dist
-            if CERT_NAME in (c["attributes"].get("displayName") or "")
-            or CERT_NAME in (c["attributes"].get("name") or "")]
-    for c in ours:
-        print(f"  отзываю свой прежний сертификат {c['id']}")
+    # Отзываем все прежние сертификаты распространения.
+    #
+    # По имени своих не отличить: Apple подписывает их именем владельца
+    # аккаунта, а не тем, что было в заявке. А закрытый ключ от прежнего
+    # сертификата всё равно остался на уничтоженной машине сборки, то есть
+    # пользоваться им никто не может. Поэтому проще отозвать все.
+    #
+    # Если вы когда-нибудь заведёте сертификат распространения вручную,
+    # из Xcode на своём компьютере, — этот шаг его снесёт. Тогда исключите
+    # его здесь по идентификатору.
+    for c in dist:
+        name = c["attributes"].get("displayName") or c["attributes"].get("name") or c["id"]
+        print(f"  отзываю прежний сертификат: {name}")
         api(f"/v1/certificates/{c['id']}", "DELETE", tok=tok)
-    strangers = [c for c in dist if c not in ours]
-    if len(strangers) >= 3:
-        print("::error::В аккаунте уже три сертификата распространения, и ни один "
-              "не наш. Отзовите лишние на developer.apple.com → Certificates.")
-        sys.exit(1)
 
     print("Прошу у Apple сертификат распространения…")
     try:
