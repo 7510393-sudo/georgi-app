@@ -199,6 +199,46 @@ jobs:
               raise SystemExit(1)
           PY
 
+      - name: Узнать настоящий Team ID у Apple и сверить
+        run: |
+          # altool умеет перечислить команды, к которым даёт доступ ключ.
+          # Team ID не секрет, поэтому его можно печатать. Но если он совпадает
+          # с нашим секретом, GitHub закроет его звёздочками — это и будет ответ.
+          set +e
+          out=$(xcrun altool --list-providers \
+                  --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" \
+                  --output-format json 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          if [ $code -ne 0 ]; then
+            echo "::warning::Не удалось получить список команд; продолжаю без сверки."
+            exit 0
+          fi
+
+          real=$(printf '%s' "$out" | /usr/bin/python3 -c '
+          import json, sys
+          try:
+              d = json.load(sys.stdin)
+          except Exception:
+              sys.exit(0)
+          for p in d.get("providers", []):
+              print(p.get("ProviderShortname", ""))
+          ')
+          echo "Команды, доступные ключу: $real"
+
+          if [ -z "$real" ]; then
+            echo "::warning::Список команд пуст — сверить не с чем."
+            exit 0
+          fi
+
+          if printf '%s\n' "$real" | grep -qx "$TEAM_ID"; then
+            echo "Team ID в секрете совпадает с командой, которой принадлежит ключ."
+          else
+            echo "::error::APPLE_TEAM_ID не совпадает ни с одной командой этого ключа. Настоящее значение напечатано строкой выше — замените им секрет APPLE_TEAM_ID."
+            exit 1
+          fi
+
       - name: Архив
         working-directory: ios
         run: |
