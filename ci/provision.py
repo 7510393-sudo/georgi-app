@@ -151,13 +151,32 @@ def main():
                 "certificates": {"data": [{"id": cert_id, "type": "certificates"}]},
             }}}, tok)["data"]
 
-    # 5. Профиль — туда, где его ищет Xcode
-    profiles_dir = os.path.expanduser("~/Library/MobileDevice/Provisioning Profiles")
-    os.makedirs(profiles_dir, exist_ok=True)
-    path = os.path.join(profiles_dir, profile["id"] + ".mobileprovision")
-    with open(path, "wb") as f:
-        f.write(base64.b64decode(profile["attributes"]["profileContent"]))
-    print(f"  профиль положен: {path}")
+    # 5. Профиль — туда, где его ищет Xcode.
+    #
+    # Папок две: старая и новая. Начиная с Xcode 16 профили читаются из
+    # UserData, а прежняя папка осталась для совместимости. Кладём в обе,
+    # чтобы не зависеть от версии на машине сборки.
+    blob = base64.b64decode(profile["attributes"]["profileContent"])
+
+    raw = f"{WORK}/profile.mobileprovision"
+    with open(raw, "wb") as f:
+        f.write(blob)
+
+    # Имя файла — внутренний UUID профиля: так их называет сам Xcode.
+    plist = run("security", "cms", "-D", "-i", raw).stdout
+    import plistlib
+    uuid = plistlib.loads(plist.encode("utf-8", "surrogateescape"))["UUID"]
+
+    for folder in (
+        "~/Library/Developer/Xcode/UserData/Provisioning Profiles",
+        "~/Library/MobileDevice/Provisioning Profiles",
+    ):
+        d = os.path.expanduser(folder)
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, uuid + ".mobileprovision")
+        with open(path, "wb") as f:
+            f.write(blob)
+        print(f"  профиль положен: {path}")
 
     with open(os.environ["GITHUB_ENV"], "a") as f:
         f.write(f"PROFILE_NAME={PROFILE_NAME}\n")
