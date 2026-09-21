@@ -148,6 +148,11 @@ enum Build {
 /// без часа, и это нормальное состояние дела.
 struct RollerSheet: View {
 
+    private static let aboutBell = """
+        Напоминания ещё не приходят — время записывается в файл, \
+        но телефон о нём пока не сообщает.
+        """
+
     let roller: Shell.Roller
 
     @EnvironmentObject private var store: DayStore
@@ -163,8 +168,7 @@ struct RollerSheet: View {
                     .datePickerStyle(.wheel)
                     .labelsHidden()
                 if isBell {
-                    Text("Напоминания ещё не приходят — время записывается в файл, "
-                         + "но телефон о нём пока не сообщает.")
+                    Text(Self.aboutBell)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .multilineTextAlignment(.center)
@@ -353,6 +357,18 @@ struct SettingsSheet: View {
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
 
+    /// Длинные объяснения — готовыми строками, а не склейкой в разметке:
+    /// склеенные плюсами куски Swift разбирает мучительно долго и однажды
+    /// отказался собирать приложение целиком.
+    private static let aboutFolder = """
+        Откройте «Файлы» и найдите эту папку — там всё, что вы написали, \
+        обычными файлами. Приложение можно удалить, записи останутся.
+
+        Прежние записи останутся там, где лежат сейчас: приложение их не \
+        переносит и не удаляет. Чтобы взять их с собой, перенесите папку \
+        сами в «Файлах» и укажите новое место здесь.
+        """
+
     var body: some View {
         NavigationStack {
             List {
@@ -366,11 +382,7 @@ struct SettingsSheet: View {
                         shell.picking = true
                     }
                 } footer: {
-                    Text("Откройте «Файлы» и найдите эту папку — там всё, что вы написали, "
-                         + "обычными файлами. Приложение можно удалить, записи останутся.\n\n"
-                         + "Прежние записи останутся там, где лежат сейчас: приложение их "
-                         + "не переносит и не удаляет. Чтобы взять их с собой, перенесите "
-                         + "папку сами в «Файлах» и укажите новое место здесь.")
+                    Text(Self.aboutFolder)
                 }
 
                 Section("Ещё не сделано") {
@@ -447,6 +459,12 @@ struct WelcomeView: View {
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
 
+    private static let invitation = """
+        Укажите место — приложение заведёт там свою папку «\(Vault.folderName)» \
+        и сложит записи в неё обычными файлами. Папка ваша: приложение только \
+        пишет и читает. Удалите приложение — записи останутся.
+        """
+
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "folder")
@@ -455,10 +473,7 @@ struct WelcomeView: View {
 
             Text("Где хранить записи").font(.title2)
 
-            Text("Укажите место — приложение заведёт там свою папку «"
-                 + Vault.folderName + "» и сложит записи в неё обычными файлами. "
-                 + "Папка ваша: приложение только пишет и читает. "
-                 + "Удалите приложение — записи останутся.")
+            Text(Self.invitation)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

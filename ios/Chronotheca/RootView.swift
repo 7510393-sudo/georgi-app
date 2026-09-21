@@ -12,6 +12,11 @@ struct RootView: View {
     @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
 
+    private static let moved = """
+        Вы её переименовали или передвинули. Приложение пошло за ней следом \
+        и пишет теперь сюда:
+        """
+
     var body: some View {
         Group {
             if vault.root == nil { WelcomeView() } else { app }
@@ -28,8 +33,7 @@ struct RootView: View {
                                     set: { if !$0 { vault.moved = nil } })) {
             Button("Понятно") { vault.moved = nil }
         } message: {
-            Text("Вы её переименовали или передвинули. Приложение пошло за ней "
-                 + "следом и пишет теперь сюда:\n\n" + (vault.moved ?? ""))
+            Text(Self.moved + "\n\n" + (vault.moved ?? ""))
         }
     }
 
