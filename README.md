@@ -19,6 +19,7 @@
 | [docs/08-build-and-release.md](docs/08-build-and-release.md) | Сборка в облаке, оформление аккаунта Apple, доставка через TestFlight |
 | [docs/09-apple-setup-checklist.md](docs/09-apple-setup-checklist.md) | Пошаговый список: что нажимать в аккаунте Apple и в GitHub |
 | [docs/10-monetisation.md](docs/10-monetisation.md) | Модель денег и почему по объёму брать нельзя |
+| [docs/11-slices.md](docs/11-slices.md) | Порядок работ срезами и два правила про формат файлов |
 | [docs/wireframes/](docs/wireframes/) | Эскизы экранов |
 | [docs/prototype/today.html](docs/prototype/today.html) | Кликабельный прототип экрана «Сегодня» (открывается в браузере) |
 
