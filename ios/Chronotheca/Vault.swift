@@ -36,8 +36,14 @@ final class Vault: ObservableObject {
     @Published private(set) var root: URL?
     @Published private(set) var problem: String?
 
+    /// Заполняется, если при запуске выяснилось, что папку переименовали или
+    /// передвинули. Приложение идёт за ней следом, но человек должен об этом
+    /// узнать — иначе он не поймёт, куда делись записи.
+    @Published var moved: String?
+
     private static let bookmarkKey = "vault.root.bookmark"
     private static let subpathKey = "vault.root.subpath"
+    private static let lastPathKey = "vault.root.lastPath"
     private var accessing: URL?
 
     /// Путь, который можно показать человеку. Длинный и некрасивый, зато
@@ -114,6 +120,7 @@ final class Vault: ObservableObject {
 
             UserDefaults.standard.set(try url.bookmarkData(), forKey: Vault.bookmarkKey)
             UserDefaults.standard.set(subpath, forKey: Vault.subpathKey)
+            UserDefaults.standard.set(target.path, forKey: Vault.lastPathKey)
 
             try makeTree(in: target)
             granted = url
@@ -158,17 +165,33 @@ final class Vault: ObservableObject {
                               relativeTo: nil,
                               bookmarkDataIsStale: &stale)
             guard begin(url) else {
-                problem = "Папка больше недоступна. Выберите её заново."
+                problem = "Папка, в которую приложение писало, больше недоступна — "
+                        + "чаще всего это значит, что её перенесли между памятью "
+                        + "телефона и iCloud. Записи целы: они лежат там, куда вы "
+                        + "их перенесли. Укажите это место заново, и приложение "
+                        + "узнает свой архив."
                 return
             }
             let subpath = UserDefaults.standard.string(forKey: Vault.subpathKey) ?? ""
             granted = url
             root = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
-            if stale, let fresh = try? url.bookmarkData() {
-                UserDefaults.standard.set(fresh, forKey: Vault.bookmarkKey)
+
+            if stale {
+                // Закладка устарела: папку переименовали или передвинули.
+                // Система нашла её по новому месту — обновляем закладку
+                // и говорим об этом вслух.
+                if let fresh = try? url.bookmarkData() {
+                    UserDefaults.standard.set(fresh, forKey: Vault.bookmarkKey)
+                }
+                let previous = UserDefaults.standard.string(forKey: Vault.lastPathKey)
+                if let previous, previous != root?.path {
+                    moved = root?.path
+                }
             }
+            UserDefaults.standard.set(root?.path, forKey: Vault.lastPathKey)
         } catch {
-            problem = "Не удалось открыть прежнюю папку. Выберите её заново."
+            problem = "Не удалось открыть прежнюю папку. Записи в ней целы — "
+                    + "укажите это место заново."
         }
     }
 

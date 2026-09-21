@@ -48,6 +48,14 @@ struct TodayView: View {
         }
         .sheet(isPresented: $peeking) { fileSheet }
         .sheet(isPresented: $showingFolder) { folderSheet }
+        .alert("Папка переехала",
+               isPresented: Binding(get: { vault.moved != nil },
+                                    set: { if !$0 { vault.moved = nil } })) {
+            Button("Понятно") { vault.moved = nil }
+        } message: {
+            Text("Вы её переименовали или передвинули. Приложение пошло за ней "
+                 + "следом и пишет теперь сюда:\n\n" + (vault.moved ?? ""))
+        }
     }
 
     // MARK: - Первый запуск
