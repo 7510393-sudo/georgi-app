@@ -271,8 +271,12 @@ final class Vault: ObservableObject {
     }
 
     func forget() {
-        UserDefaults.standard.removeObject(forKey: Vault.bookmarkKey)
-        UserDefaults.standard.removeObject(forKey: Vault.subpathKey)
+        for key in [Vault.bookmarkKey, Vault.subpathKey, Vault.lastPathKey,
+                    Vault.previousBookmarkKey, Vault.previousSubpathKey,
+                    Vault.previousPathKey] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        proposal = nil
         accessing?.stopAccessingSecurityScopedResource()
         accessing = nil
         root = nil

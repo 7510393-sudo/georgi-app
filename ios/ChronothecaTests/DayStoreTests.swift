@@ -18,7 +18,12 @@ final class DayStoreTests: XCTestCase {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         vault = Vault()
         vault.adopt(folder)
+        // Приложение больше не заводит папку само (P97) — соглашаемся за
+        // человека, как он сделал бы в окне вопроса.
+        XCTAssertNotNil(vault.proposal, "в пустом месте должно быть предложение")
+        vault.acceptProposal()
         XCTAssertNil(vault.problem, "папка не открылась: \(vault.problem ?? "")")
+        XCTAssertNotNil(vault.root)
     }
 
     override func tearDown() {
