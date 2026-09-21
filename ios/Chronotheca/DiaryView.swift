@@ -71,16 +71,21 @@ struct DiaryView: View {
 
             ForEach(store.tasks.filter { !$0.text.isEmpty }.prefix(3), id: \.id) { task in
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    // Название дела — в одну строку с многоточием: иначе длинные
+                    // дела ломают список на куски и ответ уезжает от вопроса.
                     Text(task.text + ":")
                         .font(Look.serif(size))
                         .foregroundStyle(Look.inkSoft)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
                     TextField("…", text: Binding(
                         get: { store.answers[task.text] ?? "" },
                         set: { store.answers[task.text] = $0 }), axis: .vertical)
                         .font(Look.serif(size))
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .answer(task.text))
+                        .layoutPriority(2)
                 }
                 .lineSpacing(leading - size * 0.6)
                 .padding(.vertical, 1)

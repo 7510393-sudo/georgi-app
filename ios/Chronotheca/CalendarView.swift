@@ -23,12 +23,24 @@ struct CalendarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $kind) {
-                ForEach(Kind.allCases) { Text($0.rawValue).tag($0) }
+            HStack(spacing: 6) {
+                ForEach(Kind.allCases) { k in
+                    Button { kind = k } label: {
+                        Text(k.rawValue)
+                            .font(Look.sans(13))
+                            .foregroundStyle(kind == k ? Look.planBg : Look.inkSoft)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(kind == k ? Look.accent : .clear,
+                                        in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(kind == k ? Look.accent : Look.rule))
+                    }
+                }
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
 
             nav
 
@@ -59,17 +71,24 @@ struct CalendarView: View {
 
     private var nav: some View {
         HStack {
-            Button { shift(by: -1) } label: { Image(systemName: "chevron.left") }
-                .accessibilityLabel(kind == .year ? "Предыдущий год" : "Предыдущий месяц")
+            Button { shift(by: -1) } label: {
+                Text("‹").font(.system(size: 22)).frame(width: 34, height: 30)
+            }
+            .foregroundStyle(Look.inkFaint)
+            .accessibilityLabel(kind == .year ? "Предыдущий год" : "Предыдущий месяц")
             Spacer()
             Text(kind == .year ? String(cal.component(.year, from: shown))
                                : Ru.monthTitle(shown))
-                .font(.headline)
+                .font(Look.sans(16, weight: .semibold))
+                .foregroundStyle(Look.ink)
             Spacer()
-            Button { shift(by: 1) } label: { Image(systemName: "chevron.right") }
-                .accessibilityLabel(kind == .year ? "Следующий год" : "Следующий месяц")
+            Button { shift(by: 1) } label: {
+                Text("›").font(.system(size: 22)).frame(width: 34, height: 30)
+            }
+            .foregroundStyle(Look.inkFaint)
+            .accessibilityLabel(kind == .year ? "Следующий год" : "Следующий месяц")
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 14)
         .padding(.bottom, 8)
     }
 
@@ -124,46 +143,56 @@ struct CalendarView: View {
     // MARK: - Месяц
 
     private var monthGrid: some View {
-        let first = cal.date(from: cal.dateComponents([.year, .month], from: shown)) ?? shown
-        let lead = (cal.component(.weekday, from: first) + 5) % 7
-        let count = cal.range(of: .day, in: .month, for: first)?.count ?? 30
+        let cells = MonthGrid.cells(of: shown, calendar: cal)
         let today = Vault.stamp(DayStore.today())
 
         return VStack(spacing: 0) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
+                      spacing: 6) {
                 ForEach(Array(Ru.weekHeader.enumerated()), id: \.offset) { i, name in
-                    Text(name)
-                        .font(.caption2)
+                    Text(name.uppercased())
+                        .font(Look.sans(11, weight: .semibold))
+                        .tracking(0.9)
                         .foregroundStyle(Ru.dayColor(dateOfWeekday(i)))
+                        .padding(.bottom, 5)
                 }
-                ForEach(0..<lead, id: \.self) { _ in Color.clear.frame(height: 34) }
-                ForEach(1...count, id: \.self) { d in
-                    let date = cal.date(byAdding: .day, value: d - 1, to: first) ?? first
-                    let stamp = Vault.stamp(date)
-                    Button { pick(stamp, date) } label: {
-                        VStack(spacing: 2) {
-                            Text("\(d)")
-                                .font(.callout)
-                                .foregroundStyle(stamp == today ? Color.white : .primary)
-                                .frame(width: 30, height: 30)
-                                .background(stamp == today ? Color.accentColor
-                                            : (stamp == selected
-                                               ? Color.accentColor.opacity(0.16) : .clear),
-                                            in: Circle())
-                            Circle()
-                                .fill(archive.tasks(stamp).isEmpty ? .clear : Color.accentColor)
-                                .frame(width: 4, height: 4)
-                        }
-                    }
-                    .buttonStyle(.plain)
+                ForEach(Array(cells.enumerated()), id: \.offset) { _, date in
+                    if let date { cell(date, today: today) } else { Color.clear.frame(height: 40) }
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 10)
 
-            Divider().padding(.vertical, 12)
+            Rectangle().fill(Look.rule).frame(height: 1).padding(.vertical, 12)
             dayList
         }
         .padding(.bottom, 20)
+    }
+
+    /// Клетка дня. Сегодняшний обведён, выбранный залит — как в прототипе:
+    /// «сегодня» и «то, на что я смотрю» должны различаться с одного взгляда.
+    private func cell(_ date: Date, today: String) -> some View {
+        let stamp = Vault.stamp(date)
+        let isToday = stamp == today
+        let isSelected = stamp == selected
+
+        return Button { pick(stamp, date) } label: {
+            VStack(spacing: 2) {
+                Text("\(cal.component(.day, from: date))")
+                    .font(Look.sans(15))
+                    .foregroundStyle(isSelected ? Look.planBg : Look.ink)
+                Circle()
+                    .fill(archive.tasks(stamp).isEmpty
+                          ? .clear : (isSelected ? Look.planBg : Look.inkFaint))
+                    .frame(width: 4, height: 4)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background(isSelected ? Look.accent : .clear,
+                        in: RoundedRectangle(cornerRadius: 9))
+            .overlay(RoundedRectangle(cornerRadius: 9)
+                .strokeBorder(isToday && !isSelected ? Look.accent : .clear, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
     }
 
     private func dateOfWeekday(_ i: Int) -> Date {
@@ -177,10 +206,12 @@ struct CalendarView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("\(Ru.weekdayShort(date)) \(Ru.shortDate(date))")
-                        .font(.footnote.weight(.medium))
+                        .font(Look.sans(13, weight: .medium))
+                        .foregroundStyle(Look.ink)
                     Spacer()
                     Button("Открыть день →") { open(date) }
-                        .font(.footnote)
+                        .font(Look.sans(13))
+                        .foregroundStyle(Look.accent)
                 }
                 let tasks = archive.tasks(stamp)
                 if tasks.isEmpty {
@@ -191,10 +222,11 @@ struct CalendarView: View {
                     ForEach(tasks) { task in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(task.time ?? "--:--")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.tertiary)
+                                .font(Look.mono(12))
+                                .foregroundStyle(Look.inkFaint)
                             Text(task.text)
-                                .font(.footnote)
+                                .font(Look.sans(13))
+                                .foregroundStyle(Look.ink)
                                 .opacity(task.done ? 0.45 : 1)
                         }
                     }

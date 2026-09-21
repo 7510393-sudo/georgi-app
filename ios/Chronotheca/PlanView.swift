@@ -202,6 +202,7 @@ struct PlanView: View {
                         .lineLimit(2)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if store.editing {
                 VStack(spacing: 3) {
@@ -222,6 +223,7 @@ struct PlanView: View {
         }
         .padding(.leading, 12)
         .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(store.editing
                     ? LinearGradient(colors: [.clear, Look.ruleSoft],
                                      startPoint: .leading, endPoint: .trailing)
@@ -258,9 +260,10 @@ struct PlanView: View {
                 .background(filled ? Look.rule : Look.chrome)
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 6,
                                                   bottomLeadingRadius: 6))
-                .overlay(UnevenRoundedRectangle(topLeadingRadius: 6,
-                                                bottomLeadingRadius: 6)
-                    .strokeBorder(filled ? Look.inkFaint : Look.rule))
+                .overlay(TabBorder(radius: 6)
+                    .rotation(.degrees(90), anchor: .center)
+                    .stroke(filled ? Look.inkFaint : Look.rule, lineWidth: 1))
+                .padding(.vertical, 7)
         }
         .buttonStyle(.plain)
         .opacity(store.editing ? 0.25 : 1)

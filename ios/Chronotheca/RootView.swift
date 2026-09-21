@@ -41,7 +41,6 @@ struct RootView: View {
                     subbar
                     tabs
                 }
-                Rectangle().fill(Look.rule).frame(height: 1)
                 screen
                 if shell.screen == .today { attachbar }
                 Rectangle().fill(Look.rule).frame(height: 1)
@@ -51,6 +50,7 @@ struct RootView: View {
 
             if let notice = shell.notice { toast(notice) }
         }
+        .tint(Look.accent)
         .sheet(isPresented: $shell.showingMenu) { MenuSheet() }
         .sheet(isPresented: $shell.showingFolder) { FolderSheet() }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
@@ -80,7 +80,8 @@ struct RootView: View {
             Spacer(minLength: 0)
 
             Text(shell.screen == .today ? store.title : shell.screenName)
-                .font(Look.sans(15, weight: .semibold))
+                .font(.system(size: 23, weight: .semibold))
+                .tracking(-0.2)
                 .foregroundStyle(Look.ink)
 
             Spacer(minLength: 0)
@@ -103,38 +104,53 @@ struct RootView: View {
     private var subbar: some View {
         VStack(spacing: 2) {
             Text(Ru.weekday(store.date))
-                .font(Look.sans(12, weight: .medium))
+                .font(Look.sans(12.5))
+                .tracking(0.75)
                 .foregroundStyle(Ru.dayColor(store.date))
             Text(Ru.longDate(store.date))
-                .font(Look.mono(11.5))
-                .foregroundStyle(Look.inkFaint)
+                .font(Look.sans(15))
+                .foregroundStyle(Look.inkSoft)
         }
+        .padding(.horizontal, 18)
         .padding(.bottom, 9)
+        .frame(maxWidth: .infinity)
+        .background(Look.chrome)
     }
 
     private var tabs: some View {
-        HStack(spacing: 6) {
-            ForEach(Shell.Tab.allCases) { tab in
-                Button {
-                    store.prune()
-                    store.save()
-                    shell.tab = tab
-                } label: {
-                    VStack(spacing: 0) {
-                        Text(tab.rawValue)
-                            .font(Look.sans(13, weight: shell.tab == tab ? .semibold : .regular))
-                            .foregroundStyle(shell.tab == tab ? Look.ink : Look.inkFaint)
-                            .padding(.top, 9)
-                            .padding(.bottom, 10)
-                        Rectangle()
-                            .fill(shell.tab == tab ? Look.accent : .clear)
-                            .frame(height: 2)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                ForEach(Shell.Tab.allCases) { tab in tabButton(tab) }
             }
+            .padding(.horizontal, 12)
+            .padding(.top, 9)
+            Rectangle().fill(Look.rule).frame(height: 1)
         }
-        .padding(.horizontal, 12)
+        .background(Look.chrome)
+    }
+
+    private func tabButton(_ tab: Shell.Tab) -> some View {
+        let on = shell.tab == tab
+        let page = tab == .diary ? Look.diaryBg : Ru.tint(store.date)
+        return Button {
+            store.prune()
+            store.save()
+            shell.tab = tab
+        } label: {
+            Text(tab.rawValue.uppercased())
+                .font(Look.sans(13, weight: on ? .semibold : .regular))
+                .tracking(1.56)
+                .foregroundStyle(on ? Look.ink : Look.inkFaint)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 9)
+                .padding(.bottom, 10)
+                .background(page)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10,
+                                                  topTrailingRadius: 10))
+                .overlay(TabBorder(radius: 10).stroke(Look.rule, lineWidth: 1))
+        }
+        .offset(y: on ? 1 : 0)
+        .zIndex(on ? 1 : 0)
     }
 
     // MARK: - Экран
@@ -261,5 +277,24 @@ struct DayScreen: View {
 
             if shell.drawer != nil { DetailsDrawer() }
         }
+    }
+}
+
+/// Обводка закладки: верх и бока, без низа — чтобы выбранная вкладка
+/// сливалась со своей страницей, как лист в картотеке.
+struct TabBorder: Shape {
+    let radius: CGFloat
+
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
+        p.addArc(center: CGPoint(x: r.minX + radius, y: r.minY + radius), radius: radius,
+                 startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        p.addLine(to: CGPoint(x: r.maxX - radius, y: r.minY))
+        p.addArc(center: CGPoint(x: r.maxX - radius, y: r.minY + radius), radius: radius,
+                 startAngle: .degrees(270), endAngle: .degrees(0), clockwise: false)
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        return p
     }
 }
