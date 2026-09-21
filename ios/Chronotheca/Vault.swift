@@ -19,11 +19,23 @@ final class Vault: ObservableObject {
         case service   = "Служебное"
     }
 
+    /// Имя папки, которую приложение заводит себе само.
+    static let folderName = "Chronotheca"
+
+    /// Папка, которую разрешил открывать человек. Доступ выдан именно ей.
+    @Published private(set) var granted: URL?
+
+    /// Папка, в которой лежат записи: либо сама разрешённая, либо наша внутри неё.
     @Published private(set) var root: URL?
     @Published private(set) var problem: String?
 
     private static let bookmarkKey = "vault.root.bookmark"
+    private static let subpathKey = "vault.root.subpath"
     private var accessing: URL?
+
+    /// Путь, который можно показать человеку. Длинный и некрасивый, зато
+    /// по нему папку действительно найти в «Файлах».
+    var displayPath: String { root?.path.removingPercentEncoding ?? root?.path ?? "" }
 
     init() {
         if Vault.isPreview { usePreviewFolder() } else { restore() }
@@ -48,6 +60,7 @@ final class Vault: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
             try makeTree(in: url)
+            granted = url
             root = url
             seedPreview()
         } catch {
@@ -89,20 +102,46 @@ final class Vault: ObservableObject {
             return
         }
         do {
+            let subpath = try chooseSubpath(in: url)
+            let target = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
+
             UserDefaults.standard.set(try url.bookmarkData(), forKey: Vault.bookmarkKey)
-            try makeTree(in: url)
-            root = url
+            UserDefaults.standard.set(subpath, forKey: Vault.subpathKey)
+
+            try makeTree(in: target)
+            granted = url
+            root = target
             problem = nil
         } catch {
             problem = error.localizedDescription
         }
     }
 
+    /// Куда класть записи внутри выбранного места.
+    ///
+    /// Если человек указал папку, где наши записи уже лежат, — работаем прямо
+    /// в ней: он вернулся к своему архиву. Во всех остальных случаях заводим
+    /// внутри свою папку, чтобы не рассыпать семь подпапок по чужому месту.
+    /// Это важнее, чем кажется: без этого выбор «Документы» превращает
+    /// документы в свалку, и найти потом ничего нельзя.
+    private func chooseSubpath(in url: URL) throws -> String {
+        let fm = FileManager.default
+        let ours = url.appendingPathComponent(Folder.diary.rawValue)
+        if fm.fileExists(atPath: ours.path) { return "" }
+        if url.lastPathComponent == Vault.folderName { return "" }
+
+        let nested = url.appendingPathComponent(Vault.folderName)
+        try fm.createDirectory(at: nested, withIntermediateDirectories: true)
+        return Vault.folderName
+    }
+
     func forget() {
         UserDefaults.standard.removeObject(forKey: Vault.bookmarkKey)
+        UserDefaults.standard.removeObject(forKey: Vault.subpathKey)
         accessing?.stopAccessingSecurityScopedResource()
         accessing = nil
         root = nil
+        granted = nil
     }
 
     private func restore() {
@@ -117,7 +156,9 @@ final class Vault: ObservableObject {
                 problem = "Папка больше недоступна. Выберите её заново."
                 return
             }
-            root = url
+            let subpath = UserDefaults.standard.string(forKey: Vault.subpathKey) ?? ""
+            granted = url
+            root = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
             if stale, let fresh = try? url.bookmarkData() {
                 UserDefaults.standard.set(fresh, forKey: Vault.bookmarkKey)
             }

@@ -20,21 +20,22 @@ struct TodayView: View {
     @State private var tab: Tab = .plan
     @State private var picking = false
     @State private var peeking = false
+    @State private var showingFolder = false
 
     var body: some View {
         NavigationStack {
             Group {
                 if vault.root == nil { welcome } else { day }
             }
-            .navigationTitle(title)
+            .navigationTitle(vault.root == nil ? "" : title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if vault.root != nil {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button { picking = true } label: {
+                        Button { showingFolder = true } label: {
                             Image(systemName: "folder")
                         }
-                        .accessibilityLabel("Сменить папку")
+                        .accessibilityLabel("Где лежат записи")
                     }
                 }
             }
@@ -46,6 +47,7 @@ struct TodayView: View {
             }
         }
         .sheet(isPresented: $peeking) { fileSheet }
+        .sheet(isPresented: $showingFolder) { folderSheet }
     }
 
     // MARK: - Первый запуск
@@ -56,17 +58,18 @@ struct TodayView: View {
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
 
-            Text("Выберите папку")
+            Text("Где хранить записи")
                 .font(.title2)
 
-            Text("Записи будут лежать в ней обычными файлами. "
-                 + "Папка ваша: приложение только пишет и читает, "
-                 + "а распоряжаетесь ею вы. Удалите приложение — записи останутся.")
+            Text("Укажите место — приложение заведёт там свою папку «"
+                 + Vault.folderName + "» и сложит записи в неё обычными файлами. "
+                 + "Папка ваша: приложение только пишет и читает. "
+                 + "Удалите приложение — записи останутся.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button("Выбрать папку") { picking = true }
+            Button("Выбрать место") { picking = true }
                 .buttonStyle(.borderedProminent)
 
             if let problem = vault.problem {
@@ -129,17 +132,75 @@ struct TodayView: View {
     private var fileSheet: some View {
         NavigationStack {
             ScrollView {
-                Text(store.onDisk())
-                    .font(.system(.footnote, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding()
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Папка")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(vault.displayPath)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                    Divider()
+                    Text(store.onDisk())
+                        .font(.system(.footnote, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
             }
             .navigationTitle("Файл на диске")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Закрыть") { peeking = false }
+                }
+            }
+        }
+    }
+
+    // MARK: - Где лежат записи
+
+    private var folderSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Записи лежат здесь")
+                        .font(.headline)
+                    Text(vault.displayPath)
+                        .font(.system(.footnote, design: .monospaced))
+                        .textSelection(.enabled)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text("Откройте «Файлы» и найдите эту папку — там всё, что вы написали, "
+                     + "обычными файлами. Приложение можно удалить, записи останутся.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Button("Писать в другое место") {
+                        showingFolder = false
+                        picking = true
+                    }
+                    Text("Прежние записи останутся там, где лежат сейчас: "
+                         + "приложение их не переносит и не удаляет. "
+                         + "Чтобы взять их с собой, перенесите папку сами в «Файлах» "
+                         + "и укажите новое место здесь.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Папка")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Закрыть") { showingFolder = false }
                 }
             }
         }
