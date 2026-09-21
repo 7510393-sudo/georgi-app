@@ -372,7 +372,7 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Где лежат записи") {
+                Section {
                     Text(vault.displayPath)
                         .font(.system(.footnote, design: .monospaced))
                         .textSelection(.enabled)
@@ -381,6 +381,8 @@ struct SettingsSheet: View {
                         shell.showingSettings = false
                         shell.picking = true
                     }
+                } header: {
+                    Text("Где лежат записи")
                 } footer: {
                     Text(Self.aboutFolder)
                 }
