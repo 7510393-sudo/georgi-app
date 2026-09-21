@@ -71,8 +71,10 @@ struct DiaryView: View {
 
             ForEach(store.tasks.filter { !$0.text.isEmpty }.prefix(3), id: \.id) { task in
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    // Название дела — в одну строку с многоточием: иначе длинные
-                    // дела ломают список на куски и ответ уезжает от вопроса.
+                    // Название дела в одну строку с многоточием, и оно забирает
+                    // ширину первым. Наоборот было нельзя: поле ответа тянется
+                    // сколько дадут и сжимало вопрос до нуля — на экране
+                    // оставались одни ответы без вопросов.
                     Text(task.text + ":")
                         .font(Look.serif(size))
                         .foregroundStyle(Look.inkSoft)
@@ -85,7 +87,7 @@ struct DiaryView: View {
                         .font(Look.serif(size))
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .answer(task.text))
-                        .layoutPriority(2)
+                        .frame(minWidth: 70, alignment: .leading)
                 }
                 .lineSpacing(leading - size * 0.6)
                 .padding(.vertical, 1)
