@@ -22,6 +22,13 @@ final class Vault: ObservableObject {
     /// Имя папки, которую приложение заводит себе само.
     static let folderName = "Chronotheca"
 
+    /// Метка, по которой приложение узнаёт свои архивы.
+    ///
+    /// Узнавать по имени подпапки нельзя: у человека может лежать своя папка
+    /// «Дневник» с рукописями, и приложение начнёт писать в неё. Поэтому свой
+    /// архив помечается собственным файлом, который никто другой не создаёт.
+    static let markerPath = "Служебное/chronotheca.json"
+
     /// Папка, которую разрешил открывать человек. Доступ выдан именно ей.
     @Published private(set) var granted: URL?
 
@@ -125,10 +132,8 @@ final class Vault: ObservableObject {
     /// Это важнее, чем кажется: без этого выбор «Документы» превращает
     /// документы в свалку, и найти потом ничего нельзя.
     private func chooseSubpath(in url: URL) throws -> String {
-        let fm = FileManager.default
-        let ours = url.appendingPathComponent(Folder.diary.rawValue)
-        if fm.fileExists(atPath: ours.path) { return "" }
-        if url.lastPathComponent == Vault.folderName { return "" }
+        if isOurs(url) { return "" }
+        if isOurs(url.appendingPathComponent(Vault.folderName)) { return Vault.folderName }
 
         let nested = url.appendingPathComponent(Vault.folderName)
         try fm.createDirectory(at: nested, withIntermediateDirectories: true)
@@ -178,11 +183,58 @@ final class Vault: ObservableObject {
         return true
     }
 
+    /// Наш ли это архив.
+    ///
+    /// Главный признак — метка. Запасной: все семь подпапок на месте разом.
+    /// Одно совпадение имени архивом не считается, случайных совпадений сразу
+    /// по семи именам не бывает, а метку кладём при первой же записи.
+    private func isOurs(_ url: URL) -> Bool {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: url.appendingPathComponent(Vault.markerPath).path) {
+            return true
+        }
+        return Folder.allCases.allSatisfy {
+            fm.fileExists(atPath: url.appendingPathComponent($0.rawValue).path)
+        }
+    }
+
     private func makeTree(in url: URL) throws {
+        let fm = FileManager.default
         for folder in Folder.allCases {
-            try FileManager.default.createDirectory(
-                at: url.appendingPathComponent(folder.rawValue),
-                withIntermediateDirectories: true)
+            try fm.createDirectory(at: url.appendingPathComponent(folder.rawValue),
+                                   withIntermediateDirectories: true)
+        }
+
+        let marker = url.appendingPathComponent(Vault.markerPath)
+        if !fm.fileExists(atPath: marker.path) {
+            let json = """
+            {
+              "приложение": "Chronotheca",
+              "версия формата": 1,
+              "заведено": "\(Vault.stamp(Date()))"
+            }
+            """
+            try Data(json.utf8).write(to: marker, options: .atomic)
+        }
+
+        // Записка тому, кто найдёт эту папку через много лет.
+        let note = url.appendingPathComponent("Служебное/Что это за папка.txt")
+        if !fm.fileExists(atPath: note.path) {
+            let text = """
+            Это архив дневника и планировщика.
+
+            Всё, что здесь лежит, — обычные файлы. Записи в папках «Дневник» и
+            «Планировщик» — простой текст: их можно открыть любым текстовым
+            редактором, на любом устройстве, без всякой программы. Фотографии,
+            видео, аудио и документы лежат как есть, в своих папках.
+
+            Приложение, которое их писало, называется Chronotheca. Оно ничего
+            не прячет и ничем не владеет: удалите его — всё это останется.
+
+            Папку можно переносить, копировать и переименовывать. Чтобы
+            приложение снова её нашло, укажите ей это место заново.
+            """
+            try Data(text.utf8).write(to: note, options: .atomic)
         }
     }
 
