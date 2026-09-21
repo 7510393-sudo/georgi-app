@@ -143,7 +143,7 @@ final class Vault: ObservableObject {
         if isOurs(url.appendingPathComponent(Vault.folderName)) { return Vault.folderName }
 
         let nested = url.appendingPathComponent(Vault.folderName)
-        try fm.createDirectory(at: nested, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
         return Vault.folderName
     }
 
