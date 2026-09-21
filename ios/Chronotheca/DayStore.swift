@@ -185,22 +185,26 @@ final class DayStore: ObservableObject {
 
         var plan = DayFile(body: Plan.body(from: planRows))
         plan.set("дата", Vault.stamp(date))
-        write(plan, to: .planner)
+        write(plan, to: .planner, keep: false)
 
         let order = tasks.map(\.text)
         var diary = DayFile(body: Diary(answers: answers, text: diaryText).body(order: order))
         diary.set("дата", Vault.stamp(date))
         if !diaryTitle.isEmpty { diary.set("заголовок", diaryTitle) }
         if let lastEdit { diary.set("правлено", DayStore.moment(lastEdit)) }
-        write(diary, to: .diary)
+        // Заголовок дня — это уже запись, даже если под ним пока нет ни строчки.
+        write(diary, to: .diary, keep: !diaryTitle.isEmpty)
     }
 
     /// Пустой день не оставляет следов: файл заводится, только когда в нём
     /// что-то есть. Иначе пролистывание недели вперёд засеяло бы папку
     /// десятком пустых файлов — а папка не наша, чтобы её засорять.
-    private func write(_ file: DayFile, to folder: Vault.Folder) {
+    ///
+    /// `keep` — для того, что живёт в шапке, а не в тексте: день, у которого
+    /// есть только заголовок, всё равно записан человеком и пропасть не должен.
+    private func write(_ file: DayFile, to folder: Vault.Folder, keep: Bool) {
         let empty = file.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if empty && vault.read(folder, for: date).isEmpty { return }
+        if empty && !keep && vault.read(folder, for: date).isEmpty { return }
         vault.write(file.text, to: folder, for: date)
     }
 

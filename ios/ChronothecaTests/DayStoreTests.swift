@@ -138,3 +138,18 @@ extension DayStoreTests {
         XCTAssertEqual(опись.newestFirst.count, 1)
     }
 }
+
+extension DayStoreTests {
+
+    func testДеньСОднимЗаголовкомНеПропадает() {
+        // Заголовок — это уже запись. Проверка «день пустой» однажды смотрела
+        // только на текст и молча выбрасывала такой день.
+        let день = store(0)
+        день.diaryTitle = "Туман"
+        день.save()
+
+        день.move(by: 1)
+        день.move(by: -1)
+        XCTAssertEqual(день.diaryTitle, "Туман")
+    }
+}
