@@ -381,6 +381,14 @@ struct SettingsSheet: View {
                         shell.showingSettings = false
                         shell.picking = true
                     }
+                    if let previous = vault.previousPath {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Button("Вернуться к прежней папке") { vault.goBack() }
+                            Text(previous)
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
                 } header: {
                     Text("Где лежат записи")
                 } footer: {

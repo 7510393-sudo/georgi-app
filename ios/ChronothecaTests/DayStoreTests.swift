@@ -153,3 +153,45 @@ extension DayStoreTests {
         XCTAssertEqual(день.diaryTitle, "Туман")
     }
 }
+
+extension DayStoreTests {
+
+    func testПапкаВнутриАрхиваНеПлодитВторойАрхив() {
+        // Человек, ищущий свою папку, заходит внутрь неё. Заводить там второй
+        // архив — значит разорвать записи надвое. Именно это однажды и вышло.
+        let внутри = vault.root!.appendingPathComponent(Vault.Folder.diary.rawValue)
+        let другой = Vault()
+        другой.adopt(внутри)
+
+        XCTAssertNil(другой.proposal, "предлагать заводить папку здесь нельзя")
+        XCTAssertEqual(другой.root?.standardizedFileURL, vault.root?.standardizedFileURL,
+                       "должен найтись тот же архив, а не новый")
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: внутри.appendingPathComponent(Vault.folderName).path),
+            "внутри «Дневника» не должно появиться новой папки")
+        другой.forget()
+    }
+
+    func testНоваяПапкаНеЗаводитсяБезСогласия() {
+        let пустое = FileManager.default.temporaryDirectory
+            .appendingPathComponent("пусто-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: пустое, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: пустое) }
+
+        let v = Vault()
+        v.adopt(пустое)
+
+        XCTAssertNotNil(v.proposal, "должно быть предложение, а не молчаливое создание")
+        XCTAssertNil(v.root, "до согласия ничего не выбрано")
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: пустое.appendingPathComponent(Vault.folderName).path),
+            "до согласия ничего не создано")
+
+        v.acceptProposal()
+        XCTAssertNotNil(v.root)
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: пустое.appendingPathComponent(Vault.folderName).path))
+        v.forget()
+    }
+}

@@ -12,6 +12,19 @@ struct RootView: View {
     @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
 
+    /// Человек должен увидеть полный путь до того, как что-то создано.
+    private static func proposalText(_ p: Vault.Proposal) -> String {
+        var out = "Записей здесь не нашлось. Приложение может завести новую папку:\n\n"
+        out += p.path
+        out += "\n\nЭто будет отдельный архив — прежние записи останутся там, где лежат."
+        if p.insideArchive {
+            out += "\n\nПохоже, вы зашли внутрь уже существующего архива. "
+            out += "Тогда выберите не эту папку, а саму «\(Vault.folderName)» — "
+            out += "или место, где она лежит."
+        }
+        return out
+    }
+
     private static let moved = """
         Вы её переименовали или передвинули. Приложение пошло за ней следом \
         и пишет теперь сюда:
@@ -27,6 +40,15 @@ struct RootView: View {
                 store.load()
                 archive.reload()
             }
+        }
+        .alert("Завести здесь новую папку?",
+               isPresented: Binding(get: { vault.proposal != nil },
+                                    set: { if !$0 { vault.declineProposal() } }),
+               presenting: vault.proposal) { p in
+            Button("Отмена", role: .cancel) { vault.declineProposal() }
+            Button("Завести") { vault.acceptProposal() }
+        } message: { p in
+            Text(Self.proposalText(p))
         }
         .alert("Папка переехала",
                isPresented: Binding(get: { vault.moved != nil },

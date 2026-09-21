@@ -44,6 +44,9 @@ final class Vault: ObservableObject {
     private static let bookmarkKey = "vault.root.bookmark"
     private static let subpathKey = "vault.root.subpath"
     private static let lastPathKey = "vault.root.lastPath"
+    private static let previousBookmarkKey = "vault.root.bookmark.previous"
+    private static let previousSubpathKey = "vault.root.subpath.previous"
+    private static let previousPathKey = "vault.root.lastPath.previous"
     private var accessing: URL?
 
     /// Путь, который можно показать человеку. Длинный и некрасивый, зато
@@ -134,15 +137,93 @@ final class Vault: ObservableObject {
 
     // MARK: - Папка
 
+    /// Предложение завести новую папку. Заполняется, когда в выбранном месте
+    /// архива не нашлось.
+    ///
+    /// Само приложение новую папку не заводит. Однажды оно заводило — и завело
+    /// второй архив внутри первого, потому что человек стоял внутри своего же
+    /// архива. Записи разъехались по двум папкам молча. Больше так нельзя:
+    /// решение завести папку принимает человек, увидев полный путь.
+    @Published var proposal: Proposal?
+
+    struct Proposal: Identifiable {
+        let id = UUID()
+        let granted: URL
+        let target: URL
+
+        /// Похоже, что выбрана папка внутри архива.
+        var insideArchive: Bool {
+            Folder.allCases.contains { $0.rawValue == granted.lastPathComponent }
+        }
+
+        var path: String { target.path.removingPercentEncoding ?? target.path }
+    }
+
     /// Пользователь выбрал папку в системном окне.
     func adopt(_ url: URL) {
         guard begin(url) else {
             problem = "Система не дала доступ к этой папке."
             return
         }
+        if let found = findVault(from: url) {
+            use(granted: url, target: found)
+            return
+        }
+        proposal = Proposal(granted: url, target: url.appendingPathComponent(Vault.folderName))
+    }
+
+    /// Человек согласился завести новую папку.
+    func acceptProposal() {
+        guard let p = proposal else { return }
+        proposal = nil
         do {
-            let subpath = try chooseSubpath(in: url)
-            let target = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
+            try FileManager.default.createDirectory(at: p.target,
+                                                    withIntermediateDirectories: true)
+            use(granted: p.granted, target: p.target)
+        } catch {
+            problem = error.localizedDescription
+        }
+    }
+
+    func declineProposal() { proposal = nil }
+
+    /// Где здесь наш архив.
+    ///
+    /// Смотрим в самом месте, на уровень ниже — и вверх по родителям. Вверх
+    /// важнее всего: человек, ищущий свою папку, легко заходит внутрь неё, и
+    /// завести там второй архив — значит разорвать записи надвое.
+    private func findVault(from url: URL) -> URL? {
+        if isOurs(url) { return url }
+
+        let nested = url.appendingPathComponent(Vault.folderName)
+        if isOurs(nested) { return nested }
+
+        var parent = url.deletingLastPathComponent()
+        for _ in 0..<8 {
+            guard parent.path.count > 1 else { break }
+            if isOurs(parent) { return parent }
+            parent = parent.deletingLastPathComponent()
+        }
+        return nil
+    }
+
+    private func use(granted url: URL, target: URL) {
+        do {
+            // Прежнее место запоминается целиком: ошибочный выбор должно быть
+            // чем отменить, не разыскивая папку заново.
+            if let old = UserDefaults.standard.data(forKey: Vault.bookmarkKey) {
+                let defaults = UserDefaults.standard
+                defaults.set(old, forKey: Vault.previousBookmarkKey)
+                defaults.set(defaults.string(forKey: Vault.subpathKey) ?? "",
+                             forKey: Vault.previousSubpathKey)
+                defaults.set(defaults.string(forKey: Vault.lastPathKey) ?? "",
+                             forKey: Vault.previousPathKey)
+            }
+
+            let subpath = target.path.hasPrefix(url.path)
+                ? String(target.path.dropFirst(url.path.count))
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                : ""
 
             UserDefaults.standard.set(try url.bookmarkData(), forKey: Vault.bookmarkKey)
             UserDefaults.standard.set(subpath, forKey: Vault.subpathKey)
@@ -157,20 +238,36 @@ final class Vault: ObservableObject {
         }
     }
 
-    /// Куда класть записи внутри выбранного места.
-    ///
-    /// Если человек указал папку, где наши записи уже лежат, — работаем прямо
-    /// в ней: он вернулся к своему архиву. Во всех остальных случаях заводим
-    /// внутри свою папку, чтобы не рассыпать семь подпапок по чужому месту.
-    /// Это важнее, чем кажется: без этого выбор «Документы» превращает
-    /// документы в свалку, и найти потом ничего нельзя.
-    private func chooseSubpath(in url: URL) throws -> String {
-        if isOurs(url) { return "" }
-        if isOurs(url.appendingPathComponent(Vault.folderName)) { return Vault.folderName }
+    /// Прежнее место, если оно было. Показывается в настройках.
+    var previousPath: String? {
+        let defaults = UserDefaults.standard
+        guard defaults.data(forKey: Vault.previousBookmarkKey) != nil,
+              let path = defaults.string(forKey: Vault.previousPathKey),
+              !path.isEmpty, path != root?.path
+        else { return nil }
+        return path.removingPercentEncoding ?? path
+    }
 
-        let nested = url.appendingPathComponent(Vault.folderName)
-        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
-        return Vault.folderName
+    /// Вернуться к прежнему месту. Ошибочный выбор — обычное дело, и он
+    /// не должен стоить человеку архива.
+    func goBack() {
+        guard let data = UserDefaults.standard.data(forKey: Vault.previousBookmarkKey) else {
+            return
+        }
+        var stale = false
+        do {
+            let url = try URL(resolvingBookmarkData: data, options: [],
+                              relativeTo: nil, bookmarkDataIsStale: &stale)
+            guard begin(url) else {
+                problem = "Прежняя папка больше недоступна."
+                return
+            }
+            let subpath = UserDefaults.standard.string(forKey: Vault.previousSubpathKey) ?? ""
+            let target = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
+            use(granted: url, target: target)
+        } catch {
+            problem = error.localizedDescription
+        }
     }
 
     func forget() {
