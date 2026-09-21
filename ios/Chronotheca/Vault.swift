@@ -296,6 +296,17 @@ final class Vault: ObservableObject {
         }
     }
 
+    /// Обратно из имени файла в дату. Имя файла — это и есть дата записи:
+    /// по нему архив читается даже без приложения.
+    static func date(from stamp: String) -> Date? {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone.current
+        guard let d = f.date(from: stamp) else { return nil }
+        return Calendar.current.startOfDay(for: d)
+    }
+
     static func stamp(_ date: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")

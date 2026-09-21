@@ -18,13 +18,18 @@ struct PlanRow: Identifiable, Equatable {
 
     var done = false
     var time: String?
+
+    /// Время напоминания. Живёт в конце строки словами — «(напомнить 08:30)», —
+    /// чтобы в текстовом редакторе было понятно, что это, без объяснений.
+    var bell: String?
+
     var text = ""
     var details: [String] = []
 
     var isTask: Bool { verbatim == nil }
 
-    static func task(time: String? = nil, _ text: String) -> PlanRow {
-        PlanRow(verbatim: nil, done: false, time: time, text: text, details: [])
+    static func task(time: String? = nil, bell: String? = nil, _ text: String) -> PlanRow {
+        PlanRow(verbatim: nil, done: false, time: time, bell: bell, text: text, details: [])
     }
 
     static func verbatim(_ line: String) -> PlanRow {
@@ -33,7 +38,7 @@ struct PlanRow: Identifiable, Equatable {
 
     static func == (a: PlanRow, b: PlanRow) -> Bool {
         a.verbatim == b.verbatim && a.done == b.done && a.time == b.time
-            && a.text == b.text && a.details == b.details
+            && a.bell == b.bell && a.text == b.text && a.details == b.details
     }
 }
 
@@ -98,7 +103,19 @@ enum Plan {
             }
         }
 
-        return PlanRow(verbatim: nil, done: done, time: time, text: rest, details: [])
+        var bell: String?
+        if let range = rest.range(of: #"\s*\(напомнить (\d{2}:\d{2})\)$"#,
+                                  options: .regularExpression) {
+            let inside = String(rest[range])
+            if let t = inside.range(of: #"\d{2}:\d{2}"#, options: .regularExpression),
+               isTime(String(inside[t])) {
+                bell = String(inside[t])
+                rest.removeSubrange(range)
+            }
+        }
+
+        return PlanRow(verbatim: nil, done: done, time: time, bell: bell,
+                       text: rest, details: [])
     }
 
     private static func isTime(_ s: String) -> Bool {
@@ -119,7 +136,9 @@ enum Plan {
             }
             out += row.done ? "- [x] " : "- [ ] "
             if let time = row.time { out += time + " " }
-            out += row.text + "\n"
+            out += row.text
+            if let bell = row.bell { out += " (напомнить \(bell))" }
+            out += "\n"
             for detail in row.details {
                 out += indent + detail + "\n"
             }

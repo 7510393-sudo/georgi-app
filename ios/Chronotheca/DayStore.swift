@@ -12,46 +12,56 @@ final class DayStore: ObservableObject {
 
     /// День ещё не наступил.
     var isFuture: Bool { date > DayStore.today() }
+    var isToday: Bool { date == DayStore.today() }
 
     /// План живёт вперёд: на сегодня и на любой будущий день дела заводятся
     /// свободно — ради этого планировщик и нужен. Прошедший день закрыт:
-    /// задним числом план не переписывают.
-    var canEditPlan: Bool { !isPast }
+    /// задним числом план не переписывают, кроме как в режиме изменений.
+    var canEditPlan: Bool { !isPast || editing }
 
     /// Дневник живёт назад: вчерашнее дописывают и через неделю (решение P63).
     /// А вот дня, который ещё не наступил, в дневнике не бывает.
     var canEditDiary: Bool { !isFuture }
 
-    /// Почему в этот день писать нельзя — теми же словами, что в прототипе.
+    /// Режим изменений: открывает прошедший день для правки, меняет порядок
+    /// дел и позволяет удалять. Включается вручную в меню страницы и гаснет
+    /// при уходе со дня — чтобы нельзя было забыть его включённым.
+    @Published var editing = false
+
+    /// Почему в этот день писать нельзя.
     var closedReason: String {
-        isPast ? "День закрыт. Прошедший день не пополняется."
+        isPast ? "День закрыт. Изменения — через режим изменений."
                : "Этот день ещё не наступил."
     }
 
     /// Заголовок дня: ближние дни зовутся по имени, дальние — днём недели.
     var title: String {
-        let cal = Calendar.current
-        let n = cal.dateComponents([.day], from: DayStore.today(), to: date).day ?? 0
+        let n = Calendar.current.dateComponents([.day], from: DayStore.today(), to: date).day ?? 0
         switch n {
         case -2: return "Позавчера"
         case -1: return "Вчера"
         case  0: return "Сегодня"
         case  1: return "Завтра"
         case  2: return "Послезавтра"
-        default:
-            let f = DateFormatter()
-            f.locale = Locale(identifier: "ru_RU")
-            f.dateFormat = abs(n) < 7 ? "EEEE" : "d MMMM"
-            return f.string(from: date).capitalized
+        default: return Ru.weekday(date).capitalized
         }
     }
 
     /// Граница суток: до этого часа день считается вчерашним (решение P17).
     static var boundaryHour = 4
 
+    /// Через столько без правки дневник ставит новую отметку времени.
+    static let stampGap: TimeInterval = 60 * 60
+
     @Published var date: Date
     @Published var planRows: [PlanRow] = []
-    @Published var diary: String = ""
+    @Published var diaryTitle: String = ""
+    @Published var diaryText: String = ""
+    @Published var answers: [String: String] = [:]
+
+    /// Когда дневник правили в последний раз. Лежит в шапке файла, чтобы
+    /// отметка времени вела себя одинаково и после перезапуска приложения.
+    private var lastEdit: Date?
 
     private let vault: Vault
 
@@ -69,51 +79,129 @@ final class DayStore: ObservableObject {
         return cal.startOfDay(for: shifted)
     }
 
-    func move(by days: Int) {
-        // Пустые дела убираются только при уходе со дня: иначе новое дело
-        // исчезает, едва человек коснулся другого места на экране.
-        planRows.removeAll { $0.isTask && $0.text.trimmingCharacters(in: .whitespaces).isEmpty
-                             && $0.details.isEmpty }
+    // MARK: - Дела
+
+    /// Дела дня — без строк, которые приложение не разбирало.
+    var tasks: [PlanRow] { planRows.filter { $0.isTask } }
+    var doneCount: Int { tasks.filter { $0.done }.count }
+
+    func index(of id: UUID) -> Int? { planRows.firstIndex { $0.id == id } }
+
+    func addTask() -> UUID? {
+        guard canEditPlan else { return nil }
+        let row = PlanRow.task("")
+        planRows.append(row)
+        return row.id
+    }
+
+    func delete(_ id: UUID) {
+        guard canEditPlan, let i = index(of: id) else { return }
+        planRows.remove(at: i)
         save()
-        date = Calendar.current.date(byAdding: .day, value: days, to: date) ?? date
+    }
+
+    /// Переставить дело выше или ниже соседнего дела.
+    func move(_ id: UUID, by step: Int) {
+        guard canEditPlan, let i = index(of: id) else { return }
+        var j = i + step
+        while j >= 0 && j < planRows.count && !planRows[j].isTask { j += step }
+        guard j >= 0, j < planRows.count else { return }
+        planRows.swapAt(i, j)
+        save()
+    }
+
+    // MARK: - Дни
+
+    func go(to newDate: Date) {
+        prune()
+        save()
+        editing = false
+        date = Calendar.current.startOfDay(for: newDate)
         load()
     }
 
-    func load() {
-        planRows = Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body)
-        diary = DayFile(text: vault.read(.diary, for: date)).body
+    func move(by days: Int) {
+        go(to: Calendar.current.date(byAdding: .day, value: days, to: date) ?? date)
     }
 
-    private var pendingSave: Task<Void, Never>?
+    /// Пустые дела убираются только при уходе со дня: иначе новое дело
+    /// исчезает, едва человек коснулся другого места на экране.
+    func prune() {
+        planRows.removeAll { $0.isTask && $0.text.trimmingCharacters(in: .whitespaces).isEmpty
+                             && $0.details.isEmpty }
+    }
+
+    // MARK: - Отметка времени в дневнике
+
+    /// Нужна ли новая отметка времени перед тем, как человек начнёт писать.
+    ///
+    /// Нужна, если запись пуста или к ней не возвращались больше часа. Смысл
+    /// отметок — показать, что день писался в несколько заходов, а не залпом.
+    func stampIfNeeded() {
+        guard canEditDiary else { return }
+        let body = diaryText.replacingOccurrences(of: "\\s+$", with: "",
+                                                  options: .regularExpression)
+        let stale = lastEdit.map { Date().timeIntervalSince($0) > DayStore.stampGap } ?? true
+        guard body.isEmpty || stale else { return }
+
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH:mm"
+        diaryText = (body.isEmpty ? "" : body + "\n\n") + f.string(from: Date()) + " "
+        lastEdit = Date()
+        save()
+    }
+
+    func touchDiary() { lastEdit = Date() }
+
+    // MARK: - Диск
+
+    func load() {
+        planRows = Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body)
+
+        let file = DayFile(text: vault.read(.diary, for: date))
+        let diary = Diary(body: file.body)
+        diaryTitle = file.value("заголовок") ?? ""
+        diaryText = diary.text
+        answers = diary.answers
+        lastEdit = file.value("правлено").flatMap(DayStore.moment(from:))
+    }
+
+    private var pendingSave: DispatchWorkItem?
 
     /// Запись не на каждую букву: иначе файл в iCloud переписывается
     /// десятки раз в минуту. Полсекунды тишины — и день на диске.
-    @MainActor func scheduleSave() {
+    func scheduleSave() {
         pendingSave?.cancel()
-        pendingSave = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            guard !Task.isCancelled else { return }
-            self?.save()
-        }
+        let item = DispatchWorkItem { [weak self] in self?.save() }
+        pendingSave = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
     }
 
     func save() {
         pendingSave?.cancel()
         pendingSave = nil
         guard vault.root != nil else { return }
-        write(Plan.body(from: planRows), to: .planner)
+
+        var plan = DayFile(body: Plan.body(from: planRows))
+        plan.set("дата", Vault.stamp(date))
+        write(plan, to: .planner)
+
+        let order = tasks.map(\.text)
+        var diary = DayFile(body: Diary(answers: answers, text: diaryText).body(order: order))
+        diary.set("дата", Vault.stamp(date))
+        if !diaryTitle.isEmpty { diary.set("заголовок", diaryTitle) }
+        if let lastEdit { diary.set("правлено", DayStore.moment(lastEdit)) }
         write(diary, to: .diary)
     }
 
     /// Пустой день не оставляет следов: файл заводится, только когда в нём
     /// что-то есть. Иначе пролистывание недели вперёд засеяло бы папку
     /// десятком пустых файлов — а папка не наша, чтобы её засорять.
-    private func write(_ body: String, to folder: Vault.Folder) {
-        let empty = body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    private func write(_ file: DayFile, to folder: Vault.Folder) {
+        let empty = file.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if empty && vault.read(folder, for: date).isEmpty { return }
-        var f = DayFile(body: body)
-        f.set("дата", Vault.stamp(date))
-        vault.write(f.text, to: folder, for: date)
+        vault.write(file.text, to: folder, for: date)
     }
 
     /// То, что действительно лежит на диске — а не то, что помнит приложение.
@@ -123,5 +211,23 @@ final class DayStore: ObservableObject {
         let d = vault.read(.diary, for: date)
         return "\(Vault.Folder.planner.rawValue)\n\n\(p.isEmpty ? "(файла нет)\n" : p)\n"
              + "\(Vault.Folder.diary.rawValue)\n\n\(d.isEmpty ? "(файла нет)\n" : d)"
+    }
+
+    // MARK: - Мгновения
+
+    private static let momentFormat = "yyyy-MM-dd'T'HH:mm"
+
+    static func moment(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = momentFormat
+        return f.string(from: date)
+    }
+
+    static func moment(from text: String) -> Date? {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = momentFormat
+        return f.date(from: text)
     }
 }

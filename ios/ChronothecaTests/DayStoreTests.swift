@@ -80,7 +80,7 @@ final class DayStoreTests: XCTestCase {
     func testНаписанноеПереживаетУходИВозврат() {
         let день = store(0)
         день.planRows = [.task(time: "09:00", "Отвезти документы")]
-        день.diary = "Был туман."
+        день.diaryText = "Был туман."
         день.save()
 
         день.move(by: 1)          // ушли на завтра
@@ -88,6 +88,53 @@ final class DayStoreTests: XCTestCase {
         XCTAssertEqual(день.planRows.count, 1)
         XCTAssertEqual(день.planRows.first?.text, "Отвезти документы")
         XCTAssertEqual(день.planRows.first?.time, "09:00")
-        XCTAssertEqual(день.diary, "Был туман.")
+        XCTAssertEqual(день.diaryText, "Был туман.")
+    }
+}
+
+extension DayStoreTests {
+
+    func testРежимИзмененийОткрываетПрошедшийДень() {
+        let вчера = store(-1)
+        XCTAssertFalse(вчера.canEditPlan)
+        вчера.editing = true
+        XCTAssertTrue(вчера.canEditPlan)
+        // Уход со дня гасит режим: его нельзя забыть включённым.
+        вчера.move(by: -1)
+        XCTAssertFalse(вчера.editing)
+    }
+
+    func testЗаголовокИОтветыЛожатсяВФайлДневника() {
+        let день = store(0)
+        день.planRows = [.task("Позвонить в поликлинику")]
+        день.diaryTitle = "Туман"
+        день.answers = ["Позвонить в поликлинику": "так и не собрался"]
+        день.diaryText = "08:15 Проснулся раньше будильника."
+        день.save()
+
+        let на_диске = день.onDisk()
+        XCTAssertTrue(на_диске.contains("заголовок: Туман"))
+        XCTAssertTrue(на_диске.contains("## Как прошло?"))
+        XCTAssertTrue(на_диске.contains("- Позвонить в поликлинику: так и не собрался"))
+
+        день.move(by: 1)
+        день.move(by: -1)
+        XCTAssertEqual(день.diaryTitle, "Туман")
+        XCTAssertEqual(день.answers["Позвонить в поликлинику"], "так и не собрался")
+        XCTAssertEqual(день.diaryText, "08:15 Проснулся раньше будильника.")
+    }
+
+    func testОписьВидитТоЧтоНаписано() {
+        let день = store(0)
+        день.planRows = [.task(time: "09:00", "Отвезти документы")]
+        день.diaryTitle = "Туман"
+        день.save()
+
+        let опись = Archive(vault: vault)
+        опись.reload()
+        let стамп = Vault.stamp(день.date)
+        XCTAssertEqual(опись.tasks(стамп).count, 1)
+        XCTAssertEqual(опись.day(стамп)?.title, "Туман")
+        XCTAssertEqual(опись.newestFirst.count, 1)
     }
 }
