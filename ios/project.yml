@@ -30,12 +30,29 @@ targets:
         CODE_SIGN_STYLE: Automatic
         SWIFT_EMIT_LOC_STRINGS: YES
 
+  ChronothecaTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ChronothecaTests
+    dependencies:
+      - target: Chronotheca
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kobiashvili.diary.tests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   Chronotheca:
     build:
       targets:
         Chronotheca: all
+        ChronothecaTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - ChronothecaTests
     archive:
       config: Release

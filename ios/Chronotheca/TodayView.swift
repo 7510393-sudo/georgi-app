@@ -21,6 +21,7 @@ struct TodayView: View {
     @State private var picking = false
     @State private var peeking = false
     @State private var showingFolder = false
+    @FocusState private var focused: UUID?
 
     var body: some View {
         NavigationStack {
@@ -101,15 +102,77 @@ struct TodayView: View {
             .padding(.horizontal)
             .padding(.bottom, 8)
 
-            TextEditor(text: tab == .plan ? $store.plan : $store.diary)
-                .font(.body)
-                .scrollContentBackground(.hidden)
-                .padding(.horizontal, 12)
+            if tab == .plan { planView } else { diaryView }
 
             footer
         }
-        .onChange(of: store.plan) { _, _ in store.save() }
+        .onChange(of: store.planRows) { _, _ in store.save() }
         .onChange(of: store.diary) { _, _ in store.save() }
+    }
+
+    // MARK: - План
+
+    private var planView: some View {
+        List {
+            ForEach($store.planRows) { $row in
+                if row.isTask {
+                    taskRow($row)
+                } else if !(row.verbatim ?? "").trimmingCharacters(in: .whitespaces).isEmpty {
+                    // Строка, которую приложение не разбирает: показываем, но
+                    // не трогаем. Человек должен видеть всё, что в его файле.
+                    Text(row.verbatim ?? "")
+                        .font(.callout)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .onDelete { store.planRows.remove(atOffsets: $0) }
+
+            Button {
+                let new = PlanRow.task("")
+                store.planRows.append(new)
+                focused = new.id
+            } label: {
+                Label("Дело", systemImage: "plus")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .listStyle(.plain)
+        // Прошедший день выцветает целиком — и сделанное, и несделанное.
+        .opacity(store.isPast ? 0.55 : 1)
+    }
+
+    private func taskRow(_ row: Binding<PlanRow>) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            if let time = row.wrappedValue.time {
+                Text(time)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                TextField("", text: row.text, axis: .vertical)
+                    .focused($focused, equals: row.wrappedValue.id)
+                ForEach(row.wrappedValue.details, id: \.self) { detail in
+                    Text(detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        // Сделанное затеняется, а не отмечается галочкой: долгое нажатие
+        // вместо щелчка, чтобы нельзя было задеть случайно.
+        .opacity(row.wrappedValue.done ? 0.4 : 1)
+        .contentShape(Rectangle())
+        .onLongPressGesture { row.wrappedValue.done.toggle() }
+    }
+
+    // MARK: - Дневник
+
+    private var diaryView: some View {
+        TextEditor(text: $store.diary)
+            .font(.body)
+            .scrollContentBackground(.hidden)
+            .padding(.horizontal, 12)
     }
 
     private var footer: some View {

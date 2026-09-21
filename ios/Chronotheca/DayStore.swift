@@ -6,11 +6,15 @@ import Foundation
 /// пишет на диск; приходя на день — читает с диска. Никакой своей копии данных.
 final class DayStore: ObservableObject {
 
+    /// День в прошлом: план такого дня выцветает целиком (решение P16),
+    /// а дневник остаётся контрастным в любом возрасте.
+    var isPast: Bool { date < DayStore.today() }
+
     /// Граница суток: до этого часа день считается вчерашним (решение P17).
     static var boundaryHour = 4
 
     @Published var date: Date
-    @Published var plan: String = ""
+    @Published var planRows: [PlanRow] = []
     @Published var diary: String = ""
 
     private let vault: Vault
@@ -30,20 +34,24 @@ final class DayStore: ObservableObject {
     }
 
     func move(by days: Int) {
+        // Пустые дела убираются только при уходе со дня: иначе новое дело
+        // исчезает, едва человек коснулся другого места на экране.
+        planRows.removeAll { $0.isTask && $0.text.trimmingCharacters(in: .whitespaces).isEmpty
+                             && $0.details.isEmpty }
         save()
         date = Calendar.current.date(byAdding: .day, value: days, to: date) ?? date
         load()
     }
 
     func load() {
-        plan = DayFile(text: vault.read(.planner, for: date)).body
+        planRows = Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body)
         diary = DayFile(text: vault.read(.diary, for: date)).body
     }
 
     func save() {
         guard vault.root != nil else { return }
 
-        var p = DayFile(body: plan)
+        var p = DayFile(body: Plan.body(from: planRows))
         p.set("дата", Vault.stamp(date))
         vault.write(p.text, to: .planner, for: date)
 
