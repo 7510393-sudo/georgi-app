@@ -165,11 +165,13 @@ extension DayStoreTests {
         // Человек, ищущий свою папку, заходит внутрь неё. Заводить там второй
         // архив — значит разорвать записи надвое. Именно это однажды и вышло.
         let внутри = vault.root!.appendingPathComponent(Vault.Folder.diary.rawValue)
+        let корень = vault.root!
         let другой = Vault()
+        другой.forget()
         другой.adopt(внутри)
 
         XCTAssertNil(другой.proposal, "предлагать заводить папку здесь нельзя")
-        XCTAssertEqual(другой.root?.standardizedFileURL, vault.root?.standardizedFileURL,
+        XCTAssertEqual(другой.root?.standardizedFileURL, корень.standardizedFileURL,
                        "должен найтись тот же архив, а не новый")
         XCTAssertFalse(
             FileManager.default.fileExists(
@@ -184,7 +186,10 @@ extension DayStoreTests {
         try? FileManager.default.createDirectory(at: пустое, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: пустое) }
 
+        // Начинаем с чистого листа: проверки делят одну память настроек,
+        // и закладка соседней проверки подхватилась бы при запуске.
         let v = Vault()
+        v.forget()
         v.adopt(пустое)
 
         XCTAssertNotNil(v.proposal, "должно быть предложение, а не молчаливое создание")
