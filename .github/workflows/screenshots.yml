@@ -97,15 +97,29 @@ jobs:
           # Один снимок на сборку — это разговор об интерфейсе по памяти,
           # а память врёт. Поэтому каждый экран открывается переменной
           # окружения и снимается отдельно.
+          # Пустой снимок — это либо упавшее приложение, либо недоснятый кадр.
+          # Различать их на глаз нельзя, поэтому: снимаем, и если кадр вышел
+          # подозрительно лёгким (то есть почти одноцветным), пробуем ещё раз
+          # с большей выдержкой. Если и тогда пусто — отчёт о падении покажет
+          # причину, а сборка пометится предупреждением.
           snap () {
-            local file="$1" screen="$2"
-            xcrun simctl terminate "$UDID" "$APP_ID" >/dev/null 2>&1 || true
-            SIMCTL_CHILD_CHRONOTHECA_PREVIEW=1 \
-            SIMCTL_CHILD_CHRONOTHECA_SCREEN="$screen" \
-              xcrun simctl launch "$UDID" "$APP_ID"
-            sleep 7
-            xcrun simctl io "$UDID" screenshot "../docs/screens/$file"
+            local file="$1" screen="$2" try size
+            for try in 1 2; do
+              xcrun simctl terminate "$UDID" "$APP_ID" >/dev/null 2>&1 || true
+              sleep 1
+              SIMCTL_CHILD_CHRONOTHECA_PREVIEW=1 \
+              SIMCTL_CHILD_CHRONOTHECA_SCREEN="$screen" \
+                xcrun simctl launch "$UDID" "$APP_ID" || true
+              sleep $((6 + try * 3))
+              xcrun simctl io "$UDID" screenshot "../docs/screens/$file"
+              size=$(stat -f%z "../docs/screens/$file")
+              if [ "$size" -gt 100000 ]; then return 0; fi
+              echo "::warning::экран «$screen»: кадр $size байт — похоже на пустой, попытка $try"
+            done
+            echo "::error::экран «$screen» не нарисовался"
+            BLANK="$BLANK $screen"
           }
+          BLANK=""
 
           snap 02-план.png            ""
           snap 03-дневник.png         diary
@@ -118,9 +132,29 @@ jobs:
           snap 10-будущий-дневник.png future
 
           xcrun simctl terminate "$UDID" "$APP_ID" || true
+
+          # Отчёты о падении — единственный способ узнать причину пустого кадра.
+          crashes=~/Library/Logs/DiagnosticReports
+          found=$(ls -t "$crashes"/Chronotheca*.ips 2>/dev/null | head -3 || true)
+          if [ -n "$found" ]; then
+            echo "::group::Отчёты о падении"
+            for f in $found; do
+              echo "--- $f"
+              head -c 4000 "$f"
+              echo
+            done
+            echo "::endgroup::"
+          else
+            echo "Отчётов о падении нет."
+          fi
+
           xcrun simctl shutdown "$UDID" || true
 
           ls -la ../docs/screens
+          if [ -n "$BLANK" ]; then
+            echo "::error::пустые экраны:$BLANK"
+            exit 1
+          fi
 
       - name: Положить снимки в репозиторий
         run: |
