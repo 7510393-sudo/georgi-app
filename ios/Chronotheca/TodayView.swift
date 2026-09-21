@@ -398,6 +398,16 @@ struct TodayView: View {
                     Text("Режим изменений для закрытого дня").foregroundStyle(.tertiary)
                     Text("Ночной вид и настройки").foregroundStyle(.tertiary)
                 }
+                Section("Сборка") {
+                    HStack {
+                        Text("Версия")
+                        Spacer()
+                        Text(Self.buildLabel)
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
             }
             .navigationTitle("Ещё")
             .navigationBarTitleDisplayMode(.inline)
@@ -508,6 +518,20 @@ struct TodayView: View {
             try? await Task.sleep(nanoseconds: 2_400_000_000)
             withAnimation { notice = nil }
         }
+    }
+
+    // MARK: - Сборка
+
+    /// Номер сборки на виду.
+    ///
+    /// Без него нельзя ответить на вопрос «а это новая версия или старая?» —
+    /// ни мне, ни человеку с телефоном в руках. Пока номера не видно, любой
+    /// разговор о том, что изменилось, ведётся вслепую.
+    private static var buildLabel: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
     }
 
     // MARK: - Время
