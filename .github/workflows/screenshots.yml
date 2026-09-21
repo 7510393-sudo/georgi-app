@@ -92,10 +92,30 @@ jobs:
           xcrun simctl io "$UDID" screenshot ../docs/screens/01-выбор-папки.png
           xcrun simctl terminate "$UDID" "$APP_ID" || true
 
-          # 2. День с содержимым: вкладка «План»
-          SIMCTL_CHILD_CHRONOTHECA_PREVIEW=1 xcrun simctl launch "$UDID" "$APP_ID"
-          sleep 8
-          xcrun simctl io "$UDID" screenshot ../docs/screens/02-план.png
+          # 2…N. По снимку на каждый основной экран.
+          #
+          # Один снимок на сборку — это разговор об интерфейсе по памяти,
+          # а память врёт. Поэтому каждый экран открывается переменной
+          # окружения и снимается отдельно.
+          snap () {
+            local file="$1" screen="$2"
+            xcrun simctl terminate "$UDID" "$APP_ID" >/dev/null 2>&1 || true
+            SIMCTL_CHILD_CHRONOTHECA_PREVIEW=1 \
+            SIMCTL_CHILD_CHRONOTHECA_SCREEN="$screen" \
+              xcrun simctl launch "$UDID" "$APP_ID"
+            sleep 7
+            xcrun simctl io "$UDID" screenshot "../docs/screens/$file"
+          }
+
+          snap 02-план.png            ""
+          snap 03-дневник.png         diary
+          snap 04-календарь.png       calendar
+          snap 05-поиск.png           search
+          snap 06-меню-страницы.png   menu
+          snap 07-подробности.png     details
+          snap 08-прошедший-день.png  past
+          snap 09-режим-изменений.png editing
+          snap 10-будущий-дневник.png future
 
           xcrun simctl terminate "$UDID" "$APP_ID" || true
           xcrun simctl shutdown "$UDID" || true

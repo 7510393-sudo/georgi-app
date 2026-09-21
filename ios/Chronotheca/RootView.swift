@@ -41,10 +41,10 @@ struct RootView: View {
                     subbar
                     tabs
                 }
-                Divider().opacity(0.4)
+                Rectangle().fill(Look.rule).frame(height: 1)
                 screen
                 if shell.screen == .today { attachbar }
-                Divider().opacity(0.4)
+                Rectangle().fill(Look.rule).frame(height: 1)
                 tabbar
             }
             .background(background.ignoresSafeArea())
@@ -55,12 +55,14 @@ struct RootView: View {
         .sheet(isPresented: $shell.showingFolder) { FolderSheet() }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
+        .onAppear { shell.openRequestedScreen(store) }
     }
 
     /// Оттенок дня недели — только на экране дня. В календаре и поиске он
     /// был бы враньём: там не один день, а много.
     private var background: Color {
-        shell.screen == .today ? Ru.tint(store.date) : Color(.systemGroupedBackground)
+        guard shell.screen == .today else { return Look.planBg }
+        return shell.tab == .diary ? Look.diaryBg : Ru.tint(store.date)
     }
 
     // MARK: - Шапка
@@ -69,54 +71,70 @@ struct RootView: View {
         HStack {
             Button { shell.showingFolder = true } label: {
                 Image(systemName: "folder")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Look.inkSoft)
+                    .frame(width: 44, height: 38)
             }
             .accessibilityLabel("Где лежат записи")
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Text(shell.screen == .today ? store.title : shell.screenName)
-                .font(.headline)
+                .font(Look.sans(15, weight: .semibold))
+                .foregroundStyle(Look.ink)
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Button { shell.showingMenu = true } label: {
                 Image(systemName: "ellipsis")
-                    .padding(6)
-                    .background(store.editing ? Color.accentColor.opacity(0.18) : .clear,
-                                in: Circle())
+                    .font(.system(size: 18))
+                    .foregroundStyle(store.editing ? Look.accent : Look.inkSoft)
+                    .frame(width: 44, height: 38)
             }
             .accessibilityLabel("Меню страницы")
         }
-        .font(.title3)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 6)
+        .padding(.top, 4)
+        .padding(.bottom, 2)
     }
 
     /// День недели своим цветом и полная дата под ним — чтобы не гадать,
     /// какое сегодня число, и видеть, куда тебя занесло листание.
     private var subbar: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 2) {
             Text(Ru.weekday(store.date))
-                .font(.footnote.weight(.medium))
+                .font(Look.sans(12, weight: .medium))
                 .foregroundStyle(Ru.dayColor(store.date))
             Text(Ru.longDate(store.date))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(Look.mono(11.5))
+                .foregroundStyle(Look.inkFaint)
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, 9)
     }
 
     private var tabs: some View {
-        Picker("", selection: $shell.tab) {
-            ForEach(Shell.Tab.allCases) { Text($0.rawValue).tag($0) }
+        HStack(spacing: 6) {
+            ForEach(Shell.Tab.allCases) { tab in
+                Button {
+                    store.prune()
+                    store.save()
+                    shell.tab = tab
+                } label: {
+                    VStack(spacing: 0) {
+                        Text(tab.rawValue)
+                            .font(Look.sans(13, weight: shell.tab == tab ? .semibold : .regular))
+                            .foregroundStyle(shell.tab == tab ? Look.ink : Look.inkFaint)
+                            .padding(.top, 9)
+                            .padding(.bottom, 10)
+                        Rectangle()
+                            .fill(shell.tab == tab ? Look.accent : .clear)
+                            .frame(height: 2)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
         }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 10)
-        .onChange(of: shell.tab) { _, _ in
-            store.prune()
-            store.save()
-        }
+        .padding(.horizontal, 12)
     }
 
     // MARK: - Экран
@@ -138,7 +156,9 @@ struct RootView: View {
             attach("doc", "файлы")
             attach("mappin.and.ellipse", "геоточка")
         }
-        .padding(.vertical, 7)
+        .padding(.top, 8)
+        .padding(.bottom, 7)
+        .background(Look.chrome)
     }
 
     private func attach(_ icon: String, _ name: String) -> some View {
@@ -146,11 +166,13 @@ struct RootView: View {
             shell.say("Вложения ещё не сделаны — следующий срез работы.")
         } label: {
             VStack(spacing: 3) {
-                Image(systemName: icon).font(.footnote)
-                Text(name).font(.caption2)
+                Image(systemName: icon).font(.system(size: 17))
+                Text(name.uppercased())
+                    .font(Look.sans(9))
+                    .tracking(0.45)
             }
             .frame(maxWidth: .infinity)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Look.inkFaint)
         }
     }
 
@@ -162,8 +184,9 @@ struct RootView: View {
             section("sun.max", "Сегодня", .today)
             section("magnifyingglass", "Поиск", .search)
         }
-        .padding(.top, 7)
-        .padding(.bottom, 2)
+        .padding(.top, 11)
+        .padding(.bottom, 4)
+        .background(Look.chrome)
     }
 
     private func section(_ icon: String, _ name: String, _ target: Shell.Screen) -> some View {
@@ -180,12 +203,13 @@ struct RootView: View {
             if target != .today { archive.reload() }
             withAnimation(.easeOut(duration: 0.18)) { shell.screen = target }
         } label: {
-            VStack(spacing: 3) {
-                Image(systemName: icon).font(.callout)
-                Text(name).font(.caption2)
+            VStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 20))
+                Text(name)
+                    .font(Look.sans(10, weight: on ? .medium : .regular))
             }
             .frame(maxWidth: .infinity)
-            .foregroundStyle(on ? Color.accentColor : .secondary)
+            .foregroundStyle(on ? Look.accent : Look.inkSoft)
         }
     }
 

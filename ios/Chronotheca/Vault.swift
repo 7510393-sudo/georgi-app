@@ -95,6 +95,11 @@ final class Vault: ObservableObject {
         write(plan.text, to: .planner, for: today)
 
         var diary = DayFile(body: """
+        ## Как прошло?
+
+        - Отвезти документы нотариусу: всё получилось, доверенность приняли
+        - Позвонить в поликлинику: так и не собрался
+
         08:15 Проснулся раньше будильника, впервые за неделю. Туман над полем\
          такой плотный, что не видно второго ряда деревьев.
 
@@ -104,6 +109,27 @@ final class Vault: ObservableObject {
         diary.set("дата", Vault.stamp(today))
         diary.set("заголовок", "Туман")
         write(diary.text, to: .diary, for: today)
+
+        // Вчерашний день нужен для снимка прошедшего: без него не видно,
+        // как выцветает закрытый план и как остаётся контрастным дневник.
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today) ?? today
+        var past = DayFile(body: """
+        - [x] 08:30 Забрать справку в банке
+        - [x] Отменить подписку
+        - [ ] 19:00 Зайти к Анне (напомнить 18:30)
+              Второй подъезд, код 42. Забрать книги.
+        """)
+        past.set("дата", Vault.stamp(yesterday))
+        write(past.text, to: .planner, for: yesterday)
+
+        var pastDiary = DayFile(body: """
+        09:10 Справку дали без очереди — редкий день.
+
+        22:05 У Анны просидели до одиннадцати. Книги так и не забрал.
+        """)
+        pastDiary.set("дата", Vault.stamp(yesterday))
+        pastDiary.set("заголовок", "Справка и книги")
+        write(pastDiary.text, to: .diary, for: yesterday)
     }
 
     // MARK: - Папка

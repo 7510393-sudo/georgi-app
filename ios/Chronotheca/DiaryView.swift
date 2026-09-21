@@ -1,6 +1,10 @@
 import SwiftUI
 
 /// Вкладка «Дневник»: как прошло, заголовок дня и свободный текст.
+///
+/// Набрана засечным шрифтом на тёплой бумаге — в отличие от плана. Это разные
+/// занятия: план разглядывают, дневник читают. Рука должна чувствовать разницу
+/// раньше, чем глаз прочтёт заголовок вкладки.
 struct DiaryView: View {
 
     @EnvironmentObject private var store: DayStore
@@ -9,8 +13,16 @@ struct DiaryView: View {
     private enum Field: Hashable { case title, text, answer(String) }
     @FocusState private var focused: Field?
 
+    /// Размеры из прототипа.
+    private let size: CGFloat = 15.5
+    private let leading: CGFloat = 15.5 * 0.7
+
     var body: some View {
-        if store.canEditDiary { page } else { closed }
+        Group {
+            if store.canEditDiary { page } else { closed }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Look.diaryBg)
     }
 
     private var closed: some View {
@@ -18,64 +30,77 @@ struct DiaryView: View {
             Spacer()
             Image(systemName: "clock")
                 .font(.system(size: 30, weight: .light))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Look.inkFaint)
             Text(store.closedReason)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .font(Look.serif(size))
+                .foregroundStyle(Look.inkSoft)
             Text("Дневник пишут о том, что было, а не о том, что будет.")
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
+                .font(Look.serif(13.5))
+                .foregroundStyle(Look.inkFaint)
             Spacer()
         }
+        .multilineTextAlignment(.center)
         .padding(.horizontal, 40)
-        .frame(maxWidth: .infinity)
     }
 
     private var page: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
                 if !store.tasks.isEmpty { askBlock }
-
-                TextField("Заголовок дня", text: $store.diaryTitle)
-                    .font(.title3.weight(.medium))
-                    .focused($focused, equals: .title)
-                    .submitLabel(.next)
-                    .onSubmit { focused = .text }
-                    .padding(.horizontal, 18)
-
-                diaryEditor
+                titleField
+                textField
             }
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 20)
         }
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
+        .onChange(of: store.date) { _, _ in focused = nil }
     }
 
-    /// «Как прошло?» — три первых дела и строка ответа под каждым.
+    /// «Как прошло?» — три первых дела и строка ответа за каждым.
     ///
     /// Три, а не все (решение P30): список дел не должен превращаться в анкету.
     private var askBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("Как прошло?")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(Look.serif(size, weight: .semibold))
+                .foregroundStyle(Look.ink)
+                .padding(.bottom, 2)
 
             ForEach(store.tasks.filter { !$0.text.isEmpty }.prefix(3), id: \.id) { task in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(task.text)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(task.text + ":")
+                        .font(Look.serif(size))
+                        .foregroundStyle(Look.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
                     TextField("…", text: Binding(
                         get: { store.answers[task.text] ?? "" },
                         set: { store.answers[task.text] = $0 }), axis: .vertical)
-                        .font(.callout)
+                        .font(Look.serif(size))
+                        .foregroundStyle(Look.ink)
                         .focused($focused, equals: .answer(task.text))
                 }
+                .lineSpacing(leading - size * 0.6)
+                .padding(.vertical, 1)
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.bottom, 2)
+        .padding(.bottom, 14)
+    }
+
+    private var titleField: some View {
+        VStack(spacing: 0) {
+            TextField("Заголовок дня", text: $store.diaryTitle)
+                .font(Look.serif(19, weight: .semibold))
+                .foregroundStyle(Look.ink)
+                .focused($focused, equals: .title)
+                .submitLabel(.next)
+                .onSubmit { focused = .text }
+                .padding(.bottom, 7)
+            Rectangle().fill(Look.rule).frame(height: 1)
+        }
+        .padding(.top, 4)
     }
 
     /// Текст записи.
@@ -83,21 +108,26 @@ struct DiaryView: View {
     /// Возвращаясь к дневнику больше чем через час, приложение само ставит
     /// новую отметку времени в начале строки. Так по записи видно, что день
     /// писался в несколько заходов, а не залпом вечером.
-    private var diaryEditor: some View {
+    private var textField: some View {
         ZStack(alignment: .topLeading) {
             if store.diaryText.isEmpty {
                 Text(store.tasks.isEmpty ? "Что было сегодня…" : "И что ещё было в этот день…")
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 23)
+                    .font(Look.serif(size))
+                    .foregroundStyle(Look.inkFaint)
                     .padding(.top, 8)
+                    .padding(.leading, 5)
                     .allowsHitTesting(false)
             }
             TextEditor(text: $store.diaryText)
+                .font(Look.serif(size))
+                .foregroundStyle(Look.ink)
+                .lineSpacing(leading - size * 0.6)
                 .focused($focused, equals: .text)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 260)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, -5)
         }
+        .padding(.top, 16)
         .onChange(of: focused) { _, now in
             if now == .text { store.stampIfNeeded() }
         }

@@ -52,6 +52,27 @@ final class Shell: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.3, execute: item)
     }
 
+    /// Открыть экран, названный в переменной окружения, — для снимков.
+    ///
+    /// Нужно, чтобы у каждой сборки был снимок каждого экрана, а не одного.
+    /// Иначе про интерфейс приходится рассуждать по памяти, а память врёт.
+    func openRequestedScreen(_ store: DayStore) {
+        guard Vault.isPreview,
+              let name = ProcessInfo.processInfo.environment["CHRONOTHECA_SCREEN"]
+        else { return }
+        switch name {
+        case "diary":     tab = .diary
+        case "calendar":  screen = .calendar
+        case "search":    screen = .search
+        case "menu":      showingMenu = true
+        case "details":   drawer = store.tasks.first?.id
+        case "past":      store.move(by: -1)
+        case "editing":   store.editing = true
+        case "future":    store.move(by: 1); tab = .diary
+        default: break
+        }
+    }
+
     var screenName: String {
         switch screen {
         case .today: return ""

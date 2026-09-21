@@ -90,3 +90,36 @@ private extension UIColor {
                   alpha: 1)
     }
 }
+
+/// Внешний вид: цвета и шрифты прототипа, числами из его же таблицы стилей.
+///
+/// Вынесено сюда, чтобы «как в прототипе» проверялось сравнением чисел,
+/// а не на глаз. План набирается обычным шрифтом с моноширинными цифрами,
+/// дневник — засечным на тёплой бумаге: это разные занятия, и рука должна
+/// чувствовать разницу, не читая заголовка вкладки.
+enum Look {
+
+    static let ink       = Color(light: 0x1C2128, dark: 0xE8EBEE)
+    static let inkSoft   = Color(light: 0x56606D, dark: 0xA3ACB7)
+    static let inkFaint  = Color(light: 0xA2AAB4, dark: 0x69717C)
+    static let rule      = Color(light: 0xE4E5E1, dark: 0x2A3037)
+    static let ruleSoft  = Color(light: 0xEFEFEC, dark: 0x222830)
+    static let accent    = Color(light: 0x2F4A6B, dark: 0x8FB3E8)
+    static let chrome    = Color(light: 0xF4F4F1, dark: 0x191F26)
+    static let planBg    = Color(light: 0xFDFDFB, dark: 0x14191F)
+    static let diaryBg   = Color(light: 0xFAF5EC, dark: 0x1B1812)
+
+    /// Засечный шрифт дневника. Literata в iOS нет, Georgia есть везде.
+    static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .custom("Georgia", size: size).weight(weight)
+    }
+
+    /// Моноширинный — для цифр: часы и номера должны стоять столбиком.
+    static func mono(_ size: CGFloat) -> Font {
+        .system(size: size, design: .monospaced)
+    }
+
+    static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight)
+    }
+}
