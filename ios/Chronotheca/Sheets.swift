@@ -18,61 +18,71 @@ struct MenuSticker: View {
             Color.black.opacity(0.001)
                 .contentShape(Rectangle())
                 .onTapGesture { close() }
-
-            VStack(spacing: 0) {
-                HStack(alignment: .top, spacing: 8) {
-                    Text("МЕНЮ СТРАНИЦЫ")
-                        .font(Look.sans(11.5))
-                        .tracking(1.15)
-                        .foregroundStyle(Look.inkFaint)
-                        .padding(.top, 22)
-                        .padding(.leading, 14)
-                    Spacer(minLength: 0)
-                    Button { close() } label: {
-                        Text("✕")
-                            .font(.system(size: 19))
-                            .foregroundStyle(Look.inkSoft)
-                            .frame(width: 44, height: 38)
-                    }
-                    .padding(.top, 12)
-                    .accessibilityLabel("Закрыть")
-                }
-                .padding(.bottom, 7)
-                .overlay(alignment: .bottom) {
-                    Rectangle().fill(Look.stickerEdge).frame(height: 1)
-                }
-
-                item("Режим изменений",
-                     note: store.editing ? "включён" : "выключен",
-                     active: store.editing) {
-                    store.editing.toggle()
-                    close()
-                }
-                item("Показать файл этого дня", note: "→") {
-                    close()
-                    shell.showingFile = true
-                }
-                item("Перенести дело на другой день", note: "→") {
-                    close()
-                    shell.say("Перенос дела ещё не сделан.")
-                }
-                item("Поделиться днём", note: "→") {
-                    close()
-                    shell.say("«Поделиться днём» ещё не сделано.")
-                }
-                item("Удалить день", note: "→") {
-                    close()
-                    shell.say("Удаление дня ещё не сделано.")
-                }
-            }
-            .frame(maxWidth: 262)
-            .background(Look.sticker)
-            .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12))
-            .overlay(StickerBorder(radius: 12).stroke(Look.stickerEdge, lineWidth: 1))
-            .shadow(color: .black.opacity(0.32), radius: 14, y: 6)
-            .padding(.leading, 60)
+            sheet
         }
         .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private var sheet: some View {
+        VStack(spacing: 0) {
+            head
+            items
+        }
+        .frame(maxWidth: 262)
+        .background(Look.sticker)
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12))
+        .overlay(StickerBorder(radius: 12).stroke(Look.stickerEdge, lineWidth: 1))
+        .shadow(color: .black.opacity(0.32), radius: 14, y: 6)
+        .padding(.leading, 60)
+    }
+
+    private var head: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("МЕНЮ СТРАНИЦЫ")
+                .font(Look.sans(11.5))
+                .tracking(1.15)
+                .foregroundStyle(Look.inkFaint)
+                .padding(.top, 22)
+                .padding(.leading, 14)
+            Spacer(minLength: 0)
+            Button { close() } label: {
+                Text("✕")
+                    .font(.system(size: 19))
+                    .foregroundStyle(Look.inkSoft)
+                    .frame(width: 44, height: 38)
+            }
+            .padding(.top, 12)
+            .accessibilityLabel("Закрыть")
+        }
+        .padding(.bottom, 7)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Look.stickerEdge).frame(height: 1)
+        }
+    }
+
+    @ViewBuilder private var items: some View {
+        item("Режим изменений",
+             note: store.editing ? "включён" : "выключен",
+             active: store.editing) {
+            store.editing.toggle()
+            close()
+        }
+        item("Показать файл этого дня", note: "→") {
+            close()
+            shell.showingFile = true
+        }
+        item("Перенести дело на другой день", note: "→") {
+            close()
+            shell.say("Перенос дела ещё не сделан.")
+        }
+        item("Поделиться днём", note: "→") {
+            close()
+            shell.say("«Поделиться днём» ещё не сделано.")
+        }
+        item("Удалить день", note: "→") {
+            close()
+            shell.say("Удаление дня ещё не сделано.")
+        }
     }
 
     private func item(_ title: String, note: String,
@@ -229,87 +239,104 @@ struct DetailsDrawer: View {
             Color.black.opacity(0.14)
                 .contentShape(Rectangle())
                 .onTapGesture { close() }
-
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 8) {
-                    Text("ПОДРОБНОСТИ")
-                        .font(Look.sans(12, weight: .medium))
-                        .tracking(1.2)
-                        .foregroundStyle(Look.inkFaint)
-                        .padding(.top, 4)
-                    Spacer()
-                    Button { close() } label: {
-                        Text("✕")
-                            .font(.system(size: 17))
-                            .foregroundStyle(Look.inkSoft)
-                            .frame(width: 28, height: 28)
-                            .overlay(RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(Look.rule))
-                    }
-                    .accessibilityLabel("Закрыть")
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 13)
-                .padding(.bottom, 4)
-
-                if let i = index {
-                    Text(store.planRows[i].text.isEmpty
-                         ? "Без названия" : store.planRows[i].text)
-                        .font(Look.sans(14.5))
-                        .foregroundStyle(Look.ink)
-                        .lineSpacing(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 10)
-
-                    ZStack(alignment: .topLeading) {
-                        if store.planRows[i].details.isEmpty {
-                            Text("Адрес, дорога, стоимость, с кем…")
-                                .font(Look.sans(14.5))
-                                .foregroundStyle(Look.inkFaint)
-                                .padding(.horizontal, 11)
-                                .padding(.top, 19)
-                                .allowsHitTesting(false)
-                        }
-                        TextEditor(text: Binding(
-                            get: { store.planRows[i].details.joined(separator: "\n") },
-                            set: { text in
-                                store.planRows[i].details =
-                                    text.isEmpty ? [] : text.components(separatedBy: "\n")
-                            }))
-                            .font(Look.sans(14.5))
-                            .foregroundStyle(Look.ink)
-                            .focused($typing)
-                            .scrollContentBackground(.hidden)
-                            .scrollDismissesKeyboard(.interactively)
-                            .padding(6)
-                            .disabled(!store.canEditPlan)
-                    }
-                    .background(Look.planBg, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Look.rule))
-                    .frame(maxHeight: .infinity)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 14)
-
-                    if !store.canEditPlan {
-                        Text(store.closedReason)
-                            .font(Look.sans(11.5))
-                            .foregroundStyle(Look.inkFaint)
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 10)
-                    }
-                }
-            }
-            .frame(maxWidth: 324)
-            .background(Look.chrome)
-            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12,
-                                              bottomLeadingRadius: 12))
-            .overlay(SideTabBorder(radius: 12).stroke(Look.rule, lineWidth: 1))
-            .shadow(color: .black.opacity(0.28), radius: 17, x: -8)
-            .padding(.leading, 40)
-            .padding(.vertical, 15)
+            panel
         }
         .transition(.move(edge: .trailing))
+    }
+
+    private var panel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            head
+            if let i = index { body(at: i) }
+        }
+        .frame(maxWidth: 324)
+        .background(Look.chrome)
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomLeadingRadius: 12))
+        .overlay(SideTabBorder(radius: 12).stroke(Look.rule, lineWidth: 1))
+        .shadow(color: .black.opacity(0.28), radius: 17, x: -8)
+        .padding(.leading, 40)
+        .padding(.vertical, 15)
+    }
+
+    private var head: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("ПОДРОБНОСТИ")
+                .font(Look.sans(12, weight: .medium))
+                .tracking(1.2)
+                .foregroundStyle(Look.inkFaint)
+                .padding(.top, 4)
+            Spacer(minLength: 0)
+            closeButton
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 13)
+        .padding(.bottom, 4)
+    }
+
+    private var closeButton: some View {
+        Button { close() } label: {
+            Text("✕")
+                .font(.system(size: 17))
+                .foregroundStyle(Look.inkSoft)
+                .frame(width: 28, height: 28)
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
+        }
+        .accessibilityLabel("Закрыть")
+    }
+
+    @ViewBuilder private func body(at i: Int) -> some View {
+        Text(store.planRows[i].text.isEmpty ? "Без названия" : store.planRows[i].text)
+            .font(Look.sans(14.5))
+            .foregroundStyle(Look.ink)
+            .lineSpacing(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
+
+        editor(at: i)
+            .frame(maxHeight: .infinity)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 14)
+
+        if !store.canEditPlan {
+            Text(store.closedReason)
+                .font(Look.sans(11.5))
+                .foregroundStyle(Look.inkFaint)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 10)
+        }
+    }
+
+    private func editor(at i: Int) -> some View {
+        ZStack(alignment: .topLeading) {
+            if store.planRows[i].details.isEmpty {
+                Text("Адрес, дорога, стоимость, с кем…")
+                    .font(Look.sans(14.5))
+                    .foregroundStyle(Look.inkFaint)
+                    .padding(.horizontal, 11)
+                    .padding(.top, 19)
+                    .allowsHitTesting(false)
+            }
+            TextEditor(text: details(at: i))
+                .font(Look.sans(14.5))
+                .foregroundStyle(Look.ink)
+                .focused($typing)
+                .scrollContentBackground(.hidden)
+                .scrollDismissesKeyboard(.interactively)
+                .padding(6)
+                .disabled(!store.canEditPlan)
+        }
+        .background(Look.planBg, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Look.rule))
+    }
+
+    private func details(at i: Int) -> Binding<String> {
+        Binding(
+            get: { store.planRows[i].details.joined(separator: "\n") },
+            set: { text in
+                store.planRows[i].details =
+                    text.isEmpty ? [] : text.components(separatedBy: "\n")
+            })
     }
 
     private var index: Int? { shell.drawer.flatMap(store.index(of:)) }
@@ -320,8 +347,6 @@ struct DetailsDrawer: View {
         withAnimation(.easeOut(duration: 0.26)) { shell.drawer = nil }
     }
 }
-
-// MARK: - Папка
 
 struct SettingsSheet: View {
 
