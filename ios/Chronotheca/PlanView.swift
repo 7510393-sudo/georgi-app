@@ -156,8 +156,9 @@ struct PlanView: View {
                             .opacity(task.time == nil ? 0.6 : 1)
                             .overlay(alignment: .bottom) {
                                 if store.canEditPlan {
-                                    Rectangle().fill(Look.inkFaint)
-                                        .frame(height: 1).opacity(0.5)
+                                    Line().stroke(Look.inkFaint,
+                                                  style: StrokeStyle(lineWidth: 1, dash: [1.5, 2]))
+                                        .frame(height: 1)
                                         .offset(y: 3)
                                 }
                             }
@@ -260,8 +261,7 @@ struct PlanView: View {
                 .background(filled ? Look.rule : Look.chrome)
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 6,
                                                   bottomLeadingRadius: 6))
-                .overlay(TabBorder(radius: 6)
-                    .rotation(.degrees(90), anchor: .center)
+                .overlay(SideTabBorder(radius: 6)
                     .stroke(filled ? Look.inkFaint : Look.rule, lineWidth: 1))
                 .padding(.vertical, 7)
         }
@@ -272,5 +272,15 @@ struct PlanView: View {
 
     private func number(of id: UUID) -> Int {
         (store.tasks.firstIndex { $0.id == id } ?? 0) + 1
+    }
+}
+
+/// Черта под временем: касанием по ней открывается ролик.
+struct Line: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.midY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
+        return p
     }
 }

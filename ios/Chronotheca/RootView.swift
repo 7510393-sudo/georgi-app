@@ -40,6 +40,8 @@ struct RootView: View {
                 if shell.screen == .today {
                     subbar
                     tabs
+                } else {
+                    Rectangle().fill(Look.rule).frame(height: 1)
                 }
                 screen
                 if shell.screen == .today { attachbar }
@@ -94,9 +96,10 @@ struct RootView: View {
             }
             .accessibilityLabel("Меню страницы")
         }
-        .padding(.horizontal, 6)
-        .padding(.top, 4)
+        .padding(.horizontal, 8)
+        .padding(.top, 12)
         .padding(.bottom, 2)
+        .background(Look.chrome)
     }
 
     /// День недели своим цветом и полная дата под ним — чтобы не гадать,
@@ -277,6 +280,25 @@ struct DayScreen: View {
 
             if shell.drawer != nil { DetailsDrawer() }
         }
+    }
+}
+
+/// Обводка закладки «Детали»: скруглена слева, открыта справа —
+/// полоска выглядывает из-за правого края строки.
+struct SideTabBorder: Shape {
+    let radius: CGFloat
+
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.minX + radius, y: r.minY))
+        p.addArc(center: CGPoint(x: r.minX + radius, y: r.minY + radius), radius: radius,
+                 startAngle: .degrees(270), endAngle: .degrees(180), clockwise: true)
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - radius))
+        p.addArc(center: CGPoint(x: r.minX + radius, y: r.maxY - radius), radius: radius,
+                 startAngle: .degrees(180), endAngle: .degrees(90), clockwise: true)
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        return p
     }
 }
 
