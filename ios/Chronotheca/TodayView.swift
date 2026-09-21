@@ -2,10 +2,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Экран «Сегодня»: две вкладки на одном дне.
-///
-/// Каркас. Здесь нет ни шторки, ни ленты, ни календаря — только то, что нужно,
-/// чтобы проверить главное обещание: текст попадает в файл, файл лежит в папке
-/// пользователя, и приложение читает его обратно.
 struct TodayView: View {
 
     enum Tab: String, CaseIterable, Identifiable {
@@ -21,6 +17,15 @@ struct TodayView: View {
     @State private var picking = false
     @State private var peeking = false
     @State private var showingFolder = false
+    @State private var showingMenu = false
+
+    /// Дело, чья шторка «Детали» открыта. Пусто — шторка закрыта.
+    @State private var openDetails: UUID?
+    /// Дело, которому назначают время.
+    @State private var settingTime: UUID?
+    @State private var pickedTime = Date()
+
+    @State private var notice: String?
     @FocusState private var focused: UUID?
 
     var body: some View {
@@ -28,10 +33,16 @@ struct TodayView: View {
             Group {
                 if vault.root == nil { welcome } else { day }
             }
-            .navigationTitle(vault.root == nil ? "" : title)
+            .navigationTitle(vault.root == nil ? "" : store.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if vault.root != nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { showingMenu = true } label: {
+                            Image(systemName: "ellipsis")
+                        }
+                        .accessibilityLabel("Ещё")
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showingFolder = true } label: {
                             Image(systemName: "folder")
@@ -49,6 +60,11 @@ struct TodayView: View {
         }
         .sheet(isPresented: $peeking) { fileSheet }
         .sheet(isPresented: $showingFolder) { folderSheet }
+        .sheet(isPresented: $showingMenu) { menuSheet }
+        .sheet(item: Binding(get: { settingTime.map { Ident(id: $0) } },
+                             set: { settingTime = $0?.id })) { item in
+            timeSheet(for: item.id)
+        }
         .alert("Папка переехала",
                isPresented: Binding(get: { vault.moved != nil },
                                     set: { if !$0 { vault.moved = nil } })) {
@@ -57,7 +73,10 @@ struct TodayView: View {
             Text("Вы её переименовали или передвинули. Приложение пошло за ней "
                  + "следом и пишет теперь сюда:\n\n" + (vault.moved ?? ""))
         }
+        .overlay(alignment: .bottom) { toast }
     }
+
+    private struct Ident: Identifiable { let id: UUID }
 
     // MARK: - Первый запуск
 
@@ -94,90 +113,214 @@ struct TodayView: View {
     // MARK: - День
 
     private var day: some View {
-        VStack(spacing: 0) {
-            Picker("", selection: $tab) {
-                ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
+        ZStack(alignment: .trailing) {
+            VStack(spacing: 0) {
+                Picker("", selection: $tab) {
+                    ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+
+                if tab == .plan { planView } else { diaryView }
+
+                footer
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
+            .contentShape(Rectangle())
+            // Свайп листает дни, как в прототипе: горизонтальное движение
+            // должно быть заметно длиннее вертикального, иначе это прокрутка.
+            // Жест одновременный, а не обычный: иначе прокрутка списка и
+            // текстовое поле забирают касание себе и лист не листается.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 24)
+                    .onEnded { g in
+                        guard openDetails == nil else { return }
+                        let dx = g.translation.width, dy = g.translation.height
+                        guard abs(dx) > 64, abs(dx) > abs(dy) * 1.6 else { return }
+                        focused = nil
+                        withAnimation(.easeOut(duration: 0.22)) {
+                            store.move(by: dx < 0 ? 1 : -1)
+                        }
+                    }
+            )
 
-            if tab == .plan { planView } else { diaryView }
-
-            footer
+            if openDetails != nil { detailsDrawer }
         }
-        .onChange(of: store.planRows) { _, _ in store.save() }
-        .onChange(of: store.diary) { _, _ in store.save() }
+        .onChange(of: store.planRows) { _, _ in store.scheduleSave() }
+        .onChange(of: store.diary) { _, _ in store.scheduleSave() }
+        .onChange(of: tab) { _, _ in store.save() }
     }
 
     // MARK: - План
 
     private var planView: some View {
-        List {
-            ForEach($store.planRows) { $row in
-                if row.isTask {
-                    taskRow($row)
-                } else if !(row.verbatim ?? "").trimmingCharacters(in: .whitespaces).isEmpty {
-                    // Строка, которую приложение не разбирает: показываем, но
-                    // не трогаем. Человек должен видеть всё, что в его файле.
-                    Text(row.verbatim ?? "")
-                        .font(.callout)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach($store.planRows) { $row in
+                    if row.isTask {
+                        taskRow($row)
+                    } else if !(row.verbatim ?? "").trimmingCharacters(in: .whitespaces).isEmpty {
+                        Text(row.verbatim ?? "")
+                            .font(.callout)
+                            .foregroundStyle(.tertiary)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 20)
+                    }
+                }
+
+                if store.canEditPlan {
+                    Button {
+                        let new = PlanRow.task("")
+                        store.planRows.append(new)
+                        // Курсор ставится следующим ходом: строки, в которую
+                        // его ставят, в этот миг ещё нет на экране.
+                        DispatchQueue.main.async { focused = new.id }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "plus.circle")
+                                .font(.title3)
+                            Text("Дело")
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
+                    }
+                } else {
+                    Text(store.closedReason)
+                        .font(.footnote)
                         .foregroundStyle(.tertiary)
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 20)
                 }
             }
-            .onDelete { store.planRows.remove(atOffsets: $0) }
-
-            Button {
-                let new = PlanRow.task("")
-                store.planRows.append(new)
-                focused = new.id
-            } label: {
-                Label("Дело", systemImage: "plus")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
+            .padding(.top, 6)
         }
-        .listStyle(.plain)
         // Прошедший день выцветает целиком — и сделанное, и несделанное.
         .opacity(store.isPast ? 0.55 : 1)
     }
 
     private func taskRow(_ row: Binding<PlanRow>) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            if let time = row.wrappedValue.time {
-                Text(time)
+            Button {
+                guard store.canEditPlan else { return say(store.closedReason) }
+                pickedTime = Self.date(from: row.wrappedValue.time) ?? Date()
+                settingTime = row.wrappedValue.id
+            } label: {
+                Text(row.wrappedValue.time ?? "––:––")
                     .font(.callout.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(row.wrappedValue.time == nil ? .quaternary : .secondary)
             }
+            .buttonStyle(.plain)
+
             VStack(alignment: .leading, spacing: 3) {
-                TextField("", text: row.text, axis: .vertical)
+                TextField("Дело", text: row.text, axis: .vertical)
                     .focused($focused, equals: row.wrappedValue.id)
-                ForEach(row.wrappedValue.details, id: \.self) { detail in
+                    .disabled(!store.canEditPlan)
+                ForEach(Array(row.wrappedValue.details.enumerated()), id: \.offset) { _, detail in
                     Text(detail)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
+
+            Spacer(minLength: 0)
+
+            Button {
+                openDetails = row.wrappedValue.id
+            } label: {
+                Image(systemName: row.wrappedValue.details.isEmpty
+                      ? "ellipsis" : "text.alignleft")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+                    .padding(.leading, 8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Детали дела")
         }
+        .padding(.vertical, 9)
+        .padding(.horizontal, 20)
         // Сделанное затеняется, а не отмечается галочкой: долгое нажатие
         // вместо щелчка, чтобы нельзя было задеть случайно.
         .opacity(row.wrappedValue.done ? 0.4 : 1)
         .contentShape(Rectangle())
-        .onLongPressGesture { row.wrappedValue.done.toggle() }
+        .onLongPressGesture {
+            guard store.canEditPlan else { return say(store.closedReason) }
+            row.wrappedValue.done.toggle()
+        }
     }
 
     // MARK: - Дневник
 
     private var diaryView: some View {
-        TextEditor(text: $store.diary)
-            .font(.body)
-            .scrollContentBackground(.hidden)
-            .padding(.horizontal, 12)
+        Group {
+            if store.canEditDiary {
+                TextEditor(text: $store.diary)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .padding(.horizontal, 16)
+            } else {
+                VStack(spacing: 14) {
+                    Spacer()
+                    Text(store.closedReason)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                    Spacer()
+                }
+            }
+        }
     }
+
+    // MARK: - Шторка «Детали»
+
+    private var detailsDrawer: some View {
+        let index = openDetails.flatMap { id in store.planRows.firstIndex { $0.id == id } }
+        return HStack(spacing: 0) {
+            Color.black.opacity(0.12)
+                .onTapGesture { openDetails = nil }
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("Детали")
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        openDetails = nil
+                    } label: {
+                        Image(systemName: "chevron.right")
+                    }
+                    .accessibilityLabel("Закрыть детали")
+                }
+                if let index {
+                    Text(store.planRows[index].text.isEmpty
+                         ? "Без названия" : store.planRows[index].text)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+
+                    TextEditor(text: Binding(
+                        get: { store.planRows[index].details.joined(separator: "\n") },
+                        set: { store.planRows[index].details =
+                                $0.isEmpty ? [] : $0.components(separatedBy: "\n") }))
+                        .font(.callout)
+                        .scrollContentBackground(.hidden)
+                        .disabled(!store.canEditPlan)
+                        .frame(maxHeight: .infinity)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .frame(width: 280)
+            .background(Color(.systemBackground))
+            .shadow(radius: 8)
+        }
+        .transition(.move(edge: .trailing))
+    }
+
+    // MARK: - Подвал
 
     private var footer: some View {
         HStack {
-            Button { store.move(by: -1) } label: {
+            Button { withAnimation { store.move(by: -1) } } label: {
                 Image(systemName: "chevron.left")
             }
             .accessibilityLabel("Предыдущий день")
@@ -189,7 +332,7 @@ struct TodayView: View {
 
             Spacer()
 
-            Button { store.move(by: 1) } label: {
+            Button { withAnimation { store.move(by: 1) } } label: {
                 Image(systemName: "chevron.right")
             }
             .accessibilityLabel("Следующий день")
@@ -198,7 +341,73 @@ struct TodayView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Проверка обещания
+    // MARK: - Листки
+
+    private func timeSheet(for id: UUID) -> some View {
+        NavigationStack {
+            VStack {
+                DatePicker("", selection: $pickedTime, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Время")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Без времени") {
+                        if let i = store.planRows.firstIndex(where: { $0.id == id }) {
+                            store.planRows[i].time = nil
+                        }
+                        settingTime = nil
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Готово") {
+                        if let i = store.planRows.firstIndex(where: { $0.id == id }) {
+                            store.planRows[i].time = Self.text(from: pickedTime)
+                        }
+                        settingTime = nil
+                    }
+                }
+            }
+        }
+        .presentationDetents([.height(280)])
+    }
+
+    private var menuSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button("Где лежат записи") {
+                        showingMenu = false
+                        showingFolder = true
+                    }
+                    Button("Файл на диске") {
+                        showingMenu = false
+                        peeking = true
+                    }
+                }
+                Section("Ещё не сделано") {
+                    Text("Календарь: месяц, год, список").foregroundStyle(.tertiary)
+                    Text("Поиск по записям").foregroundStyle(.tertiary)
+                    Text("Лента и вложения").foregroundStyle(.tertiary)
+                    Text("Напоминание о деле").foregroundStyle(.tertiary)
+                    Text("Заголовок дня и «Как прошло?»").foregroundStyle(.tertiary)
+                    Text("Режим изменений для закрытого дня").foregroundStyle(.tertiary)
+                    Text("Ночной вид и настройки").foregroundStyle(.tertiary)
+                }
+            }
+            .navigationTitle("Ещё")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Закрыть") { showingMenu = false }
+                }
+            }
+        }
+    }
 
     private var fileSheet: some View {
         NavigationStack {
@@ -229,8 +438,6 @@ struct TodayView: View {
             }
         }
     }
-
-    // MARK: - Где лежат записи
 
     private var folderSheet: some View {
         NavigationStack {
@@ -277,23 +484,49 @@ struct TodayView: View {
         }
     }
 
-    // MARK: - Заголовок
+    // MARK: - Сообщение
 
-    private var title: String {
-        let days = Calendar.current.dateComponents([.day],
-                                                   from: DayStore.today(),
-                                                   to: store.date).day ?? 0
-        switch days {
-        case 0:  return "Сегодня"
-        case -1: return "Вчера"
-        case -2: return "Позавчера"
-        case 1:  return "Завтра"
-        case 2:  return "Послезавтра"
-        default:
-            let f = DateFormatter()
-            f.locale = Locale(identifier: "ru_RU")
-            f.setLocalizedDateFormatFromTemplate("d MMMM")
-            return f.string(from: store.date)
+    private var toast: some View {
+        Group {
+            if let notice {
+                Text(notice)
+                    .font(.footnote)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.black.opacity(0.82))
+                    .clipShape(Capsule())
+                    .padding(.bottom, 70)
+                    .transition(.opacity)
+            }
         }
+    }
+
+    private func say(_ text: String) {
+        withAnimation { notice = text }
+        Task {
+            try? await Task.sleep(nanoseconds: 2_400_000_000)
+            withAnimation { notice = nil }
+        }
+    }
+
+    // MARK: - Время
+
+    private static func date(from text: String?) -> Date? {
+        guard let text else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH:mm"
+        guard let t = f.date(from: text) else { return nil }
+        let c = Calendar.current.dateComponents([.hour, .minute], from: t)
+        return Calendar.current.date(bySettingHour: c.hour ?? 0,
+                                     minute: c.minute ?? 0, second: 0, of: Date())
+    }
+
+    private static func text(from date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
     }
 }

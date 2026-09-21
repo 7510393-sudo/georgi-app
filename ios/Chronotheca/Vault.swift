@@ -200,7 +200,10 @@ final class Vault: ObservableObject {
         accessing?.stopAccessingSecurityScopedResource()
         guard url.startAccessingSecurityScopedResource() else {
             accessing = nil
-            return false
+            // Не всякая доступная папка охраняется: своя песочница приложения
+            // открыта и без разрешения. Отказ системы — ещё не отказ в доступе,
+            // проверяем делом.
+            return FileManager.default.isWritableFile(atPath: url.path)
         }
         accessing = url
         return true
