@@ -125,7 +125,7 @@ struct DiaryView: View {
                     .padding(.top, 8)
                     .allowsHitTesting(false)
             }
-            DiaryEditor(text: $store.diaryText, size: size) {
+            DiaryEditor(text: $store.diaryText, size: size, serif: true, stamped: true) {
                 store.stampIfNeeded()
             }
             .frame(minHeight: 320)

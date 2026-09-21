@@ -63,26 +63,19 @@ struct RootView: View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 0) {
                 appbar
-                if shell.screen == .today {
-                    subbar
-                    tabs
-                } else {
-                    Rectangle().fill(Look.rule).frame(height: 1)
-                }
                 canvas
-                if shell.screen == .today { attachbar }
                 Rectangle().fill(Look.rule).frame(height: 1)
                 tabbar
             }
-            .background(background.ignoresSafeArea())
+            .background(Look.chrome.ignoresSafeArea())
 
             if shell.showingMenu { MenuSticker() }
             if let notice = shell.notice {
-                toast(notice).frame(maxWidth: .infinity, maxHeight: .infinity,
-                                    alignment: .bottom)
+                toast(notice)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
         }
-        // Нижние полоски стоят на месте, что бы ни случилось: клавиатура их
+        // Нижние разделы стоят на месте, что бы ни случилось: клавиатура их
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
@@ -92,8 +85,7 @@ struct RootView: View {
         .onAppear { shell.openRequestedScreen(store) }
     }
 
-    /// Область содержимого: шторка «Подробности» живёт только внутри неё —
-    /// она не закрывает ни вкладки, ни нижние кнопки.
+    /// Область содержимого: шторка «Подробности» живёт только внутри неё.
     private var canvas: some View {
         ZStack(alignment: .trailing) {
             screen
@@ -103,15 +95,11 @@ struct RootView: View {
         .clipped()
     }
 
-    /// Оттенок дня недели — только на экране дня. В календаре и поиске он
-    /// был бы враньём: там не один день, а много.
-    private var background: Color {
-        guard shell.screen == .today else { return Look.planBg }
-        return shell.tab == .diary ? Look.diaryBg : Ru.tint(store.date)
-    }
-
     // MARK: - Шапка
 
+    /// Только то, что принадлежит приложению, а не дню: настройки и меню
+    /// страницы. Имя дня, дата и вкладки уехали внутрь страницы — они
+    /// перелистываются вместе с ней.
     private var appbar: some View {
         HStack {
             Button { shell.showingSettings = true } label: {
@@ -124,14 +112,9 @@ struct RootView: View {
 
             Spacer(minLength: 0)
 
-            Text(shell.screen == .today ? store.title : shell.screenName)
-                .font(.system(size: 23, weight: .semibold))
-                .tracking(-0.2)
-                .foregroundStyle(Look.ink)
-
-            Spacer(minLength: 0)
-
-            Button { withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true } } label: {
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
+            } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 18))
                     .foregroundStyle(store.editing ? Look.accent : Look.inkSoft)
@@ -140,102 +123,17 @@ struct RootView: View {
             .accessibilityLabel("Меню страницы")
         }
         .padding(.horizontal, 8)
-        .padding(.top, 12)
-        .padding(.bottom, 2)
+        .padding(.top, 8)
         .background(Look.chrome)
-    }
-
-    /// День недели своим цветом и полная дата под ним — чтобы не гадать,
-    /// какое сегодня число, и видеть, куда тебя занесло листание.
-    private var subbar: some View {
-        VStack(spacing: 2) {
-            Text(Ru.weekday(store.date))
-                .font(Look.sans(12.5))
-                .tracking(0.75)
-                .foregroundStyle(Ru.dayColor(store.date))
-            Text(Ru.longDate(store.date))
-                .font(Look.sans(15))
-                .foregroundStyle(Look.inkSoft)
-        }
-        .padding(.horizontal, 18)
-        .padding(.bottom, 9)
-        .frame(maxWidth: .infinity)
-        .background(Look.chrome)
-        .contentShape(Rectangle())
-        .onTapGesture { hideKeyboard() }
-    }
-
-    private var tabs: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                ForEach(Shell.Tab.allCases) { tab in tabButton(tab) }
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 9)
-        }
-        .background(Look.chrome)
-    }
-
-    private func tabButton(_ tab: Shell.Tab) -> some View {
-        let on = shell.tab == tab
-        let page = tab == .diary ? Look.diaryBg : Ru.tint(store.date)
-        return Button {
-            store.prune()
-            store.save()
-            shell.tab = tab
-        } label: {
-            Text(tab.rawValue.uppercased())
-                .font(Look.sans(13, weight: on ? .semibold : .regular))
-                .tracking(1.56)
-                .foregroundStyle(on ? Look.ink : Look.inkFaint)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 9)
-                .padding(.bottom, 10)
-                .background(page)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10,
-                                                  topTrailingRadius: 10))
-                .overlay(TabBorder(radius: 10).stroke(Look.rule, lineWidth: 1))
-        }
-        .offset(y: on ? 1 : 0)
-        .zIndex(on ? 1 : 0)
     }
 
     // MARK: - Экран
 
     @ViewBuilder private var screen: some View {
         switch shell.screen {
-        case .today:    DayPager()
+        case .today:    DayPages()
         case .calendar: CalendarView()
         case .search:   SearchView()
-        }
-    }
-
-    // MARK: - Вложения
-
-    private var attachbar: some View {
-        HStack(spacing: 0) {
-            attach("photo", "фото")
-            attach("waveform", "аудио")
-            attach("doc", "файлы")
-            attach("mappin.and.ellipse", "геоточка")
-        }
-        .padding(.top, 8)
-        .padding(.bottom, 7)
-        .background(Look.chrome)
-    }
-
-    private func attach(_ icon: String, _ name: String) -> some View {
-        Button {
-            shell.say("Вложения ещё не сделаны — следующий срез работы.")
-        } label: {
-            VStack(spacing: 3) {
-                Image(systemName: icon).font(.system(size: 17))
-                Text(name.uppercased())
-                    .font(Look.sans(9))
-                    .tracking(0.45)
-            }
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(Look.inkFaint)
         }
     }
 
@@ -257,19 +155,17 @@ struct RootView: View {
         return Button {
             store.prune()
             store.save()
-            if target == .today && shell.screen == .today && !store.isToday {
+            if target == .today {
+                if shell.screen == .today && !store.isToday { shell.say("Вернулись на сегодня") }
                 store.go(to: DayStore.today())
-                shell.say("Вернулись на сегодня")
-            } else if target == .today {
-                store.go(to: DayStore.today())
+            } else {
+                archive.reload()
             }
-            if target != .today { archive.reload() }
-            withAnimation(.easeOut(duration: 0.18)) { shell.screen = target }
+            shell.screen = target
         } label: {
             VStack(spacing: 5) {
                 Image(systemName: icon).font(.system(size: 20))
-                Text(name)
-                    .font(Look.sans(10, weight: on ? .medium : .regular))
+                Text(name).font(Look.sans(10, weight: on ? .medium : .regular))
             }
             .frame(maxWidth: .infinity)
             .foregroundStyle(on ? Look.accent : Look.inkSoft)
@@ -280,32 +176,16 @@ struct RootView: View {
 
     private func toast(_ text: String) -> some View {
         Text(text)
-            .font(.footnote)
-            .foregroundStyle(.white)
+            .font(.system(size: 13))
+            .foregroundStyle(Look.planBg)
             .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.black.opacity(0.84), in: Capsule())
+            .padding(.horizontal, 15)
+            .padding(.vertical, 8)
+            .background(Look.ink, in: Capsule())
             .padding(.horizontal, 24)
-            .padding(.bottom, 92)
+            .padding(.bottom, 80)
             .transition(.opacity)
             .allowsHitTesting(false)
-    }
-}
-
-/// Открытый день: две вкладки на одном дне.
-///
-/// Свайп сюда не приходит — его забирает листалка, внутри которой этот
-/// экран живёт средней страницей.
-struct DayScreen: View {
-
-    @EnvironmentObject private var shell: Shell
-
-    var body: some View {
-        Group {
-            if shell.tab == .plan { PlanView() } else { DiaryView() }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

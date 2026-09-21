@@ -74,11 +74,4 @@ final class Shell: ObservableObject {
         }
     }
 
-    var screenName: String {
-        switch screen {
-        case .today: return ""
-        case .calendar: return "Календарь"
-        case .search: return "Поиск"
-        }
-    }
 }

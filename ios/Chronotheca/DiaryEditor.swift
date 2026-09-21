@@ -15,6 +15,10 @@ struct DiaryEditor: UIViewRepresentable {
 
     @Binding var text: String
     var size: CGFloat = 15.5
+    /// Засечный — для дневника, обычный — для подробностей дела.
+    var serif = true
+    /// Отметки времени бледнее и мельче. В подробностях они ни к чему.
+    var stamped = true
     var onFocus: () -> Void = {}
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
@@ -31,6 +35,7 @@ struct DiaryEditor: UIViewRepresentable {
         // Клавиатура уезжает движением пальца вниз по тексту.
         view.keyboardDismissMode = .interactive
         view.alwaysBounceVertical = true
+        view.scrollsToTop = false
         return view
     }
 
@@ -40,8 +45,8 @@ struct DiaryEditor: UIViewRepresentable {
             return
         }
         let selection = view.selectedRange
-        view.attributedText = Self.styled(text, size: size)
-        view.typingAttributes = Self.body(size)
+        view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped)
+        view.typingAttributes = Self.body(size, serif: serif)
         view.selectedRange = selection.location <= (view.text as NSString).length
             ? selection
             : NSRange(location: (view.text as NSString).length, length: 0)
@@ -51,18 +56,23 @@ struct DiaryEditor: UIViewRepresentable {
 
     // MARK: - Вид
 
-    static func body(_ size: CGFloat) -> [NSAttributedString.Key: Any] {
+    static func body(_ size: CGFloat, serif: Bool) -> [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = size * 0.24
+        let font = serif
+            ? (UIFont(name: "Georgia", size: size) ?? .systemFont(ofSize: size))
+            : UIFont.systemFont(ofSize: size)
         return [
-            .font: UIFont(name: "Georgia", size: size) ?? .systemFont(ofSize: size),
+            .font: font,
             .foregroundColor: UIColor(Look.ink),
             .paragraphStyle: paragraph,
         ]
     }
 
-    static func styled(_ text: String, size: CGFloat) -> NSAttributedString {
-        let out = NSMutableAttributedString(string: text, attributes: body(size))
+    static func styled(_ text: String, size: CGFloat,
+                       serif: Bool, stamped: Bool) -> NSAttributedString {
+        let out = NSMutableAttributedString(string: text, attributes: body(size, serif: serif))
+        guard stamped else { return out }
         let ns = text as NSString
         var start = 0
         while start <= ns.length {
@@ -97,7 +107,8 @@ struct DiaryEditor: UIViewRepresentable {
         /// Первая буква строки после отметки времени набирается заглавной.
         func textView(_ view: UITextView, shouldChangeTextIn range: NSRange,
                       replacementText text: String) -> Bool {
-            guard text.count == 1, let first = text.first, first.isLowercase else { return true }
+            guard parent.stamped,
+                  text.count == 1, let first = text.first, first.isLowercase else { return true }
             let before = (view.text as NSString).substring(to: range.location)
             guard let line = before.components(separatedBy: .newlines).last,
                   line.range(of: #"^\d{2}:\d{2}[  ]+$"#, options: .regularExpression) != nil
@@ -117,10 +128,11 @@ struct DiaryEditor: UIViewRepresentable {
         /// Перекрасить отметки времени, не сдвинув курсор.
         func restyle(_ view: UITextView) {
             let selection = view.selectedRange
-            let styled = DiaryEditor.styled(view.text, size: parent.size)
+            let styled = DiaryEditor.styled(view.text, size: parent.size,
+                                            serif: parent.serif, stamped: parent.stamped)
             guard styled != view.attributedText else { return }
             view.attributedText = styled
-            view.typingAttributes = DiaryEditor.body(parent.size)
+            view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
             view.selectedRange = selection
         }
     }

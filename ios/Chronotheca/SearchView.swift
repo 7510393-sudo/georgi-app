@@ -16,6 +16,11 @@ struct SearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Text("Поиск")
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundStyle(Look.ink)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 10)
             field
             if archive.newestFirst.isEmpty {
                 message("Пока нечего искать.",

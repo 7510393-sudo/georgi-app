@@ -53,7 +53,7 @@ struct PlanView: View {
 
     private var head: some View {
         HStack {
-            Text(store.isPast ? "день закрыт" : "дела на день")
+            Text(store.isPast ? "день закрыт" : "")
                 .font(Look.mono(11))
                 .tracking(0.45)
                 .foregroundStyle(Look.inkFaint)
@@ -208,6 +208,10 @@ struct PlanView: View {
                             // написанное дело надо уметь поправить, не заходя
                             // в режим изменений. Отметить сделанным — касанием
                             // по остальной строке.
+                            .onLongPressGesture(minimumDuration: 0.35) {
+                                guard !store.editing else { return }
+                                toggle(row)
+                            }
                             .onTapGesture {
                                 guard store.canEditPlan else {
                                     return shell.say(store.closedReason)
@@ -253,6 +257,10 @@ struct PlanView: View {
                     : LinearGradient(colors: [.clear, .clear],
                                      startPoint: .leading, endPoint: .trailing))
         .contentShape(Rectangle())
+        .onLongPressGesture(minimumDuration: 0.35) {
+            guard !store.editing else { return }
+            toggle(row)
+        }
         .onTapGesture {
             if task.text.isEmpty, store.canEditPlan {
                 typingIn = id
@@ -260,12 +268,17 @@ struct PlanView: View {
                 return
             }
             guard !store.editing, typingIn != id else { return }
-            guard store.canEditPlan else {
-                return shell.say("День закрыт. Отметить задним числом — через режим изменений.")
-            }
-            row.wrappedValue.done.toggle()
-            store.save()
+            toggle(row)
         }
+    }
+
+    /// Отметить дело сделанным. Затенением, а не галочкой (P14, P15).
+    private func toggle(_ row: Binding<PlanRow>) {
+        guard store.canEditPlan else {
+            return shell.say("День закрыт. Отметить задним числом — через режим изменений.")
+        }
+        row.wrappedValue.done.toggle()
+        store.save()
     }
 
     /// Закладка «Детали» — выглядывает из-за правого края строки, как в прототипе.

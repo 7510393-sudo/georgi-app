@@ -236,7 +236,7 @@ struct DetailsDrawer: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
-    @FocusState private var typing: Bool
+    @State private var keyboard: CGFloat = 0
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -246,6 +246,17 @@ struct DetailsDrawer: View {
             panel
         }
         .transition(.move(edge: .trailing))
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+            let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
+                as? CGRect ?? .zero
+            let screen = UIScreen.main.bounds.height
+            keyboard = max(0, screen - frame.origin.y)
+        }
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboard = 0
+        }
     }
 
     private var panel: some View {
@@ -259,7 +270,11 @@ struct DetailsDrawer: View {
         .overlay(SideTabBorder(radius: 12).stroke(Look.rule, lineWidth: 1))
         .shadow(color: .black.opacity(0.28), radius: 17, x: -8)
         .padding(.leading, 40)
-        .padding(.vertical, 15)
+        .padding(.top, 15)
+        // Шторка поднимается над клавиатурой, а не прячет под ней строку,
+        // которую человек как раз набирает.
+        .padding(.bottom, max(15, keyboard - 4))
+        .animation(.easeOut(duration: 0.22), value: keyboard)
     }
 
     private var head: some View {
@@ -321,13 +336,9 @@ struct DetailsDrawer: View {
                     .padding(.top, 19)
                     .allowsHitTesting(false)
             }
-            TextEditor(text: details(at: i))
-                .font(Look.sans(14.5))
-                .foregroundStyle(Look.ink)
-                .focused($typing)
-                .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.interactively)
-                .padding(6)
+            DiaryEditor(text: details(at: i), size: 14.5,
+                        serif: false, stamped: false)
+                .padding(.horizontal, 6)
                 .disabled(!store.canEditPlan)
         }
         .background(Look.planBg, in: RoundedRectangle(cornerRadius: 8))
@@ -346,7 +357,7 @@ struct DetailsDrawer: View {
     private var index: Int? { shell.drawer.flatMap(store.index(of:)) }
 
     private func close() {
-        typing = false
+        hideKeyboard()
         store.save()
         withAnimation(.easeOut(duration: 0.26)) { shell.drawer = nil }
     }
