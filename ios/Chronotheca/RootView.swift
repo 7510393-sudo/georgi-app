@@ -204,7 +204,7 @@ struct RootView: View {
 
     @ViewBuilder private var screen: some View {
         switch shell.screen {
-        case .today:    DayScreen()
+        case .today:    DayPager()
         case .calendar: CalendarView()
         case .search:   SearchView()
         }
@@ -293,47 +293,19 @@ struct RootView: View {
     }
 }
 
-/// Экран дня: две вкладки на одном дне и общий для них свайп.
+/// Открытый день: две вкладки на одном дне.
+///
+/// Свайп сюда не приходит — его забирает листалка, внутри которой этот
+/// экран живёт средней страницей.
 struct DayScreen: View {
 
-    @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
-
-    /// Куда уехал прошлый день: влево (к завтрашнему) или вправо (к вчерашнему).
-    @State private var direction = 1
 
     var body: some View {
         Group {
             if shell.tab == .plan { PlanView() } else { DiaryView() }
         }
-        // День уезжает, на его место встаёт соседний. Без этого листание
-        // выглядит подменой содержимого, а не переходом — а весь смысл в том,
-        // что дни лежат рядом, как страницы.
-        .id(store.date)
-        .transition(.asymmetric(
-            insertion: .move(edge: direction > 0 ? .trailing : .leading).combined(with: .opacity),
-            removal:   .move(edge: direction > 0 ? .leading : .trailing).combined(with: .opacity)))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        // Свайп листает дни, как в прототипе: горизонтальное движение должно
-        // быть заметно длиннее вертикального, иначе это прокрутка. Жест
-        // одновременный, иначе прокрутка списка забирает касание себе.
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 24)
-                .onEnded { g in
-                    guard shell.drawer == nil else { return }
-                    let dx = g.translation.width, dy = g.translation.height
-                    guard abs(dx) > 64, abs(dx) > abs(dy) * 1.6 else { return }
-                    go(by: dx < 0 ? 1 : -1)
-                }
-        )
-    }
-
-    private func go(by step: Int) {
-        direction = step
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                        to: nil, from: nil, for: nil)
-        withAnimation(.easeOut(duration: 0.28)) { store.move(by: step) }
     }
 }
 
