@@ -126,6 +126,7 @@ jobs:
           snap 04-календарь.png       calendar
           snap 05-поиск.png           search
           snap 06-меню-страницы.png   menu
+          snap 11-настройки.png       settings
           snap 07-подробности.png     details
           snap 08-прошедший-день.png  past
           snap 09-режим-изменений.png editing

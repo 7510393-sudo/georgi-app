@@ -2,73 +2,119 @@ import SwiftUI
 
 // MARK: - Меню страницы
 
-/// Три точки: то, что относится к этому дню, а не ко всему приложению.
-struct MenuSheet: View {
+/// Три точки: листок, приклеенный к верхнему правому углу.
+///
+/// Не отдельная страница (решение: меню не должно уводить с экрана) и не
+/// лист снизу: оно свешивается сверху справа, закрывая часть экрана, и
+/// из-под него видно, где ты остался. Цвет бумажный, чтобы читалось как
+/// приклеенная записка, а не как часть приложения.
+struct MenuSticker: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button {
-                        store.editing.toggle()
-                        shell.showingMenu = false
-                    } label: {
-                        HStack {
-                            Text("Режим изменений")
-                            Spacer()
-                            Text(store.editing ? "включён" : "выключен")
-                                .foregroundStyle(.secondary)
-                        }
+        ZStack(alignment: .topTrailing) {
+            Color.black.opacity(0.001)
+                .contentShape(Rectangle())
+                .onTapGesture { close() }
+
+            VStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 8) {
+                    Text("МЕНЮ СТРАНИЦЫ")
+                        .font(Look.sans(11.5))
+                        .tracking(1.15)
+                        .foregroundStyle(Look.inkFaint)
+                        .padding(.top, 22)
+                        .padding(.leading, 14)
+                    Spacer(minLength: 0)
+                    Button { close() } label: {
+                        Text("✕")
+                            .font(.system(size: 19))
+                            .foregroundStyle(Look.inkSoft)
+                            .frame(width: 44, height: 38)
                     }
-                } footer: {
-                    Text("В режиме изменений можно править текст дела, менять порядок "
-                         + "и удалять — в том числе в прошедшем дне. Обычные действия "
-                         + "— отметить дело сделанным — доступны и без него, одним касанием.")
+                    .padding(.top, 12)
+                    .accessibilityLabel("Закрыть")
+                }
+                .padding(.bottom, 7)
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(Look.stickerEdge).frame(height: 1)
                 }
 
-                Section {
-                    Button("Показать файл этого дня") {
-                        shell.showingMenu = false
-                        shell.showingFile = true
-                    }
-                    Button("Где лежат записи") {
-                        shell.showingMenu = false
-                        shell.showingFolder = true
-                    }
+                item("Режим изменений",
+                     note: store.editing ? "включён" : "выключен",
+                     active: store.editing) {
+                    store.editing.toggle()
+                    close()
                 }
-
-                Section("Ещё не сделано") {
-                    Text("Вложения: фото, аудио, файлы, геоточка").foregroundStyle(.tertiary)
-                    Text("Перенести дело на другой день").foregroundStyle(.tertiary)
-                    Text("Поделиться днём").foregroundStyle(.tertiary)
-                    Text("Удалить день").foregroundStyle(.tertiary)
-                    Text("«…а помнишь?» — запись год назад").foregroundStyle(.tertiary)
-                    Text("Перенос записей при смене места").foregroundStyle(.tertiary)
-                    Text("Настройки и замок").foregroundStyle(.tertiary)
+                item("Показать файл этого дня", note: "→") {
+                    close()
+                    shell.showingFile = true
                 }
-
-                Section("Сборка") {
-                    HStack {
-                        Text("Версия")
-                        Spacer()
-                        Text(Build.label)
-                            .font(.callout.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
+                item("Перенести дело на другой день", note: "→") {
+                    close()
+                    shell.say("Перенос дела ещё не сделан.")
+                }
+                item("Поделиться днём", note: "→") {
+                    close()
+                    shell.say("«Поделиться днём» ещё не сделано.")
+                }
+                item("Удалить день", note: "→") {
+                    close()
+                    shell.say("Удаление дня ещё не сделано.")
                 }
             }
-            .navigationTitle("Меню страницы")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Закрыть") { shell.showingMenu = false }
-                }
-            }
+            .frame(maxWidth: 262)
+            .background(Look.sticker)
+            .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12))
+            .overlay(StickerBorder(radius: 12).stroke(Look.stickerEdge, lineWidth: 1))
+            .shadow(color: .black.opacity(0.32), radius: 14, y: 6)
+            .padding(.leading, 60)
         }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private func item(_ title: String, note: String,
+                      active: Bool = false, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            HStack(spacing: 10) {
+                Text(title)
+                    .font(Look.sans(14, weight: active ? .medium : .regular))
+                    .foregroundStyle(active ? Look.accent : Look.ink)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                Text(note)
+                    .font(Look.sans(11.5))
+                    .foregroundStyle(Look.inkFaint)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Look.stickerEdge).frame(height: 1)
+        }
+    }
+
+    private func close() {
+        withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = false }
+    }
+}
+
+/// Обводка стикера: низ и левый бок, сверху и справа он приклеен к углу.
+struct StickerBorder: Shape {
+    let radius: CGFloat
+
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - radius))
+        p.addArc(center: CGPoint(x: r.minX + radius, y: r.maxY - radius), radius: radius,
+                 startAngle: .degrees(180), endAngle: .degrees(90), clockwise: true)
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        return p
     }
 }
 
@@ -168,8 +214,10 @@ enum Clock {
 
 /// Шторка справа: адрес, дорога, стоимость, с кем.
 ///
-/// Она не закрывает вкладки и нижние кнопки — человек видит, где находится,
-/// и выходит оттуда касанием мимо, а не поиском крестика.
+/// Размеры прототипа: ширина 324 или 88 % экрана — что меньше; отступ 15
+/// сверху и снизу, чтобы шторка не упиралась в края вкладки; скруглена
+/// слева, справа уходит за край. Она не закрывает ни вкладки, ни нижние
+/// кнопки — человек видит, где находится, и выходит касанием мимо.
 struct DetailsDrawer: View {
 
     @EnvironmentObject private var store: DayStore
@@ -177,32 +225,50 @@ struct DetailsDrawer: View {
     @FocusState private var typing: Bool
 
     var body: some View {
-        HStack(spacing: 0) {
+        ZStack(alignment: .trailing) {
             Color.black.opacity(0.14)
+                .contentShape(Rectangle())
                 .onTapGesture { close() }
 
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Подробности").font(.headline)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top, spacing: 8) {
+                    Text("ПОДРОБНОСТИ")
+                        .font(Look.sans(12, weight: .medium))
+                        .tracking(1.2)
+                        .foregroundStyle(Look.inkFaint)
+                        .padding(.top, 4)
                     Spacer()
-                    Button { close() } label: { Image(systemName: "chevron.right") }
-                        .accessibilityLabel("Закрыть")
+                    Button { close() } label: {
+                        Text("✕")
+                            .font(.system(size: 17))
+                            .foregroundStyle(Look.inkSoft)
+                            .frame(width: 28, height: 28)
+                            .overlay(RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Look.rule))
+                    }
+                    .accessibilityLabel("Закрыть")
                 }
+                .padding(.horizontal, 12)
+                .padding(.top, 13)
+                .padding(.bottom, 4)
 
                 if let i = index {
                     Text(store.planRows[i].text.isEmpty
                          ? "Без названия" : store.planRows[i].text)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
+                        .font(Look.sans(14.5))
+                        .foregroundStyle(Look.ink)
+                        .lineSpacing(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 10)
 
                     ZStack(alignment: .topLeading) {
                         if store.planRows[i].details.isEmpty {
                             Text("Адрес, дорога, стоимость, с кем…")
-                                .font(.callout)
-                                .foregroundStyle(.tertiary)
-                                .padding(.horizontal, 5)
-                                .padding(.top, 8)
+                                .font(Look.sans(14.5))
+                                .foregroundStyle(Look.inkFaint)
+                                .padding(.horizontal, 11)
+                                .padding(.top, 19)
                                 .allowsHitTesting(false)
                         }
                         TextEditor(text: Binding(
@@ -211,24 +277,37 @@ struct DetailsDrawer: View {
                                 store.planRows[i].details =
                                     text.isEmpty ? [] : text.components(separatedBy: "\n")
                             }))
-                            .font(.callout)
+                            .font(Look.sans(14.5))
+                            .foregroundStyle(Look.ink)
                             .focused($typing)
                             .scrollContentBackground(.hidden)
+                            .scrollDismissesKeyboard(.interactively)
+                            .padding(6)
                             .disabled(!store.canEditPlan)
                     }
+                    .background(Look.planBg, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Look.rule))
                     .frame(maxHeight: .infinity)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 14)
 
                     if !store.canEditPlan {
                         Text(store.closedReason)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .font(Look.sans(11.5))
+                            .foregroundStyle(Look.inkFaint)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 10)
                     }
                 }
             }
-            .padding(16)
-            .frame(width: 286)
-            .background(Color(.systemBackground))
-            .shadow(color: .black.opacity(0.16), radius: 10, x: -2)
+            .frame(maxWidth: 324)
+            .background(Look.chrome)
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12,
+                                              bottomLeadingRadius: 12))
+            .overlay(SideTabBorder(radius: 12).stroke(Look.rule, lineWidth: 1))
+            .shadow(color: .black.opacity(0.28), radius: 17, x: -8)
+            .padding(.leading, 40)
+            .padding(.vertical, 15)
         }
         .transition(.move(edge: .trailing))
     }
@@ -238,54 +317,61 @@ struct DetailsDrawer: View {
     private func close() {
         typing = false
         store.save()
-        withAnimation(.easeOut(duration: 0.2)) { shell.drawer = nil }
+        withAnimation(.easeOut(duration: 0.26)) { shell.drawer = nil }
     }
 }
 
 // MARK: - Папка
 
-struct FolderSheet: View {
+struct SettingsSheet: View {
 
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Записи лежат здесь").font(.headline)
+            List {
+                Section("Где лежат записи") {
                     Text(vault.displayPath)
                         .font(.system(.footnote, design: .monospaced))
                         .textSelection(.enabled)
                         .foregroundStyle(.secondary)
-                }
-
-                Text("Откройте «Файлы» и найдите эту папку — там всё, что вы написали, "
-                     + "обычными файлами. Приложение можно удалить, записи останутся.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
                     Button("Писать в другое место") {
-                        shell.showingFolder = false
+                        shell.showingSettings = false
                         shell.picking = true
                     }
-                    Text("Прежние записи останутся там, где лежат сейчас: приложение "
-                         + "их не переносит и не удаляет. Чтобы взять их с собой, "
-                         + "перенесите папку сами в «Файлах» и укажите новое место здесь.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                } footer: {
+                    Text("Откройте «Файлы» и найдите эту папку — там всё, что вы написали, "
+                         + "обычными файлами. Приложение можно удалить, записи останутся.\n\n"
+                         + "Прежние записи останутся там, где лежат сейчас: приложение их "
+                         + "не переносит и не удаляет. Чтобы взять их с собой, перенесите "
+                         + "папку сами в «Файлах» и укажите новое место здесь.")
                 }
-                Spacer()
+
+                Section("Ещё не сделано") {
+                    Text("Вложения: фото, аудио, файлы, геоточка").foregroundStyle(.tertiary)
+                    Text("Перенос записей при смене места").foregroundStyle(.tertiary)
+                    Text("«…а помнишь?» — запись год назад").foregroundStyle(.tertiary)
+                    Text("Напоминания на телефон").foregroundStyle(.tertiary)
+                    Text("Замок и ночной вид").foregroundStyle(.tertiary)
+                }
+
+                Section("Сборка") {
+                    HStack {
+                        Text("Версия")
+                        Spacer()
+                        Text(Build.label)
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                }
             }
-            .padding()
-            .navigationTitle("Папка")
+            .navigationTitle("Настройки")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Закрыть") { shell.showingFolder = false }
+                    Button("Закрыть") { shell.showingSettings = false }
                 }
             }
         }

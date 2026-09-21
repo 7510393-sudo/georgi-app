@@ -115,8 +115,14 @@ struct PlanView: View {
                     }
                 }
                 stat
+                // Пустое место под списком: касание по нему убирает клавиатуру.
+                Color.clear
+                    .frame(minHeight: 120)
+                    .contentShape(Rectangle())
+                    .onTapGesture { hideKeyboard() }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var stat: some View {
@@ -171,13 +177,17 @@ struct PlanView: View {
                         shell.roller = .init(id: id, kind: .bell)
                     } label: {
                         Image(systemName: task.bell == nil ? "bell" : "bell.fill")
-                            .font(.system(size: 15))
+                            .font(.system(size: 20))
                             .foregroundStyle(task.bell == nil
                                              ? Look.inkFaint : Ru.dayColor(store.date))
-                            .opacity(task.bell == nil ? (faded ? 0.3 : 0.55) : 1)
+                            .opacity(task.bell == nil ? (faded ? 0.3 : 0.6) : 1)
+                            // Площадка под палец: значок маленький, попадать
+                            // в него надо большим пальцем на ходу.
+                            .frame(width: 40, height: 38)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .padding(.trailing, 8)
+                    .padding(.trailing, 2)
                     .accessibilityLabel(task.bell.map { "Напомнить в \($0)" }
                                         ?? "Напоминание не назначено")
 
@@ -193,6 +203,18 @@ struct PlanView: View {
                             .foregroundStyle(faded || task.text.isEmpty
                                              ? Look.inkFaint : Look.ink)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            // Касание по самому тексту ставит в него курсор:
+                            // написанное дело надо уметь поправить, не заходя
+                            // в режим изменений. Отметить сделанным — касанием
+                            // по остальной строке.
+                            .onTapGesture {
+                                guard store.canEditPlan else {
+                                    return shell.say(store.closedReason)
+                                }
+                                typingIn = id
+                                DispatchQueue.main.async { focused = id }
+                            }
                     }
                 }
 
@@ -232,7 +254,6 @@ struct PlanView: View {
                                      startPoint: .leading, endPoint: .trailing))
         .contentShape(Rectangle())
         .onTapGesture {
-            // Пустое дело правят касанием: иначе новую строку не заполнить.
             if task.text.isEmpty, store.canEditPlan {
                 typingIn = id
                 DispatchQueue.main.async { focused = id }
@@ -282,5 +303,14 @@ struct Line: Shape {
         p.move(to: CGPoint(x: r.minX, y: r.midY))
         p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
         return p
+    }
+}
+
+extension View {
+    /// Убрать клавиатуру. Нужна везде, где человек может закончить писать:
+    /// поднявшуюся клавиатуру должно быть чем опустить, иначе экран заперт.
+    func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
     }
 }

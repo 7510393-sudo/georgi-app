@@ -10,7 +10,7 @@ struct DiaryView: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
-    private enum Field: Hashable { case title, text, answer(String) }
+    private enum Field: Hashable { case title, answer(String) }
     @FocusState private var focused: Field?
 
     /// Размеры из прототипа.
@@ -54,6 +54,7 @@ struct DiaryView: View {
             .padding(.top, 14)
             .padding(.bottom, 20)
         }
+        .scrollDismissesKeyboard(.interactively)
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.date) { _, _ in focused = nil }
@@ -103,7 +104,7 @@ struct DiaryView: View {
                 .foregroundStyle(Look.ink)
                 .focused($focused, equals: .title)
                 .submitLabel(.next)
-                .onSubmit { focused = .text }
+                .onSubmit { focused = nil }
                 .padding(.bottom, 7)
             Rectangle().fill(Look.rule).frame(height: 1)
         }
@@ -122,22 +123,14 @@ struct DiaryView: View {
                     .font(Look.serif(size))
                     .foregroundStyle(Look.inkFaint)
                     .padding(.top, 8)
-                    .padding(.leading, 5)
                     .allowsHitTesting(false)
             }
-            TextEditor(text: $store.diaryText)
-                .font(Look.serif(size))
-                .foregroundStyle(Look.ink)
-                .lineSpacing(leading - size * 0.6)
-                .focused($focused, equals: .text)
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: 260)
-                .padding(.horizontal, -5)
+            DiaryEditor(text: $store.diaryText, size: size) {
+                store.stampIfNeeded()
+            }
+            .frame(minHeight: 320)
         }
         .padding(.top, 16)
-        .onChange(of: focused) { _, now in
-            if now == .text { store.stampIfNeeded() }
-        }
         .onChange(of: store.diaryText) { _, _ in
             store.touchDiary()
             store.scheduleSave()

@@ -109,6 +109,10 @@ enum Look {
     static let planBg    = Color(light: 0xFDFDFB, dark: 0x14191F)
     static let diaryBg   = Color(light: 0xFAF5EC, dark: 0x1B1812)
 
+    /// Бумага приклеенной записки — меню страницы.
+    static let sticker     = Color(light: 0xFBF3D8, dark: 0x2A2517)
+    static let stickerEdge = Color(light: 0xE8DCAE, dark: 0x3D3520)
+
     /// Засечный шрифт дневника. Literata в iOS нет, Georgia есть везде.
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .custom("Georgia", size: size).weight(weight)

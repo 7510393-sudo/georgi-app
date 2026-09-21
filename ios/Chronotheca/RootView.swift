@@ -34,7 +34,7 @@ struct RootView: View {
     }
 
     private var app: some View {
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: .topTrailing) {
             VStack(spacing: 0) {
                 appbar
                 if shell.screen == .today {
@@ -43,21 +43,38 @@ struct RootView: View {
                 } else {
                     Rectangle().fill(Look.rule).frame(height: 1)
                 }
-                screen
+                canvas
                 if shell.screen == .today { attachbar }
                 Rectangle().fill(Look.rule).frame(height: 1)
                 tabbar
             }
             .background(background.ignoresSafeArea())
 
-            if let notice = shell.notice { toast(notice) }
+            if shell.showingMenu { MenuSticker() }
+            if let notice = shell.notice {
+                toast(notice).frame(maxWidth: .infinity, maxHeight: .infinity,
+                                    alignment: .bottom)
+            }
         }
+        // Нижние полоски стоят на месте, что бы ни случилось: клавиатура их
+        // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
-        .sheet(isPresented: $shell.showingMenu) { MenuSheet() }
-        .sheet(isPresented: $shell.showingFolder) { FolderSheet() }
+        .sheet(isPresented: $shell.showingSettings) { SettingsSheet() }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear { shell.openRequestedScreen(store) }
+    }
+
+    /// Область содержимого: шторка «Подробности» живёт только внутри неё —
+    /// она не закрывает ни вкладки, ни нижние кнопки.
+    private var canvas: some View {
+        ZStack(alignment: .trailing) {
+            screen
+            if shell.drawer != nil { DetailsDrawer() }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
     }
 
     /// Оттенок дня недели — только на экране дня. В календаре и поиске он
@@ -71,13 +88,13 @@ struct RootView: View {
 
     private var appbar: some View {
         HStack {
-            Button { shell.showingFolder = true } label: {
-                Image(systemName: "folder")
-                    .font(.system(size: 18))
+            Button { shell.showingSettings = true } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 19))
                     .foregroundStyle(Look.inkSoft)
                     .frame(width: 44, height: 38)
             }
-            .accessibilityLabel("Где лежат записи")
+            .accessibilityLabel("Настройки")
 
             Spacer(minLength: 0)
 
@@ -88,7 +105,7 @@ struct RootView: View {
 
             Spacer(minLength: 0)
 
-            Button { shell.showingMenu = true } label: {
+            Button { withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true } } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 18))
                     .foregroundStyle(store.editing ? Look.accent : Look.inkSoft)
@@ -118,6 +135,8 @@ struct RootView: View {
         .padding(.bottom, 9)
         .frame(maxWidth: .infinity)
         .background(Look.chrome)
+        .contentShape(Rectangle())
+        .onTapGesture { hideKeyboard() }
     }
 
     private var tabs: some View {
@@ -127,7 +146,6 @@ struct RootView: View {
             }
             .padding(.horizontal, 12)
             .padding(.top, 9)
-            Rectangle().fill(Look.rule).frame(height: 1)
         }
         .background(Look.chrome)
     }
@@ -255,31 +273,41 @@ struct DayScreen: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            Group {
-                if shell.tab == .plan { PlanView() } else { DiaryView() }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            // Свайп листает дни, как в прототипе: горизонтальное движение
-            // должно быть заметно длиннее вертикального, иначе это прокрутка.
-            // Жест одновременный, а не обычный: иначе прокрутка списка и
-            // текстовое поле забирают касание себе и лист не листается.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 24)
-                    .onEnded { g in
-                        guard shell.drawer == nil else { return }
-                        let dx = g.translation.width, dy = g.translation.height
-                        guard abs(dx) > 64, abs(dx) > abs(dy) * 1.6 else { return }
-                        withAnimation(.easeOut(duration: 0.24)) {
-                            store.move(by: dx < 0 ? 1 : -1)
-                        }
-                    }
-            )
+    /// Куда уехал прошлый день: влево (к завтрашнему) или вправо (к вчерашнему).
+    @State private var direction = 1
 
-            if shell.drawer != nil { DetailsDrawer() }
+    var body: some View {
+        Group {
+            if shell.tab == .plan { PlanView() } else { DiaryView() }
         }
+        // День уезжает, на его место встаёт соседний. Без этого листание
+        // выглядит подменой содержимого, а не переходом — а весь смысл в том,
+        // что дни лежат рядом, как страницы.
+        .id(store.date)
+        .transition(.asymmetric(
+            insertion: .move(edge: direction > 0 ? .trailing : .leading).combined(with: .opacity),
+            removal:   .move(edge: direction > 0 ? .leading : .trailing).combined(with: .opacity)))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        // Свайп листает дни, как в прототипе: горизонтальное движение должно
+        // быть заметно длиннее вертикального, иначе это прокрутка. Жест
+        // одновременный, иначе прокрутка списка забирает касание себе.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded { g in
+                    guard shell.drawer == nil else { return }
+                    let dx = g.translation.width, dy = g.translation.height
+                    guard abs(dx) > 64, abs(dx) > abs(dy) * 1.6 else { return }
+                    go(by: dx < 0 ? 1 : -1)
+                }
+        )
+    }
+
+    private func go(by step: Int) {
+        direction = step
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
+        withAnimation(.easeOut(duration: 0.28)) { store.move(by: step) }
     }
 }
 

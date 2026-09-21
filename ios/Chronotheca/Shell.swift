@@ -31,7 +31,7 @@ final class Shell: ObservableObject {
     }
 
     @Published var showingMenu = false
-    @Published var showingFolder = false
+    @Published var showingSettings = false
     @Published var showingFile = false
     @Published var picking = false
 
@@ -65,6 +65,7 @@ final class Shell: ObservableObject {
         case "calendar":  screen = .calendar
         case "search":    screen = .search
         case "menu":      showingMenu = true
+        case "settings":  showingSettings = true
         case "details":   drawer = store.tasks.first?.id
         case "past":      store.move(by: -1)
         case "editing":   store.editing = true
