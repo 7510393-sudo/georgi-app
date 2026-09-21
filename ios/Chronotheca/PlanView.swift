@@ -53,10 +53,12 @@ struct PlanView: View {
 
     private var head: some View {
         HStack {
-            Text(store.isPast ? "день закрыт" : "")
-                .font(Look.mono(11))
-                .tracking(0.45)
-                .foregroundStyle(Look.inkFaint)
+            if store.isPast {
+                Text("день закрыт")
+                    .font(Look.mono(11))
+                    .tracking(0.45)
+                    .foregroundStyle(Look.inkFaint)
+            }
             Spacer()
             Button {
                 guard let id = store.addTask() else {
@@ -78,8 +80,8 @@ struct PlanView: View {
         }
         .padding(.leading, 14)
         .padding(.trailing, 12)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.top, store.isPast ? 12 : 6)
+        .padding(.bottom, store.isPast ? 8 : 0)
     }
 
     private var empty: some View {
