@@ -2,109 +2,36 @@ import SwiftUI
 
 // MARK: - Меню страницы
 
-/// Три точки: листок, приклеенный к верхнему правому углу.
-///
-/// Не отдельная страница (решение: меню не должно уводить с экрана) и не
-/// лист снизу: оно свешивается сверху справа, закрывая часть экрана, и
-/// из-под него видно, где ты остался. Цвет бумажный, чтобы читалось как
-/// приклеенная записка, а не как часть приложения.
+/// Три точки: жёлтая бумажка, приклеенная к верхнему правому углу.
 struct MenuSticker: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            Color.black.opacity(0.001)
-                .contentShape(Rectangle())
-                .onTapGesture { close() }
-            sheet
-        }
-        .transition(.move(edge: .top).combined(with: .opacity))
-    }
-
-    private var sheet: some View {
-        VStack(spacing: 0) {
-            head
-            items
-        }
-        .frame(maxWidth: 262)
-        .background(Look.sticker)
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 12))
-        .overlay(StickerBorder(radius: 12).stroke(Look.stickerEdge, lineWidth: 1))
-        .shadow(color: .black.opacity(0.32), radius: 14, y: 6)
-        .padding(.leading, 60)
-    }
-
-    private var head: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text("МЕНЮ СТРАНИЦЫ")
-                .font(Look.sans(11.5))
-                .tracking(1.15)
-                .foregroundStyle(Look.inkFaint)
-                .padding(.top, 22)
-                .padding(.leading, 14)
-            Spacer(minLength: 0)
-            Button { close() } label: {
-                Text("✕")
-                    .font(.system(size: 19))
-                    .foregroundStyle(Look.inkSoft)
-                    .frame(width: 44, height: 38)
+        Sticker(side: .trailing, title: "Меню страницы", close: close) {
+            StickerItem(title: "Режим изменений",
+                        note: store.editing ? "включён" : "выключен",
+                        active: store.editing) {
+                store.editing.toggle()
+                close()
             }
-            .padding(.top, 12)
-            .accessibilityLabel("Закрыть")
-        }
-        .padding(.bottom, 7)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Look.stickerEdge).frame(height: 1)
-        }
-    }
-
-    @ViewBuilder private var items: some View {
-        item("Режим изменений",
-             note: store.editing ? "включён" : "выключен",
-             active: store.editing) {
-            store.editing.toggle()
-            close()
-        }
-        item("Показать файл этого дня", note: "→") {
-            close()
-            shell.showingFile = true
-        }
-        item("Перенести дело на другой день", note: "→") {
-            close()
-            shell.say("Перенос дела ещё не сделан.")
-        }
-        item("Поделиться днём", note: "→") {
-            close()
-            shell.say("«Поделиться днём» ещё не сделано.")
-        }
-        item("Удалить день", note: "→") {
-            close()
-            shell.say("Удаление дня ещё не сделано.")
-        }
-    }
-
-    private func item(_ title: String, note: String,
-                      active: Bool = false, _ act: @escaping () -> Void) -> some View {
-        Button(action: act) {
-            HStack(spacing: 10) {
-                Text(title)
-                    .font(Look.sans(14, weight: active ? .medium : .regular))
-                    .foregroundStyle(active ? Look.accent : Look.ink)
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
-                Text(note)
-                    .font(Look.sans(11.5))
-                    .foregroundStyle(Look.inkFaint)
+            StickerItem(title: "Показать файл этого дня") {
+                close()
+                shell.showingFile = true
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Look.stickerEdge).frame(height: 1)
+            StickerItem(title: "Перенести дело на другой день") {
+                close()
+                shell.say("Перенос дела ещё не сделан.")
+            }
+            StickerItem(title: "Поделиться днём") {
+                close()
+                shell.say("«Поделиться днём» ещё не сделано.")
+            }
+            StickerItem(title: "Удалить день") {
+                close()
+                shell.say("Удаление дня ещё не сделано.")
+            }
         }
     }
 
@@ -113,18 +40,93 @@ struct MenuSticker: View {
     }
 }
 
-/// Обводка стикера: низ и левый бок, сверху и справа он приклеен к углу.
-struct StickerBorder: Shape {
-    let radius: CGFloat
+// MARK: - Настройки
 
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: r.minX, y: r.minY))
-        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - radius))
-        p.addArc(center: CGPoint(x: r.minX + radius, y: r.maxY - radius), radius: radius,
-                 startAngle: .degrees(180), endAngle: .degrees(90), clockwise: true)
-        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
-        return p
+/// Шестерёнка: голубая бумажка, приклеенная к верхнему левому углу.
+///
+/// Та же порода, что и меню страницы: рука узнаёт их одинаково, а цвет
+/// говорит, к чему бумажка относится — к дню или ко всему приложению.
+struct SettingsSticker: View {
+
+    @EnvironmentObject private var vault: Vault
+    @EnvironmentObject private var shell: Shell
+
+    var body: some View {
+        Sticker(side: .leading, title: "Настройки",
+                paper: Look.note, edge: Look.noteEdge, close: close) {
+            place
+            StickerItem(title: "Писать в другое место", edge: Look.noteEdge) {
+                close()
+                shell.picking = true
+            }
+            if vault.previousPath != nil {
+                StickerItem(title: "Вернуться к прежней папке", edge: Look.noteEdge) {
+                    close()
+                    vault.goBack()
+                }
+            }
+            StickerItem(title: "Чего ещё нет", note: undone ? "▾" : "▸",
+                        edge: Look.noteEdge) {
+                undone.toggle()
+            }
+            if undone { missing }
+            version
+        }
+    }
+
+    @State private var undone = false
+
+    private var place: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("ЗАПИСИ ЛЕЖАТ ЗДЕСЬ")
+                .font(Look.sans(9))
+                .tracking(0.6)
+                .foregroundStyle(Look.inkFaint)
+            Text(vault.displayPath)
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(Look.inkSoft)
+                .textSelection(.enabled)
+                .lineLimit(4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private var missing: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Вложения: фото, аудио, файлы, геоточка")
+            Text("Перенос записей при смене места")
+            Text("Напоминания на телефон")
+            Text("Замок и ночной вид")
+        }
+        .font(Look.sans(12))
+        .foregroundStyle(Look.inkFaint)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
+    }
+
+    private var version: some View {
+        HStack {
+            Text("Версия")
+                .font(Look.sans(12))
+                .foregroundStyle(Look.inkFaint)
+            Spacer()
+            Text(Build.label)
+                .font(Look.mono(12))
+                .foregroundStyle(Look.inkSoft)
+                .textSelection(.enabled)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Look.noteEdge).frame(height: 1)
+        }
+    }
+
+    private func close() {
+        withAnimation(.easeOut(duration: 0.2)) { shell.showingSettings = false }
     }
 }
 
@@ -366,79 +368,6 @@ struct DetailsDrawer: View {
         hideKeyboard()
         store.save()
         withAnimation(.easeOut(duration: 0.26)) { shell.drawer = nil }
-    }
-}
-
-struct SettingsSheet: View {
-
-    @EnvironmentObject private var vault: Vault
-    @EnvironmentObject private var shell: Shell
-
-    /// Длинные объяснения — готовыми строками, а не склейкой в разметке:
-    /// склеенные плюсами куски Swift разбирает мучительно долго и однажды
-    /// отказался собирать приложение целиком.
-    private static let aboutFolder = """
-        Откройте «Файлы» и найдите эту папку — там всё, что вы написали, \
-        обычными файлами. Приложение можно удалить, записи останутся.
-
-        Прежние записи останутся там, где лежат сейчас: приложение их не \
-        переносит и не удаляет. Чтобы взять их с собой, перенесите папку \
-        сами в «Файлах» и укажите новое место здесь.
-        """
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Text(vault.displayPath)
-                        .font(.system(.footnote, design: .monospaced))
-                        .textSelection(.enabled)
-                        .foregroundStyle(.secondary)
-                    Button("Писать в другое место") {
-                        shell.showingSettings = false
-                        shell.picking = true
-                    }
-                    if let previous = vault.previousPath {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Button("Вернуться к прежней папке") { vault.goBack() }
-                            Text(previous)
-                                .font(.system(.caption2, design: .monospaced))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                } header: {
-                    Text("Где лежат записи")
-                } footer: {
-                    Text(Self.aboutFolder)
-                }
-
-                Section("Ещё не сделано") {
-                    Text("Вложения: фото, аудио, файлы, геоточка").foregroundStyle(.tertiary)
-                    Text("Перенос записей при смене места").foregroundStyle(.tertiary)
-                    Text("«…а помнишь?» — запись год назад").foregroundStyle(.tertiary)
-                    Text("Напоминания на телефон").foregroundStyle(.tertiary)
-                    Text("Замок и ночной вид").foregroundStyle(.tertiary)
-                }
-
-                Section("Сборка") {
-                    HStack {
-                        Text("Версия")
-                        Spacer()
-                        Text(Build.label)
-                            .font(.callout.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
-                }
-            }
-            .navigationTitle("Настройки")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Закрыть") { shell.showingSettings = false }
-                }
-            }
-        }
     }
 }
 

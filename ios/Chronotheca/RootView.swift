@@ -70,6 +70,9 @@ struct RootView: View {
             .background(Look.chrome.ignoresSafeArea())
 
             if shell.showingMenu { MenuSticker() }
+            if shell.showingSettings {
+                SettingsSticker().frame(maxWidth: .infinity, alignment: .topLeading)
+            }
             if let notice = shell.notice {
                 toast(notice)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -79,7 +82,6 @@ struct RootView: View {
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
-        .sheet(isPresented: $shell.showingSettings) { SettingsSheet() }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear { shell.openRequestedScreen(store) }
@@ -102,10 +104,12 @@ struct RootView: View {
     /// перелистываются вместе с ней.
     private var appbar: some View {
         HStack {
-            Button { shell.showingSettings = true } label: {
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) { shell.showingSettings = true }
+            } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 19))
-                    .foregroundStyle(Look.inkSoft)
+                    .foregroundStyle(shell.showingSettings ? Look.accent : Look.inkSoft)
                     .frame(width: 44, height: 38)
             }
             .accessibilityLabel("Настройки")

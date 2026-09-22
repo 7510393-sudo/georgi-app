@@ -66,6 +66,7 @@ final class Shell: ObservableObject {
         case "search":    screen = .search
         case "menu":      showingMenu = true
         case "settings":  showingSettings = true
+        case "remember":  tab = .diary
         case "details":   drawer = store.tasks.first?.id
         case "past":      store.move(by: -1)
         case "editing":   store.editing = true
