@@ -18,9 +18,9 @@ struct RememberCloud: View {
     /// Пропорции рисунка и место для подписи внутри него — доли ширины и
     /// высоты, снятые с самого эскиза.
     static let ratio: CGFloat = 2.776
-    private static let textLeft: CGFloat = 0.10
-    private static let textRight: CGFloat = 0.40
-    private static let textMiddle: CGFloat = 0.58
+    private static let textLeft: CGFloat = 0.16
+    private static let textRight: CGFloat = 0.38
+    private static let textMiddle: CGFloat = 0.52
 
     /// Ширина облачка. Подпись набрана шрифтом, а не обведена вместе с
     /// рисунком: от руки она на такой ширине превращается в пятно, а
@@ -44,7 +44,7 @@ struct RememberCloud: View {
                     .resizable()
                     .foregroundStyle(Look.ink)
                 Text("…а помнишь?")
-                    .font(Look.sans(width * 0.087))
+                    .font(Look.sans(width * 0.080))
                     .tracking(0.2)
                     .foregroundStyle(Look.inkSoft)
                     .lineLimit(1)
