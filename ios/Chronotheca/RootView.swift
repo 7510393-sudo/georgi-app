@@ -151,7 +151,15 @@ struct RootView: View {
         }
     }
 
-    @ViewBuilder private func page(_ which: Shell.Screen) -> some View {
+    /// Страница книги: содержимое раздела и обрез стопки у правого края.
+    private func page(_ which: Shell.Screen) -> some View {
+        HStack(spacing: 0) {
+            inside(which)
+            ForeEdge()
+        }
+    }
+
+    @ViewBuilder private func inside(_ which: Shell.Screen) -> some View {
         switch which {
         case .today:    DayPages()
         case .calendar: CalendarView()

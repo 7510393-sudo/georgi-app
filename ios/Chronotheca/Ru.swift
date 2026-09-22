@@ -107,6 +107,10 @@ enum Look {
     static let accent    = Color(light: 0x2F4A6B, dark: 0x8FB3E8)
     static let chrome    = Color(light: 0xF4F4F1, dark: 0x191F26)
     static let planBg    = Color(light: 0xFDFDFB, dark: 0x14191F)
+
+    /// Обрез книги: торец стопки у правого края страницы.
+    static let foreEdge     = Color(light: 0xE6E3DA, dark: 0x232A32)
+    static let foreEdgeLine = Color(light: 0x9A958A, dark: 0x0B0F14)
     static let diaryBg   = Color(light: 0xFAF5EC, dark: 0x1B1812)
 
     /// Бумага приклеенных записок. Жёлтая — меню страницы, голубая —
