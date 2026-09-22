@@ -97,10 +97,7 @@ struct CalendarView: View {
         let toward = towardToday(from: date)
         return HStack {
             arrow("‹", lit: toward < 0, label: kind == .year ? "Предыдущий год"
-                                                            : "Предыдущий месяц") {
-                shown = shift(shown, by: -1)
-                selected = nil
-            }
+                                                            : "Предыдущий месяц")
             Spacer()
             Text(kind == .year ? String(cal.component(.year, from: date))
                                : Ru.monthTitle(date))
@@ -108,30 +105,41 @@ struct CalendarView: View {
                 .foregroundStyle(Look.ink)
             Spacer()
             arrow("›", lit: toward > 0, label: kind == .year ? "Следующий год"
-                                                            : "Следующий месяц") {
-                shown = shift(shown, by: 1)
-                selected = nil
-            }
+                                                            : "Следующий месяц")
         }
         .padding(.horizontal, 14)
         .padding(.top, 2)
         .padding(.bottom, 8)
     }
 
-    /// Стрелка. Та, что смотрит в сторону сегодняшнего месяца, горит:
-    /// уйдя на июнь, человек видит, что «сейчас» — справа, и не гадает,
-    /// в какую сторону возвращаться.
-    private func arrow(_ sign: String, lit: Bool, label: String,
-                       act: @escaping () -> Void) -> some View {
-        Button(action: act) {
-            Text(sign)
-                .font(.system(size: 22, weight: lit ? .semibold : .regular))
-                .foregroundStyle(lit ? Look.accent : Look.inkFaint)
-                .frame(width: 34, height: 30)
-                .background(lit ? Look.accent.opacity(0.1) : .clear,
-                            in: RoundedRectangle(cornerRadius: 8))
-        }
-        .accessibilityLabel(lit ? label + ", к сегодняшнему дню" : label)
+    /// Стрелка. Та, что смотрит в сторону сегодняшнего месяца, горит: уйдя
+    /// на июнь, человек видит, что «сейчас» — справа, и не гадает, в какую
+    /// сторону возвращаться.
+    ///
+    /// Короткое нажатие — шаг. Долгое — сразу на сегодняшний месяц: дорога
+    /// назад не должна быть длиннее дороги вперёд.
+    private func arrow(_ sign: String, lit: Bool, label: String) -> some View {
+        let step = sign == "‹" ? -1 : 1
+        return Text(sign)
+            .font(.system(size: 22, weight: lit ? .semibold : .regular))
+            .foregroundStyle(lit ? Look.accent : Look.inkFaint)
+            .frame(width: 40, height: 34)
+            .background(lit ? Look.accent.opacity(0.1) : .clear,
+                        in: RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+            .onLongPressGesture(minimumDuration: 0.4) {
+                guard lit else { return }
+                shown = DayStore.today()
+                selected = nil
+                shell.say(kind == .year ? "Вернулись на этот год"
+                                        : "Вернулись на этот месяц")
+            } onPressingChanged: { _ in }
+            .onTapGesture {
+                shown = shift(shown, by: step)
+                selected = nil
+            }
+            .accessibilityLabel(lit ? label + ". Долгое нажатие — к сегодняшнему дню"
+                                    : label)
     }
 
     /// В какой стороне сегодняшний месяц: −1 слева, +1 справа, 0 — мы на нём.

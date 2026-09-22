@@ -267,7 +267,7 @@ struct PlanView: View {
         .padding(.top, 10)
     }
 
-    private var list: some View {
+    @ViewBuilder private var list: some View {
         ForEach($store.planRows) { row in
             if row.wrappedValue.isTask {
                 taskRow(row)
