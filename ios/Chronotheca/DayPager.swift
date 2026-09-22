@@ -67,9 +67,15 @@ struct DayPage: View {
     /// показываются, пока едут.
     @ViewBuilder private var cloud: some View {
         if live, shell.tab == .diary, archive.remembered(for: date) != nil {
-            RememberCloud(date: date, open: $remembering)
-                .frame(maxWidth: 150)
-                .offset(y: -9)
+            // Облачко висит под своей вкладкой — под «Дневником», а не
+            // посередине: оно относится к дневнику, а не к экрану вообще.
+            // Вкладки делят ширину поровну, поэтому и здесь две половины.
+            HStack(spacing: 0) {
+                Color.clear.frame(maxWidth: .infinity)
+                RememberCloud(date: date, open: $remembering)
+                    .frame(maxWidth: .infinity)
+            }
+            .offset(y: -8)
         }
     }
 
