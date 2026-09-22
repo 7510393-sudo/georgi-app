@@ -10,6 +10,7 @@ struct DayPages: View {
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var archive: Archive
 
     var body: some View {
         PageCurl { offset in
@@ -17,6 +18,7 @@ struct DayPages: View {
                 .environmentObject(vault)
                 .environmentObject(store)
                 .environmentObject(shell)
+                .environmentObject(archive)
         } onTurn: { step in
             hideKeyboard()
             store.move(by: step)
@@ -39,15 +41,36 @@ struct DayPage: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var archive: Archive
+
+    @State private var remembering = false
 
     var body: some View {
         VStack(spacing: 0) {
             heading
             tabs
             content
+                // Облачко выглядывает из-под вкладки на три четверти.
+                .overlay(alignment: .top) { cloud }
             AttachBar()
         }
         .background(background)
+        .sheet(isPresented: $remembering) {
+            if let (day, years) = archive.remembered(for: date) {
+                RememberSheet(day: day, years: years, open: $remembering)
+            }
+        }
+    }
+
+    /// Облачко только на вкладке «Дневник» и только на открытом дне
+    /// (решения P66–P69). На соседних страницах его нет: они лишь
+    /// показываются, пока едут.
+    @ViewBuilder private var cloud: some View {
+        if live, shell.tab == .diary, archive.remembered(for: date) != nil {
+            RememberCloud(date: date, open: $remembering)
+                .frame(maxWidth: 150)
+                .offset(y: -9)
+        }
     }
 
     private var background: Color {
@@ -117,8 +140,8 @@ struct DayPage: View {
                 .tracking(1.56)
                 .foregroundStyle(on ? Look.ink : Look.inkFaint)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 9)
-                .padding(.bottom, 10)
+                .padding(.top, 10)
+                .padding(.bottom, 11)
                 .background(page)
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10,
                                                   topTrailingRadius: 10))
@@ -226,51 +249,25 @@ struct SideDay: View {
 }
 
 /// Список дел без правки — для соседних страниц.
+///
+/// Та же оправа и те же строки, что у открытой страницы. Ничего своего.
 struct PlanPage: View {
 
     let rows: [PlanRow]
     let isPast: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PlanHead(isPast: isPast, dimmed: isPast)
-
+        PlanScaffold(isPast: isPast, dimmed: isPast) {
             if rows.isEmpty {
-                empty
+                PlanEmpty(isPast: isPast)
             } else {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
                     PlanRowLine(number: i + 1, row: row, faded: isPast)
                     Rectangle().fill(Look.ruleSoft).frame(height: 1)
                 }
-                stat
+                PlanStat(planned: rows.count, done: rows.filter(\.done).count)
             }
-            Spacer(minLength: 0)
         }
         .opacity(isPast ? 0.58 : 1)
-    }
-
-    private var empty: some View {
-        VStack(spacing: 4) {
-            Text("На этот день ничего не запланировано.")
-            if !isPast { Text("Нажмите «+», чтобы вписать дело.") }
-        }
-        .font(Look.sans(14))
-        .lineSpacing(5)
-        .foregroundStyle(Look.inkFaint)
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 40)
-        .padding(.horizontal, 22)
-    }
-
-    private var stat: some View {
-        Text("Запланировано \(rows.count) · сделано \(rows.filter(\.done).count)")
-            .font(Look.mono(11.5))
-            .tracking(0.35)
-            .foregroundStyle(Look.inkFaint)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
     }
 }

@@ -279,7 +279,7 @@ struct DetailsDrawer: View {
         .padding(.top, 15)
         // Шторка поднимается над клавиатурой, а не прячет под ней строку,
         // которую человек как раз набирает.
-        .padding(.bottom, max(15, keyboard + 6))
+        .padding(.bottom, max(15, keyboard - 16))
         .animation(.easeOut(duration: 0.22), value: keyboard)
     }
 

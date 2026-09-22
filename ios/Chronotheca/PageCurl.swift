@@ -27,6 +27,14 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
         pages.view.backgroundColor = UIColor(Look.chrome)
         pages.setViewControllers([context.coordinator.make(0)],
                                  direction: .forward, animated: false)
+
+        // Страница переворачивается движением, а не касанием. Система сама
+        // вешает на края экрана касания, которые листают: человек тыкает в
+        // край — и день меняется без его намерения. Это нарушение главного
+        // правила (P113), поэтому касания снимаем, тяга остаётся.
+        for gesture in pages.gestureRecognizers where gesture is UITapGestureRecognizer {
+            gesture.isEnabled = false
+        }
         return pages
     }
 

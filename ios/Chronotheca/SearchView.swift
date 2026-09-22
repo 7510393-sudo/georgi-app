@@ -2,9 +2,11 @@ import SwiftUI
 
 /// Поиск по архиву.
 ///
-/// Ищет по тому, что лежит в файлах: по заголовку дня, по тексту записи и по
-/// названиям дел. В прототипе это был вид без начинки — здесь настоящий поиск,
-/// потому что искать по своему архиву человек будет с первого же месяца.
+/// Ищет по тому, что лежит в файлах: по заголовку дня, по тексту записи, по
+/// названиям дел и по ответам «Как прошло?». Показывает при этом только
+/// заголовок и текст: ответы — служебная часть записи, в выдаче от них
+/// рябит. Но если искомое слово нашлось именно в них, день всё равно
+/// попадает в список — иначе поиск лгал бы.
 struct SearchView: View {
 
     @EnvironmentObject private var store: DayStore
@@ -37,19 +39,19 @@ struct SearchView: View {
     private var field: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Look.inkFaint)
             TextField("Поиск по словам", text: $query)
                 .focused($typing)
                 .submitLabel(.search)
             if !query.isEmpty {
                 Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Look.inkFaint)
                     .accessibilityLabel("Очистить")
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+        .background(Look.chrome, in: RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, 14)
         .padding(.bottom, 10)
     }
@@ -61,6 +63,9 @@ struct SearchView: View {
         return days.filter { day in
             if day.title.lowercased().contains(needle) { return true }
             if day.text.lowercased().contains(needle) { return true }
+            if day.answers.values.contains(where: { $0.lowercased().contains(needle) }) {
+                return true
+            }
             return day.tasks.contains { $0.text.lowercased().contains(needle) }
         }
     }
@@ -69,52 +74,71 @@ struct SearchView: View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(found) { day in
-                    Button {
-                        typing = false
-                        store.go(to: day.date)
-                        shell.tab = day.tasks.isEmpty ? .diary : .plan
-                        shell.screen = .today
-                    } label: {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("\(Ru.weekdayShort(day.date)) \(Ru.shortDate(day.date)) "
-                                 + String(Calendar.current.component(.year, from: day.date)))
-                                .font(.caption)
-                                .foregroundStyle(Ru.dayColor(day.date))
-                            Text(day.line)
-                                .font(.callout)
-                                .foregroundStyle(.primary)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                            if !day.tasks.isEmpty {
-                                Text("дел: \(day.tasks.count)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 11)
-                    }
-                    .buttonStyle(.plain)
-                    Divider().padding(.leading, 18).opacity(0.3)
+                    row(day)
+                    Rectangle().fill(Look.ruleSoft).frame(height: 1).padding(.leading, 18)
                 }
-                Text("Найдено дней: \(found.count)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .padding(.vertical, 16)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    private func row(_ day: Archive.Day) -> some View {
+        Button {
+            typing = false
+            store.go(to: day.date)
+            shell.tab = day.text.isEmpty && !day.tasks.isEmpty ? .plan : .diary
+            shell.screen = .today
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    // Год, месяц, число — в этом порядке: при поиске по архиву
+                    // сначала выбирают время, а не день недели. День недели
+                    // виден на самой записи, когда до неё дойдут.
+                    Text(Search.stamp(day.date))
+                        .font(Look.mono(11.5))
+                        .tracking(0.3)
+                        .foregroundStyle(Look.inkFaint)
+
+                    if !day.title.isEmpty {
+                        Text(day.title)
+                            .font(Look.serif(15, weight: .semibold))
+                            .foregroundStyle(Look.ink)
+                            .lineLimit(1)
+                    }
+                    if !day.text.isEmpty {
+                        Text(day.text)
+                            .font(Look.serif(13.5))
+                            .foregroundStyle(Look.inkSoft)
+                            .lineLimit(day.title.isEmpty ? 4 : 3)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 11)
+        }
+        .buttonStyle(.plain)
     }
 
     private func message(_ head: String, _ tail: String) -> some View {
         VStack(spacing: 6) {
             Spacer()
-            Text(head).font(.callout).foregroundStyle(.secondary)
-            Text(tail).font(.footnote).foregroundStyle(.tertiary)
+            Text(head).font(Look.sans(15)).foregroundStyle(Look.inkSoft)
+            Text(tail).font(Look.sans(13)).foregroundStyle(Look.inkFaint)
                 .multilineTextAlignment(.center)
             Spacer()
         }
         .padding(.horizontal, 36)
         .frame(maxWidth: .infinity)
+    }
+}
+
+enum Search {
+    /// «2026 сентябрь 22» — от крупного к мелкому, как ищут в архиве.
+    static func stamp(_ date: Date) -> String {
+        let c = Calendar.current.dateComponents([.day, .month, .year], from: date)
+        return "\(c.year ?? 2026)  \(Ru.monthNames[(c.month ?? 1) - 1])  \(c.day ?? 1)"
     }
 }

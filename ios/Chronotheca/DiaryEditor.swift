@@ -58,10 +58,15 @@ struct DiaryEditor: UIViewRepresentable {
 
     static func body(_ size: CGFloat, serif: Bool) -> [NSAttributedString.Key: Any] {
         let paragraph = NSMutableParagraphStyle()
-        paragraph.lineSpacing = size * 0.24
-        let font = serif
+        paragraph.lineSpacing = UIFontMetrics(forTextStyle: .body)
+            .scaledValue(for: size * 0.24)
+        // Размер подгоняется под системную настройку текста — ровно так же,
+        // как это делает обычный текст на соседней странице. Без этого после
+        // поворота страницы текст «мельчает»: рядом стояли два разных шрифта.
+        let base = serif
             ? (UIFont(name: "Georgia", size: size) ?? .systemFont(ofSize: size))
             : UIFont.systemFont(ofSize: size)
+        let font = UIFontMetrics(forTextStyle: .body).scaledFont(for: base)
         return [
             .font: font,
             .foregroundColor: UIColor(Look.ink),

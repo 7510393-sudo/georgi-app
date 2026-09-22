@@ -153,9 +153,34 @@ struct Line: Shape {
     }
 }
 
-/// Шапка списка дел: «день закрыт» и кнопка «новое дело».
+/// Оправа списка дел: шапка, прокрутка и хвост под списком.
 ///
-/// Отдельной вещью, потому что ровно такая же стоит на соседних страницах.
+/// Открытая страница и соседние собираются из неё одинаково — вплоть до
+/// прокрутки. Дважды они расходились по мелочи, и дважды текст прыгал при
+/// перелистывании. Общая оправа — единственное, что это исключает (P114).
+struct PlanScaffold<Content: View>: View {
+
+    let isPast: Bool
+    var dimmed = false
+    var add: (() -> Void)?
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PlanHead(isPast: isPast, dimmed: dimmed, add: add)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    content()
+                    // Хвост: за него берут пустое место, чтобы убрать клавиатуру.
+                    Color.clear.frame(minHeight: 120)
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+    }
+}
+
+/// Шапка списка дел: «день закрыт» и кнопка «новое дело».
 struct PlanHead: View {
 
     let isPast: Bool
@@ -207,8 +232,9 @@ struct PlanView: View {
     var body: some View {
         VStack(spacing: 0) {
             if store.editing { banner }
-            PlanHead(isPast: store.isPast, dimmed: !store.canEditPlan) { add() }
-            if store.tasks.isEmpty { empty } else { list }
+            PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan, add: add) {
+                if store.tasks.isEmpty { PlanEmpty(isPast: store.isPast) } else { list }
+            }
         }
         .onChange(of: focused) { _, now in
             if now == nil { typingIn = nil; store.save() }
@@ -241,48 +267,18 @@ struct PlanView: View {
         .padding(.top, 10)
     }
 
-    private var empty: some View {
-        VStack(spacing: 4) {
-            Text("На этот день ничего не запланировано.")
-            if !store.isPast { Text("Нажмите «+», чтобы вписать дело.") }
-        }
-        .font(Look.sans(14))
-        .lineSpacing(5)
-        .foregroundStyle(Look.inkFaint)
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 40)
-        .padding(.horizontal, 22)
-    }
-
     private var list: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach($store.planRows) { row in
-                    if row.wrappedValue.isTask {
-                        taskRow(row)
-                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
-                    }
-                }
-                stat
-                Color.clear
-                    .frame(minHeight: 120)
-                    .contentShape(Rectangle())
-                    .onTapGesture { hideKeyboard() }
+        ForEach($store.planRows) { row in
+            if row.wrappedValue.isTask {
+                taskRow(row)
+                Rectangle().fill(Look.ruleSoft).frame(height: 1)
             }
         }
-        .scrollDismissesKeyboard(.interactively)
+        stat
     }
 
     private var stat: some View {
-        Text("Запланировано \(store.tasks.count) · сделано \(store.doneCount)")
-            .font(Look.mono(11.5))
-            .tracking(0.35)
-            .foregroundStyle(Look.inkFaint)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
+        PlanStat(planned: store.tasks.count, done: store.doneCount)
     }
 
     private func taskRow(_ row: Binding<PlanRow>) -> some View {
@@ -369,5 +365,41 @@ extension View {
     func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                         to: nil, from: nil, for: nil)
+    }
+}
+
+/// Пустой день. Общий для открытой страницы и соседних.
+struct PlanEmpty: View {
+    let isPast: Bool
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("На этот день ничего не запланировано.")
+            if !isPast { Text("Нажмите «+», чтобы вписать дело.") }
+        }
+        .font(Look.sans(14))
+        .lineSpacing(5)
+        .foregroundStyle(Look.inkFaint)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
+        .padding(.horizontal, 22)
+    }
+}
+
+/// Счёт под списком. Тоже общий.
+struct PlanStat: View {
+    let planned: Int
+    let done: Int
+
+    var body: some View {
+        Text("Запланировано \(planned) · сделано \(done)")
+            .font(Look.mono(11.5))
+            .tracking(0.35)
+            .foregroundStyle(Look.inkFaint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 20)
     }
 }

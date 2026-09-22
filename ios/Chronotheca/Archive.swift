@@ -14,6 +14,7 @@ final class Archive: ObservableObject {
         var tasks: [PlanRow] = []
         var title: String = ""
         var text: String = ""
+        var answers: [String: String] = [:]
 
         var hasSomething: Bool { !tasks.isEmpty || !title.isEmpty || !text.isEmpty }
 
@@ -65,8 +66,10 @@ final class Archive: ObservableObject {
                     if folder == .planner {
                         day.tasks = Plan.rows(from: parsed.body).filter { $0.isTask }
                     } else {
+                        let diary = Diary(body: parsed.body)
                         day.title = parsed.value("заголовок") ?? ""
-                        day.text = Diary(body: parsed.body).text
+                        day.text = diary.text
+                        day.answers = diary.answers
                     }
                     found[stamp] = day
                 }
