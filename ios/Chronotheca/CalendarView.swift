@@ -50,10 +50,8 @@ struct CalendarView: View {
             .padding(.top, 12)
             .padding(.bottom, 10)
 
-            nav
-
             PageCurl { offset in
-                body(at: step(offset))
+                page(at: step(offset), current: offset == 0)
                     .environmentObject(store)
                     .environmentObject(archive)
                     .environmentObject(shell)
@@ -64,13 +62,22 @@ struct CalendarView: View {
         .onAppear { archive.reload() }
     }
 
-    /// Что показано на странице, отстоящей на `offset` поворотов.
-    @ViewBuilder private func body(at date: Date) -> some View {
-        ScrollView {
-            switch kind {
-            case .year:  yearGrid(of: date)
-            case .month: monthGrid(of: date)
-            case .list:  monthList(of: date)
+    /// Страница календаря целиком: название, сетка и список дел под ней.
+    ///
+    /// Название едет вместе со страницей — оно к ней и относится. А список
+    /// дел показывается только на той странице, на которой человек стоит:
+    /// на соседнем месяце дела сегодняшнего дня — чужие.
+    private func page(at date: Date, current: Bool) -> some View {
+        VStack(spacing: 0) {
+            nav(for: date)
+            ScrollView {
+                VStack(spacing: 0) {
+                    switch kind {
+                    case .year:  yearGrid(of: date)
+                    case .month: monthGrid(of: date, current: current)
+                    case .list:  monthList(of: date)
+                    }
+                }
             }
         }
         .background(Look.planBg)
@@ -83,7 +90,7 @@ struct CalendarView: View {
         return cal.date(byAdding: unit, value: n, to: date) ?? date
     }
 
-    private var nav: some View {
+    private func nav(for date: Date) -> some View {
         HStack {
             Button { shown = shift(shown, by: -1) } label: {
                 Text("‹").font(.system(size: 22)).frame(width: 34, height: 30)
@@ -91,8 +98,8 @@ struct CalendarView: View {
             .foregroundStyle(Look.inkFaint)
             .accessibilityLabel(kind == .year ? "Предыдущий год" : "Предыдущий месяц")
             Spacer()
-            Text(kind == .year ? String(cal.component(.year, from: shown))
-                               : Ru.monthTitle(shown))
+            Text(kind == .year ? String(cal.component(.year, from: date))
+                               : Ru.monthTitle(date))
                 .font(Look.sans(16, weight: .semibold))
                 .foregroundStyle(Look.ink)
             Spacer()
@@ -103,6 +110,7 @@ struct CalendarView: View {
             .accessibilityLabel(kind == .year ? "Следующий год" : "Следующий месяц")
         }
         .padding(.horizontal, 14)
+        .padding(.top, 2)
         .padding(.bottom, 8)
     }
 
@@ -160,7 +168,7 @@ struct CalendarView: View {
 
     /// Сетка на пятую часть плотнее прежней: место внизу нужнее списку дел,
     /// ради которого в календарь и заходят.
-    private func monthGrid(of date: Date) -> some View {
+    private func monthGrid(of date: Date, current: Bool) -> some View {
         let cells = MonthGrid.cells(of: date, calendar: cal)
         let today = Vault.stamp(DayStore.today())
 
@@ -181,7 +189,7 @@ struct CalendarView: View {
             .padding(.horizontal, 10)
 
             Rectangle().fill(Look.rule).frame(height: 1).padding(.vertical, 10)
-            dayList
+            if current { dayList }
         }
         .padding(.bottom, 20)
     }
@@ -198,10 +206,7 @@ struct CalendarView: View {
                 Text("\(cal.component(.day, from: date))")
                     .font(Look.sans(14))
                     .foregroundStyle(isSelected ? Look.planBg : Look.ink)
-                Circle()
-                    .fill(archive.tasks(stamp).isEmpty
-                          ? .clear : (isSelected ? Look.planBg : Look.inkFaint))
-                    .frame(width: 3.5, height: 3.5)
+                dots(count: archive.tasks(stamp).count, light: isSelected)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 32)
@@ -211,6 +216,19 @@ struct CalendarView: View {
                 .strokeBorder(isToday && !isSelected ? Look.accent : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
+    }
+
+    /// Точек столько, сколько дел, но не больше трёх: по ним видно,
+    /// насколько день занят, не открывая его.
+    private func dots(count: Int, light: Bool) -> some View {
+        HStack(spacing: 2) {
+            ForEach(0..<min(count, 3), id: \.self) { _ in
+                Circle()
+                    .fill(light ? Look.planBg : Look.inkFaint)
+                    .frame(width: 3.5, height: 3.5)
+            }
+        }
+        .frame(height: 3.5)
     }
 
     private func dateOfWeekday(_ i: Int) -> Date {

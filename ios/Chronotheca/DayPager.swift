@@ -198,17 +198,7 @@ struct SideDay: View {
 
     private var plan: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if date < DayStore.today() {
-                Text("день закрыт")
-                    .font(Look.mono(11))
-                    .tracking(0.45)
-                    .foregroundStyle(Look.inkFaint)
-                    .padding(.leading, 14)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-            } else {
-                Color.clear.frame(height: 20)
-            }
+            PlanHead(isPast: date < DayStore.today(), dimmed: date < DayStore.today())
 
             if rows.isEmpty {
                 Text("На этот день ничего не запланировано.")

@@ -52,36 +52,15 @@ struct PlanView: View {
     }
 
     private var head: some View {
-        HStack {
-            if store.isPast {
-                Text("день закрыт")
-                    .font(Look.mono(11))
-                    .tracking(0.45)
-                    .foregroundStyle(Look.inkFaint)
+        PlanHead(isPast: store.isPast, dimmed: !store.canEditPlan) {
+            guard let id = store.addTask() else {
+                return shell.say(store.closedReason)
             }
-            Spacer()
-            Button {
-                guard let id = store.addTask() else {
-                    return shell.say(store.closedReason)
-                }
-                typingIn = id
-                // Курсор ставится следующим ходом: поля, в которое его
-                // ставят, в этот миг ещё нет на экране.
-                DispatchQueue.main.async { focused = id }
-            } label: {
-                Text("+")
-                    .font(.system(size: 21, weight: .regular))
-                    .foregroundStyle(Look.accent)
-                    .frame(width: 34, height: 34)
-                    .overlay(Circle().strokeBorder(Look.rule))
-            }
-            .opacity(store.canEditPlan ? 1 : 0.3)
-            .accessibilityLabel("Новое дело")
+            typingIn = id
+            // Курсор ставится следующим ходом: поля, в которое его ставят,
+            // в этот миг ещё нет на экране.
+            DispatchQueue.main.async { focused = id }
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 12)
-        .padding(.top, store.isPast ? 12 : 6)
-        .padding(.bottom, store.isPast ? 8 : 0)
     }
 
     private var empty: some View {
@@ -224,12 +203,6 @@ struct PlanView: View {
                     }
                 }
 
-                ForEach(Array(task.details.enumerated()), id: \.offset) { _, detail in
-                    Text(detail)
-                        .font(Look.sans(13))
-                        .foregroundStyle(Look.inkFaint)
-                        .lineLimit(2)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -327,5 +300,41 @@ extension View {
     func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                         to: nil, from: nil, for: nil)
+    }
+}
+
+/// Шапка списка дел: «день закрыт» и кнопка «новое дело».
+///
+/// Отдельной вещью, потому что ровно такая же стоит на соседних страницах.
+/// Разойдутся на десяток точек — и при повороте страницы строки под ней
+/// прыгнут, как будто текст съехал на строку вниз.
+struct PlanHead: View {
+
+    let isPast: Bool
+    var dimmed = false
+    var add: (() -> Void)?
+
+    var body: some View {
+        HStack {
+            if isPast {
+                Text("день закрыт")
+                    .font(Look.mono(11))
+                    .tracking(0.45)
+                    .foregroundStyle(Look.inkFaint)
+            }
+            Spacer()
+            Text("+")
+                .font(.system(size: 21))
+                .foregroundStyle(Look.accent)
+                .frame(width: 34, height: 34)
+                .overlay(Circle().strokeBorder(Look.rule))
+                .opacity(dimmed ? 0.3 : 1)
+                .onTapGesture { add?() }
+                .accessibilityLabel("Новое дело")
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 12)
+        .padding(.top, isPast ? 12 : 6)
+        .padding(.bottom, isPast ? 8 : 0)
     }
 }
