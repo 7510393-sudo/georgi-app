@@ -12,6 +12,10 @@ struct RootView: View {
     @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
 
+    /// Идущее сейчас перелистывание между разделами, если оно идёт.
+    @State private var turn: Turn?
+    @State private var turning = false
+
     /// Человек должен увидеть полный путь до того, как что-то создано.
     private static func proposalText(_ p: Vault.Proposal) -> String {
         var out = "Записей здесь не нашлось. Приложение может завести новую папку:\n\n"
@@ -98,6 +102,12 @@ struct RootView: View {
         ZStack(alignment: .trailing) {
             screen
             if shell.drawer != nil { DetailsDrawer() }
+            // Страницы летят поверх раздела, в который мы идём: он уже под
+            // ними, и открывается по мере того, как они сходят.
+            if let turn {
+                PageTurn(back: turn.back, sheets: turn.sheets,
+                         progress: turning ? 1 : 0)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
@@ -171,7 +181,7 @@ struct RootView: View {
             } else {
                 archive.reload()
             }
-            shell.screen = target
+            open(target)
         } label: {
             VStack(spacing: 5) {
                 // Значки нарисованы автором от руки и обведены в вектор:
@@ -180,11 +190,35 @@ struct RootView: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 27, height: 27)
+                    .frame(width: 32, height: 32)
                 Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
             }
             .frame(maxWidth: .infinity)
             .foregroundStyle(on ? Look.accent : Look.inkSoft)
+        }
+    }
+
+    /// Открыть раздел, перелистнув к нему страницы.
+    ///
+    /// Раздел подставляется сразу, а страницы летят поверх: так на любом
+    /// кадре под ними уже то, что человек открыл, и ждать нечего.
+    private func open(_ target: Shell.Screen) {
+        guard let next = Turn(from: shell.screen, to: target) else {
+            shell.screen = target
+            return
+        }
+        hideKeyboard()
+        shell.screen = target
+        turn = next
+        turning = false
+        // Следующим оборотом: в этом же стопка ещё только появилась, и
+        // ход ей задавать не по чему.
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: next.duration)) { turning = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + next.duration + 0.05) {
+            turn = nil
+            turning = false
         }
     }
 

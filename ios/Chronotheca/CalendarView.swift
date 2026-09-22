@@ -412,10 +412,13 @@ struct CalendarView: View {
     /// Разделение недель: воскресенье отбивается жирной чертой — это конец
     /// недели; пятница тонкой — за ней начинаются выходные. Так месяц
     /// читается ритмом, а не сплошным столбцом.
+    ///
+    /// Черта воскресенья загибается на концах вверх: она не сама по себе, а
+    /// нижний край рамки вокруг недели, и этот загиб её и замыкает (P143).
     @ViewBuilder private func weekRule(after date: Date) -> some View {
         let weekday = cal.component(.weekday, from: date)
         if weekday == 1 {
-            Rectangle().fill(Look.inkFaint).frame(height: 2)
+            WeekEnd().stroke(Look.inkFaint, lineWidth: 2).frame(height: 2)
         } else if weekday == 6 {
             Rectangle().fill(Look.inkFaint).opacity(0.55).frame(height: 1)
         } else {
