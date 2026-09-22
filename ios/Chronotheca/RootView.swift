@@ -140,12 +140,47 @@ struct RootView: View {
 
     // MARK: - Экран
 
-    @ViewBuilder private var screen: some View {
-        switch shell.screen {
-        case .today:    DayPages()
-        case .calendar: CalendarView()
-        case .search:   SearchView()
+    /// Книга и два вкладыша.
+    ///
+    /// «Сегодня» — сама книга, она лежит всегда. Календарь наезжает на неё
+    /// сверху, поиск — снизу: так их и достают из бумажного ежедневника, и
+    /// так у каждого раздела своё постоянное направление — через несколько
+    /// дней рука помнит его без подсказки (решение P146).
+    ///
+    /// Вкладыши не появляются и не исчезают, а стоят за краем экрана и
+    /// выезжают: собирать их заново в начале хода — значит уронить первые
+    /// кадры, а ход должен быть гладким.
+    private var screen: some View {
+        GeometryReader { geo in
+            ZStack {
+                DayPages()
+                panel(.calendar, from: .top, over: geo.size) { CalendarView() }
+                panel(.search, from: .bottom, over: geo.size) { SearchView() }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
+    }
+
+    /// Вкладыш: лежит за краем экрана и выезжает на книгу.
+    private func panel<V: View>(_ which: Shell.Screen, from edge: Edge,
+                                over size: CGSize,
+                                @ViewBuilder content: () -> V) -> some View {
+        let on = shell.screen == which
+        // До первой раскладки высота нулевая. Если поверить ей, вкладыши
+        // окажутся на книге и мигнут при запуске — а ничто не должно
+        // двигаться само (P113). Поэтому до измерения уводим их заведомо
+        // далеко.
+        let away = (edge == .top ? -1 : 1) * max(size.height, 1200)
+        return content()
+            .frame(width: size.width, height: size.height)
+            .background(Look.chrome)
+            // Тень падает на книгу с той стороны, откуда вкладыш пришёл:
+            // видно, что он лежит поверх, а не врезан в страницу.
+            .shadow(color: .black.opacity(on ? 0.16 : 0),
+                    radius: 14, x: 0, y: edge == .top ? 7 : -7)
+            .offset(y: on ? 0 : away)
+            // Уехавший вкладыш не ловит касания: под ним живая книга.
+            .allowsHitTesting(on)
     }
 
     // MARK: - Разделы
@@ -189,14 +224,14 @@ struct RootView: View {
         }
     }
 
-    /// Открыть раздел.
+    /// Открыть раздел: вкладыш выезжает на книгу, книга остаётся на месте.
     ///
-    /// Перехода пока нет. Был поворот страницы — но разделы не соседние
-    /// страницы, и книга, листающая два десятка листов ради календаря,
-    /// врёт о себе (P144 отменено). Чем его заменить — открытый вопрос.
+    /// Ход мягкий и без отскока: вкладыш кладут, а не бросают.
     private func open(_ target: Shell.Screen) {
         if target != shell.screen { hideKeyboard() }
-        shell.screen = target
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.92)) {
+            shell.screen = target
+        }
     }
 
     // MARK: - Сообщение
