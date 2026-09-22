@@ -7,7 +7,19 @@ import SwiftUI
 /// и это не потеря.
 final class Shell: ObservableObject {
 
-    enum Screen { case today, calendar, search }
+    enum Screen {
+        case today, calendar, search
+
+        /// Место раздела в книге: календарь ближе к началу, поиск — к концу.
+        /// По нему и решается, в какую сторону поворачивать страницу (P144).
+        var place: Int {
+            switch self {
+            case .calendar: 0
+            case .today:    1
+            case .search:   2
+            }
+        }
+    }
 
     enum Tab: String, CaseIterable, Identifiable {
         case plan = "План"
