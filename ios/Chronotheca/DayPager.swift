@@ -85,27 +85,91 @@ struct DayPage: View {
 
     // MARK: - Шапка дня
 
+    /// Шапка дня: соседние дни названы, а стрелка в сторону сегодняшнего
+    /// горит. Уйдя на неделю назад, человек видит, что «сейчас» — справа,
+    /// и не гадает, в какую сторону возвращаться (то же правило, что в
+    /// календаре, P127).
     private var heading: some View {
-        VStack(spacing: 2) {
-            Text(live ? store.title : DayPage.title(for: date))
-                .font(.system(size: 23, weight: .semibold))
-                .tracking(-0.2)
-                .foregroundStyle(Look.ink)
-            Text(Ru.weekday(date))
-                .font(Look.sans(12.5))
-                .tracking(0.75)
-                .foregroundStyle(Ru.dayColor(date))
-            Text(Ru.longDate(date))
-                .font(Look.sans(15))
-                .foregroundStyle(Look.inkSoft)
+        HStack(alignment: .center, spacing: 0) {
+            side(-1)
+            VStack(spacing: 2) {
+                Text(live ? store.title : DayPage.title(for: date))
+                    .font(.system(size: 23, weight: .semibold))
+                    .tracking(-0.2)
+                    .foregroundStyle(Look.ink)
+                Text(Ru.weekday(date))
+                    .font(Look.sans(12.5))
+                    .tracking(0.75)
+                    .foregroundStyle(Ru.dayColor(date))
+                Text(Ru.longDate(date))
+                    .font(Look.sans(15))
+                    .foregroundStyle(Look.inkSoft)
+            }
+            .frame(maxWidth: .infinity)
+            side(1)
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 6)
         .padding(.top, 2)
         .padding(.bottom, 9)
         .frame(maxWidth: .infinity)
         .background(Look.chrome)
         .contentShape(Rectangle())
         .onTapGesture { hideKeyboard() }
+    }
+
+    /// Стрелка со словом: слева — вчерашний день, справа — завтрашний.
+    /// Горит та, что показывает дорогу к сегодняшнему.
+    private func side(_ step: Int) -> some View {
+        let lit = toward == step
+        let sign = step < 0 ? "‹" : "›"
+        return VStack(spacing: 1) {
+            Text(sign)
+                .font(.system(size: 20, weight: lit ? .semibold : .regular))
+                .foregroundStyle(lit ? Look.accent : Look.inkFaint)
+            Text(neighbour(step))
+                .font(Look.sans(9.5))
+                .foregroundStyle(Look.inkFaint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(width: 62)
+        .contentShape(Rectangle())
+        .onLongPressGesture(minimumDuration: 0.4) {
+            guard live, lit else { return }
+            store.go(to: DayStore.today())
+            shell.say("Вернулись на сегодня")
+        } onPressingChanged: { _ in }
+        .onTapGesture {
+            guard live else { return }
+            hideKeyboard()
+            store.move(by: step)
+        }
+        .accessibilityLabel(lit ? neighbour(step) + ". Долгое нажатие — на сегодня"
+                                : neighbour(step))
+    }
+
+    /// В какой стороне сегодняшний день: −1 слева, +1 справа, 0 — мы на нём.
+    private var toward: Int {
+        let today = DayStore.today()
+        if date < today { return 1 }
+        if date > today { return -1 }
+        return 0
+    }
+
+    /// Как зовут соседний день. Дальше послезавтра имён нет — там просто
+    /// прошлое и будущее.
+    private func neighbour(_ step: Int) -> String {
+        let cal = Calendar.current
+        guard let day = cal.date(byAdding: .day, value: step, to: date) else { return "" }
+        let n = cal.dateComponents([.day], from: DayStore.today(), to: day).day ?? 0
+        switch n {
+        case -2: return "позавчера"
+        case -1: return "вчера"
+        case  0: return "сегодня"
+        case  1: return "завтра"
+        case  2: return "послезавтра"
+        default: return step < 0 ? "прошлое" : "будущее"
+        }
     }
 
     static func title(for date: Date) -> String {

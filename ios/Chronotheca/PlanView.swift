@@ -73,8 +73,7 @@ struct PlanRowLine: View {
             Text(row.time ?? "--:--")
                 .font(Look.mono(18.5))
                 .tracking(row.time == nil ? 0.7 : 0)
-                .foregroundStyle(faded ? Look.inkFaint : Look.inkSoft)
-                .opacity(row.time == nil ? 0.6 : 1)
+                .foregroundStyle(row.time == nil || faded ? Look.inkFaint : Look.inkSoft)
                 // Черта рисуется всегда, а не только там, где по ней можно
                 // нажать: вид строки не должен зависеть от того, открытая
                 // это страница или соседняя.
@@ -94,7 +93,6 @@ struct PlanRowLine: View {
             Image(systemName: row.bell == nil ? "bell" : "bell.fill")
                 .font(.system(size: 20))
                 .foregroundStyle(row.bell == nil ? Look.inkFaint : bellColor)
-                .opacity(row.bell == nil ? (faded ? 0.3 : 0.6) : 1)
                 .frame(width: 40, height: 38)
                 .contentShape(Rectangle())
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 11 }
