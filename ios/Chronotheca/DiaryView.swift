@@ -149,21 +149,13 @@ struct DiaryPage: View {
 
     // MARK: - Текст
 
+    /// Поле записи — одно и то же и на открытой странице, и на соседних.
+    /// Соседняя лишь не правится. Иначе рядом стоят два разных способа
+    /// набрать текст, и строки на повороте расходятся (P114).
     private var textField: some View {
-        Group {
-            if editable {
-                DiaryEditor(text: $text, size: size, serif: true, stamped: true,
-                            onFocus: onFocusText)
-                    .frame(minHeight: 320)
-            } else {
-                Text(text)
-                    .font(Look.serif(size))
-                    .foregroundStyle(Look.ink)
-                    .lineSpacing(DiaryView.leading)
-                    .frame(maxWidth: .infinity, minHeight: 320, alignment: .topLeading)
-                    .padding(.top, 8)
-            }
-        }
-        .padding(.top, 16)
+        DiaryEditor(text: $text, size: size, serif: true, stamped: true,
+                    editable: editable, onFocus: onFocusText)
+            .frame(minHeight: 320)
+            .padding(.top, 16)
     }
 }

@@ -19,6 +19,10 @@ struct DiaryEditor: UIViewRepresentable {
     var serif = true
     /// Отметки времени бледнее и мельче. В подробностях они ни к чему.
     var stamped = true
+    /// Соседние страницы показывают то же поле, только без правки: иначе
+    /// рядом стоят два разных способа набрать текст, и строки на повороте
+    /// расходятся (P114).
+    var editable = true
     var onFocus: () -> Void = {}
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
@@ -36,10 +40,16 @@ struct DiaryEditor: UIViewRepresentable {
         view.keyboardDismissMode = .interactive
         view.alwaysBounceVertical = true
         view.scrollsToTop = false
+        view.isEditable = editable
+        view.isSelectable = editable
+        view.isScrollEnabled = editable
         return view
     }
 
     func updateUIView(_ view: UITextView, context: Context) {
+        view.isEditable = editable
+        view.isSelectable = editable
+        view.isScrollEnabled = editable
         guard view.text != text || view.attributedText.length == 0 else {
             context.coordinator.restyle(view)
             return

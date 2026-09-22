@@ -53,7 +53,7 @@ struct SettingsSticker: View {
 
     var body: some View {
         Sticker(side: .leading, title: "Настройки",
-                paper: Look.note, edge: Look.noteEdge, close: close) {
+                paper: Look.note, edge: Look.noteEdge, width: 300, close: close) {
             place
             StickerItem(title: "Писать в другое место", edge: Look.noteEdge) {
                 close()

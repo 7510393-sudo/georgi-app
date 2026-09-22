@@ -56,8 +56,8 @@ struct DayPage: View {
         }
         .background(background)
         .sheet(isPresented: $remembering) {
-            if let (day, years) = archive.remembered(for: date) {
-                RememberSheet(day: day, years: years, open: $remembering)
+            if let (day, ago) = archive.remembered(for: date) {
+                RememberSheet(day: day, ago: ago, open: $remembering)
             }
         }
     }
@@ -227,7 +227,8 @@ struct SideDay: View {
     private var tasks: [PlanRow] { rows.filter { $0.isTask } }
 
     private var plan: some View {
-        PlanPage(rows: tasks, isPast: date < DayStore.today())
+        PlanPage(rows: tasks, isPast: date < DayStore.today(),
+                 bellColor: Ru.dayColor(date))
     }
 
     private var diary: some View {
@@ -255,6 +256,9 @@ struct PlanPage: View {
 
     let rows: [PlanRow]
     let isPast: Bool
+    /// Цвет дня недели: колокольчик красится им и на соседних страницах,
+    /// иначе он бледнеет на просвет и вспыхивает после поворота.
+    var bellColor: Color = Look.inkFaint
 
     var body: some View {
         PlanScaffold(isPast: isPast, dimmed: isPast) {
@@ -262,7 +266,8 @@ struct PlanPage: View {
                 PlanEmpty(isPast: isPast)
             } else {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                    PlanRowLine(number: i + 1, row: row, faded: isPast)
+                    PlanRowLine(number: i + 1, row: row, faded: isPast,
+                                bellColor: bellColor)
                     Rectangle().fill(Look.ruleSoft).frame(height: 1)
                 }
                 PlanStat(planned: rows.count, done: rows.filter(\.done).count)

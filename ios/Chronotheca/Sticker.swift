@@ -16,6 +16,8 @@ struct Sticker<Content: View>: View {
     let title: String
     var paper: Color = Look.sticker
     var edge: Color = Look.stickerEdge
+    /// Ширина бумажки. У настроек она больше: там живут пути и списки.
+    var width: CGFloat = 262
     let close: () -> Void
     @ViewBuilder let content: () -> Content
 
@@ -34,12 +36,12 @@ struct Sticker<Content: View>: View {
             head
             content()
         }
-        .frame(maxWidth: 262)
+        .frame(maxWidth: width)
         .background(paper)
         .clipShape(shape)
         .overlay(StickerBorder(radius: 12, side: side).stroke(edge, lineWidth: 1))
         .shadow(color: .black.opacity(0.32), radius: 14, y: 6)
-        .padding(side == .trailing ? .leading : .trailing, 60)
+        .padding(side == .trailing ? .leading : .trailing, 24)
     }
 
     private var shape: UnevenRoundedRectangle {

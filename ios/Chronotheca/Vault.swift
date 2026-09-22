@@ -133,6 +133,19 @@ final class Vault: ObservableObject {
         pastDiary.set("дата", Vault.stamp(yesterday))
         pastDiary.set("заголовок", "Справка и книги")
         write(pastDiary.text, to: .diary, for: yesterday)
+
+        // Тот же день год назад — чтобы облачко «…помнишь?» было видно
+        // в работе, а не только на словах.
+        let lastYear = Calendar.current.date(byAdding: .year, value: -1, to: today) ?? today
+        var old = DayFile(body: """
+        07:40 Первый по-настоящему холодный день. Иней на перилах, и\
+         видно дыхание.
+
+        21:15 Перебирал бумаги, нашёл письмо, о котором забыл. Читал дважды.
+        """)
+        old.set("дата", Vault.stamp(lastYear))
+        old.set("заголовок", "Иней на перилах")
+        write(old.text, to: .diary, for: lastYear)
     }
 
     // MARK: - Папка

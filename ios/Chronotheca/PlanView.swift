@@ -27,6 +27,8 @@ struct PlanRowLine: View {
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
 
+    @State private var wobble: Double = -6
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             badge
@@ -52,7 +54,17 @@ struct PlanRowLine: View {
             .frame(width: 26, height: 26)
             .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
-            .shadow(color: .black.opacity(editMode ? 0.18 : 0.06), radius: editMode ? 3 : 1, y: 1)
+            .shadow(color: .black.opacity(editMode ? 0.18 : 0.06),
+                    radius: editMode ? 3 : 1, y: 1)
+            // В режиме изменений квадратик подрагивает: видно, что дело
+            // можно взять и переставить, и видно, что режим включён.
+            .rotationEffect(.degrees(editMode ? wobble : 0))
+            .animation(editMode
+                       ? .easeInOut(duration: 0.13).repeatForever(autoreverses: true)
+                       : .default,
+                       value: wobble)
+            .onAppear { if editMode { wobble = 6 } }
+            .onChange(of: editMode) { _, on in wobble = on ? 6 : 0 }
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
     }
 
@@ -63,13 +75,14 @@ struct PlanRowLine: View {
                 .tracking(row.time == nil ? 0.7 : 0)
                 .foregroundStyle(faded ? Look.inkFaint : Look.inkSoft)
                 .opacity(row.time == nil ? 0.6 : 1)
+                // Черта рисуется всегда, а не только там, где по ней можно
+                // нажать: вид строки не должен зависеть от того, открытая
+                // это страница или соседняя.
                 .overlay(alignment: .bottom) {
-                    if onTime != nil {
-                        Line().stroke(Look.inkFaint,
-                                      style: StrokeStyle(lineWidth: 1, dash: [1.5, 2]))
-                            .frame(height: 1)
-                            .offset(y: 3)
-                    }
+                    Line().stroke(Look.inkFaint,
+                                  style: StrokeStyle(lineWidth: 1, dash: [1.5, 2]))
+                        .frame(height: 1)
+                        .offset(y: 3)
                 }
         }
         .buttonStyle(.plain)
@@ -125,16 +138,16 @@ struct PlanRowLine: View {
         let filled = !row.details.isEmpty
         return Button { onDetails?() } label: {
             Text("›")
-                .font(.system(size: 13))
-                .foregroundStyle(filled ? Look.inkSoft : Look.inkFaint)
-                .frame(width: 30)
+                .font(.system(size: 15))
+                .foregroundStyle(filled ? Look.ink : Look.inkSoft)
+                .frame(width: 39)
                 .frame(maxHeight: .infinity)
                 .background(filled ? Look.rule : Look.chrome)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 6,
-                                                  bottomLeadingRadius: 6))
-                .overlay(SideTabBorder(radius: 6)
-                    .stroke(filled ? Look.inkFaint : Look.rule, lineWidth: 1))
-                .padding(.vertical, 7)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 7,
+                                                  bottomLeadingRadius: 7))
+                .overlay(SideTabBorder(radius: 7)
+                    .stroke(filled ? Look.inkSoft : Look.inkFaint, lineWidth: 1))
+                .padding(.vertical, 3)
         }
         .buttonStyle(.plain)
         .disabled(onDetails == nil)
@@ -171,8 +184,6 @@ struct PlanScaffold<Content: View>: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     content()
-                    // Хвост: за него берут пустое место, чтобы убрать клавиатуру.
-                    Color.clear.frame(minHeight: 120)
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -234,6 +245,18 @@ struct PlanView: View {
             if store.editing { banner }
             PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan, add: add) {
                 if store.tasks.isEmpty { PlanEmpty(isPast: store.isPast) } else { list }
+                // Касание по пустому месту убирает клавиатуру и выходит из
+                // режима изменений: выход должен быть там, куда рука тянется
+                // сама, а не только в кнопке наверху.
+                Color.clear
+                    .frame(minHeight: 140)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        hideKeyboard()
+                        if store.editing {
+                            withAnimation(.easeOut(duration: 0.2)) { store.editing = false }
+                        }
+                    }
             }
         }
         .onChange(of: focused) { _, now in

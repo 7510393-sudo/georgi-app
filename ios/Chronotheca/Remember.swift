@@ -38,14 +38,14 @@ struct RememberCloud: View {
 struct RememberSheet: View {
 
     let day: Archive.Day
-    let years: Int
+    let ago: Ago
     @Binding var open: Bool
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(heading)
+                    Text(ago.title)
                         .font(Look.sans(12.5))
                         .tracking(0.6)
                         .foregroundStyle(Look.inkFaint)
@@ -74,27 +74,49 @@ struct RememberSheet: View {
         .presentationDetents([.medium, .large])
     }
 
-    private var heading: String {
-        years > 0
-            ? (years == 1 ? "ГОД НАЗАД" : "\(years) ГОДА НАЗАД")
-            : "МЕСЯЦ НАЗАД"
+extension Archive {
+
+    /// Что вспомнить в этот день.
+    ///
+    /// Сначала ищется тот же день год назад — это самое ценное: год спустя
+    /// запись читается как чужая. Нет года — месяц. Нет месяца — неделя.
+    /// Пустой день не вспоминается: показывать нечего (решение P67).
+    func remembered(for date: Date) -> (day: Day, ago: Ago)? {
+        let cal = Calendar.current
+        var tries: [(Ago, Date)] = []
+
+        for years in 1...5 {
+            if let then = cal.date(byAdding: .year, value: -years, to: date) {
+                tries.append((.years(years), then))
+            }
+        }
+        if let month = cal.date(byAdding: .month, value: -1, to: date) {
+            tries.append((.month, month))
+        }
+        if let week = cal.date(byAdding: .day, value: -7, to: date) {
+            tries.append((.week, week))
+        }
+
+        for (ago, when) in tries {
+            if let day = self.day(Vault.stamp(when)), !day.text.isEmpty {
+                return (day, ago)
+            }
+        }
+        return nil
     }
 }
 
-extension Archive {
-    /// Что вспомнить в этот день: та же дата год назад, а пока года записей
-    /// нет — месяц назад. Пустой день не вспоминается: показывать нечего.
-    func remembered(for date: Date) -> (day: Day, years: Int)? {
-        let cal = Calendar.current
-        for years in [1, 2, 3, 4, 5] {
-            guard let then = cal.date(byAdding: .year, value: -years, to: date) else { continue }
-            if let day = self.day(Vault.stamp(then)), !day.text.isEmpty {
-                return (day, years)
-            }
+/// Насколько давно. Отдельно, чтобы подпись на листке была человеческой.
+enum Ago {
+    case years(Int), month, week
+
+    var title: String {
+        switch self {
+        case .years(1): return "ГОД НАЗАД"
+        case .years(let n) where n < 5: return "\(n) ГОДА НАЗАД"
+        case .years(let n): return "\(n) ЛЕТ НАЗАД"
+        case .month: return "МЕСЯЦ НАЗАД"
+        case .week: return "НЕДЕЛЮ НАЗАД"
         }
-        guard let month = cal.date(byAdding: .month, value: -1, to: date),
-              let day = self.day(Vault.stamp(month)), !day.text.isEmpty
-        else { return nil }
-        return (day, 0)
     }
 }
