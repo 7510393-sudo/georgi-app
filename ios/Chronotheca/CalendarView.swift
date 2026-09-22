@@ -94,27 +94,57 @@ struct CalendarView: View {
     }
 
     private func nav(for date: Date) -> some View {
-        HStack {
-            Button { shown = shift(shown, by: -1); selected = nil } label: {
-                Text("‹").font(.system(size: 22)).frame(width: 34, height: 30)
+        let toward = towardToday(from: date)
+        return HStack {
+            arrow("‹", lit: toward < 0, label: kind == .year ? "Предыдущий год"
+                                                            : "Предыдущий месяц") {
+                shown = shift(shown, by: -1)
+                selected = nil
             }
-            .foregroundStyle(Look.inkFaint)
-            .accessibilityLabel(kind == .year ? "Предыдущий год" : "Предыдущий месяц")
             Spacer()
             Text(kind == .year ? String(cal.component(.year, from: date))
                                : Ru.monthTitle(date))
                 .font(Look.sans(16, weight: .semibold))
                 .foregroundStyle(Look.ink)
             Spacer()
-            Button { shown = shift(shown, by: 1); selected = nil } label: {
-                Text("›").font(.system(size: 22)).frame(width: 34, height: 30)
+            arrow("›", lit: toward > 0, label: kind == .year ? "Следующий год"
+                                                            : "Следующий месяц") {
+                shown = shift(shown, by: 1)
+                selected = nil
             }
-            .foregroundStyle(Look.inkFaint)
-            .accessibilityLabel(kind == .year ? "Следующий год" : "Следующий месяц")
         }
         .padding(.horizontal, 14)
         .padding(.top, 2)
         .padding(.bottom, 8)
+    }
+
+    /// Стрелка. Та, что смотрит в сторону сегодняшнего месяца, горит:
+    /// уйдя на июнь, человек видит, что «сейчас» — справа, и не гадает,
+    /// в какую сторону возвращаться.
+    private func arrow(_ sign: String, lit: Bool, label: String,
+                       act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Text(sign)
+                .font(.system(size: 22, weight: lit ? .semibold : .regular))
+                .foregroundStyle(lit ? Look.accent : Look.inkFaint)
+                .frame(width: 34, height: 30)
+                .background(lit ? Look.accent.opacity(0.1) : .clear,
+                            in: RoundedRectangle(cornerRadius: 8))
+        }
+        .accessibilityLabel(lit ? label + ", к сегодняшнему дню" : label)
+    }
+
+    /// В какой стороне сегодняшний месяц: −1 слева, +1 справа, 0 — мы на нём.
+    private func towardToday(from date: Date) -> Int {
+        let here = period(date), now = period(DayStore.today())
+        if here < now { return 1 }
+        if here > now { return -1 }
+        return 0
+    }
+
+    private func period(_ date: Date) -> Date {
+        let parts: Set<Calendar.Component> = kind == .year ? [.year] : [.year, .month]
+        return cal.date(from: cal.dateComponents(parts, from: date)) ?? date
     }
 
     // MARK: - Год
