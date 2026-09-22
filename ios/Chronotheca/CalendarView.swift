@@ -33,7 +33,7 @@ struct CalendarView: View {
 
             HStack(spacing: 6) {
                 ForEach(Kind.allCases) { k in
-                    Button { stored = k.rawValue } label: {
+                    Button { choose(k) } label: {
                         Text(k.rawValue)
                             .font(Look.sans(13))
                             .foregroundStyle(kind == k ? Look.planBg : Look.inkSoft)
@@ -44,6 +44,7 @@ struct CalendarView: View {
                             .overlay(RoundedRectangle(cornerRadius: 8)
                                 .strokeBorder(kind == k ? Look.accent : Look.rule))
                     }
+                    .accessibilityHint(kind == k ? homeHint(k) : "")
                 }
             }
             .padding(.horizontal, 12)
@@ -84,6 +85,25 @@ struct CalendarView: View {
             }
         }
         .background(Look.planBg)
+    }
+
+    /// Кнопка вида работает дважды. Первое нажатие переключает вид. Нажатие
+    /// на уже выбранный вид возвращает в сегодняшний месяц или год: та же
+    /// кнопка, которой человек сюда пришёл, уводит его обратно домой. Долгое
+    /// нажатие на стрелке делает то же самое, но о нём нужно знать заранее,
+    /// а по названию вида понятно и без подсказки (решение P135).
+    private func choose(_ k: Kind) {
+        guard kind == k else { stored = k.rawValue; return }
+        // Мы и так дома — двигать нечего: ничто не должно шевелиться зря.
+        guard towardToday(from: shown) != 0 else { return }
+        shown = DayStore.today()
+        selected = nil
+        shell.say(k == .year ? "Вернулись на этот год" : "Вернулись на этот месяц")
+    }
+
+    private func homeHint(_ k: Kind) -> String {
+        k == .year ? "Нажмите ещё раз, чтобы вернуться на этот год"
+                   : "Нажмите ещё раз, чтобы вернуться на этот месяц"
     }
 
     private func step(_ offset: Int) -> Date { shift(shown, by: offset) }
