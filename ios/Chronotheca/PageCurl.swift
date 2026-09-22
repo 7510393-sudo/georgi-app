@@ -49,6 +49,11 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
             let host = Host(rootView: parent.content(offset))
             host.offset = offset
             host.view.backgroundColor = UIColor(Look.chrome)
+            host.view.isOpaque = true
+            // Страница не подбирается под клавиатуру: иначе весь экран —
+            // вместе с неподвижными шестерёнкой и нижними разделами —
+            // вздрагивает, едва человек ставит курсор.
+            host.safeAreaRegions = .container
             return host
         }
 

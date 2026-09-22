@@ -177,6 +177,10 @@ struct AttachBar: View {
 }
 
 /// Соседний день — только чтобы его было видно, пока он едет.
+///
+/// Рисует ровно те же страницы, что и открытый день, только без правки.
+/// Иначе при повороте содержимое перескакивает: человек видел одно, а
+/// получил другое.
 struct SideDay: View {
 
     let date: Date
@@ -187,6 +191,7 @@ struct SideDay: View {
     @State private var rows: [PlanRow] = []
     @State private var title = ""
     @State private var text = ""
+    @State private var answers: [String: String] = [:]
 
     var body: some View {
         Group {
@@ -196,72 +201,76 @@ struct SideDay: View {
         .onAppear(perform: load)
     }
 
+    private var tasks: [PlanRow] { rows.filter { $0.isTask } }
+
     private var plan: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PlanHead(isPast: date < DayStore.today(), dimmed: date < DayStore.today())
-
-            if rows.isEmpty {
-                Text("На этот день ничего не запланировано.")
-                    .font(Look.sans(14))
-                    .foregroundStyle(Look.inkFaint)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 40)
-                    .padding(.horizontal, 22)
-                    .multilineTextAlignment(.center)
-            } else {
-                ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                    line(i + 1, row)
-                    Rectangle().fill(Look.ruleSoft).frame(height: 1)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .opacity(date < DayStore.today() ? 0.58 : 1)
-    }
-
-    private func line(_ number: Int, _ row: PlanRow) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text("\(number)")
-                .font(Look.mono(18))
-                .foregroundStyle(Look.inkFaint)
-                .frame(width: 28, alignment: .trailing)
-            Text(row.time ?? "--:--")
-                .font(Look.mono(18.5))
-                .foregroundStyle(Look.inkSoft)
-            Text(row.text)
-                .font(Look.sans(15))
-                .foregroundStyle(Look.ink)
-            Spacer(minLength: 0)
-        }
-        .opacity(row.done ? 0.42 : 1)
-        .padding(.leading, 12)
-        .padding(.trailing, 16)
-        .padding(.vertical, 10)
+        PlanPage(rows: tasks, isPast: date < DayStore.today())
     }
 
     private var diary: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !title.isEmpty {
-                Text(title)
-                    .font(Look.serif(19, weight: .semibold))
-                    .foregroundStyle(Look.ink)
-            }
-            Text(text.isEmpty ? "Записи нет." : text)
-                .font(Look.serif(15.5))
-                .foregroundStyle(text.isEmpty ? Look.inkFaint : Look.ink)
-                .lineSpacing(15.5 * 0.24)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
+        DiaryPage(tasks: tasks,
+                  answer: { answers[$0] ?? "" },
+                  title: .constant(title),
+                  text: .constant(text),
+                  editable: false)
     }
 
     private func load() {
         rows = Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body)
-            .filter { $0.isTask }
         let file = DayFile(text: vault.read(.diary, for: date))
+        let diary = Diary(body: file.body)
         title = file.value("заголовок") ?? ""
-        text = Diary(body: file.body).text
+        text = diary.text
+        answers = diary.answers
+    }
+}
+
+/// Список дел без правки — для соседних страниц.
+struct PlanPage: View {
+
+    let rows: [PlanRow]
+    let isPast: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PlanHead(isPast: isPast, dimmed: isPast)
+
+            if rows.isEmpty {
+                empty
+            } else {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
+                    PlanRowLine(number: i + 1, row: row, faded: isPast)
+                    Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                }
+                stat
+            }
+            Spacer(minLength: 0)
+        }
+        .opacity(isPast ? 0.58 : 1)
+    }
+
+    private var empty: some View {
+        VStack(spacing: 4) {
+            Text("На этот день ничего не запланировано.")
+            if !isPast { Text("Нажмите «+», чтобы вписать дело.") }
+        }
+        .font(Look.sans(14))
+        .lineSpacing(5)
+        .foregroundStyle(Look.inkFaint)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
+        .padding(.horizontal, 22)
+    }
+
+    private var stat: some View {
+        Text("Запланировано \(rows.count) · сделано \(rows.filter(\.done).count)")
+            .font(Look.mono(11.5))
+            .tracking(0.35)
+            .foregroundStyle(Look.inkFaint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 20)
     }
 }

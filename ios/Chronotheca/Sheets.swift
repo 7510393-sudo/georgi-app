@@ -251,7 +251,13 @@ struct DetailsDrawer: View {
             let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
                 as? CGRect ?? .zero
             let screen = UIScreen.main.bounds.height
-            keyboard = max(0, screen - frame.origin.y)
+            // Нижняя безопасная полоса телефона уже учтена в отступах шторки:
+            // не вычесть её — и между клавиатурой и шторкой остаётся пустое
+            // поле шириной в палец.
+            let safe = UIApplication.shared.connectedScenes
+                .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.bottom }
+                .first ?? 0
+            keyboard = max(0, screen - frame.origin.y - safe)
         }
         .onReceive(NotificationCenter.default.publisher(
             for: UIResponder.keyboardWillHideNotification)) { _ in
@@ -273,7 +279,7 @@ struct DetailsDrawer: View {
         .padding(.top, 15)
         // Шторка поднимается над клавиатурой, а не прячет под ней строку,
         // которую человек как раз набирает.
-        .padding(.bottom, max(15, keyboard - 4))
+        .padding(.bottom, max(15, keyboard + 6))
         .animation(.easeOut(duration: 0.22), value: keyboard)
     }
 

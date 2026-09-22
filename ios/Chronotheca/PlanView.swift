@@ -1,271 +1,133 @@
 import SwiftUI
 
-/// Вкладка «План»: дела на день.
+/// Строка дела.
 ///
-/// Размеры взяты из прототипа: номер и время моноширинные и крупнее текста
-/// дела — по ним глаз бежит вниз по столбцу, не читая названий.
-struct PlanView: View {
+/// Одна и та же вещь рисует и открытую страницу, и соседние: разойдутся хоть
+/// на точку — при перелистывании строки прыгнут. Правка включается ключами,
+/// вид от этого не меняется.
+struct PlanRowLine: View {
 
-    @EnvironmentObject private var store: DayStore
-    @EnvironmentObject private var shell: Shell
+    let number: Int
+    let row: PlanRow
+    var faded = false
+    var bellColor: Color = Look.inkFaint
 
-    /// Строка, в которой сейчас правят текст.
-    ///
-    /// Отдельно от фокуса клавиатуры, и это не мелочь: если показывать поле
-    /// ввода только у строки, которая уже в фокусе, то в фокус не попасть —
-    /// поля ещё нет. Клавиатура не открывалась именно из-за этого.
-    @State private var typingIn: UUID?
-    @FocusState private var focused: UUID?
+    var text: Binding<String>?
+    var focus: FocusState<UUID?>.Binding?
+    var typing = false
+    var editMode = false
+
+    var onTime: (() -> Void)?
+    var onBell: (() -> Void)?
+    var onDetails: (() -> Void)?
+    var onUp: (() -> Void)?
+    var onDown: (() -> Void)?
+    var onDelete: (() -> Void)?
+
+    /// Высота строки без подробностей. По ней считается перестановка.
+    static let height: CGFloat = 54
 
     var body: some View {
-        VStack(spacing: 0) {
-            if store.editing { banner }
-            head
-            if store.tasks.isEmpty { empty } else { list }
-        }
-        .onChange(of: focused) { _, now in
-            if now == nil { typingIn = nil; store.save() }
-        }
-        .onChange(of: store.date) { _, _ in typingIn = nil; focused = nil }
-        // Прошедший день выцветает целиком — и сделанное, и несделанное.
-        .opacity(store.isPast && !store.editing ? 0.58 : 1)
-    }
-
-    // MARK: - Полоски сверху
-
-    private var banner: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("Режим изменений: правка текста, порядок, удаление.")
-                .font(Look.sans(12.5))
-            Spacer(minLength: 0)
-            Button("Выйти") { store.editing = false }
-                .font(Look.sans(12.5))
-                .underline()
-        }
-        .foregroundStyle(Look.accent)
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .overlay(RoundedRectangle(cornerRadius: 7)
-            .strokeBorder(Look.accent, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-        .padding(.horizontal, 12)
-        .padding(.top, 10)
-    }
-
-    private var head: some View {
-        PlanHead(isPast: store.isPast, dimmed: !store.canEditPlan) {
-            guard let id = store.addTask() else {
-                return shell.say(store.closedReason)
-            }
-            typingIn = id
-            // Курсор ставится следующим ходом: поля, в которое его ставят,
-            // в этот миг ещё нет на экране.
-            DispatchQueue.main.async { focused = id }
-        }
-    }
-
-    private var empty: some View {
-        VStack(spacing: 4) {
-            Spacer()
-            Text("На этот день ничего не запланировано.")
-            if !store.isPast { Text("Нажмите «+», чтобы вписать дело.") }
-            Spacer()
-        }
-        .font(Look.sans(14))
-        .lineSpacing(5)
-        .foregroundStyle(Look.inkFaint)
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 22)
-    }
-
-    private var list: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach($store.planRows) { row in
-                    if row.wrappedValue.isTask {
-                        taskRow(row)
-                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
-                    } else if !(row.wrappedValue.verbatim ?? "")
-                                .trimmingCharacters(in: .whitespaces).isEmpty {
-                        // Чужая строка в нашем файле: показываем как есть и не трогаем.
-                        Text(row.wrappedValue.verbatim ?? "")
-                            .font(Look.sans(14))
-                            .foregroundStyle(Look.inkFaint)
-                            .padding(.vertical, 7)
-                            .padding(.horizontal, 14)
-                    }
-                }
-                stat
-                // Пустое место под списком: касание по нему убирает клавиатуру.
-                Color.clear
-                    .frame(minHeight: 120)
-                    .contentShape(Rectangle())
-                    .onTapGesture { hideKeyboard() }
-            }
-        }
-        .scrollDismissesKeyboard(.interactively)
-    }
-
-    private var stat: some View {
-        Text("Запланировано \(store.tasks.count) · сделано \(store.doneCount)")
-            .font(Look.mono(11.5))
-            .tracking(0.35)
-            .foregroundStyle(Look.inkFaint)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
-    }
-
-    // MARK: - Строка дела
-
-    private func taskRow(_ row: Binding<PlanRow>) -> some View {
-        let id = row.wrappedValue.id
-        let task = row.wrappedValue
-        let faded = task.done || (store.isPast && !store.editing)
-
-        return HStack(alignment: .top, spacing: 8) {
-            Text("\(number(of: id))")
-                .font(Look.mono(18))
-                .foregroundStyle(Look.inkFaint)
-                .frame(width: 28, alignment: .trailing)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    Button {
-                        guard store.canEditPlan else { return shell.say(store.closedReason) }
-                        shell.roller = .init(id: id, kind: .time)
-                    } label: {
-                        Text(task.time ?? "--:--")
-                            .font(Look.mono(18.5))
-                            .tracking(task.time == nil ? 0.7 : 0)
-                            .foregroundStyle(faded ? Look.inkFaint : Look.inkSoft)
-                            .opacity(task.time == nil ? 0.6 : 1)
-                            .overlay(alignment: .bottom) {
-                                if store.canEditPlan {
-                                    Line().stroke(Look.inkFaint,
-                                                  style: StrokeStyle(lineWidth: 1, dash: [1.5, 2]))
-                                        .frame(height: 1)
-                                        .offset(y: 3)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 7)
-
-                    Button {
-                        guard store.canEditPlan else { return shell.say(store.closedReason) }
-                        shell.roller = .init(id: id, kind: .bell)
-                    } label: {
-                        Image(systemName: task.bell == nil ? "bell" : "bell.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(task.bell == nil
-                                             ? Look.inkFaint : Ru.dayColor(store.date))
-                            .opacity(task.bell == nil ? (faded ? 0.3 : 0.6) : 1)
-                            // Площадка под палец: значок маленький, попадать
-                            // в него надо большим пальцем на ходу.
-                            .frame(width: 40, height: 38)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 2)
-                    .accessibilityLabel(task.bell.map { "Напомнить в \($0)" }
-                                        ?? "Напоминание не назначено")
-
-                    if typingIn == id || store.editing {
-                        TextField("", text: row.text, axis: .vertical)
-                            .font(Look.sans(15))
-                            .focused($focused, equals: id)
-                            .submitLabel(.done)
-                    } else {
-                        Text(task.text.isEmpty ? "Без названия" : task.text)
-                            .font(Look.sans(15))
-                            .lineSpacing(3)
-                            .foregroundStyle(faded || task.text.isEmpty
-                                             ? Look.inkFaint : Look.ink)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                            // Касание по самому тексту ставит в него курсор:
-                            // написанное дело надо уметь поправить, не заходя
-                            // в режим изменений. Отметить сделанным — касанием
-                            // по остальной строке.
-                            .onLongPressGesture(minimumDuration: 0.35) {
-                                guard !store.editing else { return }
-                                toggle(row)
-                            }
-                            .onTapGesture {
-                                guard store.canEditPlan else {
-                                    return shell.say(store.closedReason)
-                                }
-                                typingIn = id
-                                DispatchQueue.main.async { focused = id }
-                            }
-                    }
-                }
-
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            if store.editing {
-                VStack(spacing: 3) {
-                    Button { store.move(id, by: -1) } label: { Image(systemName: "chevron.up") }
-                        .accessibilityLabel("Выше")
-                    Button { store.move(id, by: 1) } label: { Image(systemName: "chevron.down") }
-                        .accessibilityLabel("Ниже")
-                    Button { store.delete(id) } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Удалить")
-                }
-                .font(.system(size: 10))
-                .buttonStyle(.plain)
-                .foregroundStyle(Look.inkFaint)
-                .padding(.trailing, 2)
-            }
-
-            detailTab(id: id, filled: !task.details.isEmpty)
+            badge
+            time
+            bell
+            title
+            if editMode { tools }
+            tab
         }
         .padding(.leading, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(store.editing
-                    ? LinearGradient(colors: [.clear, Look.ruleSoft],
-                                     startPoint: .leading, endPoint: .trailing)
-                    : LinearGradient(colors: [.clear, .clear],
-                                     startPoint: .leading, endPoint: .trailing))
-        .contentShape(Rectangle())
-        .onLongPressGesture(minimumDuration: 0.35) {
-            guard !store.editing else { return }
-            toggle(row)
+        .opacity(row.done ? 0.42 : 1)
+    }
+
+    // MARK: - Части строки
+
+    /// Номер в выпуклом квадратике: за него дело берут и переставляют.
+    private var badge: some View {
+        Text("\(number)")
+            .font(Look.mono(14))
+            .foregroundStyle(Look.inkSoft)
+            .frame(width: 26, height: 26)
+            .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
+            .shadow(color: .black.opacity(editMode ? 0.18 : 0.06), radius: editMode ? 3 : 1, y: 1)
+            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
+    }
+
+    private var time: some View {
+        Button { onTime?() } label: {
+            Text(row.time ?? "--:--")
+                .font(Look.mono(18.5))
+                .tracking(row.time == nil ? 0.7 : 0)
+                .foregroundStyle(faded ? Look.inkFaint : Look.inkSoft)
+                .opacity(row.time == nil ? 0.6 : 1)
+                .overlay(alignment: .bottom) {
+                    if onTime != nil {
+                        Line().stroke(Look.inkFaint,
+                                      style: StrokeStyle(lineWidth: 1, dash: [1.5, 2]))
+                            .frame(height: 1)
+                            .offset(y: 3)
+                    }
+                }
         }
-        .onTapGesture {
-            if task.text.isEmpty, store.canEditPlan {
-                typingIn = id
-                DispatchQueue.main.async { focused = id }
-                return
-            }
-            guard !store.editing, typingIn != id else { return }
-            toggle(row)
+        .buttonStyle(.plain)
+        .disabled(onTime == nil)
+    }
+
+    private var bell: some View {
+        Button { onBell?() } label: {
+            Image(systemName: row.bell == nil ? "bell" : "bell.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(row.bell == nil ? Look.inkFaint : bellColor)
+                .opacity(row.bell == nil ? (faded ? 0.3 : 0.6) : 1)
+                .frame(width: 40, height: 38)
+                .contentShape(Rectangle())
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 11 }
+        }
+        .buttonStyle(.plain)
+        .disabled(onBell == nil)
+        .accessibilityLabel(row.bell.map { "Напомнить в \($0)" } ?? "Напоминание не назначено")
+    }
+
+    @ViewBuilder private var title: some View {
+        if let text, let focus, typing || editMode {
+            TextField("", text: text, axis: .vertical)
+                .font(Look.sans(15))
+                .focused(focus, equals: row.id)
+                .submitLabel(.done)
+        } else {
+            Text(row.text.isEmpty ? "Без названия" : row.text)
+                .font(Look.sans(15))
+                .lineSpacing(3)
+                .foregroundStyle(faded || row.text.isEmpty ? Look.inkFaint : Look.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    /// Отметить дело сделанным. Затенением, а не галочкой (P14, P15).
-    private func toggle(_ row: Binding<PlanRow>) {
-        guard store.canEditPlan else {
-            return shell.say("День закрыт. Отметить задним числом — через режим изменений.")
+    private var tools: some View {
+        HStack(spacing: 10) {
+            Button { onUp?() } label: { Image(systemName: "chevron.up") }
+                .accessibilityLabel("Выше")
+            Button { onDown?() } label: { Image(systemName: "chevron.down") }
+                .accessibilityLabel("Ниже")
+            Button { onDelete?() } label: { Image(systemName: "xmark") }
+                .accessibilityLabel("Удалить")
         }
-        row.wrappedValue.done.toggle()
-        store.save()
+        .font(.system(size: 11))
+        .buttonStyle(.plain)
+        .foregroundStyle(Look.inkFaint)
     }
 
-    /// Закладка «Детали» — выглядывает из-за правого края строки, как в прототипе.
-    private func detailTab(id: UUID, filled: Bool) -> some View {
-        Button {
-            focused = nil
-            withAnimation(.easeOut(duration: 0.2)) { shell.drawer = id }
-        } label: {
+    /// Закладка «Детали» — корешок, выглядывающий из-за правого края.
+    private var tab: some View {
+        let filled = !row.details.isEmpty
+        return Button { onDetails?() } label: {
             Text("›")
                 .font(.system(size: 13))
                 .foregroundStyle(filled ? Look.inkSoft : Look.inkFaint)
-                .frame(width: 23)
+                .frame(width: 30)
                 .frame(maxHeight: .infinity)
                 .background(filled ? Look.rule : Look.chrome)
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 6,
@@ -275,12 +137,9 @@ struct PlanView: View {
                 .padding(.vertical, 7)
         }
         .buttonStyle(.plain)
-        .opacity(store.editing ? 0.25 : 1)
+        .disabled(onDetails == nil)
+        .opacity(editMode ? 0.25 : 1)
         .accessibilityLabel("Подробности")
-    }
-
-    private func number(of id: UUID) -> Int {
-        (store.tasks.firstIndex { $0.id == id } ?? 0) + 1
     }
 }
 
@@ -294,20 +153,9 @@ struct Line: Shape {
     }
 }
 
-extension View {
-    /// Убрать клавиатуру. Нужна везде, где человек может закончить писать:
-    /// поднявшуюся клавиатуру должно быть чем опустить, иначе экран заперт.
-    func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                        to: nil, from: nil, for: nil)
-    }
-}
-
 /// Шапка списка дел: «день закрыт» и кнопка «новое дело».
 ///
 /// Отдельной вещью, потому что ровно такая же стоит на соседних страницах.
-/// Разойдутся на десяток точек — и при повороте страницы строки под ней
-/// прыгнут, как будто текст съехал на строку вниз.
 struct PlanHead: View {
 
     let isPast: Bool
@@ -336,5 +184,190 @@ struct PlanHead: View {
         .padding(.trailing, 12)
         .padding(.top, isPast ? 12 : 6)
         .padding(.bottom, isPast ? 8 : 0)
+    }
+}
+
+// MARK: - Открытая страница
+
+/// Вкладка «План»: дела на день.
+struct PlanView: View {
+
+    @EnvironmentObject private var store: DayStore
+    @EnvironmentObject private var shell: Shell
+
+    /// Строка, в которой сейчас правят текст. Отдельно от фокуса клавиатуры:
+    /// если показывать поле только у строки в фокусе, в фокус не попасть.
+    @State private var typingIn: UUID?
+    @FocusState private var focused: UUID?
+
+    /// Дело, которое сейчас тащат за номер, и на сколько оно сдвинуто.
+    @State private var dragged: UUID?
+    @State private var dragBy = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if store.editing { banner }
+            PlanHead(isPast: store.isPast, dimmed: !store.canEditPlan) { add() }
+            if store.tasks.isEmpty { empty } else { list }
+        }
+        .onChange(of: focused) { _, now in
+            if now == nil { typingIn = nil; store.save() }
+        }
+        .onChange(of: store.date) { _, _ in typingIn = nil; focused = nil }
+        .opacity(store.isPast && !store.editing ? 0.58 : 1)
+    }
+
+    private func add() {
+        guard let id = store.addTask() else { return shell.say(store.closedReason) }
+        typingIn = id
+        DispatchQueue.main.async { focused = id }
+    }
+
+    private var banner: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("Режим изменений: правка текста, порядок, удаление.")
+                .font(Look.sans(12.5))
+            Spacer(minLength: 0)
+            Button("Выйти") { store.editing = false }
+                .font(Look.sans(12.5))
+                .underline()
+        }
+        .foregroundStyle(Look.accent)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .overlay(RoundedRectangle(cornerRadius: 7)
+            .strokeBorder(Look.accent, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+    }
+
+    private var empty: some View {
+        VStack(spacing: 4) {
+            Text("На этот день ничего не запланировано.")
+            if !store.isPast { Text("Нажмите «+», чтобы вписать дело.") }
+        }
+        .font(Look.sans(14))
+        .lineSpacing(5)
+        .foregroundStyle(Look.inkFaint)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
+        .padding(.horizontal, 22)
+    }
+
+    private var list: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach($store.planRows) { row in
+                    if row.wrappedValue.isTask {
+                        taskRow(row)
+                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                    }
+                }
+                stat
+                Color.clear
+                    .frame(minHeight: 120)
+                    .contentShape(Rectangle())
+                    .onTapGesture { hideKeyboard() }
+            }
+        }
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    private var stat: some View {
+        Text("Запланировано \(store.tasks.count) · сделано \(store.doneCount)")
+            .font(Look.mono(11.5))
+            .tracking(0.35)
+            .foregroundStyle(Look.inkFaint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 20)
+    }
+
+    private func taskRow(_ row: Binding<PlanRow>) -> some View {
+        let id = row.wrappedValue.id
+        let shown = number(of: id) + (dragged == id ? dragBy : 0)
+
+        return PlanRowLine(
+            number: shown,
+            row: row.wrappedValue,
+            faded: store.isPast && !store.editing,
+            bellColor: Ru.dayColor(store.date),
+            text: row.text,
+            focus: $focused,
+            typing: typingIn == id,
+            editMode: store.editing,
+            onTime: { openRoller(id, .time) },
+            onBell: { openRoller(id, .bell) },
+            onDetails: { focused = nil; openDetails(id) },
+            onUp: { store.move(id, by: -1) },
+            onDown: { store.move(id, by: 1) },
+            onDelete: { store.delete(id) })
+            .offset(y: dragged == id ? CGFloat(dragBy) * PlanRowLine.height : 0)
+            .zIndex(dragged == id ? 1 : 0)
+            .background(store.editing ? Look.ruleSoft.opacity(0.5) : .clear)
+            .contentShape(Rectangle())
+            .highPriorityGesture(store.editing ? reorder(id) : nil)
+            .onLongPressGesture(minimumDuration: 0.35) {
+                guard !store.editing else { return }
+                toggle(row)
+            }
+            .onTapGesture {
+                if row.wrappedValue.text.isEmpty, store.canEditPlan {
+                    typingIn = id
+                    DispatchQueue.main.async { focused = id }
+                    return
+                }
+                guard !store.editing, typingIn != id else { return }
+                toggle(row)
+            }
+    }
+
+    /// Перестановка дела: в режиме изменений дело тащат за номер, и номер на
+    /// нём меняется по дороге — видно, куда оно встанет.
+    private func reorder(_ id: UUID) -> some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { g in
+                dragged = id
+                dragBy = Int((g.translation.height / PlanRowLine.height).rounded())
+            }
+            .onEnded { _ in
+                let by = dragBy
+                dragged = nil
+                dragBy = 0
+                guard by != 0 else { return }
+                for _ in 0..<abs(by) { store.move(id, by: by > 0 ? 1 : -1) }
+            }
+    }
+
+    private func openRoller(_ id: UUID, _ kind: Shell.Roller.Kind) {
+        guard store.canEditPlan else { return shell.say(store.closedReason) }
+        shell.roller = .init(id: id, kind: kind)
+    }
+
+    private func openDetails(_ id: UUID) {
+        withAnimation(.easeOut(duration: 0.2)) { shell.drawer = id }
+    }
+
+    private func toggle(_ row: Binding<PlanRow>) {
+        guard store.canEditPlan else {
+            return shell.say("День закрыт. Отметить задним числом — через режим изменений.")
+        }
+        row.wrappedValue.done.toggle()
+        store.save()
+    }
+
+    private func number(of id: UUID) -> Int {
+        (store.tasks.firstIndex { $0.id == id } ?? 0) + 1
+    }
+}
+
+extension View {
+    /// Убрать клавиатуру. Поднявшуюся клавиатуру должно быть чем опустить,
+    /// иначе экран заперт.
+    func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
     }
 }

@@ -57,6 +57,9 @@ struct CalendarView: View {
                     .environmentObject(shell)
             } onTurn: { step in
                 shown = shift(shown, by: step)
+                // Бегунок снимается: дело выбранного дня к новому месяцу
+                // отношения не имеет и висеть под ним не должно.
+                selected = nil
             }
         }
         .onAppear { archive.reload() }
@@ -92,7 +95,7 @@ struct CalendarView: View {
 
     private func nav(for date: Date) -> some View {
         HStack {
-            Button { shown = shift(shown, by: -1) } label: {
+            Button { shown = shift(shown, by: -1); selected = nil } label: {
                 Text("‹").font(.system(size: 22)).frame(width: 34, height: 30)
             }
             .foregroundStyle(Look.inkFaint)
@@ -103,7 +106,7 @@ struct CalendarView: View {
                 .font(Look.sans(16, weight: .semibold))
                 .foregroundStyle(Look.ink)
             Spacer()
-            Button { shown = shift(shown, by: 1) } label: {
+            Button { shown = shift(shown, by: 1); selected = nil } label: {
                 Text("›").font(.system(size: 22)).frame(width: 34, height: 30)
             }
             .foregroundStyle(Look.inkFaint)
@@ -201,19 +204,22 @@ struct CalendarView: View {
         let isToday = stamp == today
         let isSelected = stamp == selected
 
+        // Сегодняшний день залит — он есть всегда и ни от чего не зависит.
+        // Выбранный обведён лёгким ободком: внимание можно переставить, и
+        // оно не должно выглядеть весомее самого дня.
         return Button { pick(stamp, date) } label: {
             VStack(spacing: 1) {
                 Text("\(cal.component(.day, from: date))")
                     .font(Look.sans(14))
-                    .foregroundStyle(isSelected ? Look.planBg : Look.ink)
-                dots(count: archive.tasks(stamp).count, light: isSelected)
+                    .foregroundStyle(isToday ? Look.planBg : Look.ink)
+                dots(count: archive.tasks(stamp).count, light: isToday)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 32)
-            .background(isSelected ? Look.accent : .clear,
+            .background(isToday ? Look.accent : .clear,
                         in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isToday && !isSelected ? Look.accent : .clear, lineWidth: 1.5))
+                .strokeBorder(isSelected && !isToday ? Look.accent : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
     }
@@ -286,9 +292,10 @@ struct CalendarView: View {
         return LazyVStack(spacing: 0) {
             ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
                 row(day, today: today)
-                Rectangle().fill(Look.ruleSoft).frame(height: 1).padding(.leading, 58)
+                weekRule(after: day)
             }
         }
+        .padding(.horizontal, 12)
         .padding(.bottom, 20)
     }
 
@@ -338,9 +345,24 @@ struct CalendarView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
-            .background(open ? Look.accent.opacity(0.08) : .clear)
+            .background(open ? Look.ruleSoft : .clear)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
+    }
+
+    /// Разделение недель: воскресенье отбивается жирной чертой — это конец
+    /// недели; пятница тонкой — за ней начинаются выходные. Так месяц
+    /// читается ритмом, а не сплошным столбцом.
+    @ViewBuilder private func weekRule(after date: Date) -> some View {
+        let weekday = cal.component(.weekday, from: date)
+        if weekday == 1 {
+            Rectangle().fill(Look.inkFaint).frame(height: 2)
+        } else if weekday == 6 {
+            Rectangle().fill(Look.inkFaint).opacity(0.55).frame(height: 1)
+        } else {
+            Rectangle().fill(Look.ruleSoft).frame(height: 1)
+        }
     }
 
     // MARK: - Касания

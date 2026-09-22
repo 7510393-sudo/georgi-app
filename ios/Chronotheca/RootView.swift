@@ -164,8 +164,8 @@ struct RootView: View {
             shell.screen = target
         } label: {
             VStack(spacing: 5) {
-                Image(systemName: icon).font(.system(size: 20))
-                Text(name).font(Look.sans(10, weight: on ? .medium : .regular))
+                Image(systemName: icon).font(.system(size: 23))
+                Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
             }
             .frame(maxWidth: .infinity)
             .foregroundStyle(on ? Look.accent : Look.inkSoft)

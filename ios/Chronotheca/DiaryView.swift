@@ -3,50 +3,57 @@ import SwiftUI
 /// Вкладка «Дневник»: как прошло, заголовок дня и свободный текст.
 ///
 /// Набрана засечным шрифтом на тёплой бумаге — в отличие от плана. Это разные
-/// занятия: план разглядывают, дневник читают. Рука должна чувствовать разницу
-/// раньше, чем глаз прочтёт заголовок вкладки.
+/// занятия: план разглядывают, дневник читают.
 struct DiaryView: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
+    static let size: CGFloat = 15.5
+    static let leading: CGFloat = size * 0.24
+
+    var body: some View {
+        DiaryPage(
+            tasks: store.tasks,
+            answer: { store.answers[$0] ?? "" },
+            setAnswer: { store.answers[$0] = $1 },
+            title: $store.diaryTitle,
+            text: $store.diaryText,
+            editable: store.canEditDiary,
+            onFocusText: { store.stampIfNeeded() })
+        .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
+        .onChange(of: store.answers) { _, _ in store.scheduleSave() }
+        .onChange(of: store.diaryText) { _, _ in
+            store.touchDiary()
+            store.scheduleSave()
+        }
+    }
+}
+
+/// Страница дневника.
+///
+/// Одна и та же и для открытого дня, и для соседних. Это не изящество, а
+/// необходимость: стоит им разойтись хоть на строку — и при перелистывании
+/// текст на открывающейся странице прыгает.
+struct DiaryPage: View {
+
+    let tasks: [PlanRow]
+    let answer: (String) -> String
+    var setAnswer: ((String, String) -> Void)?
+    @Binding var title: String
+    @Binding var text: String
+    var editable = true
+    var onFocusText: () -> Void = {}
+
     private enum Field: Hashable { case title, answer(String) }
     @FocusState private var focused: Field?
 
-    /// Размеры из прототипа.
-    private let size: CGFloat = 15.5
-    private let leading: CGFloat = 15.5 * 0.7
+    private let size = DiaryView.size
 
     var body: some View {
-        Group {
-            if store.canEditDiary { page } else { closed }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Look.diaryBg)
-    }
-
-    private var closed: some View {
-        VStack(spacing: 10) {
-            Spacer()
-            Image(systemName: "clock")
-                .font(.system(size: 30, weight: .light))
-                .foregroundStyle(Look.inkFaint)
-            Text(store.closedReason)
-                .font(Look.serif(size))
-                .foregroundStyle(Look.inkSoft)
-            Text("Дневник пишут о том, что было, а не о том, что будет.")
-                .font(Look.serif(13.5))
-                .foregroundStyle(Look.inkFaint)
-            Spacer()
-        }
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, 40)
-    }
-
-    private var page: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if !store.tasks.isEmpty { askBlock }
+                if !asked.isEmpty { askBlock }
                 titleField
                 textField
             }
@@ -55,85 +62,108 @@ struct DiaryView: View {
             .padding(.bottom, 20)
         }
         .scrollDismissesKeyboard(.interactively)
-        .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
-        .onChange(of: store.answers) { _, _ in store.scheduleSave() }
-        .onChange(of: store.date) { _, _ in focused = nil }
+        .background(Look.diaryBg)
     }
 
-    /// «Как прошло?» — три первых дела и строка ответа за каждым.
-    ///
-    /// Три, а не все (решение P30): список дел не должен превращаться в анкету.
+    private var asked: [PlanRow] {
+        Array(tasks.filter { !$0.text.isEmpty }.prefix(3))
+    }
+
+    // MARK: - Как прошло
+
+    /// Три первых дела, по строке на каждое (решение P30). Ответ пишется
+    /// прямо в той же строке, за двоеточием, — строка не переносится и не
+    /// переставляется, когда в неё ставят курсор.
     private var askBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Как прошло?")
-                .font(Look.serif(size, weight: .semibold))
-                .foregroundStyle(Look.ink)
-                .padding(.bottom, 2)
+                .font(Look.serif(size))
+                .foregroundStyle(Look.inkFaint)
+                .frame(height: size * 1.6, alignment: .leading)
 
-            ForEach(store.tasks.filter { !$0.text.isEmpty }.prefix(3), id: \.id) { task in
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    // Название дела в одну строку с многоточием, и оно забирает
-                    // ширину первым. Наоборот было нельзя: поле ответа тянется
-                    // сколько дадут и сжимало вопрос до нуля — на экране
-                    // оставались одни ответы без вопросов.
-                    Text(task.text + ":")
-                        .font(Look.serif(size))
-                        .foregroundStyle(Look.inkSoft)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .layoutPriority(1)
-                    TextField("…", text: Binding(
-                        get: { store.answers[task.text] ?? "" },
-                        set: { store.answers[task.text] = $0 }), axis: .vertical)
-                        .font(Look.serif(size))
-                        .foregroundStyle(Look.ink)
-                        .focused($focused, equals: .answer(task.text))
-                        .frame(minWidth: 70, alignment: .leading)
-                }
-                .lineSpacing(leading - size * 0.6)
-                .padding(.vertical, 1)
+            ForEach(asked, id: \.id) { task in
+                askRow(task)
             }
         }
-        .padding(.bottom, 14)
+        .padding(.bottom, 12)
     }
+
+    private func askRow(_ task: PlanRow) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(task.text + ":")
+                .font(Look.serif(size))
+                .foregroundStyle(Look.inkFaint)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(1)
+
+            if editable, let setAnswer {
+                TextField("…", text: Binding(
+                    get: { answer(task.text) },
+                    set: { setAnswer(task.text, $0) }))
+                    .font(Look.serif(size))
+                    .foregroundStyle(Look.ink)
+                    .focused($focused, equals: .answer(task.text))
+                    .textFieldStyle(.plain)
+            } else {
+                Text(answer(task.text).isEmpty ? "…" : answer(task.text))
+                    .font(Look.serif(size))
+                    .foregroundStyle(answer(task.text).isEmpty ? Look.inkFaint : Look.ink)
+                    .lineLimit(1)
+            }
+        }
+        // Строка одной высоты всегда: и пустая, и заполненная, и с курсором.
+        .frame(height: size * 1.7, alignment: .leading)
+    }
+
+    // MARK: - Заголовок
 
     private var titleField: some View {
         VStack(spacing: 0) {
-            TextField("Заголовок дня", text: $store.diaryTitle)
-                .font(Look.serif(19, weight: .semibold))
-                .foregroundStyle(Look.ink)
-                .focused($focused, equals: .title)
-                .submitLabel(.next)
-                .onSubmit { focused = nil }
-                .padding(.bottom, 7)
+            ZStack(alignment: .leading) {
+                if title.isEmpty {
+                    Text("Заголовок дня")
+                        .font(Look.serif(19))
+                        .foregroundStyle(Look.inkFaint)
+                        .allowsHitTesting(false)
+                }
+                if editable {
+                    TextField("", text: $title)
+                        .font(Look.serif(19, weight: .semibold))
+                        .foregroundStyle(Look.ink)
+                        .focused($focused, equals: .title)
+                } else {
+                    Text(title)
+                        .font(Look.serif(19, weight: .semibold))
+                        .foregroundStyle(Look.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(height: 26, alignment: .leading)
+            .padding(.bottom, 7)
+
             Rectangle().fill(Look.rule).frame(height: 1)
         }
         .padding(.top, 4)
     }
 
-    /// Текст записи.
-    ///
-    /// Возвращаясь к дневнику больше чем через час, приложение само ставит
-    /// новую отметку времени в начале строки. Так по записи видно, что день
-    /// писался в несколько заходов, а не залпом вечером.
+    // MARK: - Текст
+
     private var textField: some View {
-        ZStack(alignment: .topLeading) {
-            if store.diaryText.isEmpty {
-                Text(store.tasks.isEmpty ? "Что было сегодня…" : "И что ещё было в этот день…")
+        Group {
+            if editable {
+                DiaryEditor(text: $text, size: size, serif: true, stamped: true,
+                            onFocus: onFocusText)
+                    .frame(minHeight: 320)
+            } else {
+                Text(text)
                     .font(Look.serif(size))
-                    .foregroundStyle(Look.inkFaint)
+                    .foregroundStyle(Look.ink)
+                    .lineSpacing(DiaryView.leading)
+                    .frame(maxWidth: .infinity, minHeight: 320, alignment: .topLeading)
                     .padding(.top, 8)
-                    .allowsHitTesting(false)
             }
-            DiaryEditor(text: $store.diaryText, size: size, serif: true, stamped: true) {
-                store.stampIfNeeded()
-            }
-            .frame(minHeight: 320)
         }
         .padding(.top, 16)
-        .onChange(of: store.diaryText) { _, _ in
-            store.touchDiary()
-            store.scheduleSave()
-        }
     }
 }
