@@ -140,27 +140,8 @@ struct RootView: View {
 
     // MARK: - Экран
 
-    /// Раздел лежит на странице книги, и смена раздела — поворот страницы.
-    private var screen: some View {
-        SectionCurl(screen: shell.screen) { which in
-            page(which)
-                .environmentObject(vault)
-                .environmentObject(store)
-                .environmentObject(archive)
-                .environmentObject(shell)
-        }
-    }
-
-    /// Страница книги: содержимое раздела и обрез стопки у правого края.
-    private func page(_ which: Shell.Screen) -> some View {
-        HStack(spacing: 0) {
-            inside(which)
-            ForeEdge()
-        }
-    }
-
-    @ViewBuilder private func inside(_ which: Shell.Screen) -> some View {
-        switch which {
+    @ViewBuilder private var screen: some View {
+        switch shell.screen {
         case .today:    DayPages()
         case .calendar: CalendarView()
         case .search:   SearchView()
@@ -208,8 +189,11 @@ struct RootView: View {
         }
     }
 
-    /// Открыть раздел. Страницу повернёт `SectionCurl` — здесь только
-    /// убирается клавиатура, чтобы экран не вздрагивал под поворотом.
+    /// Открыть раздел.
+    ///
+    /// Перехода пока нет. Был поворот страницы — но разделы не соседние
+    /// страницы, и книга, листающая два десятка листов ради календаря,
+    /// врёт о себе (P144 отменено). Чем его заменить — открытый вопрос.
     private func open(_ target: Shell.Screen) {
         if target != shell.screen { hideKeyboard() }
         shell.screen = target
