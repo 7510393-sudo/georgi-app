@@ -46,14 +46,17 @@ struct DiaryEditor: UIViewRepresentable {
         view.scrollsToTop = false
         view.isEditable = editable
         view.isSelectable = editable
-        view.isScrollEnabled = editable
+        // Прокрутка включена всегда, даже там, где не правят. Без прокрутки
+        // поле само подбирает себе высоту, и строки ложатся не так, как в
+        // таком же поле рядом: на повороте страницы текст перескакивает из
+        // одной строки в две. Одинаковое поле — одинаковые строки (P114).
+        view.isScrollEnabled = true
         return view
     }
 
     func updateUIView(_ view: UITextView, context: Context) {
         view.isEditable = editable
         view.isSelectable = editable
-        view.isScrollEnabled = editable
 
         if view.text != text || view.attributedText.length == 0 {
             let selection = view.selectedRange

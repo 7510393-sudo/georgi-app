@@ -141,7 +141,9 @@ struct RootView: View {
 
     @ViewBuilder private var screen: some View {
         switch shell.screen {
-        case .today:    DayPages()
+        case .today:
+            // Снимок для сличения: соседняя страница, но неподвижная.
+            if shell.probingSide { SideDay(date: store.date) } else { DayPages() }
         case .calendar: CalendarView()
         case .search:   SearchView()
         }

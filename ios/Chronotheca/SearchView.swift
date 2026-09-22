@@ -106,7 +106,7 @@ struct SearchView: View {
                             .lineLimit(1)
                     }
                     if !day.text.isEmpty {
-                        Text(day.text)
+                        Text(day.preview)
                             .font(Look.serif(13.5))
                             .foregroundStyle(Look.inkSoft)
                             .lineLimit(day.title.isEmpty ? 4 : 3)

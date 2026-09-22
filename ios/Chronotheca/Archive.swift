@@ -18,6 +18,18 @@ final class Archive: ObservableObject {
 
         var hasSomething: Bool { !tasks.isEmpty || !title.isEmpty || !text.isEmpty }
 
+        /// Начало записи для поиска — без пустых строк.
+        ///
+        /// В находке под датой умещается три-четыре строки, и отдавать одну
+        /// из них пустому месту расточительно: в списке находок важно, что
+        /// написано, а не как запись разбита на куски.
+        var preview: String {
+            text.split(separator: "\n", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .joined(separator: "\n")
+        }
+
         /// Строка, которой день представляется в поиске.
         var line: String {
             if !title.isEmpty { return title }

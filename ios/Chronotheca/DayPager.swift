@@ -107,23 +107,31 @@ struct DayPage: View {
     /// и не гадает, в какую сторону возвращаться (то же правило, что в
     /// календаре, P127).
     private var heading: some View {
-        HStack(alignment: .center, spacing: 0) {
-            side(-1)
-            VStack(spacing: 2) {
+        VStack(spacing: 2) {
+            // Соседние дни стоят на одной строке с нынешним, а не над и под
+            // ним: иначе взгляд скачет вверх-вниз и всякий раз перестраивается
+            // с крупного на мелкое. Строка задана ростом жёстко, чтобы шапка
+            // была одной высоты на любой странице (P113).
+            HStack(spacing: 0) {
+                side(-1)
                 Text(live ? store.title : DayPage.title(for: date))
                     .font(.system(size: 23, weight: .semibold))
                     .tracking(-0.2)
                     .foregroundStyle(Look.ink)
-                Text(Ru.weekday(date))
-                    .font(Look.sans(12.5))
-                    .tracking(0.75)
-                    .foregroundStyle(Ru.dayColor(date))
-                Text(Ru.longDate(date))
-                    .font(Look.sans(15))
-                    .foregroundStyle(Look.inkSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity)
+                side(1)
             }
-            .frame(maxWidth: .infinity)
-            side(1)
+            .frame(height: DayPage.headLine)
+
+            Text(Ru.weekday(date))
+                .font(Look.sans(12.5))
+                .tracking(0.75)
+                .foregroundStyle(Ru.dayColor(date))
+            Text(Ru.longDate(date))
+                .font(Look.sans(15))
+                .foregroundStyle(Look.inkSoft)
         }
         .padding(.horizontal, 6)
         .padding(.top, 2)
@@ -134,22 +142,45 @@ struct DayPage: View {
         .onTapGesture { hideKeyboard() }
     }
 
-    /// Стрелка со словом: слева — вчерашний день, справа — завтрашний.
-    /// Горит та, что показывает дорогу к сегодняшнему.
+    /// Высота строки заголовка. Одна на всех страницах: шапка не должна
+    /// менять рост от того, горит стрелка или нет (P113).
+    static let headLine: CGFloat = 31
+
+    /// Имя соседнего дня, а рядом с ним — стрелка.
+    ///
+    /// Стрелка стоит в промежутке между именами, с той стороны, куда ведёт:
+    /// слово снаружи, стрелка внутри. Имя на треть мельче нынешнего дня и
+    /// бледное — соседний день предлагается, а не зовёт.
+    ///
+    /// Горит та стрелка, что показывает дорогу к сегодняшнему дню (P127).
+    /// Размер у обеих одинаковый: разным он менял бы рост строки.
     private func side(_ step: Int) -> some View {
         let lit = toward == step
         let sign = step < 0 ? "‹" : "›"
-        return VStack(spacing: 1) {
-            Text(sign)
-                .font(.system(size: 20, weight: lit ? .semibold : .regular))
-                .foregroundStyle(lit ? Look.accent : Look.inkFaint)
-            Text(neighbour(step))
-                .font(Look.sans(9.5))
-                .foregroundStyle(Look.inkFaint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+        let word = Text(neighbour(step))
+            .font(Look.sans(15.5))
+            .foregroundStyle(Look.inkFaint)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        let arrow = Text(sign)
+            .font(.system(size: 21, weight: lit ? .bold : .regular))
+            .foregroundStyle(lit ? Look.accent : Look.inkFaint)
+            .frame(width: 25, height: DayPage.headLine - 4)
+            .background(lit ? Look.accent.opacity(0.12) : .clear,
+                        in: RoundedRectangle(cornerRadius: 7))
+
+        return HStack(spacing: 2) {
+            if step < 0 {
+                Spacer(minLength: 0)
+                word
+                arrow
+            } else {
+                arrow
+                word
+                Spacer(minLength: 0)
+            }
         }
-        .frame(width: 62)
+        .frame(width: 108)
         .contentShape(Rectangle())
         .onLongPressGesture(minimumDuration: 0.4) {
             guard live, lit else { return }

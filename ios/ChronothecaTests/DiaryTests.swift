@@ -46,6 +46,31 @@ final class DiaryTests: XCTestCase {
         XCTAssertEqual(d.text, body)
     }
 
+    // MARK: - Начало записи для поиска
+
+    func testПустыеСтрокиВНаходкуНеПопадают() {
+        let day = Archive.Day(stamp: "2026-09-21", date: Date(),
+                              text: "08:15 Туман над полем.\n\n23:40 Глава дописана.")
+        XCTAssertEqual(day.preview, "08:15 Туман над полем.\n23:40 Глава дописана.")
+    }
+
+    func testСтрокаИзОднихПробеловТожеПустая() {
+        let day = Archive.Day(stamp: "2026-09-21", date: Date(),
+                              text: "Первая\n   \n\nВторая")
+        XCTAssertEqual(day.preview, "Первая\nВторая")
+    }
+
+    func testЗаписьБезПустыхСтрокНеМеняется() {
+        let day = Archive.Day(stamp: "2026-09-21", date: Date(),
+                              text: "Первая\nВторая")
+        XCTAssertEqual(day.preview, "Первая\nВторая")
+    }
+
+    func testПустаяЗаписьДаётПустоеНачало() {
+        let day = Archive.Day(stamp: "2026-09-21", date: Date(), text: "\n\n  \n")
+        XCTAssertEqual(day.preview, "")
+    }
+
     func testНапоминаниеЖивётВСтрокеДела() {
         let rows = Plan.rows(from: "- [ ] 09:00 Отвезти документы (напомнить 08:30)")
         XCTAssertEqual(rows.first?.text, "Отвезти документы")

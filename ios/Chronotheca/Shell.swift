@@ -35,6 +35,11 @@ final class Shell: ObservableObject {
     @Published var showingFile = false
     @Published var picking = false
 
+    /// Только для снимков: показать вместо открытой страницы ту же страницу,
+    /// нарисованную соседским способом. Так две росписи можно сличить
+    /// пиксель в пиксель, а не рассуждать о них по памяти.
+    @Published var probingSide = false
+
     @Published var notice: String?
     private var hiding: DispatchWorkItem?
 
@@ -71,6 +76,7 @@ final class Shell: ObservableObject {
         case "past":      store.move(by: -1)
         case "editing":   store.editing = true
         case "future":    store.move(by: 1); tab = .diary
+        case "side":      probingSide = true
         default: break
         }
     }
