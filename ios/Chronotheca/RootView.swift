@@ -84,7 +84,13 @@ struct RootView: View {
         .tint(Look.accent)
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
-        .onAppear { shell.openRequestedScreen(store) }
+        .onAppear {
+            // Опись архива нужна не только календарю и поиску: без неё
+            // облачко «…помнишь?» не знает, есть ли что вспомнить, и не
+            // появляется никогда. Читаем папку сразу при запуске.
+            archive.reload()
+            shell.openRequestedScreen(store)
+        }
     }
 
     /// Область содержимого: шторка «Подробности» живёт только внутри неё.

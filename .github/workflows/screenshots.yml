@@ -83,6 +83,11 @@ jobs:
             --time "9:41" --batteryState charged --batteryLevel 100 \
             --cellularBars 4 --wifiBars 3 || true
 
+          # Симулятор после запуска показывает своё системное уведомление
+          # («Ready for Apple Intelligence») — оно закрывает шапку на первых
+          # снимках. Даём ему показаться и уйти.
+          sleep 20
+
           xcrun simctl install "$UDID" \
             build/Build/Products/Debug-iphonesimulator/Chronotheca.app
 
