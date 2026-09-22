@@ -265,7 +265,12 @@ struct DayPage: View {
     // MARK: - Содержимое
 
     @ViewBuilder private var content: some View {
-        if live {
+        if shell.probingSide {
+            // Только для снимков: страница, нарисованная соседским способом,
+            // но в той же оправе. Два снимка ложатся друг на друга, и всякое
+            // расхождение видно сразу, а не на ощупь при перелистывании.
+            SideDay(date: date)
+        } else if live {
             Group {
                 if shell.tab == .plan { PlanView() } else { DiaryView() }
             }

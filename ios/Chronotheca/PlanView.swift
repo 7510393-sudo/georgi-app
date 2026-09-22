@@ -85,7 +85,10 @@ struct PlanRowLine: View {
                 }
         }
         .buttonStyle(.plain)
-        .disabled(onTime == nil)
+        // Не .disabled: система рисует выключенную кнопку бледнее, и время
+        // на соседней странице выцветало, а после поворота «загоралось».
+        // Вид не должен зависеть от того, можно ли нажать (P130).
+        .allowsHitTesting(onTime != nil)
     }
 
     private var bell: some View {
@@ -98,7 +101,7 @@ struct PlanRowLine: View {
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 11 }
         }
         .buttonStyle(.plain)
-        .disabled(onBell == nil)
+        .allowsHitTesting(onBell != nil)
         .accessibilityLabel(row.bell.map { "Напомнить в \($0)" } ?? "Напоминание не назначено")
     }
 
@@ -148,7 +151,7 @@ struct PlanRowLine: View {
                 .padding(.vertical, 3)
         }
         .buttonStyle(.plain)
-        .disabled(onDetails == nil)
+        .allowsHitTesting(onDetails != nil)
         .opacity(editMode ? 0.25 : 1)
         .accessibilityLabel("Подробности")
     }
