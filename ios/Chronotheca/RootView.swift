@@ -153,9 +153,9 @@ struct RootView: View {
 
     private var tabbar: some View {
         HStack(spacing: 0) {
-            section("calendar", "Календарь", .calendar)
-            section("sun.max", "Сегодня", .today)
-            section("magnifyingglass", "Поиск", .search)
+            section("календарь", "Календарь", .calendar)
+            section("сегодня", "Сегодня", .today)
+            section("поиск", "Поиск", .search)
         }
         .padding(.top, 11)
         .padding(.bottom, 4)
@@ -176,7 +176,13 @@ struct RootView: View {
             shell.screen = target
         } label: {
             VStack(spacing: 5) {
-                Image(systemName: icon).font(.system(size: 23))
+                // Значки нарисованы автором от руки и обведены в вектор:
+                // ежедневник, раскрытый в начале, посередине и в конце.
+                Image(icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 27, height: 27)
                 Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
             }
             .frame(maxWidth: .infinity)

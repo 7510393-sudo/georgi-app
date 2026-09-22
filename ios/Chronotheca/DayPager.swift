@@ -50,11 +50,12 @@ struct DayPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            heading
+            // Облачко лежит на шапке, а вкладки рисуются следом и накрывают
+            // его низ. Оттого и видно, что это бумажка, подсунутая под
+            // страницу, а не часть страницы (P140).
+            heading.overlay(alignment: .bottomTrailing) { cloud }
             tabs
             content
-                // Облачко выглядывает из-под вкладки на три четверти.
-                .overlay(alignment: .top) { cloud }
             AttachBar()
         }
         .background(background)
@@ -71,19 +72,11 @@ struct DayPage: View {
     @ViewBuilder private var cloud: some View {
         if live, shell.tab == .diary, archive.remembered(for: date) != nil,
            !Remembered.has(Vault.stamp(date), in: read) {
-            // Облачко висит под своей вкладкой — под «Дневником», а не
-            // посередине: оно относится к дневнику, а не к экрану вообще.
-            // Вкладки делят ширину поровну, поэтому и здесь две половины.
-            // Распорка, а не пустой прямоугольник: прямоугольник тянется и
-            // по высоте, и облачко уезжает на середину страницы. Распорка
-            // раздаётся только вширь — строка остаётся ростом с облачко.
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                RememberCloud(date: date) { remembering = true }
-                    .frame(maxWidth: .infinity)
-            }
-            .offset(y: -8)
-            .transition(.opacity)
+            RememberCloud(date: date, width: 152) { remembering = true }
+                // Вправо, в пустое место под именем соседнего дня; низ
+                // опущен ниже шапки — там его и накроет вкладка.
+                .offset(x: -8, y: 18)
+                .transition(.opacity)
         }
     }
 

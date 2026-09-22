@@ -2,9 +2,12 @@ import SwiftUI
 
 /// Облачко «…помнишь?».
 ///
-/// Выглядывает из-под вкладки «Дневник» на три четверти, шириной примерно
-/// в половину вкладки. Негромкое: это не напоминание и не требование, а
-/// предложение вернуться к своей же записи (решения P66–P69).
+/// Нарисовано автором от руки и обведено в вектор. Выглядывает из-за
+/// вкладки «Дневник» сверху: вкладка накрывает его низ, и видно, что
+/// облачко не часть страницы, а бумажка, подсунутая под неё.
+///
+/// Негромкое: это не напоминание и не требование, а предложение вернуться
+/// к своей же записи (решения P66–P69, P140).
 ///
 /// Если записи за то же число год назад нет — облачка нет вовсе. Пока года
 /// записей не накопилось, вспоминается месяц назад.
@@ -13,24 +16,45 @@ struct RememberCloud: View {
     let date: Date
     let open: () -> Void
 
+    /// Пропорции рисунка и место для подписи внутри него — доли ширины и
+    /// высоты, снятые с самого эскиза.
+    static let ratio: CGFloat = 2.776
+    private static let textLeft: CGFloat = 0.10
+    private static let textRight: CGFloat = 0.42
+    private static let textMiddle: CGFloat = 0.58
+
+    /// Ширина облачка. Подпись набрана шрифтом, а не обведена вместе с
+    /// рисунком: от руки она на такой ширине превращается в пятно, а
+    /// набранная читается и растёт вместе с системным размером текста.
+    let width: CGFloat
+
     var body: some View {
+        let height = width / Self.ratio
         Button(action: open) {
-            Text("…помнишь?")
-                .font(Look.sans(12.5))
-                .tracking(0.4)
-                .foregroundStyle(Look.inkFaint)
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
-                .background(Look.sticker.opacity(0.92))
-                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 14,
-                                                  bottomTrailingRadius: 14))
-                .overlay(
-                    UnevenRoundedRectangle(bottomLeadingRadius: 14,
-                                           bottomTrailingRadius: 14)
-                        .strokeBorder(Look.stickerEdge, lineWidth: 1))
+            ZStack {
+                Image("облачко-бумага")
+                    .renderingMode(.template)
+                    .resizable()
+                    .foregroundStyle(Look.sticker)
+                Image("облачко-перо")
+                    .renderingMode(.template)
+                    .resizable()
+                    .foregroundStyle(Look.ink)
+                Text("…а помнишь?")
+                    .font(Look.sans(width * 0.077))
+                    .tracking(0.2)
+                    .foregroundStyle(Look.inkSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .rotationEffect(.degrees(-5))
+                    .frame(width: width * (1 - Self.textLeft - Self.textRight))
+                    .position(x: width * ((1 - Self.textRight + Self.textLeft) / 2),
+                              y: height * Self.textMiddle)
+            }
+            .frame(width: width, height: height)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Помнишь? Запись того же числа год назад")
     }
 }
 
