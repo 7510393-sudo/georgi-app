@@ -6,11 +6,13 @@ import SwiftUI
 /// где человек остался. Не отдельная страница и не лист снизу — канцелярский
 /// стикер, приклеенный к стенке. Меню страницы на жёлтой бумаге, настройки
 /// на голубой; порода одна, чтобы рука узнавала их одинаково.
+/// С какого края приклеена бумажка. Отдельно от самой бумажки: обводке
+/// эта сторона тоже нужна, а через обобщённый тип она не проходит.
+enum StickerSide { case leading, trailing }
+
 struct Sticker<Content: View>: View {
 
-    enum Side { case leading, trailing }
-
-    let side: Side
+    let side: StickerSide
     let title: String
     var paper: Color = Look.sticker
     var edge: Color = Look.stickerEdge
@@ -116,7 +118,7 @@ struct StickerItem: View {
 struct StickerBorder: Shape {
 
     let radius: CGFloat
-    var side: Sticker<EmptyView>.Side = .trailing
+    var side: StickerSide = .trailing
 
     func path(in r: CGRect) -> Path {
         var p = Path()
