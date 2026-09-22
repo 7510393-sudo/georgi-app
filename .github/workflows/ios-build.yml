@@ -23,6 +23,27 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks | grep -i "iphoneos" || true
 
+      - name: Проверить парность скобок
+        run: |
+          # Дешёвая проверка перед дорогой: срезанная скобка ловится за
+          # секунду здесь, а не за четыре минуты компилятором на машине Apple.
+          python3 - <<'PY'
+          import io, glob, re, sys
+          bad = []
+          for f in sorted(glob.glob('ios/Chronotheca/*.swift') +
+                          glob.glob('ios/ChronothecaTests/*.swift')):
+              s = io.open(f, encoding='utf-8').read()
+              s = re.sub(r'"""[\s\S]*?"""', '""', s)
+              s = re.sub(r'"(\\.|[^"\\])*"', '""', s)
+              s = re.sub(r'//[^\n]*', '', s)
+              if s.count('{') != s.count('}'):
+                  bad.append(f"{f}: {{ {s.count('{')} }} {s.count('}')}")
+          if bad:
+              print("::error::скобки не сходятся: " + "; ".join(bad))
+              sys.exit(1)
+          print("скобки сходятся")
+          PY
+
       - name: Поставить XcodeGen
         run: brew install xcodegen
 

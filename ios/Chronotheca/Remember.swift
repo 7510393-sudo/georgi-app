@@ -73,6 +73,7 @@ struct RememberSheet: View {
         }
         .presentationDetents([.medium, .large])
     }
+}
 
 extension Archive {
 
