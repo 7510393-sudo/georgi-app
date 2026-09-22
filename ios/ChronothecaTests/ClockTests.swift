@@ -51,6 +51,32 @@ final class ClockTests: XCTestCase {
         XCTAssertNil(Clock.date("не время"))
     }
 
+    func testПодгонкаКШагуИдётВниз() {
+        // Вниз, а не к ближайшему: назначенное на 14:37 дело безопаснее
+        // сдвинуть на 14:35, чем на 14:40 — раньше можно, позже нельзя.
+        XCTAssertEqual(часы(Clock.snap(время(14, 37))).1, 35)
+        XCTAssertEqual(часы(Clock.snap(время(14, 39))).1, 35)
+        XCTAssertEqual(часы(Clock.snap(время(14, 40))).1, 40)
+        XCTAssertEqual(часы(Clock.snap(время(14, 3))).1, 0)
+    }
+
+    func testКруглоеВремяПодгонкойНеПортится() {
+        for минута in [0, 5, 15, 30, 45] {
+            XCTAssertEqual(часы(Clock.snap(время(9, минута))).1, минута)
+        }
+        XCTAssertEqual(часы(Clock.snap(время(9, 30))).0, 9)
+    }
+
+    func testГотовыеОтветыОстаютсяНаСетке() {
+        // Время дела уже подогнано к шагу, значит и «за 10 минут», и «за
+        // час» от него попадают на сетку сами.
+        let дело = Clock.snap(время(14, 37))
+        for сдвиг in [-600.0, -3600.0] {
+            let итог = дело.addingTimeInterval(сдвиг)
+            XCTAssertEqual(часы(итог).1 % 5, 0, "сдвиг \(сдвиг) увёл с сетки")
+        }
+    }
+
     func testЧасРовно() {
         XCTAssertEqual(часы(Clock.at(9, время(22, 49))).0, 9)
         XCTAssertEqual(часы(Clock.at(9, время(22, 49))).1, 0)

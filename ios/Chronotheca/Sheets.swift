@@ -166,9 +166,7 @@ struct RollerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 12) {
-                DatePicker("", selection: $picked, displayedComponents: .hourAndMinute)
-                    .datePickerStyle(.wheel)
-                    .labelsHidden()
+                TimeWheel(time: $picked)
                 if isBell {
                     presets
                     Text(Self.aboutBell)
@@ -195,11 +193,16 @@ struct RollerSheet: View {
                 guard let i = store.index(of: roller.id) else { return }
                 let row = store.planRows[i]
                 let current = isBell ? row.bell : row.time
-                picked = Clock.date(current) ?? start(row)
+                set(Clock.date(current) ?? start(row))
             }
         }
         .presentationDetents([.height(isBell ? 392 : 290)])
     }
+
+    /// Поставить ролик. Всегда через подгонку к шагу: ролик с шагом в пять
+    /// минут всё равно округлит, и лучше, чтобы приложение и ролик считали
+    /// одинаково, чем расходились молча.
+    private func set(_ date: Date) { picked = Clock.snap(date) }
 
     /// Время дела, если оно назначено: от него считаются напоминания.
     private var eventTime: Date? {
@@ -229,7 +232,7 @@ struct RollerSheet: View {
     private func preset(_ title: String, _ value: Date?) -> some View {
         let ready = value != nil
         return Button {
-            if let value { picked = value }
+            if let value { set(value) }
         } label: {
             Text(title)
                 .font(Look.sans(13))
@@ -309,6 +312,18 @@ enum Clock {
     /// Такой-то час ровно.
     static func at(_ hour: Int, _ now: Date = Date()) -> Date {
         Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: now) ?? now
+    }
+
+    /// Подогнать к шагу ролика: минуты вниз до кратных шагу.
+    ///
+    /// Вниз, а не к ближайшему: назначенное на 14:37 дело безопаснее
+    /// сдвинуть на 14:35, чем на 14:40 — раньше можно, позже нельзя.
+    static func snap(_ date: Date, step: Int = 5) -> Date {
+        let cal = Calendar.current
+        let c = cal.dateComponents([.hour, .minute], from: date)
+        let minute = ((c.minute ?? 0) / step) * step
+        return cal.date(bySettingHour: c.hour ?? 0, minute: minute,
+                        second: 0, of: date) ?? date
     }
 }
 
