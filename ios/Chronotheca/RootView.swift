@@ -26,6 +26,36 @@ struct RootView: View {
         return out
     }
 
+    private static func transferText(_ t: Transfer.Offer) -> String {
+        var out = "В прежней папке осталось записей: \(t.records).\n\n"
+        out += t.fromPath
+        out += "\n\nПеренести их сюда:\n\n"
+        out += t.toPath
+        out += "\n\nСначала делается копия, и только потом убирается "
+        out += "прежний файл. Прервётся — ничего не пропадёт, перенос можно "
+        out += "будет продолжить."
+        return out
+    }
+
+    private static func reportText(_ r: Transfer.Report) -> String {
+        var out = "Перенесено файлов: \(r.moved)."
+        if r.kept > 0 {
+            out += "\n\nОсталось в прежней папке: \(r.kept). "
+            out += "За те же числа здесь уже есть записи, и приложение "
+            out += "не стало решать за вас, какая из них важнее. Обе целы."
+        }
+        if r.failed > 0 {
+            out += "\n\nНе удалось перенести: \(r.failed). "
+            out += "Эти файлы остались на прежнем месте."
+        }
+        if r.kept == 0 && r.failed == 0 {
+            out += " Прежняя папка осталась на месте, но записей в ней больше нет."
+        } else {
+            out += "\n\nПрежняя папка:\n\n" + r.fromPath
+        }
+        return out
+    }
+
     private static let moved = """
         Вы её переименовали или передвинули. Приложение пошло за ней следом \
         и пишет теперь сюда:
@@ -50,6 +80,29 @@ struct RootView: View {
             Button("Завести") { vault.acceptProposal() }
         } message: { p in
             Text(Self.proposalText(p))
+        }
+        .alert("Перенести записи?",
+               isPresented: Binding(get: { vault.transfer != nil },
+                                    set: { if !$0 { vault.declineTransfer() } }),
+               presenting: vault.transfer) { _ in
+            Button("Оставить", role: .cancel) { vault.declineTransfer() }
+            Button("Перенести") {
+                vault.moveRecords()
+            }
+        } message: { t in
+            Text(Self.transferText(t))
+        }
+        .alert("Перенос закончен",
+               isPresented: Binding(get: { vault.transferDone != nil },
+                                    set: { if !$0 { vault.transferDone = nil } }),
+               presenting: vault.transferDone) { _ in
+            Button("Понятно") {
+                vault.transferDone = nil
+                store.load()
+                archive.reload()
+            }
+        } message: { r in
+            Text(Self.reportText(r))
         }
         .alert("Папка переехала",
                isPresented: Binding(get: { vault.moved != nil },
@@ -77,6 +130,13 @@ struct RootView: View {
             if let notice = shell.notice {
                 toast(notice)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            }
+            // Перенос между памятью телефона и iCloud идёт минутами. Пока он
+            // идёт, трогать записи нельзя: экран закрыт, и на нём видно, что
+            // происходит и сколько осталось.
+            if let m = vault.moving {
+                MovingView(progress: m)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         // Нижние разделы стоят на месте, что бы ни случилось: клавиатура их

@@ -159,6 +159,16 @@ final class Vault: ObservableObject {
     /// решение завести папку принимает человек, увидев полный путь.
     @Published var proposal: Proposal?
 
+    /// Предложение перенести записи из прежней папки, ход переноса и отчёт.
+    @Published var transfer: Transfer.Offer?
+    @Published var moving: Transfer.Progress?
+    @Published var transferDone: Transfer.Report?
+
+    /// Папка, из которой человек только что ушёл, и сколько в ней записей.
+    /// Считается до смены доступа: после неё прежняя папка уже закрыта, и
+    /// заглянуть в неё будет нечем.
+    private var leaving: (root: URL, records: Int)?
+
     struct Proposal: Identifiable {
         let id = UUID()
         let granted: URL
@@ -174,10 +184,13 @@ final class Vault: ObservableObject {
 
     /// Пользователь выбрал папку в системном окне.
     func adopt(_ url: URL) {
+        // Прежнюю папку пересчитываем, пока доступ к ней ещё открыт.
+        let before = root.map { (root: $0, records: Transfer.records(in: $0)) }
         guard begin(url) else {
             problem = "Система не дала доступ к этой папке."
             return
         }
+        leaving = before
         if let found = findVault(from: url) {
             use(granted: url, target: found)
             return
@@ -198,7 +211,10 @@ final class Vault: ObservableObject {
         }
     }
 
-    func declineProposal() { proposal = nil }
+    func declineProposal() {
+        proposal = nil
+        leaving = nil
+    }
 
     /// Где здесь наш архив.
     ///
@@ -246,8 +262,68 @@ final class Vault: ObservableObject {
             granted = url
             root = target
             problem = nil
+            offerTransfer(to: target)
         } catch {
             problem = error.localizedDescription
+        }
+    }
+
+    /// Позвать перенести записи, если человек ушёл из непустой папки.
+    ///
+    /// Молча оставлять записи позади нельзя: человек сменил место, считая,
+    /// что дневник переезжает вместе с ним. Молча переносить — тоже: это его
+    /// файлы, и решает он.
+    private func offerTransfer(to target: URL) {
+        guard let leaving else { return }
+        self.leaving = nil
+        guard leaving.records > 0,
+              leaving.root.standardizedFileURL != target.standardizedFileURL
+        else { return }
+        transfer = Transfer.Offer(
+            fromPath: leaving.root.path.removingPercentEncoding ?? leaving.root.path,
+            toPath: target.path.removingPercentEncoding ?? target.path,
+            records: leaving.records)
+    }
+
+    func declineTransfer() { transfer = nil }
+
+    /// Перенести записи из прежней папки в нынешнюю.
+    ///
+    /// Прежняя папка открывается отдельно и на время переноса: доступ к ней
+    /// уже снят, а без него из неё нечего и читать.
+    func moveRecords() {
+        transfer = nil
+        guard let to = root else { return }
+
+        let defaults = UserDefaults.standard
+        var stale = false
+        guard let data = defaults.data(forKey: Vault.previousBookmarkKey),
+              let grantedOld = try? URL(resolvingBookmarkData: data, options: [],
+                                        relativeTo: nil, bookmarkDataIsStale: &stale)
+        else {
+            problem = "Прежняя папка больше недоступна. Записи в ней целы."
+            return
+        }
+        let subpath = defaults.string(forKey: Vault.previousSubpathKey) ?? ""
+        let from = subpath.isEmpty ? grantedOld : grantedOld.appendingPathComponent(subpath)
+
+        let opened = grantedOld.startAccessingSecurityScopedResource()
+        let files = Transfer.contents(of: from)
+        guard !files.isEmpty else {
+            if opened { grantedOld.stopAccessingSecurityScopedResource() }
+            return
+        }
+        moving = Transfer.Progress(done: 0, total: files.count)
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let report = Transfer.move(files, from: from, to: to) { done in
+                DispatchQueue.main.async { self?.moving?.done = done }
+            }
+            if opened { grantedOld.stopAccessingSecurityScopedResource() }
+            DispatchQueue.main.async {
+                self?.moving = nil
+                self?.transferDone = report
+            }
         }
     }
 
