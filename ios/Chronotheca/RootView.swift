@@ -226,20 +226,24 @@ struct RootView: View {
                                 over size: CGSize,
                                 @ViewBuilder content: () -> V) -> some View {
         let on = shell.screen == which
-        // До первой раскладки высота нулевая. Если поверить ей, вкладыши
+        // До первой раскладки высота нулевая. Если поверить ей, плашки
         // окажутся на книге и мигнут при запуске — а ничто не должно
         // двигаться само (P113). Поэтому до измерения уводим их заведомо
-        // далеко.
-        let away = (edge == .top ? -1 : 1) * max(size.height, 1200)
+        // далеко. Толщина торца прибавляется: он тоже должен уйти за край.
+        let away = (edge == .top ? -1 : 1) * max(size.height + BoardEdge.depth, 1200)
         return content()
             .frame(width: size.width, height: size.height)
             .background(Look.chrome)
-            // Тень падает на книгу с той стороны, откуда вкладыш пришёл:
-            // видно, что он лежит поверх, а не врезан в страницу.
-            .shadow(color: .black.opacity(on ? 0.16 : 0),
-                    radius: 14, x: 0, y: edge == .top ? 7 : -7)
+            // Торец стоит с той стороны, которой плашка идёт вперёд, и
+            // выступает за её край — то есть лежит на книге, а не на самой
+            // плашке. На месте он уходит за край экрана и не виден: толщина
+            // показывается движением, а стоящее не должно ничего занимать.
+            .overlay(alignment: edge == .top ? .bottom : .top) {
+                BoardEdge(fromTop: edge == .top)
+                    .offset(y: edge == .top ? BoardEdge.depth : -BoardEdge.depth)
+            }
             .offset(y: on ? 0 : away)
-            // Уехавший вкладыш не ловит касания: под ним живая книга.
+            // Уехавшая плашка не ловит касания: под ней живая книга.
             .allowsHitTesting(on)
     }
 
@@ -284,12 +288,14 @@ struct RootView: View {
         }
     }
 
-    /// Открыть раздел: вкладыш выезжает на книгу, книга остаётся на месте.
+    /// Открыть раздел: плашка надвигается на книгу, книга остаётся на месте.
     ///
-    /// Ход мягкий и без отскока: вкладыш кладут, а не бросают.
+    /// Ход тяжёлый: долгое торможение без отскока. Так ведёт себя предмет с
+    /// весом — его не бросают, он доезжает сам и гасит скорость о воздух.
+    /// Быстрый ход читался бы как смена экрана, а не как движение вещи.
     private func open(_ target: Shell.Screen) {
         if target != shell.screen { hideKeyboard() }
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.92)) {
+        withAnimation(.spring(response: 0.70, dampingFraction: 0.90)) {
             shell.screen = target
         }
     }

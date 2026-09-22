@@ -1,0 +1,60 @@
+import XCTest
+@testable import Chronotheca
+
+/// Откуда начинает крутиться ролик времени.
+///
+/// Мелочь, которая стоит человеку лишнего движения на каждом деле: если
+/// ролик встаёт не там, его приходится докручивать всякий раз.
+final class ClockTests: XCTestCase {
+
+    private let cal = Calendar.current
+
+    private func время(_ час: Int, _ минута: Int) -> Date {
+        cal.date(bySettingHour: час, minute: минута, second: 0, of: Date())!
+    }
+
+    private func часы(_ date: Date) -> (Int, Int) {
+        let c = cal.dateComponents([.hour, .minute], from: date)
+        return (c.hour ?? -1, c.minute ?? -1)
+    }
+
+    func testСледующийКруглыйЧас() {
+        XCTAssertEqual(часы(Clock.nextHour(время(22, 49))).0, 23)
+        XCTAssertEqual(часы(Clock.nextHour(время(22, 49))).1, 0)
+    }
+
+    func testРовноВЧасПредлагаетсяЭтотЖеЧас() {
+        // В 23:00 предлагать полночь было бы странно: час ещё не начался.
+        XCTAssertEqual(часы(Clock.nextHour(время(23, 0))).0, 23)
+        XCTAssertEqual(часы(Clock.nextHour(время(23, 0))).1, 0)
+    }
+
+    func testПослеОдиннадцатиВечераПолночь() {
+        XCTAssertEqual(часы(Clock.nextHour(время(23, 40))).0, 0)
+        XCTAssertEqual(часы(Clock.nextHour(время(23, 40))).1, 0)
+    }
+
+    func testПервойМинутойСутокПредлагаетсяЧас() {
+        XCTAssertEqual(часы(Clock.nextHour(время(0, 1))).0, 1)
+    }
+
+    func testПолночьЭтоПолночь() {
+        XCTAssertEqual(часы(Clock.midnight(время(22, 49))).0, 0)
+        XCTAssertEqual(часы(Clock.midnight(время(22, 49))).1, 0)
+    }
+
+    func testВремяТудаИОбратно() {
+        XCTAssertEqual(Clock.text(время(9, 5)), "09:05")
+        XCTAssertEqual(часы(Clock.date("09:05")!).0, 9)
+        XCTAssertEqual(часы(Clock.date("09:05")!).1, 5)
+        XCTAssertNil(Clock.date(nil))
+        XCTAssertNil(Clock.date("не время"))
+    }
+
+    func testНапоминаниеЗаЧасДоДела() {
+        // Ролик колокольчика встаёт за час до дела: напоминают заранее.
+        let дело = Clock.date("23:00")!
+        XCTAssertEqual(часы(дело.addingTimeInterval(-3600)).0, 22)
+        XCTAssertEqual(часы(дело.addingTimeInterval(-3600)).1, 0)
+    }
+}

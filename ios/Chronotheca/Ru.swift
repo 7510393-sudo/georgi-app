@@ -108,6 +108,12 @@ enum Look {
     static let chrome    = Color(light: 0xF4F4F1, dark: 0x191F26)
     static let planBg    = Color(light: 0xFDFDFB, dark: 0x14191F)
 
+    /// Торец плашки: светлая грань, лицо, глубина и тёмная грань.
+    static let boardLit  = Color(light: 0xFCFAF4, dark: 0x3E4750)
+    static let boardFace = Color(light: 0xE9E5DB, dark: 0x2B3239)
+    static let boardDeep = Color(light: 0xCFC9BB, dark: 0x1B2127)
+    static let boardDark = Color(light: 0xA9A296, dark: 0x0B0F14)
+
     static let diaryBg   = Color(light: 0xFAF5EC, dark: 0x1B1812)
 
     /// Бумага приклеенных записок. Жёлтая — меню страницы, голубая —

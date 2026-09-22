@@ -192,11 +192,28 @@ struct RollerSheet: View {
             }
             .onAppear {
                 guard let i = store.index(of: roller.id) else { return }
-                let current = isBell ? store.planRows[i].bell : store.planRows[i].time
-                picked = Clock.date(current) ?? Date()
+                let row = store.planRows[i]
+                let current = isBell ? row.bell : row.time
+                picked = Clock.date(current) ?? start(row)
             }
         }
         .presentationDetents([.height(isBell ? 340 : 290)])
+    }
+
+    /// Откуда начинает ролик, когда время ещё не назначено.
+    ///
+    /// Для дела — ближайший следующий круглый час: в 22:49 предлагается
+    /// 23:00. Ставить ролик на «сейчас» незачем — дело не назначают на
+    /// минуту, которая уже идёт, и человеку пришлось бы крутить вперёд от
+    /// бесполезного места.
+    ///
+    /// Для напоминания — за час до дела: напоминают заранее, иначе незачем
+    /// напоминать. А если у дела времени ещё нет, отсчитывать не от чего —
+    /// ролик встаёт на полночь (решение P149).
+    private func start(_ row: PlanRow) -> Date {
+        guard isBell else { return Clock.nextHour() }
+        guard let time = Clock.date(row.time) else { return Clock.midnight() }
+        return time.addingTimeInterval(-3600)
     }
 
     private func apply(_ value: String?) {
@@ -223,6 +240,24 @@ enum Clock {
         let c = Calendar.current.dateComponents([.hour, .minute], from: t)
         return Calendar.current.date(bySettingHour: c.hour ?? 0, minute: c.minute ?? 0,
                                      second: 0, of: Date())
+    }
+
+    /// Ближайший следующий круглый час. Ровно в час — он сам: в 23:00
+    /// предлагать полночь было бы странно.
+    ///
+    /// После 23:00 круглый час приходится на следующие сутки, но ролик
+    /// показывает только часы и минуты — для него это просто 00:00.
+    static func nextHour(_ now: Date = Date()) -> Date {
+        let cal = Calendar.current
+        let c = cal.dateComponents([.hour, .minute], from: now)
+        let minute = c.minute ?? 0
+        let hour = (minute == 0 ? (c.hour ?? 0) : (c.hour ?? 0) + 1) % 24
+        return cal.date(bySettingHour: hour, minute: 0, second: 0, of: now) ?? now
+    }
+
+    /// Полночь — для ролика, которому не от чего отсчитывать.
+    static func midnight(_ now: Date = Date()) -> Date {
+        Calendar.current.startOfDay(for: now)
     }
 }
 
