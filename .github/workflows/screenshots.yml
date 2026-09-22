@@ -14,6 +14,13 @@ on:
 permissions:
   contents: write
 
+# Две съёмки одной ветки сразу не нужны: снимки нужны свежие, а прогон,
+# начатый до последней правки, показывает вчерашнее приложение. Старый
+# прогон отменяется — заодно исчезает и столкновение за одни и те же файлы.
+concurrency:
+  group: снимки-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   shots:
     runs-on: macos-26
@@ -167,19 +174,33 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/screens
-          if git diff --cached --quiet; then
-            echo "снимки не изменились"
-          else
+          # Пока шла съёмка, в ветку могли записать что-то ещё — например,
+          # отправку сборки. Тогда встаём поверх нового конца ветки и кладём
+          # свои снимки заново.
+          #
+          # Не перебазированием: картинки — двоичные файлы, и слить две
+          # версии одного снимка нельзя в принципе, rebase на них встаёт
+          # намертво. Правило простое и верное: последняя съёмка побеждает,
+          # она и есть самая свежая.
+          # Снимки откладываем в сторону: на них мы будем ставить заново.
+          свежие=$(mktemp -d)
+          cp docs/screens/* "$свежие"/
+
+          for try in 1 2 3 4; do
+            git add docs/screens
+            if git diff --cached --quiet; then
+              echo "снимки не изменились"
+              exit 0
+            fi
             git commit -m "docs: снимки экрана из симулятора"
-            # Пока шла съёмка, в ветку могли записать что-то ещё — например,
-            # отправку сборки. Подкладываем свой коммит под чужой и пробуем
-            # снова: снимки не стоят того, чтобы ронять из-за них работу.
-            for try in 1 2 3 4; do
-              if git push; then exit 0; fi
-              echo "отправка не прошла, попытка $try"
-              sleep $((try * 3))
-              git pull --rebase origin "$GITHUB_REF_NAME" || exit 1
-            done
-            echo "::warning::снимки не удалось отправить в репозиторий"
-          fi
+            if git push; then exit 0; fi
+
+            echo "отправка не прошла, попытка $try"
+            sleep $((try * 3))
+            git fetch origin "$GITHUB_REF_NAME" || exit 1
+            # Встаём ровно на чужой конец ветки — со всем, что там появилось,
+            # — и кладём свои снимки поверх. Ничего чужого не теряется.
+            git reset --hard "origin/$GITHUB_REF_NAME" || exit 1
+            cp "$свежие"/* docs/screens/
+          done
+          echo "::warning::снимки не удалось отправить в репозиторий"
