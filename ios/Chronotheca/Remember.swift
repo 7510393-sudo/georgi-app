@@ -11,10 +11,10 @@ import SwiftUI
 struct RememberCloud: View {
 
     let date: Date
-    @Binding var open: Bool
+    let open: () -> Void
 
     var body: some View {
-        Button { open = true } label: {
+        Button(action: open) {
             Text("…помнишь?")
                 .font(Look.sans(12.5))
                 .tracking(0.4)
@@ -31,6 +31,35 @@ struct RememberCloud: View {
                         .strokeBorder(Look.stickerEdge, lineWidth: 1))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Прочитанные напоминания.
+///
+/// Облачко, на которое нажали, больше не зовёт: оно своё дело сделало,
+/// а висеть и дальше — значит требовать внимания впустую (решение P136).
+///
+/// Помечается день, на котором облачко висело: у каждого дня своё
+/// воспоминание, и завтрашнее облачко позовёт к другой записи.
+enum Remembered {
+
+    /// Ключ для `@AppStorage`: метки дней через пробел. Простая строка
+    /// переживает и перезапуск, и обновление приложения.
+    static let key = "remember.read"
+
+    /// Дальше не помним: список не должен расти без края.
+    private static let limit = 400
+
+    static func has(_ stamp: String, in list: String) -> Bool {
+        list.split(separator: " ").contains { $0 == stamp }
+    }
+
+    static func adding(_ stamp: String, to list: String) -> String {
+        guard !has(stamp, in: list) else { return list }
+        var stamps = list.split(separator: " ").map(String.init)
+        stamps.append(stamp)
+        if stamps.count > limit { stamps.removeFirst(stamps.count - limit) }
+        return stamps.joined(separator: " ")
     }
 }
 

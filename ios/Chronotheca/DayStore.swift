@@ -137,12 +137,16 @@ final class DayStore: ObservableObject {
     ///
     /// Нужна, если запись пуста или к ней не возвращались больше часа. Смысл
     /// отметок — показать, что день писался в несколько заходов, а не залпом.
-    func stampIfNeeded() {
-        guard canEditDiary else { return }
+    ///
+    /// Возвращает `true`, если отметка поставлена: тогда курсор надо
+    /// перенести за неё — писать человек будет там (решение P137).
+    @discardableResult
+    func stampIfNeeded() -> Bool {
+        guard canEditDiary else { return false }
         let body = diaryText.replacingOccurrences(of: "\\s+$", with: "",
                                                   options: .regularExpression)
         let stale = lastEdit.map { Date().timeIntervalSince($0) > DayStore.stampGap } ?? true
-        guard body.isEmpty || stale else { return }
+        guard body.isEmpty || stale else { return false }
 
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -150,6 +154,7 @@ final class DayStore: ObservableObject {
         diaryText = (body.isEmpty ? "" : body + "\n\n") + f.string(from: Date()) + " "
         lastEdit = Date()
         save()
+        return true
     }
 
     func touchDiary() { lastEdit = Date() }

@@ -23,6 +23,10 @@ struct DiaryEditor: UIViewRepresentable {
     /// рядом стоят два разных способа набрать текст, и строки на повороте
     /// расходятся (P114).
     var editable = true
+    /// Просьба поставить курсор в конец текста при ближайшем обновлении.
+    /// Её подаёт отметка времени: её ставит приложение, а писать после неё
+    /// человеку — и тянуться до конца предыдущего куска он не должен.
+    var caretToEnd: Binding<Bool> = .constant(false)
     var onFocus: () -> Void = {}
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
@@ -50,16 +54,27 @@ struct DiaryEditor: UIViewRepresentable {
         view.isEditable = editable
         view.isSelectable = editable
         view.isScrollEnabled = editable
-        guard view.text != text || view.attributedText.length == 0 else {
+
+        if view.text != text || view.attributedText.length == 0 {
+            let selection = view.selectedRange
+            view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped)
+            view.typingAttributes = Self.body(size, serif: serif)
+            view.selectedRange = selection.location <= (view.text as NSString).length
+                ? selection
+                : NSRange(location: (view.text as NSString).length, length: 0)
+        } else {
             context.coordinator.restyle(view)
-            return
         }
-        let selection = view.selectedRange
-        view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped)
-        view.typingAttributes = Self.body(size, serif: serif)
-        view.selectedRange = selection.location <= (view.text as NSString).length
-            ? selection
-            : NSRange(location: (view.text as NSString).length, length: 0)
+
+        // Курсор переставляется только по просьбе — и только туда, куда
+        // человек и так собирался писать (решение P137).
+        if caretToEnd.wrappedValue {
+            let end = NSRange(location: (view.text as NSString).length, length: 0)
+            view.selectedRange = end
+            view.typingAttributes = Self.body(size, serif: serif)
+            view.scrollRangeToVisible(end)
+            DispatchQueue.main.async { caretToEnd.wrappedValue = false }
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -120,16 +135,19 @@ struct DiaryEditor: UIViewRepresentable {
         }
 
         /// Первая буква строки после отметки времени набирается заглавной.
+        ///
+        /// Не только при наборе: диктовка вставляет целую фразу разом, и её
+        /// первая буква должна вести себя так же.
         func textView(_ view: UITextView, shouldChangeTextIn range: NSRange,
                       replacementText text: String) -> Bool {
             guard parent.stamped,
-                  text.count == 1, let first = text.first, first.isLowercase else { return true }
+                  let first = text.first, first.isLowercase else { return true }
             let before = (view.text as NSString).substring(to: range.location)
             guard let line = before.components(separatedBy: .newlines).last,
                   line.range(of: #"^\d{2}:\d{2}[  ]+$"#, options: .regularExpression) != nil
             else { return true }
 
-            let upper = String(first).uppercased()
+            let upper = String(first).uppercased() + String(text.dropFirst())
             if let target = Range(range, in: view.text) {
                 view.text.replaceSubrange(target, with: upper)
                 let after = range.location + (upper as NSString).length

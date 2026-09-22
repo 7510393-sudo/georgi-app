@@ -43,10 +43,15 @@ struct DiaryPage: View {
     @Binding var title: String
     @Binding var text: String
     var editable = true
-    var onFocusText: () -> Void = {}
+    /// Возвращает `true`, если приложение поставило отметку времени: тогда
+    /// курсор переезжает за неё.
+    var onFocusText: () -> Bool = { false }
 
     private enum Field: Hashable { case title, answer(String) }
     @FocusState private var focused: Field?
+
+    /// Поднимается ровно на один оборот — когда отметка времени поставлена.
+    @State private var caretToEnd = false
 
     private let size = DiaryView.size
 
@@ -154,7 +159,8 @@ struct DiaryPage: View {
     /// набрать текст, и строки на повороте расходятся (P114).
     private var textField: some View {
         DiaryEditor(text: $text, size: size, serif: true, stamped: true,
-                    editable: editable, onFocus: onFocusText)
+                    editable: editable, caretToEnd: $caretToEnd,
+                    onFocus: { if onFocusText() { caretToEnd = true } })
             .frame(minHeight: 320)
             .padding(.top, 16)
     }

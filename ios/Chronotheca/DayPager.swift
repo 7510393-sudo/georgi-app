@@ -45,6 +45,9 @@ struct DayPage: View {
 
     @State private var remembering = false
 
+    /// Дни, чьи облачка уже прочитаны (решение P136).
+    @AppStorage(Remembered.key) private var read = ""
+
     var body: some View {
         VStack(spacing: 0) {
             heading
@@ -55,7 +58,7 @@ struct DayPage: View {
             AttachBar()
         }
         .background(background)
-        .sheet(isPresented: $remembering) {
+        .sheet(isPresented: $remembering, onDismiss: forget) {
             if let (day, ago) = archive.remembered(for: date) {
                 RememberSheet(day: day, ago: ago, open: $remembering)
             }
@@ -66,16 +69,27 @@ struct DayPage: View {
     /// (решения P66–P69). На соседних страницах его нет: они лишь
     /// показываются, пока едут.
     @ViewBuilder private var cloud: some View {
-        if live, shell.tab == .diary, archive.remembered(for: date) != nil {
+        if live, shell.tab == .diary, archive.remembered(for: date) != nil,
+           !Remembered.has(Vault.stamp(date), in: read) {
             // Облачко висит под своей вкладкой — под «Дневником», а не
             // посередине: оно относится к дневнику, а не к экрану вообще.
             // Вкладки делят ширину поровну, поэтому и здесь две половины.
             HStack(spacing: 0) {
                 Color.clear.frame(maxWidth: .infinity)
-                RememberCloud(date: date, open: $remembering)
+                RememberCloud(date: date) { remembering = true }
                     .frame(maxWidth: .infinity)
             }
             .offset(y: -8)
+            .transition(.opacity)
+        }
+    }
+
+    /// Листок прочитан — облачко уходит: оно своё дело сделало, а звать
+    /// второй раз к той же записи нечестно, человек уже откликнулся (P136).
+    /// Уходит не мигом, а угасая: резкое исчезновение читается как сбой.
+    private func forget() {
+        withAnimation(.easeOut(duration: 0.35)) {
+            read = Remembered.adding(Vault.stamp(date), to: read)
         }
     }
 
