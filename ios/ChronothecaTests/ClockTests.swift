@@ -51,6 +51,19 @@ final class ClockTests: XCTestCase {
         XCTAssertNil(Clock.date("не время"))
     }
 
+    func testЧасРовно() {
+        XCTAssertEqual(часы(Clock.at(9, время(22, 49))).0, 9)
+        XCTAssertEqual(часы(Clock.at(9, время(22, 49))).1, 0)
+    }
+
+    func testГотовыеОтветыОтсчитываютсяОтДела() {
+        let дело = Clock.date("14:30")!
+        XCTAssertEqual(часы(дело.addingTimeInterval(-600)).0, 14)
+        XCTAssertEqual(часы(дело.addingTimeInterval(-600)).1, 20)
+        XCTAssertEqual(часы(дело.addingTimeInterval(-3600)).0, 13)
+        XCTAssertEqual(часы(дело.addingTimeInterval(-3600)).1, 30)
+    }
+
     func testНапоминаниеЗаЧасДоДела() {
         // Ролик колокольчика встаёт за час до дела: напоминают заранее.
         let дело = Clock.date("23:00")!

@@ -170,6 +170,7 @@ struct RollerSheet: View {
                     .datePickerStyle(.wheel)
                     .labelsHidden()
                 if isBell {
+                    presets
                     Text(Self.aboutBell)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -182,9 +183,9 @@ struct RollerSheet: View {
             .navigationTitle(isBell ? "Напоминание" : "Время дела")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Одна кнопка. Ролик ставит время, и больше ему делать
-                // нечего: закрыть его можно движением вниз, как всякую
-                // шторку (решение P150).
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Отмена") { shell.roller = nil }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Готово") { apply(Clock.text(picked)) }
                         .fontWeight(.semibold)
@@ -197,7 +198,52 @@ struct RollerSheet: View {
                 picked = Clock.date(current) ?? start(row)
             }
         }
-        .presentationDetents([.height(isBell ? 340 : 290)])
+        .presentationDetents([.height(isBell ? 392 : 290)])
+    }
+
+    /// Время дела, если оно назначено: от него считаются напоминания.
+    private var eventTime: Date? {
+        guard let i = store.index(of: roller.id) else { return nil }
+        return Clock.date(store.planRows[i].time)
+    }
+
+    /// Готовые ответы для напоминания.
+    ///
+    /// Почти все напоминания ставят на одно из трёх: незадолго до дела,
+    /// за час до дела или с утра. Крутить ради этого барабан — лишняя
+    /// работа на каждом деле (решение P152).
+    ///
+    /// Готовый ответ не закрывает ролик, а ставит на нужное место барабан:
+    /// человек видит, что выбралось, и может поправить. Одно касание мимо
+    /// не должно молча назначать напоминание.
+    private var presets: some View {
+        HStack(spacing: 8) {
+            preset("за 10 минут", eventTime?.addingTimeInterval(-600))
+            preset("за 1 час", eventTime?.addingTimeInterval(-3600))
+            preset("в 9 утра", Clock.at(9))
+        }
+    }
+
+    /// Готовый ответ. Бледный и неотзывчивый, когда считать не от чего:
+    /// у дела ещё нет времени, и «за час до» не от чего отсчитать.
+    private func preset(_ title: String, _ value: Date?) -> some View {
+        let ready = value != nil
+        return Button {
+            if let value { picked = value }
+        } label: {
+            Text(title)
+                .font(Look.sans(13))
+                .foregroundStyle(ready ? Look.accent : Look.inkFaint)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Look.chrome, in: Capsule())
+                .overlay(Capsule().strokeBorder(
+                    ready ? Look.accent.opacity(0.35) : Look.rule))
+        }
+        .buttonStyle(.plain)
+        // Не .disabled: система рисует выключенную кнопку бледнее поверх
+        // заданного цвета, и бледность сложилась бы дважды (P141).
+        .allowsHitTesting(ready)
     }
 
     /// Откуда начинает ролик, когда время ещё не назначено.
@@ -258,6 +304,11 @@ enum Clock {
     /// Полночь — для ролика, которому не от чего отсчитывать.
     static func midnight(_ now: Date = Date()) -> Date {
         Calendar.current.startOfDay(for: now)
+    }
+
+    /// Такой-то час ровно.
+    static func at(_ hour: Int, _ now: Date = Date()) -> Date {
+        Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: now) ?? now
     }
 }
 
