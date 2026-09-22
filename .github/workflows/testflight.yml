@@ -231,8 +231,26 @@ jobs:
         working-directory: ios
         run: |
           ipa=$(ls build/export/*.ipa | head -1)
-          echo "### Сборка ${GITHUB_RUN_NUMBER} отправлена в TestFlight" >> "$GITHUB_STEP_SUMMARY"
           echo "Отправляю $ipa"
+
+          # Ответ Apple разбираем сами: у неё есть суточный предел на число
+          # сборок одного приложения, и упёршись в него, она отвечает кодом
+          # 90382. Без разбора это выглядит как поломка сборки, хотя код
+          # цел и дело только в счётчике.
+          set +e
           xcrun altool --upload-app -f "$ipa" -t ios \
             --apiKey "$KEY_ID" \
-            --apiIssuer "$ISSUER_ID"
+            --apiIssuer "$ISSUER_ID" 2>&1 | tee /tmp/altool.log
+          код=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$код" = "0" ]; then
+            echo "### Сборка ${GITHUB_RUN_NUMBER} отправлена в TestFlight" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if grep -q "90382" /tmp/altool.log; then
+            echo "::error::Apple не приняла сборку: на сегодня исчерпан суточный предел выгрузок для этого приложения (код 90382). Код цел и проверки пройдены — предел снимется через сутки. Отправлять каждую правку отдельной сборкой не нужно: номер сборки стоит поднимать тогда, когда сборку действительно пойдут смотреть."
+            echo "### Сборка ${GITHUB_RUN_NUMBER} не отправлена: суточный предел Apple" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$код"
