@@ -72,10 +72,11 @@ struct DayPage: View {
     @ViewBuilder private var cloud: some View {
         if live, shell.tab == .diary, archive.remembered(for: date) != nil,
            !Remembered.has(Vault.stamp(date), in: read) {
-            RememberCloud(date: date, width: 152) { remembering = true }
-                // Вправо, в пустое место под именем соседнего дня; низ
-                // опущен ниже шапки — там его и накроет вкладка.
-                .offset(x: -8, y: 18)
+            RememberCloud(date: date, width: 120) { remembering = true }
+                // Вправо, в свободное место за датой: на живом экране дата
+                // шире, чем на эскизе, и на неё наезжать нельзя. Низ опущен
+                // под край вкладки — там вкладка его и накроет.
+                .offset(x: -6, y: 14)
                 .transition(.opacity)
         }
     }
@@ -128,7 +129,10 @@ struct DayPage: View {
         }
         .padding(.horizontal, 6)
         .padding(.top, 2)
-        .padding(.bottom, 9)
+        // Отступ до вкладок держит шапка, а не вкладки: тогда её нижний край
+        // совпадает с верхним краем вкладки, и облачко уходит именно за
+        // вкладку, а не за пустую полоску над ней.
+        .padding(.bottom, 18)
         .frame(maxWidth: .infinity)
         .background(Look.chrome)
         .contentShape(Rectangle())
@@ -233,7 +237,6 @@ struct DayPage: View {
             tab(.diary)
         }
         .padding(.horizontal, 12)
-        .padding(.top, 9)
         .background(Look.chrome)
     }
 
