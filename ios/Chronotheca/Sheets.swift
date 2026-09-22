@@ -182,9 +182,9 @@ struct RollerSheet: View {
             .navigationTitle(isBell ? "Напоминание" : "Время дела")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(isBell ? "Без напоминания" : "Без времени") { apply(nil) }
-                }
+                // Одна кнопка. Ролик ставит время, и больше ему делать
+                // нечего: закрыть его можно движением вниз, как всякую
+                // шторку (решение P150).
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Готово") { apply(Clock.text(picked)) }
                         .fontWeight(.semibold)
