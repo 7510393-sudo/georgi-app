@@ -241,10 +241,10 @@ jobs:
           xcrun altool --upload-app -f "$ipa" -t ios \
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID" 2>&1 | tee /tmp/altool.log
-          код=${PIPESTATUS[0]}
+          CODE=${PIPESTATUS[0]}   # имя латиницей: кириллицу bash в именах не принимает
           set -e
 
-          if [ "$код" = "0" ]; then
+          if [ "$CODE" = "0" ]; then
             echo "### Сборка ${GITHUB_RUN_NUMBER} отправлена в TestFlight" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -253,4 +253,4 @@ jobs:
             echo "::error::Apple не приняла сборку: на сегодня исчерпан суточный предел выгрузок для этого приложения (код 90382). Код цел и проверки пройдены — предел снимется через сутки. Отправлять каждую правку отдельной сборкой не нужно: номер сборки стоит поднимать тогда, когда сборку действительно пойдут смотреть."
             echo "### Сборка ${GITHUB_RUN_NUMBER} не отправлена: суточный предел Apple" >> "$GITHUB_STEP_SUMMARY"
           fi
-          exit "$код"
+          exit "$CODE"
