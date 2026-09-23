@@ -143,74 +143,134 @@ enum Build {
     }
 }
 
-// MARK: - Ролик времени
+// MARK: - Барабан времени
 
-/// Время дела и время напоминания крутятся одним и тем же роликом.
-/// Выход «Без времени» — это отказ, а не пустое значение: дело останется
-/// без часа, и это нормальное состояние дела.
-struct RollerSheet: View {
+/// Время дела и время напоминания крутятся одним и тем же барабаном.
+///
+/// Барабан не выезжает снизу отдельной шторкой, а встаёт на то место, где
+/// стоят цифры: его выбранная строка ложится ровно на клетку, по которой
+/// нажали, — цифра как будто вырастает в барабан там, где была. Страница
+/// вокруг притеняется, но остаётся видна: это правка одной клетки, а не
+/// отдельный экран (решение P173).
+///
+/// Выход «Убрать» — это отказ, а не пустое значение: дело останется без
+/// часа, и это нормальное состояние дела (P49, P150).
+struct RollerCard: View {
 
     private static let aboutBell = """
-        Напоминания ещё не приходят — время записывается в файл, \
-        но телефон о нём пока не сообщает.
+        Время запишется в файл, но телефон о нём пока не напомнит.
         """
+
+    /// Высота барабана и отступ над ним. По ним считается, куда встать:
+    /// выбранная строка барабана — ровно его середина.
+    private static let wheel: CGFloat = 200
+    private static let padTop: CGFloat = 10
 
     let roller: Shell.Roller
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
     @State private var picked = Date()
+    @State private var shown = false
+    @State private var keyboard: CGFloat = 0
 
     private var isBell: Bool { roller.kind == .bell }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 12) {
-                TimeWheel(time: $picked)
-                if isBell {
-                    presets
-                    Text(Self.aboutBell)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 28)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.top, 6)
-            .navigationTitle(isBell ? "Напоминание" : "Время дела")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // «Отмена» не просто закрывает, а снимает назначенное: дело
-                // остаётся без часа, напоминание — снятым. Иначе отказаться
-                // от времени было бы нечем (решения P49, P150).
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Отмена") { apply(nil) }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Готово") { apply(Clock.text(picked)) }
-                        .fontWeight(.semibold)
-                }
-            }
-            .onAppear {
-                guard let i = store.index(of: roller.id) else { return }
-                let row = store.planRows[i]
-                let current = isBell ? row.bell : row.time
-                set(Clock.date(current) ?? start(row))
+        GeometryReader { page in
+            let box = place(on: page.size)
+            ZStack(alignment: .topLeading) {
+                // Касание мимо — согласие, а не отказ: барабан всё время
+                // на виду, и человек уходит от него с тем, что видел.
+                Color.black.opacity(shown ? 0.16 : 0)
+                    .contentShape(Rectangle())
+                    .onTapGesture { apply(Clock.text(picked)) }
+                card
+                    .frame(width: box.width, height: box.height)
+                    .scaleEffect(shown ? 1 : 0.94, anchor: .topLeading)
+                    .opacity(shown ? 1 : 0)
+                    .offset(x: box.minX, y: box.minY)
             }
         }
-        .presentationDetents([.height(isBell ? 392 : 290)])
+        .keyboardHeight($keyboard)
+        .onAppear {
+            if let i = store.index(of: roller.id) {
+                let row = store.planRows[i]
+                set(Clock.date(isBell ? row.bell : row.time) ?? start(row))
+            }
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) { shown = true }
+        }
     }
 
-    /// Поставить ролик. Всегда через подгонку к шагу: ролик с шагом в пять
-    /// минут всё равно округлит, и лучше, чтобы приложение и ролик считали
-    /// одинаково, чем расходились молча.
-    private func set(_ date: Date) { picked = Clock.snap(date) }
+    // MARK: - Где встать
 
-    /// Время дела, если оно назначено: от него считаются напоминания.
-    private var eventTime: Date? {
-        guard let i = store.index(of: roller.id) else { return nil }
-        return Clock.date(store.planRows[i].time)
+    /// Место карточки на странице.
+    ///
+    /// По высоте — так, чтобы середина барабана легла на клетку. По
+    /// ширине — от левого края клетки, чтобы цифры барабана оказались над
+    /// цифрами дела. У краёв страницы и над клавиатурой карточка
+    /// придвигается внутрь: лучше сдвинуться, чем уехать за край.
+    private func place(on page: CGSize) -> CGRect {
+        let wide = min(isBell ? 330 : 300, page.width - 24)
+        let tall = Self.padTop + Self.wheel + (isBell ? 78 : 0) + 44
+        // Ниже этой черты карточку не опускаем: под ней клавиатура.
+        let низ = max(8, page.height - keyboard - tall - 8)
+
+        guard roller.at != .zero else {
+            return CGRect(x: (page.width - wide) / 2,
+                          y: min(max(8, (page.height - tall) / 2), низ),
+                          width: wide, height: tall)
+        }
+        let x = min(max(12, roller.at.minX - 18), max(12, page.width - wide - 12))
+        let y = min(max(8, roller.at.midY - (Self.padTop + Self.wheel / 2)), низ)
+        return CGRect(x: x, y: y, width: wide, height: tall)
+    }
+
+    // MARK: - Сама карточка
+
+    private var card: some View {
+        VStack(spacing: 6) {
+            TimeWheel(time: $picked)
+                .frame(height: Self.wheel)
+            if isBell {
+                presets
+                Text(Self.aboutBell)
+                    .font(.caption)
+                    .foregroundStyle(Look.inkFaint)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            strip
+        }
+        .padding(.top, Self.padTop)
+        .padding(.horizontal, 10)
+        .padding(.bottom, 8)
+        .background(Look.planBg, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Look.rule))
+        .shadow(color: .black.opacity(0.2), radius: 14, y: 6)
+    }
+
+    /// Две надписи внизу: снять назначенное и согласиться.
+    ///
+    /// Прежде слева стояла «Отмена», но она не отменяла, а снимала время, —
+    /// в шторке это ещё читалось, а у карточки, которая закрывается
+    /// касанием мимо, слово начало бы врать (решение P173).
+    private var strip: some View {
+        HStack {
+            Button("Убрать") { apply(nil) }
+                .font(Look.sans(14))
+                .foregroundStyle(Look.inkSoft)
+            Spacer()
+            Button("Готово") { apply(Clock.text(picked)) }
+                .font(Look.sans(14, weight: .semibold))
+                .foregroundStyle(Look.accent)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 6)
+        .frame(height: 30)
     }
 
     /// Готовые ответы для напоминания.
@@ -219,7 +279,7 @@ struct RollerSheet: View {
     /// за час до дела или с утра. Крутить ради этого барабан — лишняя
     /// работа на каждом деле (решение P152).
     ///
-    /// Готовый ответ не закрывает ролик, а ставит на нужное место барабан:
+    /// Готовый ответ не закрывает барабан, а ставит его на нужное место:
     /// человек видит, что выбралось, и может поправить. Одно касание мимо
     /// не должно молча назначать напоминание.
     private var presets: some View {
@@ -240,8 +300,8 @@ struct RollerSheet: View {
             Text(title)
                 .font(Look.sans(13))
                 .foregroundStyle(ready ? Look.accent : Look.inkFaint)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
                 .background(Look.chrome, in: Capsule())
                 .overlay(Capsule().strokeBorder(
                     ready ? Look.accent.opacity(0.35) : Look.rule))
@@ -252,16 +312,29 @@ struct RollerSheet: View {
         .allowsHitTesting(ready)
     }
 
-    /// Откуда начинает ролик, когда время ещё не назначено.
+    // MARK: - Что показывать и что записать
+
+    /// Поставить барабан. Всегда через подгонку к шагу: барабан с шагом в
+    /// пять минут всё равно округлит, и лучше, чтобы приложение и барабан
+    /// считали одинаково, чем расходились молча.
+    private func set(_ date: Date) { picked = Clock.snap(date) }
+
+    /// Время дела, если оно назначено: от него считаются напоминания.
+    private var eventTime: Date? {
+        guard let i = store.index(of: roller.id) else { return nil }
+        return Clock.date(store.planRows[i].time)
+    }
+
+    /// Откуда начинает барабан, когда время ещё не назначено.
     ///
     /// Для дела — ближайший следующий круглый час: в 22:49 предлагается
-    /// 23:00. Ставить ролик на «сейчас» незачем — дело не назначают на
+    /// 23:00. Ставить барабан на «сейчас» незачем — дело не назначают на
     /// минуту, которая уже идёт, и человеку пришлось бы крутить вперёд от
     /// бесполезного места.
     ///
     /// Для напоминания — за час до дела: напоминают заранее, иначе незачем
     /// напоминать. А если у дела времени ещё нет, отсчитывать не от чего —
-    /// ролик встаёт на полночь (решение P149).
+    /// барабан встаёт на полночь (решение P149).
     private func start(_ row: PlanRow) -> Date {
         guard isBell else { return Clock.nextHour() }
         guard let time = Clock.date(row.time) else { return Clock.midnight() }
@@ -273,7 +346,7 @@ struct RollerSheet: View {
             if isBell { store.planRows[i].bell = value } else { store.planRows[i].time = value }
             store.save()
         }
-        shell.roller = nil
+        withAnimation(.easeOut(duration: 0.16)) { shell.roller = nil }
     }
 }
 

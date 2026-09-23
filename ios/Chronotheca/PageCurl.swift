@@ -43,6 +43,13 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
     /// собирается уже по свежим данным, а не по тем, что были в начале.
     var plan: Binding<[Int]> = .constant([])
 
+    /// Пока поверх страницы что-то правят, листать нельзя.
+    ///
+    /// Тяга за страницу живёт в системе, а не в SwiftUI: накрыть страницу
+    /// сверху мало — палец по притенённому месту всё равно перевернул бы
+    /// день, и барабан остался бы висеть над чужой страницей (P173).
+    var frozen = false
+
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeUIViewController(context: Context) -> UIPageViewController {
@@ -69,6 +76,9 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
 
     func updateUIViewController(_ pages: UIPageViewController, context: Context) {
         context.coordinator.parent = self
+        for gesture in pages.gestureRecognizers where gesture is UIPanGestureRecognizer {
+            gesture.isEnabled = !frozen
+        }
         context.coordinator.refresh(pages)
         context.coordinator.obey(pages)
     }

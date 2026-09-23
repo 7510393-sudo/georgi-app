@@ -147,7 +147,6 @@ struct RootView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
-        .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {
             // Опись архива нужна не только календарю и поиску: без неё
             // облачко «…помнишь?» не знает, есть ли что вспомнить, и не
@@ -315,7 +314,12 @@ struct RootView: View {
     /// весом — его не бросают, он доезжает сам и гасит скорость о воздух.
     /// Быстрый ход читался бы как смена экрана, а не как движение вещи.
     private func open(_ target: Shell.Screen) {
-        if target != shell.screen { hideKeyboard() }
+        if target != shell.screen {
+            hideKeyboard()
+            // Барабан времени стоит на клетке своей страницы. Уходя с
+            // книги, его не за что держать (решение P173).
+            shell.roller = nil
+        }
         withAnimation(.spring(response: 0.80, dampingFraction: 0.90)) {
             shell.screen = target
         }

@@ -28,6 +28,13 @@ final class Shell: ObservableObject {
         enum Kind { case time, bell }
         let id: UUID
         let kind: Kind
+
+        /// Где на странице стоит клетка, которую правят.
+        ///
+        /// Барабан встаёт так, чтобы его выбранная строка легла ровно на
+        /// это место: цифра не уезжает вниз экрана, а вырастает в барабан
+        /// там, где стояла (решение P173).
+        var at: CGRect = .zero
     }
 
     @Published var showingMenu = false

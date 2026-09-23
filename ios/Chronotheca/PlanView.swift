@@ -17,8 +17,10 @@ struct PlanRowLine: View {
     var typing = false
     var editMode = false
 
-    var onTime: (() -> Void)?
-    var onBell: (() -> Void)?
+    /// Нажали по цифрам или по колокольчику. Передаётся и место клетки:
+    /// барабан встаёт на неё, а не выезжает снизу (решение P173).
+    var onTime: ((CGRect) -> Void)?
+    var onBell: ((CGRect) -> Void)?
     var onDetails: (() -> Void)?
     var onUp: (() -> Void)?
     var onDown: (() -> Void)?
@@ -37,6 +39,9 @@ struct PlanRowLine: View {
     /// задаётся числом, одним и тем же для обоих видов: что бы ни было
     /// внутри, строка не шелохнётся (решение P171).
     @ScaledMetric(relativeTo: .body) private var titleBaseline: CGFloat = 14
+
+    /// Где на странице стоят цифры и колокольчик.
+    @State private var spot = RowSpot()
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -94,7 +99,7 @@ struct PlanRowLine: View {
     }
 
     private var time: some View {
-        Button { onTime?() } label: {
+        Button { onTime?(spot.time) } label: {
             Text(row.time ?? "--:--")
                 .font(Look.mono(18.5))
                 .tracking(row.time == nil ? 0.7 : 0)
@@ -114,10 +119,11 @@ struct PlanRowLine: View {
         // на соседней странице выцветало, а после поворота «загоралось».
         // Вид не должен зависеть от того, можно ли нажать (P130).
         .allowsHitTesting(onTime != nil)
+        .spotted { spot.time = $0 }
     }
 
     private var bell: some View {
-        Button { onBell?() } label: {
+        Button { onBell?(spot.bell) } label: {
             Image(systemName: row.bell == nil ? "bell" : "bell.fill")
                 .font(.system(size: 20))
                 .foregroundStyle(row.bell == nil ? Look.inkFaint : bellColor)
@@ -127,6 +133,7 @@ struct PlanRowLine: View {
         }
         .buttonStyle(.plain)
         .allowsHitTesting(onBell != nil)
+        .spotted { spot.bell = $0 }
         .accessibilityLabel(row.bell.map { "Напомнить в \($0)" } ?? "Напоминание не назначено")
     }
 
@@ -186,6 +193,28 @@ struct PlanRowLine: View {
         .allowsHitTesting(onDetails != nil)
         .opacity(editMode ? 0.25 : 1)
         .accessibilityLabel("Подробности")
+    }
+}
+
+/// Ящик для замера: где на странице стоят цифры и колокольчик.
+///
+/// Ссылочный нарочно. Запись в него не считается изменением вида, поэтому
+/// прокрутка не перерисовывает каждую строку на каждом кадре — а замер
+/// нужен всего один раз, в тот миг, когда по клетке нажали (решение P173).
+final class RowSpot {
+    var time: CGRect = .zero
+    var bell: CGRect = .zero
+}
+
+extension View {
+    /// Запоминать, где эта вещь стоит на странице плана.
+    func spotted(_ keep: @escaping (CGRect) -> Void) -> some View {
+        background {
+            GeometryReader { place -> Color in
+                keep(place.frame(in: .named(Plan.space)))
+                return Color.clear
+            }
+        }
     }
 }
 
@@ -349,11 +378,29 @@ struct PlanView: View {
                     }
             }
         }
+        .opacity(store.isPast && !store.editing ? 0.58 : 1)
+        // Строки замеряются в этой системе координат, барабан в ней же и
+        // ставится: замеряет строка, а ставит страница, и считать они
+        // должны одинаково (решение P173).
+        .coordinateSpace(name: Plan.space)
+        .overlay {
+            if let r = shell.roller {
+                RollerCard(roller: r).transition(.opacity)
+            }
+        }
         .onChange(of: focused) { _, now in
             if now == nil { typingIn = nil; store.save() }
         }
-        .onChange(of: store.date) { _, _ in typingIn = nil; focused = nil }
-        .opacity(store.isPast && !store.editing ? 0.58 : 1)
+        .onChange(of: store.date) { _, _ in
+            typingIn = nil
+            focused = nil
+            // Перелистнули день — барабану не на что вставать: дела, чьё
+            // время крутили, на этой странице уже нет.
+            shell.roller = nil
+        }
+        // Ушли на «Дневник» — барабан уходит со страницей. Иначе он
+        // остался бы висеть незакрытым, а книга — незалистываемой.
+        .onDisappear { shell.roller = nil }
     }
 
     private func add() {
@@ -426,8 +473,8 @@ struct PlanView: View {
             focus: $focused,
             typing: typingIn == id,
             editMode: store.editing,
-            onTime: { openRoller(id, .time) },
-            onBell: { openRoller(id, .bell) },
+            onTime: { at in openRoller(id, .time, at: at) },
+            onBell: { at in openRoller(id, .bell, at: at) },
             onDetails: { focused = nil; openDetails(id) },
             onUp: { store.move(id, by: -1) },
             onDown: { store.move(id, by: 1) },
@@ -480,9 +527,11 @@ struct PlanView: View {
             }
     }
 
-    private func openRoller(_ id: UUID, _ kind: Shell.Roller.Kind) {
+    private func openRoller(_ id: UUID, _ kind: Shell.Roller.Kind, at: CGRect) {
         guard store.canEditPlan else { return shell.say(store.closedReason) }
-        shell.roller = .init(id: id, kind: kind)
+        withAnimation(.easeOut(duration: 0.16)) {
+            shell.roller = .init(id: id, kind: kind, at: at)
+        }
     }
 
     private func openDetails(_ id: UUID) {
