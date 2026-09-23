@@ -32,8 +32,11 @@ struct PlanTitle: UIViewRepresentable {
     /// Правят именно эту строку: поле берёт ввод на себя.
     var typing = false
 
-    /// Правка кончилась: «Ввод» нажат или клавиатура ушла.
+    /// Правка кончилась: клавиатура ушла.
     var onDone: () -> Void = {}
+
+    /// Нажат «Ввод»: ввод переходит к делу ниже.
+    var onNext: () -> Void = {}
 
     static let placeholder = "Без названия"
     static let size: CGFloat = 15
@@ -59,7 +62,9 @@ struct PlanTitle: UIViewRepresentable {
         // Поле меряется по тексту и не прокручивает в себе ничего: строка
         // плана растёт вниз вместе с названием.
         view.isScrollEnabled = false
-        view.returnKeyType = .done
+        // Обычный «Ввод» со стрелкой, а не синее «Готово» с галочкой:
+        // клавиша уводит на строку ниже, как ей и положено (решение P180).
+        view.returnKeyType = .default
         return view
     }
 
@@ -139,14 +144,14 @@ struct PlanTitle: UIViewRepresentable {
         ///
         /// В файле дело занимает ровно строку: перевод разорвал бы его
         /// надвое, и хвост осел бы отдельной непонятой строкой вместе с
-        /// напоминанием. Поэтому «Ввод» заканчивает правку — как и обещает
-        /// надпись на клавише, — а вставленный из буфера перевод строки
-        /// становится пробелом (решение P172).
+        /// напоминанием. Но клавиша «Ввод» и не должна ничего рвать — она
+        /// уводит на строку ниже, к следующему делу (P180). Вставленный из
+        /// буфера перевод строки становится пробелом (решение P172).
         func textView(_ view: UITextView, shouldChangeTextIn range: NSRange,
                       replacementText text: String) -> Bool {
             guard text.contains(where: \.isNewline) else { return true }
             if text.allSatisfy(\.isNewline) {
-                view.resignFirstResponder()
+                parent.onNext()
                 return false
             }
             let одной = String(text.map { $0.isNewline ? " " : $0 })

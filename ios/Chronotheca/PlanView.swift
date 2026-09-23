@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Строка дела.
 ///
@@ -24,6 +25,14 @@ struct PlanRowLine: View {
     var onDelete: (() -> Void)?
     /// Правка названия кончилась.
     var onDone: () -> Void = {}
+    /// «Ввод» в названии: ввод переходит к делу ниже.
+    var onNext: () -> Void = {}
+
+    /// Дело тащат за номер: сколько пальец прошёл и когда отпустили.
+    /// Только за номер: текст — это текст, его читают и правят, а не
+    /// двигают (решение P179).
+    var onGrab: ((CGFloat) -> Void)?
+    var onDrop: (() -> Void)?
 
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
@@ -60,6 +69,9 @@ struct PlanRowLine: View {
 
     @State private var wobble: Double = -6
 
+    /// Дело сейчас держат за номер.
+    @State private var holding = false
+
     var body: some View {
         HStack(alignment: .top, spacing: Self.gap) {
             // Голова стоит поверх отступа первой строки названия, а не
@@ -77,6 +89,24 @@ struct PlanRowLine: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .opacity(row.done ? 0.42 : 1)
+    }
+
+    /// Тяга за номер. Отклик в палец на взятии и на отпускании: рука
+    /// узнаёт, что дело поднято, не глядя на экран.
+    private var grab: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { сдвиг in
+                if !holding {
+                    holding = true
+                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                }
+                onGrab?(сдвиг.translation.height)
+            }
+            .onEnded { _ in
+                holding = false
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                onDrop?()
+            }
     }
 
     private var head: some View {
@@ -125,6 +155,9 @@ struct PlanRowLine: View {
             .onAppear { if editMode { startWobble() } }
             .onChange(of: editMode) { _, on in on ? startWobble() : stopWobble() }
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
+            // Тащат только за номер. Он для этого и дрожит: дрожит — значит
+            // его можно взять (решение P179).
+            .highPriorityGesture(editMode && onGrab != nil ? grab : nil)
     }
 
     private var time: some View {
@@ -185,7 +218,8 @@ struct PlanRowLine: View {
                   faded: faded,
                   editable: text != nil && (typing || editMode),
                   typing: typing,
-                  onDone: onDone)
+                  onDone: onDone,
+                  onNext: onNext)
             .alignmentGuide(.firstTextBaseline) { _ in PlanTitle.baseline }
     }
 
@@ -453,7 +487,14 @@ struct PlanView: View {
             // Правку кончила эта самая строка, а не соседняя, которой
             // только что отдали ввод: иначе курсор гас бы сразу после
             // перехода в следующее дело.
-            onDone: { if typingIn == id { typingIn = nil }; store.save() })
+            onDone: { if typingIn == id { typingIn = nil }; store.save() },
+            onNext: { next(after: id) },
+            onGrab: { сдвиг in
+                dragged = id
+                dragOffset = сдвиг
+                dragBy = Int((сдвиг / PlanRowLine.height).rounded())
+            },
+            onDrop: { drop(id) })
             // Взятое дело идёт за пальцем, остальные расступаются по целым
             // строкам — так под ним открывается место, и видно, куда оно
             // встанет (решение P163).
@@ -468,7 +509,6 @@ struct PlanView: View {
             .zIndex(dragged == id ? 1 : 0)
             .background(store.editing ? Look.ruleSoft.opacity(0.5) : .clear)
             .contentShape(Rectangle())
-            .highPriorityGesture(store.editing ? reorder(id) : nil)
             .onLongPressGesture(minimumDuration: 0.35) {
                 guard !store.editing else { return }
                 toggle(row)
@@ -482,23 +522,32 @@ struct PlanView: View {
             }
     }
 
-    /// Перестановка дела: в режиме изменений дело тащат за номер, и номер на
-    /// нём меняется по дороге — видно, куда оно встанет.
-    private func reorder(_ id: UUID) -> some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { g in
-                dragged = id
-                dragOffset = g.translation.height
-                dragBy = Int((g.translation.height / PlanRowLine.height).rounded())
-            }
-            .onEnded { _ in
-                let by = dragBy
-                dragged = nil
-                dragBy = 0
-                dragOffset = 0
-                guard by != 0 else { return }
-                for _ in 0..<abs(by) { store.move(id, by: by > 0 ? 1 : -1) }
-            }
+    /// Дело отпустили: оно встаёт туда, куда его донесли.
+    private func drop(_ id: UUID) {
+        let by = dragBy
+        dragged = nil
+        dragBy = 0
+        dragOffset = 0
+        guard by != 0 else { return }
+        for _ in 0..<abs(by) { store.move(id, by: by > 0 ? 1 : -1) }
+    }
+
+    /// «Ввод» в названии: ввод переходит к делу ниже.
+    ///
+    /// Список заполняют подряд, и клавиша «Ввод» на то и клавиша ввода —
+    /// она уводит на строку ниже, а не убирает клавиатуру. Дело последнее и
+    /// названо — заводится следующее: человек набирает список, не отрывая
+    /// рук. Последнее и пустое — правка кончается, пустых дел не плодим
+    /// (решение P180).
+    private func next(after id: UUID) {
+        let дела = store.tasks
+        guard let i = дела.firstIndex(where: { $0.id == id }) else { return }
+        if i + 1 < дела.count {
+            typingIn = дела[i + 1].id
+            return
+        }
+        guard !дела[i].text.isEmpty else { typingIn = nil; return }
+        add()
     }
 
     private func openRoller(_ id: UUID, _ kind: Shell.Roller.Kind) {
