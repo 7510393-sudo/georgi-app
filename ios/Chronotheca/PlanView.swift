@@ -13,7 +13,6 @@ struct PlanRowLine: View {
     var bellColor: Color = Look.inkFaint
 
     var text: Binding<String>?
-    var focus: FocusState<UUID?>.Binding?
     var typing = false
     var editMode = false
 
@@ -23,27 +22,54 @@ struct PlanRowLine: View {
     var onUp: (() -> Void)?
     var onDown: (() -> Void)?
     var onDelete: (() -> Void)?
+    /// Правка названия кончилась.
+    var onDone: () -> Void = {}
 
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
 
+    // MARK: - Мера строки
+    //
+    // Ширины головы заданы числами, а не меряются по содержимому: ровно на
+    // ширину головы отступает первая строка названия, и разойдись они хоть
+    // на точку — название наползёт на колокольчик или отскочит от него.
+
+    static let badgeWidth: CGFloat = 26
+    static let timeWidth: CGFloat = 58
+    static let bellWidth: CGFloat = 40
+    static let gap: CGFloat = 8
+
+    /// Голова строки: номер, время, колокольчик.
+    static let headWidth = badgeWidth + gap + timeWidth + gap + bellWidth
+
+    /// Отступ первой строки названия: за головой, через просвет.
+    static let indent = headWidth + gap
+
+    /// Откуда идут строки ниже первой: из-под времени, правее номера.
+    /// Номера остаются столбиком — за них дело берут, — а название
+    /// занимает всю остальную ширину (решение P177).
+    static let wrap = badgeWidth + gap
+
+    /// Насколько площадка колокольчика выступает над квадратиком номера.
+    ///
+    /// На столько же поджимается закладка: её верх должен совпадать с
+    /// верхом строки, а верх строки — это номер, а не пустое поле вокруг
+    /// колокольчика. Прежде здесь стояла тройка, взятая на глаз, и закладки
+    /// сходились со строками лишь приблизительно (решение P177).
+    static let bellRise: CGFloat = 6
+
     @State private var wobble: Double = -6
 
-    /// Где проходит строчка названия — считая от верха его площадки.
-    ///
-    /// Пустое поле ввода и готовый текст сами по себе садятся на разную
-    /// высоту: заведёшь дело — название стоит на полстроки ниже времени и
-    /// колокольчика, наберёшь первую букву — подскакивает. Поэтому строчка
-    /// задаётся числом, одним и тем же для обоих видов: что бы ни было
-    /// внутри, строка не шелохнётся (решение P171).
-    @ScaledMetric(relativeTo: .body) private var titleBaseline: CGFloat = 14
-
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            badge
-            time
-            bell
-            title
+        HStack(alignment: .top, spacing: Self.gap) {
+            // Голова стоит поверх отступа первой строки названия, а не
+            // рядом с ним: тогда вторая и третья строки идут во всю ширину,
+            // а не складываются в столбик (решение P177).
+            ZStack(alignment: Alignment(horizontal: .leading,
+                                        vertical: .firstTextBaseline)) {
+                title
+                head
+            }
             if editMode { tools }
             tab
         }
@@ -51,6 +77,14 @@ struct PlanRowLine: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .opacity(row.done ? 0.42 : 1)
+    }
+
+    private var head: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Self.gap) {
+            badge
+            time
+            bell
+        }
     }
 
     // MARK: - Подрагивание номера
@@ -76,7 +110,7 @@ struct PlanRowLine: View {
         Text("\(number)")
             .font(Look.mono(14))
             .foregroundStyle(Look.inkSoft)
-            .frame(width: 26, height: 26)
+            .frame(width: PlanRowLine.badgeWidth, height: PlanRowLine.badgeWidth)
             .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
             .shadow(color: .black.opacity(editMode ? 0.18 : 0.06),
@@ -108,6 +142,9 @@ struct PlanRowLine: View {
                         .frame(height: 1)
                         .offset(y: 3)
                 }
+                // Ширина задана числом: по ней считается отступ названия,
+                // и она не должна зависеть от того, назначено время или нет.
+                .frame(width: PlanRowLine.timeWidth, alignment: .leading)
         }
         .buttonStyle(.plain)
         // Не .disabled: система рисует выключенную кнопку бледнее, и время
@@ -121,30 +158,30 @@ struct PlanRowLine: View {
             Image(systemName: row.bell == nil ? "bell" : "bell.fill")
                 .font(.system(size: 20))
                 .foregroundStyle(row.bell == nil ? Look.inkFaint : bellColor)
-                .frame(width: 40, height: 38)
+                .frame(width: PlanRowLine.bellWidth, height: 38)
                 .contentShape(Rectangle())
-                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 11 }
+                // Площадка колокольчика вдвое выше квадратика номера, но
+                // середины у них общие: иначе колокольчик висит чуть выше
+                // номера, и вся голова строки выглядит нестройно.
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 12 }
         }
         .buttonStyle(.plain)
         .allowsHitTesting(onBell != nil)
         .accessibilityLabel(row.bell.map { "Напомнить в \($0)" } ?? "Напоминание не назначено")
     }
 
-    @ViewBuilder private var title: some View {
-        if let text, let focus, typing || editMode {
-            TextField("", text: text, axis: .vertical)
-                .font(Look.sans(15))
-                .focused(focus, equals: row.id)
-                .submitLabel(.done)
-                .alignmentGuide(.firstTextBaseline) { _ in titleBaseline }
-        } else {
-            Text(row.text.isEmpty ? "Без названия" : row.text)
-                .font(Look.sans(15))
-                .lineSpacing(3)
-                .foregroundStyle(faded || row.text.isEmpty ? Look.inkFaint : Look.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .alignmentGuide(.firstTextBaseline) { _ in titleBaseline }
-        }
+    /// Название — одно и то же поле и на открытой странице, и на соседних:
+    /// соседняя лишь не правится. Строчка письма задана числом, одним и тем
+    /// же, что бы ни было внутри (решение P171).
+    private var title: some View {
+        PlanTitle(text: text ?? .constant(row.text),
+                  indent: Self.indent,
+                  wrap: Self.wrap,
+                  faded: faded,
+                  editable: text != nil && (typing || editMode),
+                  typing: typing,
+                  onDone: onDone)
+            .alignmentGuide(.firstTextBaseline) { _ in PlanTitle.baseline }
     }
 
     /// В режиме изменений — только крестик.
@@ -180,7 +217,7 @@ struct PlanRowLine: View {
                                                   bottomLeadingRadius: 7))
                 .overlay(SideTabBorder(radius: 7)
                     .stroke(filled ? Look.inkSoft : Look.inkFaint, lineWidth: 1))
-                .padding(.vertical, 3)
+                .padding(.vertical, PlanRowLine.bellRise)
         }
         .buttonStyle(.plain)
         .allowsHitTesting(onDetails != nil)
@@ -316,10 +353,10 @@ struct PlanView: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
-    /// Строка, в которой сейчас правят текст. Отдельно от фокуса клавиатуры:
-    /// если показывать поле только у строки в фокусе, в фокус не попасть.
+    /// Строка, в которой сейчас правят название. Одна на всю страницу:
+    /// поле само берёт ввод, когда строка названа, и само отдаёт его,
+    /// когда клавиатура уходит.
     @State private var typingIn: UUID?
-    @FocusState private var focused: UUID?
 
     /// Дело, которое сейчас тащат за номер, и на сколько оно сдвинуто.
     @State private var dragged: UUID?
@@ -349,17 +386,13 @@ struct PlanView: View {
                     }
             }
         }
-        .onChange(of: focused) { _, now in
-            if now == nil { typingIn = nil; store.save() }
-        }
-        .onChange(of: store.date) { _, _ in typingIn = nil; focused = nil }
+        .onChange(of: store.date) { _, _ in typingIn = nil }
         .opacity(store.isPast && !store.editing ? 0.58 : 1)
     }
 
     private func add() {
         guard let id = store.addTask() else { return shell.say(store.closedReason) }
         typingIn = id
-        DispatchQueue.main.async { focused = id }
     }
 
     private var banner: some View {
@@ -394,25 +427,6 @@ struct PlanView: View {
         PlanStat(planned: store.tasks.count, done: store.doneCount)
     }
 
-    /// Название дела — всегда одна строка.
-    ///
-    /// В файле дело занимает ровно строку. Перевод строки разорвал бы его
-    /// надвое: хвост осел бы отдельной непонятой строкой, а напоминание
-    /// уехало бы вместе с ним. Поэтому «Ввод» в названии не переводит
-    /// строку, а заканчивает правку — как и обещает надпись на клавише
-    /// (решение P172). Длинное название переносится по словам само.
-    private func name(_ row: Binding<PlanRow>) -> Binding<String> {
-        Binding(get: { row.wrappedValue.text },
-                set: { typed in
-                    guard typed.contains(where: \.isNewline) else {
-                        row.text.wrappedValue = typed
-                        return
-                    }
-                    row.text.wrappedValue = typed.filter { !$0.isNewline }
-                    focused = nil
-                })
-    }
-
     private func taskRow(_ row: Binding<PlanRow>) -> some View {
         let id = row.wrappedValue.id
         let shown = number(of: id) + (dragged == id ? carried : displaced(id))
@@ -422,16 +436,19 @@ struct PlanView: View {
             row: row.wrappedValue,
             faded: store.isPast && !store.editing,
             bellColor: Ru.dayColor(store.date),
-            text: name(row),
-            focus: $focused,
+            text: row.text,
             typing: typingIn == id,
             editMode: store.editing,
             onTime: { openRoller(id, .time) },
             onBell: { openRoller(id, .bell) },
-            onDetails: { focused = nil; openDetails(id) },
+            onDetails: { hideKeyboard(); openDetails(id) },
             onUp: { store.move(id, by: -1) },
             onDown: { store.move(id, by: 1) },
-            onDelete: { store.delete(id) })
+            onDelete: { store.delete(id) },
+            // Правку кончила эта самая строка, а не соседняя, которой
+            // только что отдали ввод: иначе курсор гас бы сразу после
+            // перехода в следующее дело.
+            onDone: { if typingIn == id { typingIn = nil }; store.save() })
             // Взятое дело идёт за пальцем, остальные расступаются по целым
             // строкам — так под ним открывается место, и видно, куда оно
             // встанет (решение P163).
@@ -457,7 +474,6 @@ struct PlanView: View {
             .onTapGesture {
                 guard store.canEditPlan, !store.editing, typingIn != id else { return }
                 typingIn = id
-                DispatchQueue.main.async { focused = id }
             }
     }
 
