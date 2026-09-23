@@ -181,8 +181,11 @@ struct RollerSheet: View {
             .navigationTitle(isBell ? "Напоминание" : "Время дела")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // «Отмена» не просто закрывает, а снимает назначенное: дело
+                // остаётся без часа, напоминание — снятым. Иначе отказаться
+                // от времени было бы нечем (решения P49, P150).
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Отмена") { shell.roller = nil }
+                    Button("Отмена") { apply(nil) }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Готово") { apply(Clock.text(picked)) }
