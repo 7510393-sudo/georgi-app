@@ -70,6 +70,9 @@ struct RootView: View {
                 vault.adopt(url)
                 store.load()
                 archive.reload()
+                // Выбрав папку, человек хочет увидеть свои записи, а не тот
+                // экран, с которого он ушёл за папкой (решение P170).
+                shell.screen = .today
             }
         }
         .alert("Завести здесь новую папку?",
