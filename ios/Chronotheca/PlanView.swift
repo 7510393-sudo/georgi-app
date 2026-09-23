@@ -29,6 +29,15 @@ struct PlanRowLine: View {
 
     @State private var wobble: Double = -6
 
+    /// Где проходит строчка названия — считая от верха его площадки.
+    ///
+    /// Пустое поле ввода и готовый текст сами по себе садятся на разную
+    /// высоту: заведёшь дело — название стоит на полстроки ниже времени и
+    /// колокольчика, наберёшь первую букву — подскакивает. Поэтому строчка
+    /// задаётся числом, одним и тем же для обоих видов: что бы ни было
+    /// внутри, строка не шелохнётся (решение P171).
+    @ScaledMetric(relativeTo: .body) private var titleBaseline: CGFloat = 14
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             badge
@@ -127,12 +136,14 @@ struct PlanRowLine: View {
                 .font(Look.sans(15))
                 .focused(focus, equals: row.id)
                 .submitLabel(.done)
+                .alignmentGuide(.firstTextBaseline) { _ in titleBaseline }
         } else {
             Text(row.text.isEmpty ? "Без названия" : row.text)
                 .font(Look.sans(15))
                 .lineSpacing(3)
                 .foregroundStyle(faded || row.text.isEmpty ? Look.inkFaint : Look.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .alignmentGuide(.firstTextBaseline) { _ in titleBaseline }
         }
     }
 
@@ -383,6 +394,25 @@ struct PlanView: View {
         PlanStat(planned: store.tasks.count, done: store.doneCount)
     }
 
+    /// Название дела — всегда одна строка.
+    ///
+    /// В файле дело занимает ровно строку. Перевод строки разорвал бы его
+    /// надвое: хвост осел бы отдельной непонятой строкой, а напоминание
+    /// уехало бы вместе с ним. Поэтому «Ввод» в названии не переводит
+    /// строку, а заканчивает правку — как и обещает надпись на клавише
+    /// (решение P172). Длинное название переносится по словам само.
+    private func name(_ row: Binding<PlanRow>) -> Binding<String> {
+        Binding(get: { row.wrappedValue.text },
+                set: { typed in
+                    guard typed.contains(where: \.isNewline) else {
+                        row.text.wrappedValue = typed
+                        return
+                    }
+                    row.text.wrappedValue = typed.filter { !$0.isNewline }
+                    focused = nil
+                })
+    }
+
     private func taskRow(_ row: Binding<PlanRow>) -> some View {
         let id = row.wrappedValue.id
         let shown = number(of: id) + (dragged == id ? carried : displaced(id))
@@ -392,7 +422,7 @@ struct PlanView: View {
             row: row.wrappedValue,
             faded: store.isPast && !store.editing,
             bellColor: Ru.dayColor(store.date),
-            text: row.text,
+            text: name(row),
             focus: $focused,
             typing: typingIn == id,
             editMode: store.editing,
