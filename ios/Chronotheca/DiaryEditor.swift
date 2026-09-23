@@ -35,6 +35,17 @@ struct DiaryEditor: UIViewRepresentable {
 
     var onFocus: () -> Void = {}
 
+    /// Поле меряется по тексту и растёт вместе с ним.
+    ///
+    /// Так стоит запись дневника: страница едет целиком, а поле внутри
+    /// себя ничего не прокручивает. В подробностях дела наоборот — поле
+    /// занимает отведённую коробку и прокручивает текст в себе.
+    var grows = false
+
+    /// Сколько поле просит себе, даже когда текста в нём нет. Нужно только
+    /// там, где поле меряется по тексту.
+    var minHeight: CGFloat = 0
+
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     static let stamp = try! NSRegularExpression(pattern: #"^(\d{2}:\d{2})[  ]"#)
 
@@ -54,7 +65,9 @@ struct DiaryEditor: UIViewRepresentable {
         view.allowsEditingTextAttributes = false
         // Клавиатура уезжает движением пальца вниз по тексту.
         view.keyboardDismissMode = .interactive
-        view.alwaysBounceVertical = true
+        // Растущее поле не отбирает движение пальца у страницы: прокручивать
+        // ему нечего, а пружинило бы оно вместо неё (решение P175).
+        view.alwaysBounceVertical = !grows
         view.scrollsToTop = false
         view.isEditable = editable
         view.isSelectable = editable
@@ -96,8 +109,28 @@ struct DiaryEditor: UIViewRepresentable {
             view.selectedRange = end
             view.typingAttributes = Self.body(size, serif: serif)
             view.scrollRangeToVisible(end)
-            DispatchQueue.main.async { caretToEnd.wrappedValue = false }
+            let попечитель = context.coordinator
+            DispatchQueue.main.async {
+                caretToEnd.wrappedValue = false
+                попечитель.showCaret(animated: true)
+            }
         }
+    }
+
+    /// Сколько места поле просит себе.
+    ///
+    /// Растущее поле просит ровно столько, сколько занял текст. Тогда
+    /// страница дневника едет целиком: «Как прошло?» и заголовок уходят
+    /// вверх вместе с записью, а не висят над ней, пока текст ползёт под
+    /// ними (решение P175).
+    ///
+    /// Остальные поля меряются как обычно — по отведённой им коробке.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView,
+                      context: Context) -> CGSize? {
+        guard grows, let width = proposal.width, width > 0 else { return nil }
+        let занято = uiView.sizeThatFits(CGSize(width: width,
+                                                height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: max(minHeight, занято.height.rounded(.up)))
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -220,7 +253,9 @@ struct DiaryEditor: UIViewRepresentable {
         private func makeRoom(scroll: Bool) {
             guard let view, let window = view.window else { return }
             let место = view.convert(view.bounds, to: window)
-            let закрыто = view.isFirstResponder
+            // Отступ изнутри нужен только полю в коробке: растущему поле
+            // место под клавиатурой отводит сама страница.
+            let закрыто = view.isFirstResponder && !parent.grows
                 ? (keyboardTop.map { max(0, место.maxY - $0) } ?? 0)
                 : 0
             if view.contentInset.bottom != закрыто {
@@ -229,16 +264,50 @@ struct DiaryEditor: UIViewRepresentable {
             }
             guard scroll, view.isFirstResponder else { return }
             // Прокрутка — следующим оборотом: к этому времени и курсор
-            // стоит на месте, и клавиатура сосчитана.
-            DispatchQueue.main.async { [weak view] in
-                guard let view, view.isFirstResponder else { return }
-                view.scrollRangeToVisible(view.selectedRange)
+            // стоит на месте, и высота поля пересчитана.
+            DispatchQueue.main.async { [weak self] in self?.showCaret(animated: true) }
+        }
+
+        /// Довести курсор до глаз.
+        ///
+        /// Сперва — прокруткой самого поля: так устроены подробности дела,
+        /// где поле стоит в отведённой коробке. Если внутри прокручивать
+        /// нечего — поле подобрало себе высоту по тексту, как в дневнике, —
+        /// едет вся страница, ровно настолько, насколько курсор зашёл под
+        /// клавиатуру (решение P175).
+        func showCaret(animated: Bool) {
+            guard let view, view.isFirstResponder, let window = view.window,
+                  let top = keyboardTop, let end = view.selectedTextRange?.end
+            else { return }
+            view.scrollRangeToVisible(view.selectedRange)
+
+            let курсор = view.convert(view.caretRect(for: end), to: window)
+            let ниже = курсор.maxY + 16 - top
+            guard ниже > 0, let страница = page(over: view) else { return }
+            let предел = max(0, страница.contentSize.height
+                             + страница.adjustedContentInset.bottom
+                             - страница.bounds.height)
+            let куда = min(страница.contentOffset.y + ниже, предел)
+            guard куда > страница.contentOffset.y else { return }
+            страница.setContentOffset(CGPoint(x: страница.contentOffset.x, y: куда),
+                                      animated: animated)
+        }
+
+        /// Ближайшая прокрутка над полем — сама страница дневника.
+        private func page(over view: UITextView) -> UIScrollView? {
+            var выше = view.superview
+            while let здесь = выше {
+                if let scroll = здесь as? UIScrollView { return scroll }
+                выше = здесь.superview
             }
+            return nil
         }
 
         func textViewDidChange(_ view: UITextView) {
             parent.text = DiaryEditor.clean(view.text)
             restyle(view)
+            // Строка прибавилась — курсор мог уйти под клавиатуру.
+            DispatchQueue.main.async { [weak self] in self?.showCaret(animated: false) }
         }
 
         /// Первая буква строки после отметки времени набирается заглавной.

@@ -56,6 +56,16 @@ struct DiaryPage: View {
     /// Поднимается по «Вводу» в заголовке: ввод переходит к тексту записи.
     @State private var toText = false
 
+    /// Насколько клавиатура закрывает страницу снизу.
+    @State private var keyboard: CGFloat = 0
+
+    /// Где проходит строчка письма в строках «Как прошло?».
+    ///
+    /// Задана числом, одно и то же для названия дела и для ответа: пустое
+    /// поле ввода и готовый текст сами по себе садятся на разную высоту, и
+    /// ответ прыгал бы от первой буквы (то же, что в плане, — P171).
+    @ScaledMetric(relativeTo: .body) private var askBaseline: CGFloat = 14
+
     private let size = DiaryView.size
 
     var body: some View {
@@ -67,10 +77,13 @@ struct DiaryPage: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
-            .padding(.bottom, 20)
+            // Место под клавиатуру: без него страницу некуда поднять, и
+            // последние строки записи остаются под ней (решение P175).
+            .padding(.bottom, 20 + keyboard)
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Look.diaryBg)
+        .keyboardHeight($keyboard)
     }
 
     private var asked: [PlanRow] {
@@ -104,24 +117,40 @@ struct DiaryPage: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .layoutPriority(1)
+                .alignmentGuide(.firstTextBaseline) { _ in askBaseline }
 
             if editable, let setAnswer {
                 TextField("…", text: Binding(
                     get: { answer(task.text) },
-                    set: { setAnswer(task.text, $0) }))
+                    set: { typed in
+                        // Ответ — одна строка файла: «- Дело: ответ».
+                        // Перевод строки разорвал бы её, и хвост осел бы
+                        // в свободном тексте записи (решение P172).
+                        guard typed.contains(where: \.isNewline) else {
+                            return setAnswer(task.text, typed)
+                        }
+                        setAnswer(task.text, typed.filter { !$0.isNewline })
+                        focused = nil
+                    }),
+                    axis: .vertical)
                     .font(Look.serif(size))
                     .foregroundStyle(Look.ink)
                     .focused($focused, equals: .answer(task.text))
                     .textFieldStyle(.plain)
+                    .alignmentGuide(.firstTextBaseline) { _ in askBaseline }
             } else {
                 Text(answer(task.text).isEmpty ? "…" : answer(task.text))
                     .font(Look.serif(size))
                     .foregroundStyle(answer(task.text).isEmpty ? Look.inkFaint : Look.ink)
-                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .alignmentGuide(.firstTextBaseline) { _ in askBaseline }
             }
         }
-        // Строка одной высоты всегда: и пустая, и заполненная, и с курсором.
-        .frame(height: size * 1.7, alignment: .leading)
+        // Пустая строка стоит ровно в строку, а исписанная растёт вниз —
+        // и дела, стоящие ниже, отодвигаются, освобождая место. Раньше
+        // высота была задана намертво, и ответ уезжал за край строки,
+        // не переносясь (решение P175).
+        .frame(minHeight: size * 1.7, alignment: .leading)
     }
 
     // MARK: - Заголовок
@@ -173,8 +202,8 @@ struct DiaryPage: View {
         DiaryEditor(text: $text, size: size, serif: true, stamped: true,
                     editable: editable, caretToEnd: $caretToEnd,
                     startEditing: $toText,
-                    onFocus: { if onFocusText() { caretToEnd = true } })
-            .frame(minHeight: 320)
+                    onFocus: { if onFocusText() { caretToEnd = true } },
+                    grows: true, minHeight: 320)
             .padding(.top, 16)
     }
 }
