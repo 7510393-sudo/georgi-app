@@ -40,6 +40,10 @@ final class Shell: ObservableObject {
     /// пиксель в пиксель, а не рассуждать о них по памяти.
     @Published var probingSide = false
 
+    /// Просьба вернуться на сегодняшний день, перелистнув страницы.
+    /// Поднимается кнопкой «Сегодня» внизу; выполняет её сама книга.
+    @Published var goHome = false
+
     @Published var notice: String?
     private var hiding: DispatchWorkItem?
 

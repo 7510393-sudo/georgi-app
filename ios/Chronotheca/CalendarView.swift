@@ -20,6 +20,7 @@ struct CalendarView: View {
     @AppStorage("calendar.kind") private var stored = Kind.month.rawValue
     private var kind: Kind { Kind(rawValue: stored) ?? .month }
     @State private var shown: Date = DayStore.today()
+    @State private var plan: [Int] = []
     @State private var selected: String? = Vault.stamp(DayStore.today())
 
     private let cal = Calendar.current
@@ -51,17 +52,17 @@ struct CalendarView: View {
             .padding(.top, 12)
             .padding(.bottom, 10)
 
-            PageCurl { offset in
+            PageCurl(content: { offset in
                 page(at: step(offset), current: offset == 0)
                     .environmentObject(store)
                     .environmentObject(archive)
                     .environmentObject(shell)
-            } onTurn: { step in
+            }, onTurn: { step in
                 shown = shift(shown, by: step)
                 // Бегунок снимается: дело выбранного дня к новому месяцу
                 // отношения не имеет и висеть под ним не должно.
                 selected = nil
-            }
+            }, plan: $plan)
         }
         .onAppear { archive.reload() }
     }
@@ -94,11 +95,22 @@ struct CalendarView: View {
     /// а по названию вида понятно и без подсказки (решение P135).
     private func choose(_ k: Kind) {
         guard kind == k else { stored = k.rawValue; return }
+        goHome()
+    }
+
+    /// Вернуться к нынешнему месяцу или году, перелистнув страницы.
+    ///
+    /// Не прыжком: дорога домой должна быть видна — то же правило, что у
+    /// кнопки «Сегодня» (решение P164).
+    private func goHome() {
+        let unit: Calendar.Component = kind == .year ? .year : .month
+        let c = cal.dateComponents([unit], from: period(shown),
+                                   to: period(DayStore.today()))
+        let steps = (kind == .year ? c.year : c.month) ?? 0
         // Мы и так дома — двигать нечего: ничто не должно шевелиться зря.
-        guard towardToday(from: shown) != 0 else { return }
-        shown = DayStore.today()
-        selected = nil
-        shell.say(k == .year ? "Вернулись на этот год" : "Вернулись на этот месяц")
+        guard steps != 0 else { return }
+        plan = wayHome(steps)
+        shell.say(kind == .year ? "Вернулись на этот год" : "Вернулись на этот месяц")
     }
 
     private func homeHint(_ k: Kind) -> String {
@@ -149,10 +161,7 @@ struct CalendarView: View {
             .contentShape(Rectangle())
             .onLongPressGesture(minimumDuration: 0.4) {
                 guard lit else { return }
-                shown = DayStore.today()
-                selected = nil
-                shell.say(kind == .year ? "Вернулись на этот год"
-                                        : "Вернулись на этот месяц")
+                goHome()
             } onPressingChanged: { _ in }
             .onTapGesture {
                 shown = shift(shown, by: step)

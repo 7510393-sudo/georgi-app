@@ -270,8 +270,14 @@ struct RootView: View {
             store.prune()
             store.save()
             if target == .today {
-                if shell.screen == .today && !store.isToday { shell.say("Вернулись на сегодня") }
-                store.go(to: DayStore.today())
+                if shell.screen == .today && !store.isToday {
+                    // Возвращаемся не мгновенно, а перелистнув страницы:
+                    // дорога домой должна быть видна (решение P164).
+                    shell.say("Вернулись на сегодня")
+                    shell.goHome = true
+                } else if !store.isToday {
+                    store.go(to: DayStore.today())
+                }
             } else {
                 archive.reload()
             }

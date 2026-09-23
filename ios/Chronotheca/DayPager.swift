@@ -12,17 +12,30 @@ struct DayPages: View {
     @EnvironmentObject private var shell: Shell
     @EnvironmentObject private var archive: Archive
 
+    @State private var plan: [Int] = []
+
     var body: some View {
-        PageCurl { offset in
+        PageCurl(content: { offset in
             DayPage(date: shift(offset), live: offset == 0)
                 .environmentObject(vault)
                 .environmentObject(store)
                 .environmentObject(shell)
                 .environmentObject(archive)
-        } onTurn: { step in
+        }, onTurn: { step in
             hideKeyboard()
             store.move(by: step)
+        }, plan: $plan)
+        .onChange(of: shell.goHome) { _, want in
+            guard want else { return }
+            shell.goHome = false
+            plan = DayPages.wayHome(from: store.date)
         }
+    }
+
+    /// Сколько дней до сегодняшнего и в какую сторону.
+    static func wayHome(from date: Date, to home: Date = DayStore.today()) -> [Int] {
+        let days = Calendar.current.dateComponents([.day], from: date, to: home).day ?? 0
+        return Chronotheca.wayHome(days)
     }
 
     private func shift(_ days: Int) -> Date {

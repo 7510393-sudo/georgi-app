@@ -1,6 +1,23 @@
 import SwiftUI
 import UIKit
 
+/// Дорога домой: разбить расстояние на несколько поворотов.
+///
+/// Дальнее место не отматывается по одному — это были бы десятки поворотов.
+/// Дорога делится поровну на три шага: человек видит, что возвращается
+/// издалека, но ждёт недолго (решение P164).
+func wayHome(_ distance: Int, steps limit: Int = 3) -> [Int] {
+    guard distance != 0 else { return [] }
+    var осталось = distance
+    var дорога: [Int] = []
+    for шаг in stride(from: min(abs(distance), limit), to: 0, by: -1) {
+        let часть = Int((Double(осталось) / Double(шаг)).rounded(.towardZero))
+        дорога.append(часть)
+        осталось -= часть
+    }
+    return дорога.filter { $0 != 0 }
+}
+
 /// Перелистывание страницы, как в бумажной книге.
 ///
 /// Тот же механизм, что в «Книгах» Apple: страница поднимается за пальцем,
@@ -13,6 +30,18 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
 
     let content: (Int) -> Content
     let onTurn: (Int) -> Void
+
+    /// Просьба перелистнуть самому: очередь шагов, по одному на поворот.
+    ///
+    /// Нужна кнопке «Сегодня» — возвращаясь с далёкого дня, человек должен
+    /// увидеть дорогу назад, а не оказаться на месте мгновенно. Шаг может
+    /// быть любой длины: поворот открывает сразу нужный день, а не соседний,
+    /// поэтому дальняя дорога проходится за два-три поворота, а не за
+    /// двадцать (решение P164).
+    ///
+    /// Очередь убывает после каждого поворота — и следующий поворот
+    /// собирается уже по свежим данным, а не по тем, что были в начале.
+    var plan: Binding<[Int]> = .constant([])
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -41,6 +70,7 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
     func updateUIViewController(_ pages: UIPageViewController, context: Context) {
         context.coordinator.parent = self
         context.coordinator.refresh(pages)
+        context.coordinator.obey(pages)
     }
 
     final class Host: UIHostingController<Content> {
@@ -51,7 +81,31 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
                              UIPageViewControllerDelegate {
         var parent: PageCurl
 
+        /// Пока страница в воздухе, второго поворота не начинаем.
+        private var busy = false
+
         init(_ parent: PageCurl) { self.parent = parent }
+
+        /// Выполнить первый шаг очереди, если он есть.
+        func obey(_ pages: UIPageViewController) {
+            guard !busy, let step = parent.plan.wrappedValue.first, step != 0 else { return }
+            busy = true
+            let host = make(step)
+            pages.setViewControllers([host],
+                                     direction: step > 0 ? .forward : .reverse,
+                                     animated: true) { [weak self] done in
+                guard let self else { return }
+                self.busy = false
+                guard done else { self.parent.plan.wrappedValue = []; return }
+                // Страница, на которой человек оказался, становится нулевой —
+                // та же перенумерация, что и после поворота пальцем (P131).
+                host.offset = 0
+                self.parent.onTurn(step)
+                if !self.parent.plan.wrappedValue.isEmpty {
+                    self.parent.plan.wrappedValue.removeFirst()
+                }
+            }
+        }
 
         func make(_ offset: Int) -> Host {
             let host = Host(rootView: parent.content(offset))
