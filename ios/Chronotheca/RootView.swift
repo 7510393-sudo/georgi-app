@@ -295,7 +295,7 @@ struct RootView: View {
     /// Быстрый ход читался бы как смена экрана, а не как движение вещи.
     private func open(_ target: Shell.Screen) {
         if target != shell.screen { hideKeyboard() }
-        withAnimation(.spring(response: 0.70, dampingFraction: 0.90)) {
+        withAnimation(.spring(response: 0.80, dampingFraction: 0.90)) {
             shell.screen = target
         }
     }

@@ -27,6 +27,12 @@ struct DiaryEditor: UIViewRepresentable {
     /// Её подаёт отметка времени: её ставит приложение, а писать после неё
     /// человеку — и тянуться до конца предыдущего куска он не должен.
     var caretToEnd: Binding<Bool> = .constant(false)
+
+    /// Просьба взять ввод на себя. Её подаёт «Ввод» в заголовке дня:
+    /// заголовок дописан, дальше человек пишет запись, и тянуться к ней
+    /// пальцем он не должен (решение P40).
+    var startEditing: Binding<Bool> = .constant(false)
+
     var onFocus: () -> Void = {}
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
@@ -67,6 +73,14 @@ struct DiaryEditor: UIViewRepresentable {
                 : NSRange(location: (view.text as NSString).length, length: 0)
         } else {
             context.coordinator.restyle(view)
+        }
+
+        if startEditing.wrappedValue {
+            // Сбрасываем просьбу до того, как поле возьмёт ввод: иначе
+            // отметка времени, которую поставит `onFocus`, вызовет новое
+            // обновление, и просьба сработает второй раз.
+            DispatchQueue.main.async { startEditing.wrappedValue = false }
+            view.becomeFirstResponder()
         }
 
         // Курсор переставляется только по просьбе — и только туда, куда

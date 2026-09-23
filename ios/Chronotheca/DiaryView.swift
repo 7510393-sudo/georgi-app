@@ -53,6 +53,9 @@ struct DiaryPage: View {
     /// Поднимается ровно на один оборот — когда отметка времени поставлена.
     @State private var caretToEnd = false
 
+    /// Поднимается по «Вводу» в заголовке: ввод переходит к тексту записи.
+    @State private var toText = false
+
     private let size = DiaryView.size
 
     var body: some View {
@@ -137,6 +140,13 @@ struct DiaryPage: View {
                         .font(Look.serif(19, weight: .semibold))
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .title)
+                        .submitLabel(.next)
+                        // «Ввод» уводит из заголовка в текст записи, а не
+                        // просто убирает клавиатуру (решение P40).
+                        .onSubmit {
+                            focused = nil
+                            toText = true
+                        }
                 } else {
                     Text(title)
                         .font(Look.serif(19, weight: .semibold))
@@ -160,6 +170,7 @@ struct DiaryPage: View {
     private var textField: some View {
         DiaryEditor(text: $text, size: size, serif: true, stamped: true,
                     editable: editable, caretToEnd: $caretToEnd,
+                    startEditing: $toText,
                     onFocus: { if onFocusText() { caretToEnd = true } })
             .frame(minHeight: 320)
             .padding(.top, 16)
