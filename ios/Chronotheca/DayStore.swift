@@ -165,7 +165,9 @@ final class DayStore: ObservableObject {
         planRows = Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body)
 
         let file = DayFile(text: vault.read(.diary, for: date))
-        let diary = Diary(body: file.body)
+        // План читается первым, поэтому названия дел уже известны — по ним
+        // ответы «Как прошло?» разбираются без догадок (P155).
+        let diary = Diary(body: file.body, known: planRows.map(\.text))
         diaryTitle = file.value("заголовок") ?? ""
         diaryText = diary.text
         answers = diary.answers

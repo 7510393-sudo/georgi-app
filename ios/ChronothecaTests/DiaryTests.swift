@@ -46,6 +46,47 @@ final class DiaryTests: XCTestCase {
         XCTAssertEqual(d.text, body)
     }
 
+    // MARK: - Написанное не пропадает
+
+    func testОтветБезСвоегоДелаНеВыбрасывается() {
+        // Человек написал ответ, потом переименовал дело. Ответ остаётся:
+        // написанное не исчезает оттого, что приложению неудобно.
+        let d = Diary(answers: ["Отвезти документы": "всё получилось"], text: "Туман.")
+        let body = d.body(order: ["Отвезти бумаги"])
+        XCTAssertTrue(body.contains("всё получилось"), "ответ пропал:\n" + body)
+
+        let назад = Diary(body: body)
+        XCTAssertEqual(назад.answers["Отвезти документы"], "всё получилось")
+        XCTAssertEqual(назад.text, "Туман.")
+    }
+
+    func testДвоеточиеВОтветеНеЛомаетРазбор() {
+        // «сделал в 10:30» — самый обычный ответ.
+        let d = Diary(answers: ["Позвонить": "сделал в 10:30"], text: "")
+        let назад = Diary(body: d.body(order: ["Позвонить"]))
+        XCTAssertEqual(назад.answers["Позвонить"], "сделал в 10:30")
+        XCTAssertNil(назад.answers["Позвонить: сделал в 10"])
+    }
+
+    func testДвоеточиеВНазванииДелаРазбираетсяПоСписку() {
+        let дело = "Позвонить в 10:00 врачу"
+        let d = Diary(answers: [дело: "не собрался"], text: "")
+        let назад = Diary(body: d.body(order: [дело]), known: [дело])
+        XCTAssertEqual(назад.answers[дело], "не собрался")
+    }
+
+    func testОтветыПереживаютНесколькоЗаписейПодряд() {
+        // Так выглядит день: написали ответ, переименовали дело, снова
+        // сохранили. После трёх оборотов должно уцелеть всё.
+        var d = Diary(answers: ["Первое": "да", "Второе": "нет"], text: "Запись.")
+        for order in [["Первое", "Второе"], ["Первое"], []] {
+            d = Diary(body: d.body(order: order))
+        }
+        XCTAssertEqual(d.answers["Первое"], "да")
+        XCTAssertEqual(d.answers["Второе"], "нет")
+        XCTAssertEqual(d.text, "Запись.")
+    }
+
     // MARK: - Начало записи для поиска
 
     func testПустыеСтрокиВНаходкуНеПопадают() {
