@@ -24,7 +24,7 @@ struct DayPages: View {
         }, onTurn: { step in
             hideKeyboard()
             store.move(by: step)
-        }, plan: $plan, frozen: shell.roller != nil)
+        }, plan: $plan)
         .onChange(of: shell.goHome) { _, want in
             guard want else { return }
             shell.goHome = false
