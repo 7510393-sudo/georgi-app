@@ -41,6 +41,7 @@ struct DiaryEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let view = UITextView()
         view.delegate = context.coordinator
+        context.coordinator.view = view
         view.backgroundColor = .clear
         view.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 40, right: 0)
         view.textContainer.lineFragmentPadding = 0
@@ -161,9 +162,79 @@ struct DiaryEditor: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate {
         private let parent: DiaryEditor
 
-        init(_ parent: DiaryEditor) { self.parent = parent }
+        /// Поле, за которым присматривает этот попечитель.
+        weak var view: UITextView?
 
-        func textViewDidBeginEditing(_ view: UITextView) { parent.onFocus() }
+        /// Верхняя кромка клавиатуры в окне. Пусто — клавиатуры нет.
+        private var keyboardTop: CGFloat?
+
+        init(_ parent: DiaryEditor) {
+            self.parent = parent
+            super.init()
+            let вести = NotificationCenter.default
+            вести.addObserver(self, selector: #selector(keyboardMoved(_:)),
+                              name: UIResponder.keyboardWillChangeFrameNotification,
+                              object: nil)
+            вести.addObserver(self, selector: #selector(keyboardGone(_:)),
+                              name: UIResponder.keyboardWillHideNotification,
+                              object: nil)
+        }
+
+        func textViewDidBeginEditing(_ view: UITextView) {
+            parent.onFocus()
+            // Клавиатура могла подняться раньше — например, человек писал
+            // заголовок дня и перешёл в запись. Тогда вестей о ней больше
+            // не будет, и место надо освободить самому.
+            DispatchQueue.main.async { [weak self] in self?.makeRoom(scroll: true) }
+        }
+
+        func textViewDidEndEditing(_ view: UITextView) { makeRoom(scroll: false) }
+
+        // MARK: - Клавиатура
+
+        @objc private func keyboardMoved(_ note: Notification) {
+            guard let view, let window = view.window,
+                  let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
+                    as? CGRect
+            else { return }
+            keyboardTop = window.convert(frame, from: nil).minY
+            makeRoom(scroll: true)
+        }
+
+        @objc private func keyboardGone(_ note: Notification) {
+            keyboardTop = nil
+            makeRoom(scroll: false)
+        }
+
+        /// Освободить место под клавиатурой и довести курсор до глаз.
+        ///
+        /// Приложение нарочно не отдаёт клавиатуре весь экран: шестерёнка и
+        /// нижние разделы стоят на месте всегда (P113). Значит, поле само
+        /// отмеряет, сколько его закрыто снизу, и на столько же отступает
+        /// изнутри — после чего курсор доводится обычной прокруткой поля,
+        /// той же, какой человек листает текст рукой.
+        ///
+        /// Отступает только то поле, в котором пишут: у соседних страниц
+        /// поле точно такое же, и трогать их нельзя — разойдутся строки
+        /// (P114). Решение P174.
+        private func makeRoom(scroll: Bool) {
+            guard let view, let window = view.window else { return }
+            let место = view.convert(view.bounds, to: window)
+            let закрыто = view.isFirstResponder
+                ? (keyboardTop.map { max(0, место.maxY - $0) } ?? 0)
+                : 0
+            if view.contentInset.bottom != закрыто {
+                view.contentInset.bottom = закрыто
+                view.verticalScrollIndicatorInsets.bottom = закрыто
+            }
+            guard scroll, view.isFirstResponder else { return }
+            // Прокрутка — следующим оборотом: к этому времени и курсор
+            // стоит на месте, и клавиатура сосчитана.
+            DispatchQueue.main.async { [weak view] in
+                guard let view, view.isFirstResponder else { return }
+                view.scrollRangeToVisible(view.selectedRange)
+            }
+        }
 
         func textViewDidChange(_ view: UITextView) {
             parent.text = DiaryEditor.clean(view.text)

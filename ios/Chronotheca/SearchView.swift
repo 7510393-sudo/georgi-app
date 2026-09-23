@@ -16,6 +16,9 @@ struct SearchView: View {
     @State private var query = ""
     @FocusState private var typing: Bool
 
+    /// Насколько клавиатура закрывает список находок.
+    @State private var keyboard: CGFloat = 0
+
     var body: some View {
         VStack(spacing: 0) {
             Text("Поиск")
@@ -34,6 +37,7 @@ struct SearchView: View {
             }
         }
         .onAppear { archive.reload() }
+        .keyboardHeight($keyboard)
     }
 
     private var field: some View {
@@ -78,8 +82,13 @@ struct SearchView: View {
                     Rectangle().fill(Look.ruleSoft).frame(height: 1).padding(.leading, 18)
                 }
             }
+            // Место под клавиатуру. Без него последние находки лежат под
+            // ней и не достаются прокруткой: список кончается там, где
+            // начинается клавиатура (решение P174).
+            .padding(.bottom, keyboard)
         }
         .scrollDismissesKeyboard(.interactively)
+        .animation(.easeOut(duration: 0.25), value: keyboard)
     }
 
     private func row(_ day: Archive.Day) -> some View {
