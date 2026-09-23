@@ -213,7 +213,11 @@ struct RootView: View {
     private var screen: some View {
         GeometryReader { geo in
             ZStack {
+                // Под плашкой книга не отзывается. Иначе движение вбок по
+                // поиску доставалось перелистыванию дней, и человека
+                // выбрасывало на «Сегодня» (решение P160).
                 DayPages()
+                    .allowsHitTesting(shell.screen == .today)
                 panel(.calendar, from: .top, over: geo.size) { CalendarView() }
                 panel(.search, from: .bottom, over: geo.size) { SearchView() }
             }

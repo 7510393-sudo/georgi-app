@@ -44,6 +44,22 @@ struct PlanRowLine: View {
         .opacity(row.done ? 0.42 : 1)
     }
 
+    // MARK: - Подрагивание номера
+
+    private func startWobble() {
+        wobble = -6
+        withAnimation(.easeInOut(duration: 0.13).repeatForever(autoreverses: true)) {
+            wobble = 6
+        }
+    }
+
+    /// Повторяющийся ход сам не гаснет: его надо снять мгновенным ходом, а
+    /// не просто задать новое значение. Иначе номера дрожали до тех пор,
+    /// пока страницу не перелистнут (решение P157).
+    private func stopWobble() {
+        withAnimation(.linear(duration: 0)) { wobble = 0 }
+    }
+
     // MARK: - Части строки
 
     /// Номер в выпуклом квадратике: за него дело берут и переставляют.
@@ -59,12 +75,8 @@ struct PlanRowLine: View {
             // В режиме изменений квадратик подрагивает: видно, что дело
             // можно взять и переставить, и видно, что режим включён.
             .rotationEffect(.degrees(editMode ? wobble : 0))
-            .animation(editMode
-                       ? .easeInOut(duration: 0.13).repeatForever(autoreverses: true)
-                       : .default,
-                       value: wobble)
-            .onAppear { if editMode { wobble = 6 } }
-            .onChange(of: editMode) { _, on in wobble = on ? 6 : 0 }
+            .onAppear { if editMode { startWobble() } }
+            .onChange(of: editMode) { _, on in on ? startWobble() : stopWobble() }
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
     }
 
@@ -120,16 +132,21 @@ struct PlanRowLine: View {
         }
     }
 
+    /// В режиме изменений — только крестик.
+    ///
+    /// Стрелки вверх-вниз убраны: они повторяли то, что и так делается
+    /// перетаскиванием за номер. Крестик вдвое крупнее прежнего — в мелкий
+    /// пальцем не попасть (решение P158).
     private var tools: some View {
         HStack(spacing: 10) {
-            Button { onUp?() } label: { Image(systemName: "chevron.up") }
-                .accessibilityLabel("Выше")
-            Button { onDown?() } label: { Image(systemName: "chevron.down") }
-                .accessibilityLabel("Ниже")
-            Button { onDelete?() } label: { Image(systemName: "xmark") }
-                .accessibilityLabel("Удалить")
+            Button { onDelete?() } label: {
+                Image(systemName: "xmark")
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Удалить")
         }
-        .font(.system(size: 11))
+        .font(.system(size: 17))
         .buttonStyle(.plain)
         .foregroundStyle(Look.inkFaint)
     }
@@ -264,6 +281,10 @@ struct PlanView: View {
     @State private var dragged: UUID?
     @State private var dragBy = 0
 
+    /// Сколько пальец прошёл от начала. Взятое дело идёт за пальцем
+    /// вплотную, а расступаются соседи уже по целым строкам.
+    @State private var dragOffset: CGFloat = 0
+
     var body: some View {
         VStack(spacing: 0) {
             if store.editing { banner }
@@ -330,7 +351,7 @@ struct PlanView: View {
 
     private func taskRow(_ row: Binding<PlanRow>) -> some View {
         let id = row.wrappedValue.id
-        let shown = number(of: id) + (dragged == id ? dragBy : 0)
+        let shown = number(of: id) + (dragged == id ? carried : displaced(id))
 
         return PlanRowLine(
             number: shown,
@@ -347,7 +368,16 @@ struct PlanView: View {
             onUp: { store.move(id, by: -1) },
             onDown: { store.move(id, by: 1) },
             onDelete: { store.delete(id) })
-            .offset(y: dragged == id ? CGFloat(dragBy) * PlanRowLine.height : 0)
+            // Взятое дело идёт за пальцем, остальные расступаются по целым
+            // строкам — так под ним открывается место, и видно, куда оно
+            // встанет (решение P163).
+            .offset(y: dragged == id
+                    ? dragOffset
+                    : CGFloat(displaced(id)) * PlanRowLine.height)
+            .animation(dragged == id ? nil : .easeOut(duration: 0.16),
+                       value: displaced(id))
+            .shadow(color: .black.opacity(dragged == id ? 0.18 : 0),
+                    radius: 8, y: 3)
             .zIndex(dragged == id ? 1 : 0)
             .background(store.editing ? Look.ruleSoft.opacity(0.5) : .clear)
             .contentShape(Rectangle())
@@ -356,14 +386,13 @@ struct PlanView: View {
                 guard !store.editing else { return }
                 toggle(row)
             }
+            // Короткое нажатие ставит курсор в текст дела, длинное затеняет
+            // выполненное. Раньше короткое делало и то и другое: человек
+            // тянулся поправить слово, а дело гасло (решение P156).
             .onTapGesture {
-                if row.wrappedValue.text.isEmpty, store.canEditPlan {
-                    typingIn = id
-                    DispatchQueue.main.async { focused = id }
-                    return
-                }
-                guard !store.editing, typingIn != id else { return }
-                toggle(row)
+                guard store.canEditPlan, !store.editing, typingIn != id else { return }
+                typingIn = id
+                DispatchQueue.main.async { focused = id }
             }
     }
 
@@ -373,12 +402,14 @@ struct PlanView: View {
         DragGesture(minimumDistance: 8)
             .onChanged { g in
                 dragged = id
+                dragOffset = g.translation.height
                 dragBy = Int((g.translation.height / PlanRowLine.height).rounded())
             }
             .onEnded { _ in
                 let by = dragBy
                 dragged = nil
                 dragBy = 0
+                dragOffset = 0
                 guard by != 0 else { return }
                 for _ in 0..<abs(by) { store.move(id, by: by > 0 ? 1 : -1) }
             }
@@ -399,6 +430,30 @@ struct PlanView: View {
         }
         row.wrappedValue.done.toggle()
         store.save()
+    }
+
+    /// Куда встанет взятое дело: столько строк оно пройдёт на самом деле.
+    /// За края списка вынести его нельзя, поэтому ход подрезан.
+    private var carried: Int {
+        guard let dragged,
+              let from = store.tasks.firstIndex(where: { $0.id == dragged })
+        else { return 0 }
+        let to = min(max(from + dragBy, 0), store.tasks.count - 1)
+        return to - from
+    }
+
+    /// На сколько строк отодвигается соседнее дело, пока над ним проносят
+    /// другое. Место под взятым делом должно освобождаться: иначе человек
+    /// отпускает его поверх чужой строки и не понимает, куда оно встанет.
+    private func displaced(_ id: UUID) -> Int {
+        guard let dragged, dragged != id,
+              let from = store.tasks.firstIndex(where: { $0.id == dragged }),
+              let mine = store.tasks.firstIndex(where: { $0.id == id })
+        else { return 0 }
+        let to = min(max(from + dragBy, 0), store.tasks.count - 1)
+        if to > from, mine > from, mine <= to { return -1 }
+        if to < from, mine < from, mine >= to { return 1 }
+        return 0
     }
 
     private func number(of id: UUID) -> Int {

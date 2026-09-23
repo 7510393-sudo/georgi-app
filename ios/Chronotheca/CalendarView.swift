@@ -380,11 +380,17 @@ struct CalendarView: View {
                             .font(Look.sans(13))
                             .foregroundStyle(Look.inkFaint)
                     } else {
+                        // Дело — ровно одна строка. Длинное обрывается
+                        // троеточием: иначе одно дело занимает место двух,
+                        // и по строкам уже не видно, насколько день занят
+                        // (решение P159).
                         ForEach(open ? tasks : Array(tasks.prefix(3))) { task in
                             Text((task.time.map { $0 + "  " } ?? "") + task.text)
                                 .font(Look.sans(13))
                                 .foregroundStyle(Look.ink)
                                 .opacity(task.done ? 0.45 : 1)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         if !open && tasks.count > 3 {

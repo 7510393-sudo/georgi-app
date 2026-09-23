@@ -46,6 +46,11 @@ struct DiaryEditor: UIViewRepresentable {
         view.textContainer.lineFragmentPadding = 0
         view.autocapitalizationType = .sentences
         view.spellCheckingType = .no
+        // Вставлять в запись картинки и вложения нельзя: файл должен
+        // читаться обычным текстовым редактором. Разрешённое оформление
+        // порождает в тексте знак-заместитель, который виден как «OBJ»
+        // в пунктирной рамке (решение P161).
+        view.allowsEditingTextAttributes = false
         // Клавиатура уезжает движением пальца вниз по тексту.
         view.keyboardDismissMode = .interactive
         view.alwaysBounceVertical = true
@@ -116,9 +121,23 @@ struct DiaryEditor: UIViewRepresentable {
         ]
     }
 
+    /// Знак-заместитель вложения. Система ставит его туда, где в тексте
+    /// было что-то не буквенное; в простом тексте он рисуется как «OBJ» в
+    /// пунктирной рамке и попадает в файл записи, где ему совсем не место.
+    ///
+    /// Откуда он берётся, зависит от клавиатуры и способа ввода, поэтому
+    /// перекрыт и источник (правка оформления запрещена), и следствие: знак
+    /// убирается из текста, что бы его ни поставило (решение P161).
+    static let placeholder: Character = "\u{FFFC}"
+
+    static func clean(_ text: String) -> String {
+        text.contains(placeholder) ? text.filter { $0 != placeholder } : text
+    }
+
     static func styled(_ text: String, size: CGFloat,
                        serif: Bool, stamped: Bool) -> NSAttributedString {
-        let out = NSMutableAttributedString(string: text, attributes: body(size, serif: serif))
+        let out = NSMutableAttributedString(string: clean(text),
+                                            attributes: body(size, serif: serif))
         guard stamped else { return out }
         let ns = text as NSString
         var start = 0
@@ -147,7 +166,7 @@ struct DiaryEditor: UIViewRepresentable {
         func textViewDidBeginEditing(_ view: UITextView) { parent.onFocus() }
 
         func textViewDidChange(_ view: UITextView) {
-            parent.text = view.text
+            parent.text = DiaryEditor.clean(view.text)
             restyle(view)
         }
 
@@ -169,7 +188,7 @@ struct DiaryEditor: UIViewRepresentable {
                 view.text.replaceSubrange(target, with: upper)
                 let after = range.location + (upper as NSString).length
                 view.selectedRange = NSRange(location: after, length: 0)
-                parent.text = view.text
+                parent.text = DiaryEditor.clean(view.text)
                 restyle(view)
             }
             return false

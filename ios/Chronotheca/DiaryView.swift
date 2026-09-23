@@ -131,13 +131,13 @@ struct DiaryPage: View {
             ZStack(alignment: .leading) {
                 if title.isEmpty {
                     Text("Заголовок дня")
-                        .font(Look.serif(19))
+                        .font(Look.serif(16.5))
                         .foregroundStyle(Look.inkFaint)
                         .allowsHitTesting(false)
                 }
                 if editable {
                     TextField("", text: $title)
-                        .font(Look.serif(19, weight: .semibold))
+                        .font(Look.serif(16.5, weight: .semibold))
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .title)
                         .submitLabel(.next)
@@ -149,13 +149,15 @@ struct DiaryPage: View {
                         }
                 } else {
                     Text(title)
-                        .font(Look.serif(19, weight: .semibold))
+                        .font(Look.serif(16.5, weight: .semibold))
                         .foregroundStyle(Look.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .frame(height: 26, alignment: .leading)
-            .padding(.bottom, 7)
+            // Заголовок — подпись к дню, а не вывеска: место на странице
+            // принадлежит записи (решение P162).
+            .frame(height: 23, alignment: .leading)
+            .padding(.bottom, 5)
 
             Rectangle().fill(Look.rule).frame(height: 1)
         }
