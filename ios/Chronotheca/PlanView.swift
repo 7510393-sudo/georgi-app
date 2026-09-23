@@ -75,6 +75,10 @@ struct PlanRowLine: View {
             // В режиме изменений квадратик подрагивает: видно, что дело
             // можно взять и переставить, и видно, что режим включён.
             .rotationEffect(.degrees(editMode ? wobble : 0))
+            // Номер — рукоять, а не текст: касание по нему не должно
+            // ставить курсор в строку (решение P167).
+            .contentShape(Rectangle())
+            .onTapGesture { }
             .onAppear { if editMode { startWobble() } }
             .onChange(of: editMode) { _, on in on ? startWobble() : stopWobble() }
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
@@ -217,17 +221,46 @@ struct PlanScaffold<Content: View>: View {
     let isPast: Bool
     var dimmed = false
     var add: (() -> Void)?
+
+    /// Строка, в которую сейчас пишут: её и надо держать на виду.
+    var watching: UUID?
+
     @ViewBuilder let content: () -> Content
+
+    @State private var keyboard: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
             PlanHead(isPast: isPast, dimmed: dimmed, add: add)
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    content()
+                ScrollViewReader { proxy in
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        content()
+                    }
+                    // Место под клавиатуру. Без него строка, в которую
+                    // пишут, уходит под неё, и человек не видит, что
+                    // набирает (решение P166).
+                    .padding(.bottom, keyboard)
+                    .onChange(of: watching) { _, id in show(id, proxy) }
+                    .onChange(of: keyboard) { _, _ in show(watching, proxy) }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            // Ход плавный и один: без него страница дёргалась, потому что
+            // клавиатура и содержимое ехали вразнобой.
+            .animation(.easeOut(duration: 0.25), value: keyboard)
+        }
+        .keyboardHeight($keyboard)
+    }
+
+    /// Довести строку до глаз. С задержкой в один оборот: пока клавиатура
+    /// не встала на место, высота ещё не та, и прокрутка уедет не туда.
+    private func show(_ id: UUID?, _ proxy: ScrollViewProxy) {
+        guard let id else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo(id, anchor: .center)
+            }
         }
     }
 }
@@ -288,7 +321,8 @@ struct PlanView: View {
     var body: some View {
         VStack(spacing: 0) {
             if store.editing { banner }
-            PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan, add: add) {
+            PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
+                         add: add, watching: typingIn) {
                 if store.tasks.isEmpty { PlanEmpty(isPast: store.isPast) } else { list }
                 // Касание по пустому месту убирает клавиатуру и выходит из
                 // режима изменений: выход должен быть там, куда рука тянется
@@ -371,6 +405,7 @@ struct PlanView: View {
             // Взятое дело идёт за пальцем, остальные расступаются по целым
             // строкам — так под ним открывается место, и видно, куда оно
             // встанет (решение P163).
+            .id(id)
             .offset(y: dragged == id
                     ? dragOffset
                     : CGFloat(displaced(id)) * PlanRowLine.height)

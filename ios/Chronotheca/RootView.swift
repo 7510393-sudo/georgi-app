@@ -183,15 +183,23 @@ struct RootView: View {
 
             Spacer(minLength: 0)
 
-            Button {
-                withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 18))
-                    .foregroundStyle(store.editing ? Look.accent : Look.inkSoft)
-                    .frame(width: 44, height: 38)
+            // Меню страницы принадлежит открытому дню: в нём режим
+            // изменений, файл дня, перенос дела. На календаре и в поиске
+            // ему нечем управлять, и включать оттуда режим изменений на
+            // чужом экране — прямая ошибка (решение P169).
+            if shell.screen == .today {
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 18))
+                        .foregroundStyle(store.editing ? Look.accent : Look.inkSoft)
+                        .frame(width: 44, height: 38)
+                }
+                .accessibilityLabel("Меню страницы")
+            } else {
+                Color.clear.frame(width: 44, height: 38)
             }
-            .accessibilityLabel("Меню страницы")
         }
         .padding(.horizontal, 8)
         .padding(.top, 8)

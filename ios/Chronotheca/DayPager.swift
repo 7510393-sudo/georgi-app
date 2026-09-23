@@ -192,10 +192,12 @@ struct DayPage: View {
         }
         .frame(width: 108)
         .contentShape(Rectangle())
+        // Дорога домой одна, какой кнопкой её ни начинай (решение P168).
         .onLongPressGesture(minimumDuration: 0.4) {
             guard live, lit else { return }
-            store.go(to: DayStore.today())
+            hideKeyboard()
             shell.say("Вернулись на сегодня")
+            shell.goHome = true
         } onPressingChanged: { _ in }
         .onTapGesture {
             guard live else { return }

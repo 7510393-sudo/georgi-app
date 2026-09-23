@@ -4,9 +4,9 @@ import UIKit
 /// Дорога домой: разбить расстояние на несколько поворотов.
 ///
 /// Дальнее место не отматывается по одному — это были бы десятки поворотов.
-/// Дорога делится поровну на три шага: человек видит, что возвращается
-/// издалека, но ждёт недолго (решение P164).
-func wayHome(_ distance: Int, steps limit: Int = 3) -> [Int] {
+/// Дорога делится поровну на несколько шагов: человек видит, что
+/// возвращается издалека, но ждёт недолго (решение P164).
+func wayHome(_ distance: Int, steps limit: Int = 5) -> [Int] {
     guard distance != 0 else { return [] }
     var осталось = distance
     var дорога: [Int] = []
@@ -90,12 +90,19 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
         func obey(_ pages: UIPageViewController) {
             guard !busy, let step = parent.plan.wrappedValue.first, step != 0 else { return }
             busy = true
+            // Своими руками человек листает по одной странице и не спеша,
+            // а дорогу домой пролистывают быстро — как отпускают стопку
+            // из-под большого пальца. Системному повороту длительности не
+            // задать, поэтому ускоряется само время слоя (решение P168).
+            pages.view.layer.speed = 3.2
             let host = make(step)
             pages.setViewControllers([host],
                                      direction: step > 0 ? .forward : .reverse,
                                      animated: true) { [weak self] done in
                 guard let self else { return }
                 self.busy = false
+                let остаток = self.parent.plan.wrappedValue.count
+                if !done || остаток <= 1 { pages.view.layer.speed = 1 }
                 guard done else { self.parent.plan.wrappedValue = []; return }
                 // Страница, на которой человек оказался, становится нулевой —
                 // та же перенумерация, что и после поворота пальцем (P131).

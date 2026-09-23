@@ -21,9 +21,9 @@ final class WayHomeTests: XCTestCase {
         XCTAssertEqual(wayHome(2), [1, 1])
     }
 
-    func testДальшеТрёхПоворотовНеБывает() {
+    func testДальшеПятиПоворотовНеБывает() {
         for расстояние in [3, 7, 10, 40, 365, -3, -7, -10, -40, -365] {
-            XCTAssertLessThanOrEqual(wayHome(расстояние).count, 3,
+            XCTAssertLessThanOrEqual(wayHome(расстояние).count, 5,
                                      "расстояние \(расстояние)")
         }
     }
