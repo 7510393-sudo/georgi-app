@@ -35,7 +35,7 @@ struct PlanRowLine: View {
     // на точку — название наползёт на колокольчик или отскочит от него.
 
     static let badgeWidth: CGFloat = 26
-    static let timeWidth: CGFloat = 58
+    static let timeWidth: CGFloat = 64
     static let bellWidth: CGFloat = 40
     static let gap: CGFloat = 8
 
@@ -132,6 +132,11 @@ struct PlanRowLine: View {
             Text(row.time ?? "--:--")
                 .font(Look.mono(18.5))
                 .tracking(row.time == nil ? 0.7 : 0)
+                // Время — всегда одна строка. «--:--» с разрядкой не
+                // умещалось в отведённую ширину и переносилось надвое:
+                // на странице оставался висеть один прочерк.
+                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
                 .foregroundStyle(row.time == nil || faded ? Look.inkFaint : Look.inkSoft)
                 // Черта рисуется всегда, а не только там, где по ней можно
                 // нажать: вид строки не должен зависеть от того, открытая
