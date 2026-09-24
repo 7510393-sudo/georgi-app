@@ -149,6 +149,8 @@ jobs:
           # причина мерцания при повороте — не в них.
           snap 13-соседская-роспись.png side
           snap 15-календарь-список.png  list
+          snap 16-меню-календаря.png    calendar-menu
+          snap 17-меню-поиска.png       search-menu
 
           xcrun simctl terminate "$UDID" "$APP_ID" || true
 

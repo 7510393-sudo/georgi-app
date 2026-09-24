@@ -206,27 +206,41 @@ struct RootView: View {
 
             Spacer(minLength: 0)
 
-            // Меню страницы принадлежит открытому дню: в нём режим
-            // изменений, файл дня, перенос дела. На календаре и в поиске
-            // ему нечем управлять, и включать оттуда режим изменений на
-            // чужом экране — прямая ошибка (решение P169).
-            if shell.screen == .today {
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 18))
-                        .foregroundStyle(store.editing ? Look.accent : Look.inkSoft)
-                        .frame(width: 44, height: 38)
-                }
-                .accessibilityLabel("Меню страницы")
-            } else {
-                Color.clear.frame(width: 44, height: 38)
+            // Три точки стоят на каждом экране, но меню у каждого своё:
+            // на странице дня — режим изменений и файл дня, на календаре и
+            // в поиске — то, чем там можно управлять. Кнопка не пропадает,
+            // что бы ни было открыто (решение P188, вместо P169).
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 18))
+                    .foregroundStyle(dotsLit ? Look.accent : Look.inkSoft)
+                    .frame(width: 44, height: 38)
             }
+            .accessibilityLabel(dotsLabel)
         }
         .padding(.horizontal, 8)
         .padding(.top, 8)
         .background(Look.chrome)
+    }
+
+    /// Точки горят, когда в меню включено что-то необычное: режим
+    /// изменений на странице дня или поиск не по всему архиву.
+    private var dotsLit: Bool {
+        switch shell.screen {
+        case .today:    return store.editing
+        case .calendar: return false
+        case .search:   return shell.scope != .all
+        }
+    }
+
+    private var dotsLabel: String {
+        switch shell.screen {
+        case .today:    return "Меню страницы"
+        case .calendar: return "Меню календаря"
+        case .search:   return "Меню поиска"
+        }
     }
 
     // MARK: - Экран

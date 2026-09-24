@@ -3,12 +3,28 @@ import SwiftUI
 // MARK: - Меню страницы
 
 /// Три точки: жёлтая бумажка, приклеенная к верхнему правому углу.
+///
+/// Точки есть на каждом экране, а бумажка у каждого своя: на странице дня —
+/// действия с днём, на календаре и в поиске — то, чем управляют там.
+/// Включать с календаря режим изменений дня нельзя: он управлял бы чужим
+/// экраном (решения P169, P188).
 struct MenuSticker: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
+    /// Вид календаря — чтобы звать домой к месяцу или к году.
+    @AppStorage("calendar.kind") private var calendarKind = CalendarView.Kind.month.rawValue
+
     var body: some View {
+        switch shell.screen {
+        case .today:    dayMenu
+        case .calendar: calendarMenu
+        case .search:   searchMenu
+        }
+    }
+
+    private var dayMenu: some View {
         Sticker(side: .trailing, title: "Меню страницы", close: close) {
             StickerItem(title: "Режим изменений",
                         note: store.editing ? "включён" : "выключен",
@@ -32,6 +48,47 @@ struct MenuSticker: View {
                 close()
                 shell.say("Удаление дня ещё не сделано.")
             }
+        }
+    }
+
+    private var calendarMenu: some View {
+        let year = calendarKind == CalendarView.Kind.year.rawValue
+        return Sticker(side: .trailing, title: "Меню календаря", close: close) {
+            StickerItem(title: year ? "Вернуться к этому году"
+                                    : "Вернуться к этому месяцу") {
+                close()
+                shell.calendarHome = true
+            }
+            StickerItem(title: "Поделиться месяцем") {
+                close()
+                shell.say("«Поделиться месяцем» ещё не сделано.")
+            }
+        }
+    }
+
+    /// Где искать. Выбранное отмечено, а не спрятано: все три строки стоят
+    /// всегда, чтобы рука находила их на одном месте.
+    private var searchMenu: some View {
+        Sticker(side: .trailing, title: "Меню поиска", close: close) {
+            scopeItem("Искать везде", .all)
+            scopeItem("Только в дневнике", .diary)
+            scopeItem("Только в плане", .plan)
+            StickerItem(title: "Очистить поиск") {
+                close()
+                if shell.query.isEmpty {
+                    shell.say("Строка поиска и так пуста.")
+                } else {
+                    shell.query = ""
+                }
+            }
+        }
+    }
+
+    private func scopeItem(_ title: String, _ scope: Shell.Scope) -> some View {
+        let on = shell.scope == scope
+        return StickerItem(title: title, note: on ? "✓" : "", active: on) {
+            shell.scope = scope
+            close()
         }
     }
 

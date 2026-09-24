@@ -44,6 +44,18 @@ final class Shell: ObservableObject {
     /// Поднимается кнопкой «Сегодня» внизу; выполняет её сама книга.
     @Published var goHome = false
 
+    /// Просьба календарю вернуться к нынешнему месяцу или году, перелистнув
+    /// страницы. Поднимается из меню календаря; выполняет сам календарь.
+    @Published var calendarHome = false
+
+    /// Где искать: везде, только в дневнике или только в плане.
+    enum Scope { case all, diary, plan }
+
+    /// Строка поиска и где искать живут здесь, а не в самом поиске: их
+    /// меняет и меню поиска, а оно лежит поверх всего приложения.
+    @Published var query = ""
+    @Published var scope: Scope = .all
+
     @Published var notice: String?
     private var hiding: DispatchWorkItem?
 
@@ -74,6 +86,8 @@ final class Shell: ObservableObject {
         case "calendar":  screen = .calendar
         case "search":    screen = .search
         case "menu":      showingMenu = true
+        case "calendar-menu": screen = .calendar; showingMenu = true
+        case "search-menu":   screen = .search; showingMenu = true
         case "settings":  showingSettings = true
         case "remember":  tab = .diary
         case "details":   drawer = store.tasks.first?.id

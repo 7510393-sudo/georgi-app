@@ -13,7 +13,8 @@ struct SearchView: View {
     @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
 
-    @State private var query = ""
+    /// Строка поиска лежит в оболочке: её очищает и меню поиска.
+    private var query: String { shell.query }
     @FocusState private var typing: Bool
 
     /// Насколько клавиатура закрывает список находок.
@@ -31,7 +32,7 @@ struct SearchView: View {
                 message("Пока нечего искать.",
                         "Напишите первую запись — и она найдётся здесь.")
             } else if found.isEmpty {
-                message("Ничего не нашлось.", "По запросу «\(query)» записей нет.")
+                message("Ничего не нашлось.", "По запросу «\(query)» \(whereNot)записей нет.")
             } else {
                 list
             }
@@ -44,11 +45,11 @@ struct SearchView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(Look.inkFaint)
-            TextField("Поиск по словам", text: $query)
+            TextField(prompt, text: $shell.query)
                 .focused($typing)
                 .submitLabel(.search)
             if !query.isEmpty {
-                Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }
+                Button { shell.query = "" } label: { Image(systemName: "xmark.circle.fill") }
                     .foregroundStyle(Look.inkFaint)
                     .accessibilityLabel("Очистить")
             }
@@ -60,17 +61,43 @@ struct SearchView: View {
         .padding(.bottom, 10)
     }
 
+    /// Где ищем — видно прямо в строке поиска, а не только в меню: иначе,
+    /// выбрав «только в плане» и забыв об этом, человек решит, что запись
+    /// пропала.
+    private var prompt: String {
+        switch shell.scope {
+        case .all:   return "Поиск по словам"
+        case .diary: return "Поиск в дневнике"
+        case .plan:  return "Поиск в плане"
+        }
+    }
+
+    private var whereNot: String {
+        switch shell.scope {
+        case .all:   return ""
+        case .diary: return "в дневнике "
+        case .plan:  return "в плане "
+        }
+    }
+
+    /// Ответы «Как прошло?» — часть дневника: их пишут там, а не в плане.
     private var found: [Archive.Day] {
         let days = archive.newestFirst
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !needle.isEmpty else { return days }
+        let scope = shell.scope
         return days.filter { day in
-            if day.title.lowercased().contains(needle) { return true }
-            if day.text.lowercased().contains(needle) { return true }
-            if day.answers.values.contains(where: { $0.lowercased().contains(needle) }) {
-                return true
+            if scope != .plan {
+                if day.title.lowercased().contains(needle) { return true }
+                if day.text.lowercased().contains(needle) { return true }
+                if day.answers.values.contains(where: { $0.lowercased().contains(needle) }) {
+                    return true
+                }
             }
-            return day.tasks.contains { $0.text.lowercased().contains(needle) }
+            if scope != .diary {
+                return day.tasks.contains { $0.text.lowercased().contains(needle) }
+            }
+            return false
         }
     }
 
@@ -95,7 +122,9 @@ struct SearchView: View {
         Button {
             typing = false
             store.go(to: day.date)
-            shell.tab = day.text.isEmpty && !day.tasks.isEmpty ? .plan : .diary
+            // Искали в плане — туда и открываем: там нашлось искомое.
+            shell.tab = shell.scope == .plan || (day.text.isEmpty && !day.tasks.isEmpty)
+                ? .plan : .diary
             shell.screen = .today
         } label: {
             HStack(alignment: .top, spacing: 12) {

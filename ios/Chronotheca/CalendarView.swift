@@ -65,6 +65,12 @@ struct CalendarView: View {
             }, plan: $plan)
         }
         .onAppear { archive.reload() }
+        // Просьба из меню календаря: та же дорога домой, что у кнопки вида.
+        .onChange(of: shell.calendarHome) { _, want in
+            guard want else { return }
+            shell.calendarHome = false
+            goHome(asked: true)
+        }
     }
 
     /// Страница календаря целиком: название, сетка и список дел под ней.
@@ -102,13 +108,20 @@ struct CalendarView: View {
     ///
     /// Не прыжком: дорога домой должна быть видна — то же правило, что у
     /// кнопки «Сегодня» (решение P164).
-    private func goHome() {
+    private func goHome(asked: Bool = false) {
         let unit: Calendar.Component = kind == .year ? .year : .month
         let c = cal.dateComponents([unit], from: period(shown),
                                    to: period(DayStore.today()))
         let steps = (kind == .year ? c.year : c.month) ?? 0
         // Мы и так дома — двигать нечего: ничто не должно шевелиться зря.
-        guard steps != 0 else { return }
+        // Но если просили из меню, молчать нельзя: человек решит, что
+        // кнопка не сработала.
+        guard steps != 0 else {
+            if asked {
+                shell.say(kind == .year ? "Это и есть нынешний год" : "Это и есть нынешний месяц")
+            }
+            return
+        }
         plan = wayHome(steps)
         shell.say(kind == .year ? "Вернулись на этот год" : "Вернулись на этот месяц")
     }
