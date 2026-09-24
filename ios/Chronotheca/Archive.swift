@@ -73,7 +73,7 @@ final class Archive: ObservableObject {
         guard let root = vault.root else { days = [:]; return }
         scanning = true
         var found: [String: Day] = [:]
-        var listed = 0
+        var counted = 0
         var away: [URL] = []
 
         for folder in [Vault.Folder.planner, .diary] {
@@ -99,7 +99,7 @@ final class Archive: ObservableObject {
                     let file = year.appendingPathComponent(name)
 
                     var day = found[stamp] ?? Day(stamp: stamp, date: date)
-                    listed += 1
+                    counted += 1
                     let reading = Vault.reading(at: file, coordinated: false)
                     if reading == .away {
                         away.append(file)
@@ -124,7 +124,7 @@ final class Archive: ObservableObject {
         }
 
         days = found
-        files = listed
+        files = counted
         awayFiles = away.count
         scanning = false
         if away.isEmpty { fetchRounds = 0 } else { fetch(away) }
