@@ -15,13 +15,16 @@ final class Archive: ObservableObject {
         var title: String = ""
         var text: String = ""
         var answers: [String: String] = [:]
+        /// Сколько фотографий в записи: день с одной фотографией — тоже
+        /// запись, и календарь не должен его терять (P200).
+        var photos = 0
 
         /// Файл дня лежит в iCloud и ещё не скачан. День есть, хотя
         /// прочитать его пока нечем (решение P182).
         var inCloud = false
 
         var hasSomething: Bool {
-            inCloud || !tasks.isEmpty || !title.isEmpty || !text.isEmpty
+            inCloud || photos > 0 || !tasks.isEmpty || !title.isEmpty || !text.isEmpty
         }
 
         /// Начало записи для поиска — без пустых строк.
@@ -117,6 +120,7 @@ final class Archive: ObservableObject {
                         day.title = parsed.value("заголовок") ?? ""
                         day.text = diary.text
                         day.answers = diary.answers
+                        day.photos = diary.photos.count
                     }
                     found[stamp] = day
                 }

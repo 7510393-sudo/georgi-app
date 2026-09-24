@@ -71,6 +71,8 @@ final class DayStore: ObservableObject {
     @Published var diaryTitle: String = ""
     @Published var diaryText: String = ""
     @Published var answers: [String: String] = [:]
+    /// Ссылки на фотографии дня, как они записаны в файле (P200).
+    @Published var photos: [String] = []
 
     /// Когда дневник правили в последний раз. Лежит в шапке файла, чтобы
     /// отметка времени вела себя одинаково и после перезапуска приложения.
@@ -173,6 +175,32 @@ final class DayStore: ObservableObject {
 
     func touchDiary() { lastEdit = Date() }
 
+    /// Положить фотографию в папку и сослаться на неё из записи дня.
+    ///
+    /// Фотография — часть дневника, поэтому и правила у неё дневниковые:
+    /// в будущий день и в день, который ещё не скачан из iCloud, её не
+    /// положить (P182, P200).
+    @discardableResult
+    func addPhoto(_ data: Data) -> Bool {
+        guard canEditDiary, let link = vault.addPhoto(data, for: date) else { return false }
+        photos.append(link)
+        touchDiary()
+        save()
+        return true
+    }
+
+    /// Убрать фотографию из записи. Файл остаётся в папке: удалять файлы
+    /// человека приложение не берётся — это делают в «Файлах».
+    func removePhoto(at index: Int) {
+        guard canEditDiary, photos.indices.contains(index) else { return }
+        photos.remove(at: index)
+        touchDiary()
+        save()
+    }
+
+    /// Где лежит фотография дня.
+    func photoURL(_ link: String) -> URL? { vault.mediaURL(link, for: date) }
+
     // MARK: - Диск
 
     // Что лежало на диске, когда день читали или писали в последний раз, и
@@ -199,6 +227,7 @@ final class DayStore: ObservableObject {
         diaryTitle = file.value("заголовок") ?? ""
         diaryText = diary.text
         answers = diary.answers
+        photos = diary.photos
         lastEdit = file.value("правлено").flatMap(DayStore.moment(from:))
 
         seen = [.planner: plan.text, .diary: diaryFile.text]
@@ -275,7 +304,8 @@ final class DayStore: ObservableObject {
     /// Дневник дня таким, каким он ляжет в файл.
     private func diaryFileNow() -> DayFile {
         let order = tasks.map(\.text)
-        var diary = DayFile(body: Diary(answers: answers, text: diaryText).body(order: order))
+        var diary = DayFile(body: Diary(answers: answers, text: diaryText,
+                                     photos: photos).body(order: order))
         diary.set("дата", Vault.stamp(date))
         if !diaryTitle.isEmpty { diary.set("заголовок", diaryTitle) }
         if let lastEdit { diary.set("правлено", DayStore.moment(lastEdit)) }

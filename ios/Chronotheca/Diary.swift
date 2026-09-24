@@ -16,9 +16,19 @@ struct Diary: Equatable {
     var answers: [String: String] = [:]
     var text: String = ""
 
-    init(answers: [String: String] = [:], text: String = "") {
+    /// Фотографии дня — ссылки из записи на файлы в папке «Фотографии».
+    ///
+    /// В файле каждая стоит своей строкой в конце записи, обычной ссылкой
+    /// разметки: `![](../../Фотографии/2026/2026-09-24_08.15.30.jpg)`. Её
+    /// понимает любой редактор разметки — Obsidian покажет саму фотографию.
+    /// В поле записи приложение этих строк не показывает: фотографии стоят
+    /// над текстом картинками (решение P200).
+    var photos: [String] = []
+
+    init(answers: [String: String] = [:], text: String = "", photos: [String] = []) {
         self.answers = answers
         self.text = text
+        self.photos = photos
     }
 
     /// Разобрать тело записи.
@@ -36,7 +46,7 @@ struct Diary: Equatable {
         while i < lines.count, lines[i].trimmingCharacters(in: .whitespaces).isEmpty { i += 1 }
         guard i < lines.count,
               lines[i].trimmingCharacters(in: .whitespaces) == Diary.heading else {
-            text = body.trimmingCharacters(in: .newlines)
+            (text, photos) = Diary.split(body.trimmingCharacters(in: .newlines))
             return
         }
 
@@ -65,7 +75,40 @@ struct Diary: Equatable {
             if !task.isEmpty { answers[task] = answer }
             lines.removeFirst()
         }
-        text = lines.joined(separator: "\n").trimmingCharacters(in: .newlines)
+        (text, photos) = Diary.split(
+            lines.joined(separator: "\n").trimmingCharacters(in: .newlines))
+    }
+
+    private static let picture = try! NSRegularExpression(
+        pattern: #"^\s*!\[[^\]]*\]\((.+)\)\s*$"#)
+
+    /// Отделить строки-фотографии от текста.
+    ///
+    /// Берутся только строки, в которых нет ничего, кроме ссылки на
+    /// картинку: ссылка посреди фразы — часть того, что человек написал.
+    static func split(_ text: String) -> (text: String, photos: [String]) {
+        var kept: [String] = []
+        var photos: [String] = []
+        for line in text.components(separatedBy: "\n") {
+            let ns = line as NSString
+            if let m = picture.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) {
+                var link = ns.substring(with: m.range(at: 1))
+                if link.hasPrefix("<"), link.hasSuffix(">") {
+                    link = String(link.dropFirst().dropLast())
+                }
+                photos.append(link)
+            } else {
+                kept.append(line)
+            }
+        }
+        guard !photos.isEmpty else { return (text, []) }
+        return (kept.joined(separator: "\n").trimmingCharacters(in: .newlines), photos)
+    }
+
+    /// Строка-фотография для файла. Путь с пробелом берётся в угловые
+    /// скобки — так его читают редакторы разметки.
+    static func line(_ link: String) -> String {
+        link.contains(" ") ? "![](<\(link)>)" : "![](\(link))"
     }
 
     /// Собрать обратно. Порядок ответов задаётся списком дел, чтобы файл не
@@ -86,6 +129,10 @@ struct Diary: Equatable {
             out += "\n"
         }
         out += text
+        if !photos.isEmpty {
+            if !out.trimmingCharacters(in: .newlines).isEmpty { out += "\n\n" }
+            out += photos.map(Diary.line).joined(separator: "\n")
+        }
         return out.trimmingCharacters(in: .newlines)
     }
 }

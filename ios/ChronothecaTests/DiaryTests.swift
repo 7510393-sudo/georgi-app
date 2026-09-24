@@ -119,4 +119,48 @@ final class DiaryTests: XCTestCase {
         XCTAssertEqual(Plan.body(from: rows),
                        "- [ ] 09:00 Отвезти документы (напомнить 08:30)")
     }
+
+    // MARK: - Фотографии (P200)
+
+    func testФотографияОтделяетсяОтТекста() {
+        let d = Diary(body: """
+        08:15 Туман над полем.
+
+        ![](../../Фотографии/2026/2026-09-24_08.15.30.jpg)
+        """)
+        XCTAssertEqual(d.text, "08:15 Туман над полем.")
+        XCTAssertEqual(d.photos, ["../../Фотографии/2026/2026-09-24_08.15.30.jpg"])
+    }
+
+    func testФотографииВстаютВКонецЗаписи() {
+        let d = Diary(answers: ["Отвезти документы": "всё получилось"],
+                      text: "08:15 Туман.",
+                      photos: ["../../Фотографии/2026/a.jpg", "../../Фотографии/2026/b.jpg"])
+        let body = d.body(order: ["Отвезти документы"])
+        XCTAssertTrue(body.hasSuffix("""
+        08:15 Туман.
+
+        ![](../../Фотографии/2026/a.jpg)
+        ![](../../Фотографии/2026/b.jpg)
+        """))
+        XCTAssertEqual(Diary(body: body, known: ["Отвезти документы"]), d)
+    }
+
+    func testСсылкаПосредиФразыОстаётсяТекстом() {
+        let body = "Вот снимок ![](a.jpg) — смотри."
+        let d = Diary(body: body)
+        XCTAssertEqual(d.text, body)
+        XCTAssertTrue(d.photos.isEmpty)
+    }
+
+    func testПутьСПробеломВУгловыхСкобках() {
+        let d = Diary(body: "![](<../../Фотографии/2026/мой снимок.jpg>)")
+        XCTAssertEqual(d.photos, ["../../Фотографии/2026/мой снимок.jpg"])
+        XCTAssertEqual(d.body(order: []), "![](<../../Фотографии/2026/мой снимок.jpg>)")
+    }
+
+    func testДеньТолькоСФотографией() {
+        let d = Diary(photos: ["../../Фотографии/2026/a.jpg"])
+        XCTAssertEqual(d.body(order: []), "![](../../Фотографии/2026/a.jpg)")
+    }
 }

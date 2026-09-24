@@ -145,6 +145,10 @@ final class Vault: ObservableObject {
         23:40 В поликлинику так и не собрался. Зато глава дописана, и\
          кажется, что она вышла лучше первой.
         """)
+        // Фотография — чтобы на снимке было видно, как она стоит в записи.
+        if let link = addPhoto(Photo.sample(), for: today) {
+            diary.body += "\n\n" + Diary.line(link)
+        }
         diary.set("дата", Vault.stamp(today))
         diary.set("заголовок", "Туман")
         write(diary.text, to: .diary, for: today)
@@ -628,7 +632,12 @@ final class Vault: ObservableObject {
     /// Возвращает описание беды или `nil`, если всё записалось.
     @discardableResult
     static func write(_ text: String, to url: URL) -> String? {
-        let data = Data(text.utf8)
+        write(data: Data(text.utf8), to: url)
+    }
+
+    /// То же для любого файла — фотографии, голоса, документа.
+    @discardableResult
+    static func write(data: Data, to url: URL) -> String? {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
@@ -676,6 +685,54 @@ final class Vault: ObservableObject {
             return nil
         }
         return name
+    }
+
+    // MARK: - Вложения
+
+    /// Положить фотографию дня в папку «Фотографии» и вернуть ссылку на неё
+    /// из записи дня.
+    ///
+    /// Фотография — отдельный файл, по годам, с датой дня и временем в
+    /// имени: `Фотографии/2026/2026-09-24_08.15.30.jpg`. Без пробелов —
+    /// тогда ссылку понимает любой редактор разметки. Файл с таким именем
+    /// уже есть — к имени прибавляется номер: чужое не затирается никогда
+    /// (решение P200).
+    func addPhoto(_ data: Data, for date: Date) -> String? {
+        guard let root else { return nil }
+        guard let jpeg = Photo.jpeg(from: data) else {
+            problem = "Эту фотографию не удалось прочитать."
+            return nil
+        }
+        let stamp = Vault.stamp(date)
+        let year = String(stamp.prefix(4))
+        let folder = root.appendingPathComponent(Folder.photos.rawValue)
+            .appendingPathComponent(year)
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH.mm.ss"
+        let name = stamp + "_" + f.string(from: Date())
+        var url = folder.appendingPathComponent(name + ".jpg")
+        var n = 2
+        while FileManager.default.fileExists(atPath: url.path) {
+            url = folder.appendingPathComponent("\(name)-\(n).jpg")
+            n += 1
+        }
+        if let trouble = Vault.write(data: jpeg, to: url) {
+            problem = trouble
+            return nil
+        }
+        return "../../" + Folder.photos.rawValue + "/" + year + "/" + url.lastPathComponent
+    }
+
+    /// Где лежит вложение, на которое ссылается запись дня.
+    ///
+    /// Ссылка считается от файла дня — так же, как её поймёт Obsidian или
+    /// любой другой редактор, открывший этот файл.
+    func mediaURL(_ link: String, for date: Date) -> URL? {
+        guard !link.contains("://"), let day = file(.diary, for: date) else { return nil }
+        let clean = link.removingPercentEncoding ?? link
+        return day.deletingLastPathComponent()
+            .appendingPathComponent(clean).standardizedFileURL
     }
 
     /// Обратно из имени файла в дату. Имя файла — это и есть дата записи:

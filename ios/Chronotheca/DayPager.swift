@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 /// Дни листаются как страницы книги.
 ///
@@ -309,13 +310,17 @@ struct DayPage: View {
 struct AttachBar: View {
 
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var store: DayStore
+
+    @State private var choosing = false
+    @State private var picked: [PhotosPickerItem] = []
 
     var body: some View {
         HStack(spacing: 0) {
-            item("photo", "фото")
-            item("waveform", "аудио")
-            item("doc", "файлы")
-            item("mappin.and.ellipse", "геоточка")
+            item("photo", "фото", ready: true) { choosePhotos() }
+            item("waveform", "аудио") { notYet() }
+            item("doc", "файлы") { notYet() }
+            item("mappin.and.ellipse", "геоточка") { notYet() }
         }
         .padding(.top, 8)
         .padding(.bottom, 7)
@@ -323,18 +328,56 @@ struct AttachBar: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Look.rule).frame(height: 1)
         }
+        // Системное окно галереи: приложению не нужно разрешение на всю
+        // галерею — оно получает только те снимки, которые выбрал человек.
+        .photosPicker(isPresented: $choosing, selection: $picked,
+                      maxSelectionCount: 10, matching: .images)
+        .onChange(of: picked) { _, items in
+            guard !items.isEmpty else { return }
+            picked = []
+            take(items)
+        }
     }
 
-    private func item(_ icon: String, _ name: String) -> some View {
-        Button {
-            shell.say("Вложения ещё не сделаны — следующий срез работы.")
-        } label: {
+    private func item(_ icon: String, _ name: String, ready: Bool = false,
+                      act: @escaping () -> Void) -> some View {
+        Button(action: act) {
             VStack(spacing: 3) {
                 Image(systemName: icon).font(.system(size: 17))
                 Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
             }
             .frame(maxWidth: .infinity)
-            .foregroundStyle(Look.inkFaint)
+            .foregroundStyle(ready ? Look.inkSoft : Look.inkFaint)
+        }
+    }
+
+    private func notYet() {
+        shell.say("Аудио, файлы и геоточка — следующие. Фото уже работает.")
+    }
+
+    /// Фото кладутся в дневник: в будущий день дневника не бывает.
+    private func choosePhotos() {
+        guard store.canEditDiary else { return shell.say(store.closedReason) }
+        choosing = true
+    }
+
+    /// Положить выбранные снимки в папку и показать их в дневнике дня.
+    @MainActor
+    private func take(_ items: [PhotosPickerItem]) {
+        Task {
+            var added = 0
+            for item in items {
+                guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
+                if store.addPhoto(data) { added += 1 }
+            }
+            // Снимки стоят в дневнике — туда и ведём, чтобы их было видно.
+            shell.tab = .diary
+            if added == items.count {
+                shell.say(added == 1 ? "Фотография положена в папку «Фотографии»"
+                                     : "Фотографий положено в папку: \(added)")
+            } else {
+                shell.say("Не удалось положить фотографий: \(items.count - added)")
+            }
         }
     }
 }
@@ -355,6 +398,7 @@ struct SideDay: View {
     @State private var title = ""
     @State private var text = ""
     @State private var answers: [String: String] = [:]
+    @State private var photos: [String] = []
 
     var body: some View {
         Group {
@@ -376,7 +420,8 @@ struct SideDay: View {
                   answer: { answers[$0] ?? "" },
                   title: .constant(title),
                   text: .constant(text),
-                  editable: false)
+                  editable: false,
+                  photos: photos.map { vault.mediaURL($0, for: date) })
     }
 
     private func load() {
@@ -386,6 +431,7 @@ struct SideDay: View {
         title = file.value("заголовок") ?? ""
         text = diary.text
         answers = diary.answers
+        photos = diary.photos
     }
 }
 
