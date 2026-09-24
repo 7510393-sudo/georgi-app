@@ -423,7 +423,8 @@ struct SideDay: View {
                   title: .constant(title),
                   text: .constant(text),
                   editable: false,
-                  photos: photos.map { vault.mediaURL($0, for: date) })
+                  photos: photos.map { vault.mediaURL($0, for: date) },
+                  resolve: { [vault, date] in vault.mediaURL($0, for: date) })
     }
 
     private func load() {

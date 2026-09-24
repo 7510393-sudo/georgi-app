@@ -213,6 +213,15 @@ final class DayStore: ObservableObject {
         save()
     }
 
+    /// Снимок, брошенный из полоски в текст, уходит из полоски: он теперь
+    /// стоит на своём месте в записи, и дважды его показывать незачем (P204).
+    func settlePhotos() {
+        guard !photos.isEmpty, diaryText.contains("![") else { return }
+        let placed = photos.filter { diaryText.contains(Diary.line($0)) }
+        guard !placed.isEmpty else { return }
+        photos.removeAll { placed.contains($0) }
+    }
+
     func links(_ tab: Shell.Tab) -> [String] { tab == .diary ? photos : planPhotos }
 
     func canEdit(_ tab: Shell.Tab) -> Bool { tab == .diary ? canEditDiary : canEditPlan }

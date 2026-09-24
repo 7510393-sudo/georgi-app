@@ -156,7 +156,12 @@ final class Vault: ObservableObject {
         23:40 В поликлинику так и не собрался. Зато глава дописана, и\
          кажется, что она вышла лучше первой.
         """)
-        // Фотография — чтобы на снимке было видно, как она стоит в записи.
+        // Фотографии — чтобы на снимке было видно, как они стоят: одна
+        // посреди текста, другая в полоске внизу (P203, P204).
+        if let link = addPhoto(Photo.sample(), for: today) {
+            diary.body = diary.body.replacingOccurrences(
+                of: "\n\n23:40", with: "\n\n" + Diary.line(link) + "\n\n23:40")
+        }
         if let link = addPhoto(Photo.sample(), for: today) {
             diary.body += "\n\n" + Diary.line(link)
         }

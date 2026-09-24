@@ -139,6 +139,9 @@ struct PhotoStrip: View {
     let photos: [URL?]
     var glowing = false
     var onOpen: ((Int) -> Void)?
+    /// Что понесёт палец, взяв превью: строку-ссылку на снимок. Задано —
+    /// превью можно взять долгим нажатием и бросить в текст (P204).
+    var drag: ((Int) -> String)?
 
     static let side: CGFloat = 54
     private let gap: CGFloat = 8
@@ -174,6 +177,7 @@ struct PhotoStrip: View {
             .shadow(color: glowing ? Look.glow.opacity(0.8) : .clear, radius: 6)
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
+            .modifier(Carried(payload: glowing ? drag.map { $0(i) } : nil))
             .accessibilityLabel("Фотография \(i + 1)")
     }
 
@@ -187,6 +191,20 @@ struct PhotoStrip: View {
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
             .accessibilityLabel("Ещё фотографий: \(n)")
+    }
+}
+
+/// Превью, которое можно взять пальцем. Несёт строку-ссылку: поле записи
+/// принимает её как текст и рисует на её месте снимок.
+private struct Carried: ViewModifier {
+    let payload: String?
+
+    func body(content: Content) -> some View {
+        if let payload {
+            content.onDrag { NSItemProvider(object: ("\n" + payload) as NSString) }
+        } else {
+            content
+        }
     }
 }
 

@@ -177,4 +177,33 @@ final class DiaryTests: XCTestCase {
         XCTAssertTrue(d.text.contains("![](../../Фотографии/2026/a.jpg)"))
         XCTAssertEqual(d.body(order: []), body)
     }
+
+    // MARK: - Снимок посреди текста в поле записи (P204)
+
+    func testСнимокВПолеВозвращаетсяВФайлТойЖеСтрокой() {
+        let text = """
+        08:15 Туман.
+
+        ![](../../Фотографии/2026/2026-09-24_08.15.30.jpg)
+
+        23:40 Глава дописана.
+        """
+        let shown = DiaryEditor.styled(text, size: 15.5, serif: true, stamped: true,
+                                       resolve: { _ in nil })
+        // На экране строки-ссылки нет — на её месте картинка.
+        XCTAssertFalse(shown.string.contains("![]("))
+        XCTAssertEqual(DiaryEditor.plain(shown), text)
+    }
+
+    func testБезСнимковПолеНеМеняетТекст() {
+        let text = "08:15 Туман.\n\n23:40 Глава."
+        let shown = DiaryEditor.styled(text, size: 15.5, serif: true, stamped: true,
+                                       resolve: { _ in nil })
+        XCTAssertEqual(DiaryEditor.plain(shown), text)
+    }
+
+    func testЧужойЗаместительНеПопадаетВФайл() {
+        let shown = NSAttributedString(string: "Текст\u{FFFC} дальше")
+        XCTAssertEqual(DiaryEditor.plain(shown), "Текст дальше")
+    }
 }

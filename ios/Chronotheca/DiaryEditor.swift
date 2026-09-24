@@ -46,12 +46,18 @@ struct DiaryEditor: UIViewRepresentable {
     /// там, где поле меряется по тексту.
     var minHeight: CGFloat = 0
 
+    /// Где лежит снимок, на который ссылается строка `![](…)`. Задано —
+    /// значит поле рисует такие строки картинками (решение P204).
+    var resolve: ((String) -> URL?)?
+
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     static let stamp = try! NSRegularExpression(pattern: #"^(\d{2}:\d{2})[  ]"#)
 
     func makeUIView(context: Context) -> UITextView {
         let view = UITextView()
         view.delegate = context.coordinator
+        // Превью из полоски бросают прямо в текст (решение P204).
+        view.textDropDelegate = context.coordinator
         context.coordinator.view = view
         view.backgroundColor = .clear
         view.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 40, right: 0)
@@ -82,18 +88,21 @@ struct DiaryEditor: UIViewRepresentable {
     func updateUIView(_ view: UITextView, context: Context) {
         view.isEditable = editable
         view.isSelectable = editable
+        context.coordinator.resolve = resolve
 
         // Поле сверяется с записью без знаков-заместителей. Пока идёт
         // диктовка, система держит в поле свой временный знак; переписать
         // из-за него поле — вырвать знак у неё из рук, и он остаётся в
         // тексте «OBJ» (решение P197).
-        if DiaryEditor.clean(view.text) != text || view.attributedText.length == 0 {
+        if DiaryEditor.plain(view.attributedText) != text || view.attributedText.length == 0 {
             let selection = view.selectedRange
-            view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped)
+            view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped,
+                                              resolve: resolve)
             view.typingAttributes = Self.body(size, serif: serif)
             view.selectedRange = selection.location <= (view.text as NSString).length
                 ? selection
                 : NSRange(location: (view.text as NSString).length, length: 0)
+            context.coordinator.loadPhotos()
         } else {
             context.coordinator.restyle(view)
         }
@@ -172,10 +181,11 @@ struct DiaryEditor: UIViewRepresentable {
         text.contains(placeholder) ? text.filter { $0 != placeholder } : text
     }
 
-    static func styled(_ text: String, size: CGFloat,
-                       serif: Bool, stamped: Bool) -> NSAttributedString {
+    static func styled(_ text: String, size: CGFloat, serif: Bool, stamped: Bool,
+                       resolve: ((String) -> URL?)? = nil) -> NSAttributedString {
         let out = NSMutableAttributedString(string: clean(text),
                                             attributes: body(size, serif: serif))
+        defer { if let resolve { placePhotos(in: out, resolve: resolve) } }
         guard stamped else { return out }
         let ns = text as NSString
         var start = 0
@@ -194,10 +204,73 @@ struct DiaryEditor: UIViewRepresentable {
         return out
     }
 
+    // MARK: - Снимки в тексте
+
+    /// Метка снимка в поле: на экране — картинка, в файле — строка-ссылка.
+    static let photoKey = NSAttributedString.Key("chronotheca.photo")
+
+    /// Размер снимка в тексте. Задан числом: картинка, пришедшая с диска
+    /// позже текста, встаёт в уже отведённое место и ничего не сдвигает
+    /// (P113).
+    static let photoSize = CGSize(width: 192, height: 128)
+
+    /// Текст поля таким, каким он ляжет в файл: снимки — обратно строками
+    /// `![](…)`, чужие знаки-заместители — вон (P161, P204).
+    static func plain(_ s: NSAttributedString) -> String {
+        let ns = s.string as NSString
+        var out = ""
+        s.enumerateAttribute(photoKey, in: NSRange(location: 0, length: s.length)) { value, range, _ in
+            if let link = value as? String {
+                out += Array(repeating: Diary.line(link), count: range.length)
+                    .joined(separator: "\n")
+            } else {
+                out += clean(ns.substring(with: range))
+            }
+        }
+        return out
+    }
+
+    /// Заменить строки-ссылки на картинки.
+    static func placePhotos(in out: NSMutableAttributedString,
+                            resolve: (String) -> URL?) {
+        let ns = out.string as NSString
+        var found: [(NSRange, String)] = []
+        var start = 0
+        while start < ns.length {
+            let line = ns.lineRange(for: NSRange(location: start, length: 0))
+            let content = ns.substring(with: line).trimmingCharacters(in: .newlines)
+            if let link = Diary.picture(in: content) {
+                found.append((NSRange(location: line.location,
+                                      length: (content as NSString).length), link))
+            }
+            guard line.length > 0 else { break }
+            start = line.location + line.length
+        }
+        for (range, link) in found.reversed() {
+            let attachment = PhotoAttachment(link: link, url: resolve(link))
+            let piece = NSMutableAttributedString(attachment: attachment)
+            let whole = NSRange(location: 0, length: piece.length)
+            piece.addAttributes(out.attributes(at: range.location, effectiveRange: nil),
+                                range: whole)
+            piece.addAttribute(photoKey, value: link, range: whole)
+            out.replaceCharacters(in: range, with: piece)
+        }
+    }
+
+    /// Есть ли в поле строка-ссылка, ещё не ставшая картинкой: её только
+    /// что бросили в текст или вписали руками.
+    static func hasLoosePicture(_ text: String) -> Bool {
+        guard text.contains("![") else { return false }
+        return text.components(separatedBy: "\n").contains { Diary.picture(in: $0) != nil }
+    }
+
     // MARK: - Поведение
 
-    final class Coordinator: NSObject, UITextViewDelegate {
+    final class Coordinator: NSObject, UITextViewDelegate, UITextDropDelegate {
         private let parent: DiaryEditor
+
+        /// Где лежат снимки — обновляется с каждым обновлением поля.
+        var resolve: ((String) -> URL?)?
 
         /// Поле, за которым присматривает этот попечитель.
         weak var view: UITextView?
@@ -236,24 +309,77 @@ struct DiaryEditor: UIViewRepresentable {
         /// кончилась, и поле снова принадлежит нам (решение P197).
         func scrub() {
             guard let view else { return }
-            let ns = view.text as NSString
-            let знак = String(DiaryEditor.placeholder) as NSString
-            var где = ns.range(of: знак as String, options: .backwards)
-            guard где.location != NSNotFound else { return }
+            let storage = view.textStorage
+            let ns = storage.string as NSString
             var курсор = view.selectedRange
-            view.textStorage.beginEditing()
-            while где.location != NSNotFound {
-                view.textStorage.deleteCharacters(in: где)
-                if где.location < курсор.location { курсор.location -= где.length }
-                где = (view.text as NSString).range(
-                    of: знак as String, options: .backwards,
-                    range: NSRange(location: 0, length: где.location))
+            var i = ns.length - 1
+            var changed = false
+            storage.beginEditing()
+            while i >= 0 {
+                // Свои снимки не трогаем: это картинки на месте строк-ссылок.
+                if ns.character(at: i) == 0xFFFC,
+                   storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil {
+                    storage.deleteCharacters(in: NSRange(location: i, length: 1))
+                    if i < курсор.location { курсор.location -= 1 }
+                    changed = true
+                }
+                i -= 1
             }
-            view.textStorage.endEditing()
+            storage.endEditing()
+            guard changed else { return }
             view.selectedRange = NSRange(
-                location: min(курсор.location, (view.text as NSString).length), length: 0)
-            parent.text = view.text
+                location: min(курсор.location, storage.length), length: 0)
+            parent.text = DiaryEditor.plain(storage)
             restyle(view)
+        }
+
+        // MARK: - Снимки
+
+        /// Прочитать с диска картинки снимков, которые пока стоят пустыми
+        /// клетками, и поставить их на место.
+        func loadPhotos() {
+            guard let view else { return }
+            let storage = view.textStorage
+            storage.enumerateAttribute(.attachment,
+                                       in: NSRange(location: 0, length: storage.length)) { value, _, _ in
+                guard let photo = value as? PhotoAttachment, !photo.loaded,
+                      let url = photo.url else { return }
+                photo.loaded = true
+                Task.detached(priority: .userInitiated) {
+                    guard let got = Photo.load(url, side: DiaryEditor.photoSize.width) else { return }
+                    let framed = PhotoAttachment.frame(got)
+                    await MainActor.run { [weak view] in
+                        Photo.cache.setObject(framed, forKey: PhotoAttachment.key(url))
+                        photo.image = framed
+                        guard let view else { return }
+                        let storage = view.textStorage
+                        storage.enumerateAttribute(.attachment,
+                                                   in: NSRange(location: 0, length: storage.length)) { v, r, stop in
+                            guard (v as? PhotoAttachment) === photo else { return }
+                            // Та же вложенная картинка кладётся заново — и поле
+                            // перерисовывает её клетку.
+                            storage.beginEditing()
+                            storage.addAttribute(.attachment, value: photo, range: r)
+                            storage.endEditing()
+                            stop.pointee = true
+                        }
+                    }
+                }
+            }
+        }
+
+        /// Куда встанет брошенное превью: в конец абзаца, над которым его
+        /// отпустили. Снимок стоит своей строкой и не рвёт фразу пополам.
+        func textDroppableView(_ droppable: UIView & UITextDroppable,
+                               positionForDrop drop: UITextDropRequest) -> UITextPosition {
+            guard let view = droppable as? UITextView else { return drop.dropPosition }
+            let ns = view.text as NSString
+            let at = min(view.offset(from: view.beginningOfDocument, to: drop.dropPosition),
+                         ns.length)
+            let para = ns.paragraphRange(for: NSRange(location: at, length: 0))
+            var end = para.location + para.length
+            if end > para.location, ns.character(at: end - 1) == 10 { end -= 1 }
+            return view.position(from: view.beginningOfDocument, offset: end) ?? drop.dropPosition
         }
 
         // MARK: - Клавиатура
@@ -337,8 +463,22 @@ struct DiaryEditor: UIViewRepresentable {
         }
 
         func textViewDidChange(_ view: UITextView) {
-            parent.text = DiaryEditor.clean(view.text)
-            restyle(view)
+            let now = DiaryEditor.plain(view.attributedText)
+            parent.text = now
+            if resolve != nil, DiaryEditor.hasLoosePicture(view.text) {
+                // Строку-ссылку только что бросили или вписали — рисуем её
+                // картинкой. Курсор остаётся примерно там, где был.
+                let at = view.selectedRange.location
+                view.attributedText = DiaryEditor.styled(now, size: parent.size,
+                                                         serif: parent.serif,
+                                                         stamped: parent.stamped,
+                                                         resolve: resolve)
+                view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+                view.selectedRange = NSRange(location: min(at, view.textStorage.length), length: 0)
+                loadPhotos()
+            } else {
+                restyle(view)
+            }
             // Строка прибавилась — курсор мог уйти под клавиатуру.
             DispatchQueue.main.async { [weak self] in self?.showCaret(animated: false) }
         }
@@ -357,13 +497,13 @@ struct DiaryEditor: UIViewRepresentable {
             else { return true }
 
             let upper = String(first).uppercased() + String(text.dropFirst())
-            if let target = Range(range, in: view.text) {
-                view.text.replaceSubrange(target, with: upper)
-                let after = range.location + (upper as NSString).length
-                view.selectedRange = NSRange(location: after, length: 0)
-                parent.text = DiaryEditor.clean(view.text)
-                restyle(view)
-            }
+            // Правка — в самом тексте поля, а не заменой всего текста:
+            // иначе снимки в нём превратились бы в знаки-заместители.
+            view.textStorage.replaceCharacters(in: range, with: upper)
+            let after = range.location + (upper as NSString).length
+            view.selectedRange = NSRange(location: after, length: 0)
+            parent.text = DiaryEditor.plain(view.attributedText)
+            restyle(view)
             return false
         }
 
@@ -398,6 +538,55 @@ struct DiaryEditor: UIViewRepresentable {
             }
             storage.endEditing()
             view.typingAttributes = body
+        }
+    }
+}
+
+/// Снимок в тексте записи.
+///
+/// Помнит свою строку-ссылку: по ней поле возвращает в файл ту же строку,
+/// какая там и была (решение P204).
+final class PhotoAttachment: NSTextAttachment {
+
+    let link: String
+    let url: URL?
+    /// Картинку уже прочитали или читают — второй раз не надо.
+    var loaded = false
+
+    init(link: String, url: URL?) {
+        self.link = link
+        self.url = url
+        super.init(data: nil, ofType: nil)
+        bounds = CGRect(origin: CGPoint(x: 0, y: -4), size: DiaryEditor.photoSize)
+        if let url, let cached = Photo.cache.object(forKey: PhotoAttachment.key(url)) {
+            image = cached
+            loaded = true
+        } else {
+            image = PhotoAttachment.empty
+        }
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    static func key(_ url: URL) -> NSString { ("в тексте:" + url.path) as NSString }
+
+    /// Пустая клетка, пока картинка идёт с диска.
+    static let empty: UIImage = UIGraphicsImageRenderer(size: DiaryEditor.photoSize).image { _ in
+        let box = CGRect(origin: .zero, size: DiaryEditor.photoSize)
+        UIColor(Look.chrome).setFill()
+        UIBezierPath(roundedRect: box, cornerRadius: 8).fill()
+    }
+
+    /// Снимок, обрезанный по клетке и со скруглёнными углами.
+    static func frame(_ image: UIImage) -> UIImage {
+        let size = DiaryEditor.photoSize
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            let box = CGRect(origin: .zero, size: size)
+            UIBezierPath(roundedRect: box, cornerRadius: 8).addClip()
+            let scale = max(size.width / image.size.width, size.height / image.size.height)
+            let w = image.size.width * scale, h = image.size.height * scale
+            image.draw(in: CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2,
+                                  width: w, height: h))
         }
     }
 }

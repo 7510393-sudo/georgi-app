@@ -22,13 +22,19 @@ struct DiaryView: View {
             editable: store.canEditDiary,
             inCloud: store.away.contains(.diary),
             photos: store.photos.map(store.photoURL),
+            photoLinks: store.photos,
+            resolve: store.photoURL,
             glowing: store.editing,
             onOpenPhoto: { shell.openedPhoto = .init(tab: .diary, index: $0) },
-            onFocusText: { store.stampIfNeeded() })
+            // В режиме изменений запись переставляют, а не продолжают:
+            // отметка времени тогда ни к чему. Иначе брошенный в текст
+            // снимок заодно ставил бы в конец записи новое время.
+            onFocusText: { store.editing ? false : store.stampIfNeeded() })
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.diaryText) { _, _ in
             store.touchDiary()
+            store.settlePhotos()
             store.scheduleSave()
         }
     }
@@ -52,6 +58,10 @@ struct DiaryPage: View {
     var inCloud = false
     /// Фотографии дня. Стоят над текстом, под заголовком (P200).
     var photos: [URL?] = []
+    /// Строки-ссылки тех же снимков: их несёт палец из полоски в текст.
+    var photoLinks: [String] = []
+    /// Где лежат снимки, стоящие посреди текста (P204).
+    var resolve: ((String) -> URL?)?
     /// Режим изменений: превью подсвечены, их можно взять (P203).
     var glowing = false
     var onOpenPhoto: ((Int) -> Void)?
@@ -82,7 +92,9 @@ struct DiaryPage: View {
             // Фотографии дневника — полоской внизу, над кнопками вложений,
             // как в Diarium; прокрутке страницы они не мешают (P203).
             if !photos.isEmpty {
-                PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto)
+                PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto,
+                           drag: editable && photoLinks.count == photos.count
+                               ? { Diary.line(photoLinks[$0]) } : nil)
                     .background(Look.diaryBg)
             }
         }
@@ -215,7 +227,7 @@ struct DiaryPage: View {
                     editable: editable, caretToEnd: $caretToEnd,
                     startEditing: $toText,
                     onFocus: { if onFocusText() { caretToEnd = true } },
-                    grows: true, minHeight: 320)
+                    grows: true, minHeight: 320, resolve: resolve)
             .padding(.top, 16)
     }
 }

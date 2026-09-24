@@ -35,7 +35,7 @@ final class Archive: ObservableObject {
         var preview: String {
             text.split(separator: "\n", omittingEmptySubsequences: false)
                 .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
+                .filter { !$0.isEmpty && Diary.picture(in: $0) == nil }
                 .joined(separator: "\n")
         }
 
