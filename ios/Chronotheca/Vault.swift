@@ -603,17 +603,9 @@ final class Vault: ObservableObject {
         return .away
     }
 
-    /// Приложение пишет в UTF-8, но файл могли сохранить в другом месте —
-    /// в «Блокноте» на Windows или в TextEdit. Нечитаемая кодировка не
-    /// должна прятать запись: прежде такой файл объявлялся «ещё в облаке»
-    /// навсегда.
     private static func text(of url: URL) -> String? {
         guard let data = try? Data(contentsOf: url) else { return nil }
-        if let t = String(data: data, encoding: .utf8) { return t }
-        if data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF]) {
-            if let t = String(data: data, encoding: .utf16) { return t }
-        }
-        return String(data: data, encoding: .windowsCP1251)
+        return String(data: data, encoding: .utf8)
     }
 
     /// Текст файла для показа — там, где писать не будут: соседние
