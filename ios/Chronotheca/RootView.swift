@@ -184,6 +184,11 @@ struct RootView: View {
             if shell.drawer != nil { DetailsDrawer() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Шапка и нижние разделы лежат поверх страницы и прижимают её: обе
+        // бросают на неё тень. Так видно, что они сверху, а страница под
+        // ними — на любом экране (решение P192).
+        .overlay(alignment: .top) { Shade(down: true) }
+        .overlay(alignment: .bottom) { Shade(down: false) }
         .clipped()
     }
 
@@ -287,8 +292,12 @@ struct RootView: View {
         // До первой раскладки высота нулевая. Если поверить ей, плашки
         // окажутся на книге и мигнут при запуске — а ничто не должно
         // двигаться само (P113), — поэтому до измерения уводим их далеко.
+        //
+        // Сверх торца — ещё и его тень: стоящая за краем плашка не должна
+        // бросать тень на экран. Тень под шапкой рисуется нарочно, одна на
+        // все экраны (решение P192).
         let away = (edge == .top ? -1 : 1)
-            * (size.height > 0 ? size.height + BoardEdge.depth : 1200)
+            * (size.height > 0 ? size.height + BoardEdge.depth + BoardEdge.shade : 1200)
         return content()
             .frame(width: size.width, height: size.height)
             .background(Look.chrome)
@@ -416,5 +425,20 @@ struct TabBorder: Shape {
                  startAngle: .degrees(270), endAngle: .degrees(0), clockwise: false)
         p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
         return p
+    }
+}
+
+/// Тень, которую неподвижная полоса кладёт на страницу под собой.
+struct Shade: View {
+    /// Полоса сверху — тень идёт вниз; снизу — вверх.
+    let down: Bool
+
+    var body: some View {
+        LinearGradient(colors: [.black.opacity(0.13), .black.opacity(0)],
+                       startPoint: down ? .top : .bottom,
+                       endPoint: down ? .bottom : .top)
+            .frame(height: 12)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }

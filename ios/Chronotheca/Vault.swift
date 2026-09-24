@@ -53,6 +53,42 @@ final class Vault: ObservableObject {
     /// по нему папку действительно найти в «Файлах».
     var displayPath: String { root?.path.removingPercentEncoding ?? root?.path ?? "" }
 
+    /// Путь словами «Файлов»: «iCloud Drive › Chronotheca», «На iPhone ›
+    /// Chronotheca». Полный путь с «/private/var/mobile/…» ничего не говорит
+    /// человеку, а так папку находят, открыв «Файлы» (решение P190).
+    var friendlyPath: String { Vault.friendly(displayPath) }
+
+    static func friendly(_ path: String) -> String {
+        let places: [(String, String)] = [
+            ("/Mobile Documents/com~apple~CloudDocs", "iCloud Drive"),
+            ("/File Provider Storage", "На iPhone"),
+        ]
+        for (marker, name) in places {
+            if let r = path.range(of: marker) {
+                let tail = path[r.upperBound...].split(separator: "/").map(String.init)
+                return ([name] + tail).joined(separator: " › ")
+            }
+        }
+        // Папка другого приложения в iCloud: «…/Mobile Documents/iCloud~md~obsidian/…».
+        if let r = path.range(of: "/Mobile Documents/") {
+            let tail = path[r.upperBound...].split(separator: "/").dropFirst().map(String.init)
+            return (["iCloud Drive"] + tail).joined(separator: " › ")
+        }
+        let tail = path.split(separator: "/").suffix(2).map(String.init)
+        return tail.joined(separator: " › ")
+    }
+
+    /// Ссылка, которая открывает папку прямо в «Файлах».
+    ///
+    /// Держится на приёме, который Apple не описывала в бумагах, но который
+    /// работает давно. Перестанет — остаётся путь, показанный словами.
+    var filesLink: URL? {
+        guard let root else { return nil }
+        let path = root.path
+            .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? root.path
+        return URL(string: "shareddocuments://" + path)
+    }
+
     init() {
         if Vault.isPreview { usePreviewFolder() } else { restore() }
     }
@@ -563,9 +599,17 @@ final class Vault: ObservableObject {
         return .away
     }
 
+    /// Приложение пишет в UTF-8, но файл могли сохранить в другом месте —
+    /// в «Блокноте» на Windows или в TextEdit. Нечитаемая кодировка не
+    /// должна прятать запись: прежде такой файл объявлялся «ещё в облаке»
+    /// навсегда.
     private static func text(of url: URL) -> String? {
         guard let data = try? Data(contentsOf: url) else { return nil }
-        return String(data: data, encoding: .utf8)
+        if let t = String(data: data, encoding: .utf8) { return t }
+        if data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF]) {
+            if let t = String(data: data, encoding: .utf16) { return t }
+        }
+        return String(data: data, encoding: .windowsCP1251)
     }
 
     /// Текст файла для показа — там, где писать не будут: соседние

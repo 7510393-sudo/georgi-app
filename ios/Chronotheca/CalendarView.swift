@@ -31,6 +31,7 @@ struct CalendarView: View {
                 .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(Look.ink)
                 .frame(maxWidth: .infinity)
+                .padding(.top, DayPage.airAbove)
 
             HStack(spacing: 6) {
                 ForEach(Kind.allCases) { k in

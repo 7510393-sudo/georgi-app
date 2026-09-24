@@ -47,6 +47,16 @@ final class Archive: ObservableObject {
     @Published private(set) var days: [String: Day] = [:]
     @Published private(set) var scanning = false
 
+    /// Сколько файлов лежит в папке и сколько из них ещё не на телефоне.
+    /// Показывается в настройках: человек должен видеть, что записи на
+    /// месте, даже когда iCloud их пока не отдал.
+    @Published private(set) var files = 0
+    @Published private(set) var awayFiles = 0
+
+    /// Идёт ли докачка выгруженных файлов.
+    @Published private(set) var fetching = false
+    private var fetchRounds = 0
+
     private let vault: Vault
 
     init(vault: Vault) { self.vault = vault }
@@ -63,6 +73,8 @@ final class Archive: ObservableObject {
         guard let root = vault.root else { days = [:]; return }
         scanning = true
         var found: [String: Day] = [:]
+        var listed = 0
+        var away: [URL] = []
 
         for folder in [Vault.Folder.planner, .diary] {
             let base = root.appendingPathComponent(folder.rawValue)
@@ -87,8 +99,10 @@ final class Archive: ObservableObject {
                     let file = year.appendingPathComponent(name)
 
                     var day = found[stamp] ?? Day(stamp: stamp, date: date)
+                    listed += 1
                     let reading = Vault.reading(at: file, coordinated: false)
                     if reading == .away {
+                        away.append(file)
                         day.inCloud = true
                         found[stamp] = day
                         continue
@@ -110,6 +124,40 @@ final class Archive: ObservableObject {
         }
 
         days = found
+        files = listed
+        awayFiles = away.count
         scanning = false
+        if away.isEmpty { fetchRounds = 0 } else { fetch(away) }
+    }
+
+    /// Докачать выгруженные файлы и перечитать опись.
+    ///
+    /// iCloud убирает с телефона давние файлы, чтобы освободить место: в
+    /// папке они видны, а прочитать их напрямую нельзя. Раньше календарь и
+    /// поиск только просили iCloud скачать такой файл и больше к нему не
+    /// возвращались — старые записи так и стояли пустыми. Теперь каждый
+    /// файл читается через системного посредника: он дожидается, пока файл
+    /// придёт, — и опись собирается заново (решение P189).
+    ///
+    /// Идёт в стороне от экрана: докачка может длиться минутами, а
+    /// приложение в это время должно отвечать.
+    private func fetch(_ urls: [URL]) {
+        guard !fetching, fetchRounds < 5 else { return }
+        fetching = true
+        fetchRounds += 1
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            for url in urls {
+                var trouble: NSError?
+                NSFileCoordinator(filePresenter: nil)
+                    .coordinate(readingItemAt: url, options: [], error: &trouble) { real in
+                        _ = try? Data(contentsOf: real)
+                    }
+            }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.fetching = false
+                self.reload()
+            }
+        }
     }
 }

@@ -67,8 +67,6 @@ struct PlanRowLine: View {
     /// сходились со строками лишь приблизительно (решение P177).
     static let bellRise: CGFloat = 6
 
-    @State private var wobble: Double = -6
-
     /// Дело сейчас держат за номер.
     @State private var holding = false
 
@@ -94,7 +92,10 @@ struct PlanRowLine: View {
     /// Тяга за номер. Отклик в палец на взятии и на отпускании: рука
     /// узнаёт, что дело поднято, не глядя на экран.
     private var grab: some Gesture {
-        DragGesture(minimumDistance: 8)
+        // Ход пальца меряется по экрану, а не по самому номеру: номер едет
+        // вместе с делом, и мерка от него дёргала бы дело взад-вперёд —
+        // строка дрожала и мерцала на ходу (решение P195).
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
             .onChanged { сдвиг in
                 if !holding {
                     holding = true
@@ -119,24 +120,33 @@ struct PlanRowLine: View {
 
     // MARK: - Подрагивание номера
 
-    private func startWobble() {
-        wobble = -6
-        withAnimation(.easeInOut(duration: 0.13).repeatForever(autoreverses: true)) {
-            wobble = 6
-        }
-    }
-
-    /// Повторяющийся ход сам не гаснет: его надо снять мгновенным ходом, а
-    /// не просто задать новое значение. Иначе номера дрожали до тех пор,
-    /// пока страницу не перелистнут (решение P157).
-    private func stopWobble() {
-        withAnimation(.linear(duration: 0)) { wobble = 0 }
+    /// Наклон номера в эту минуту. Считается по часам, а не заводится
+    /// бесконечным ходом: заведённый ход не всегда гас, и номера дрожали и
+    /// после выхода из режима изменений. Вне режима наклон — ноль, и
+    /// часы стоят (решения P157, P195).
+    private func tilt(_ now: Date) -> Double {
+        guard editMode else { return 0 }
+        return 6 * sin(now.timeIntervalSinceReferenceDate * 2 * .pi / 0.26)
     }
 
     // MARK: - Части строки
 
     /// Номер в выпуклом квадратике: за него дело берут и переставляют.
     private var badge: some View {
+        TimelineView(.animation(paused: !editMode)) { clock in
+            face.rotationEffect(.degrees(tilt(clock.date)))
+        }
+        // Номер — рукоять, а не текст: касание по нему не должно
+        // ставить курсор в строку (решение P167).
+        .contentShape(Rectangle())
+        .onTapGesture { }
+        .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
+        // Тащат только за номер. Он для этого и дрожит: дрожит — значит
+        // его можно взять (решение P179).
+        .highPriorityGesture(editMode && onGrab != nil ? grab : nil)
+    }
+
+    private var face: some View {
         Text("\(number)")
             .font(Look.mono(14))
             .foregroundStyle(Look.inkSoft)
@@ -147,17 +157,6 @@ struct PlanRowLine: View {
                     radius: editMode ? 3 : 1, y: 1)
             // В режиме изменений квадратик подрагивает: видно, что дело
             // можно взять и переставить, и видно, что режим включён.
-            .rotationEffect(.degrees(editMode ? wobble : 0))
-            // Номер — рукоять, а не текст: касание по нему не должно
-            // ставить курсор в строку (решение P167).
-            .contentShape(Rectangle())
-            .onTapGesture { }
-            .onAppear { if editMode { startWobble() } }
-            .onChange(of: editMode) { _, on in on ? startWobble() : stopWobble() }
-            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
-            // Тащат только за номер. Он для этого и дрожит: дрожит — значит
-            // его можно взять (решение P179).
-            .highPriorityGesture(editMode && onGrab != nil ? grab : nil)
     }
 
     private var time: some View {
@@ -538,11 +537,10 @@ struct PlanView: View {
 
     /// «Ввод» в названии: ввод переходит к делу ниже.
     ///
-    /// Список заполняют подряд, и клавиша «Ввод» на то и клавиша ввода —
-    /// она уводит на строку ниже, а не убирает клавиатуру. Дело последнее и
-    /// названо — заводится следующее: человек набирает список, не отрывая
-    /// рук. Последнее и пустое — правка кончается, пустых дел не плодим
-    /// (решение P180).
+    /// Клавиша «Ввод» уводит на строку ниже, к следующему делу. У
+    /// последнего дела правка кончается: новое дело заводится только
+    /// плюсом. Дело, которое завелось само от «Ввода», — это движение
+    /// помимо воли человека (решение P193, уточняет P180).
     private func next(after id: UUID) {
         let дела = store.tasks
         guard let i = дела.firstIndex(where: { $0.id == id }) else { return }
@@ -550,8 +548,7 @@ struct PlanView: View {
             typingIn = дела[i + 1].id
             return
         }
-        guard !дела[i].text.isEmpty else { typingIn = nil; return }
-        add()
+        typingIn = nil
     }
 
     private func openRoller(_ id: UUID, _ kind: Shell.Roller.Kind) {

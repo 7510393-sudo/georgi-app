@@ -56,7 +56,7 @@ struct PlanTitle: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         // Старая раскладка текста, а не новая: только в ней можно дать
         // отдельный зазор после первой строки (P186).
-        let view = UITextView(usingTextLayoutManager: false)
+        let view = TitleView(usingTextLayoutManager: false)
         view.delegate = context.coordinator
         view.layoutManager.delegate = context.coordinator
         view.backgroundColor = .clear
@@ -80,6 +80,7 @@ struct PlanTitle: UIViewRepresentable {
 
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.parent = self
+        (view as? TitleView)?.indent = indent
         view.isEditable = editable
         view.isSelectable = editable
         apply(to: view)
@@ -133,6 +134,9 @@ struct PlanTitle: UIViewRepresentable {
     /// Переписать содержимое, не сдвинув курсор.
     private func apply(to view: UITextView) {
         let styled = NSAttributedString(string: shown, attributes: style)
+        // Оформление набора ставится всегда, даже когда текст не менялся:
+        // у пустого поля только по нему и видно, где начинать строку.
+        view.typingAttributes = style
         guard styled != view.attributedText else { return }
         let было = view.selectedRange
         view.attributedText = styled
@@ -186,5 +190,22 @@ struct PlanTitle: UIViewRepresentable {
             }
             return false
         }
+    }
+}
+
+/// Поле названия, у которого курсор пустой строки стоит там, где начнётся
+/// текст, а не под номером.
+///
+/// Пока в поле ни буквы, отступу первой строки не к чему приложиться, и
+/// курсор вставал у самого левого края — под номером, временем и
+/// колокольчиком. Человек заводил дело и не видел, где печатать
+/// (решение P193).
+final class TitleView: UITextView {
+    var indent: CGFloat = 0
+
+    override func caretRect(for position: UITextPosition) -> CGRect {
+        var r = super.caretRect(for: position)
+        if text.isEmpty, r.minX < indent { r.origin.x = indent }
+        return r
     }
 }

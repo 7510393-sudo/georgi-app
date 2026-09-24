@@ -141,7 +141,9 @@ struct DayPage: View {
                 .foregroundStyle(Look.inkSoft)
         }
         .padding(.horizontal, 6)
-        .padding(.top, 2)
+        // Над названием — воздух: когда под шапкой легла тень, название
+        // казалось прижатым к ней (решение P192).
+        .padding(.top, DayPage.airAbove)
         // Отступ до вкладок держит шапка, а не вкладки: тогда её нижний край
         // совпадает с верхним краем вкладки, и облачко уходит именно за
         // вкладку, а не за пустую полоску над ней.
@@ -231,6 +233,10 @@ struct DayPage: View {
         default: return step < 0 ? "прошлое" : "будущее"
         }
     }
+
+    /// Воздух над названием экрана. Один на всех трёх экранах, чтобы
+    /// название не прыгало по высоте при переходе между ними.
+    static let airAbove: CGFloat = 12
 
     static func title(for date: Date) -> String {
         let n = Calendar.current.dateComponents([.day], from: DayStore.today(), to: date).day ?? 0

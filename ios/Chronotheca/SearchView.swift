@@ -26,6 +26,7 @@ struct SearchView: View {
                 .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(Look.ink)
                 .frame(maxWidth: .infinity)
+                .padding(.top, DayPage.airAbove)
                 .padding(.bottom, 10)
             field
             if archive.newestFirst.isEmpty {

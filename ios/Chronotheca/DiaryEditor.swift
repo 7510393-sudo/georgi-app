@@ -83,7 +83,11 @@ struct DiaryEditor: UIViewRepresentable {
         view.isEditable = editable
         view.isSelectable = editable
 
-        if view.text != text || view.attributedText.length == 0 {
+        // Поле сверяется с записью без знаков-заместителей. Пока идёт
+        // диктовка, система держит в поле свой временный знак; переписать
+        // из-за него поле — вырвать знак у неё из рук, и он остаётся в
+        // тексте «OBJ» (решение P197).
+        if DiaryEditor.clean(view.text) != text || view.attributedText.length == 0 {
             let selection = view.selectedRange
             view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped)
             view.typingAttributes = Self.body(size, serif: serif)
@@ -221,7 +225,36 @@ struct DiaryEditor: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in self?.makeRoom(scroll: true) }
         }
 
-        func textViewDidEndEditing(_ view: UITextView) { makeRoom(scroll: false) }
+        func textViewDidEndEditing(_ view: UITextView) {
+            scrub()
+            makeRoom(scroll: false)
+        }
+
+        /// Вычистить из поля знаки-заместители, оставив курсор на месте.
+        ///
+        /// Зовётся, когда поле отпускает ввод: диктовка к этому времени
+        /// кончилась, и поле снова принадлежит нам (решение P197).
+        func scrub() {
+            guard let view else { return }
+            let ns = view.text as NSString
+            let знак = String(DiaryEditor.placeholder) as NSString
+            var где = ns.range(of: знак as String, options: .backwards)
+            guard где.location != NSNotFound else { return }
+            var курсор = view.selectedRange
+            view.textStorage.beginEditing()
+            while где.location != NSNotFound {
+                view.textStorage.deleteCharacters(in: где)
+                if где.location < курсор.location { курсор.location -= где.length }
+                где = (view.text as NSString).range(
+                    of: знак as String, options: .backwards,
+                    range: NSRange(location: 0, length: где.location))
+            }
+            view.textStorage.endEditing()
+            view.selectedRange = NSRange(
+                location: min(курсор.location, (view.text as NSString).length), length: 0)
+            parent.text = view.text
+            restyle(view)
+        }
 
         // MARK: - Клавиатура
 
@@ -335,14 +368,36 @@ struct DiaryEditor: UIViewRepresentable {
         }
 
         /// Перекрасить отметки времени, не сдвинув курсор.
+        ///
+        /// Краска кладётся на тот же текст, а не заменяет его новым: замена
+        /// выдёргивала у диктовки её временный знак, и в записи оставалось
+        /// «OBJ» (решение P197). Заодно курсор и выделение не трогаются.
         func restyle(_ view: UITextView) {
-            let selection = view.selectedRange
-            let styled = DiaryEditor.styled(view.text, size: parent.size,
-                                            serif: parent.serif, stamped: parent.stamped)
-            guard styled != view.attributedText else { return }
-            view.attributedText = styled
-            view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
-            view.selectedRange = selection
+            let text = view.text ?? ""
+            let ns = text as NSString
+            let всё = NSRange(location: 0, length: ns.length)
+            let body = DiaryEditor.body(parent.size, serif: parent.serif)
+            let storage = view.textStorage
+            storage.beginEditing()
+            storage.addAttributes(body, range: всё)
+            // Отметка ищется в начале каждой строки — так же, как при
+            // первой раскраске поля.
+            var start = 0
+            while parent.stamped, start < ns.length {
+                let line = ns.lineRange(for: NSRange(location: start, length: 0))
+                if let m = DiaryEditor.stamp.firstMatch(in: text, range: line),
+                   m.numberOfRanges > 1 {
+                    storage.addAttributes([
+                        .font: UIFont.monospacedSystemFont(ofSize: parent.size * 0.84,
+                                                           weight: .regular),
+                        .foregroundColor: UIColor(Look.inkFaint),
+                    ], range: m.range(at: 1))
+                }
+                guard line.length > 0 else { break }
+                start = line.location + line.length
+            }
+            storage.endEditing()
+            view.typingAttributes = body
         }
     }
 }

@@ -112,6 +112,10 @@ struct SettingsSticker: View {
         Sticker(side: .leading, title: "Настройки",
                 paper: Look.note, edge: Look.noteEdge, width: 300, close: close) {
             place
+            StickerItem(title: "Открыть папку в «Файлах»", edge: Look.noteEdge) {
+                close()
+                if let link = vault.filesLink { openURL(link) }
+            }
             StickerItem(title: "Писать в другое место", edge: Look.noteEdge) {
                 close()
                 shell.picking = true
@@ -133,27 +137,49 @@ struct SettingsSticker: View {
 
     @State private var undone = false
 
+    @EnvironmentObject private var archive: Archive
+    @Environment(\.openURL) private var openURL
+
+    /// Где лежат записи и сколько их — словами «Файлов», а полный путь
+    /// мелко под ним. Число файлов отвечает на главный вопрос «мои записи
+    /// на месте?», даже когда iCloud их ещё не отдал (решения P189, P190).
     private var place: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("ЗАПИСИ ЛЕЖАТ ЗДЕСЬ")
                 .font(Look.sans(9))
                 .tracking(0.6)
                 .foregroundStyle(Look.inkFaint)
-            Text(vault.displayPath)
-                .font(.system(size: 10.5, design: .monospaced))
+            Text(vault.friendlyPath)
+                .font(Look.sans(14, weight: .medium))
+                .foregroundStyle(Look.ink)
+                .lineLimit(3)
+            Text(count)
+                .font(Look.sans(11.5))
                 .foregroundStyle(Look.inkSoft)
+            Text(vault.displayPath)
+                .font(.system(size: 9.5, design: .monospaced))
+                .foregroundStyle(Look.inkFaint)
                 .textSelection(.enabled)
                 .lineLimit(4)
+                .padding(.top, 3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
     }
 
+    private var count: String {
+        var out = "Файлов с записями: \(archive.files)"
+        if archive.awayFiles > 0 {
+            out += " · ещё в iCloud: \(archive.awayFiles)"
+            out += archive.fetching ? ", скачиваются" : ""
+        }
+        return out
+    }
+
     private var missing: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Вложения: фото, аудио, файлы, геоточка")
-            Text("Перенос записей при смене места")
             Text("Напоминания на телефон")
             Text("Замок и ночной вид")
         }
@@ -217,6 +243,8 @@ struct RollerSheet: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
     @State private var picked = Date()
+    /// Готовый ответ, нажатый последним.
+    @State private var chosen: String?
 
     private var isBell: Bool { roller.kind == .bell }
 
@@ -289,10 +317,21 @@ struct RollerSheet: View {
 
     /// Готовый ответ. Бледный и неотзывчивый, когда считать не от чего:
     /// у дела ещё нет времени, и «за час до» не от чего отсчитать.
+    ///
+    /// Первое нажатие ставит ролик на это время — можно подкрутить.
+    /// Второе нажатие на тот же ответ, пока ролик стоит на нём, значит
+    /// «вот это и надо»: время записывается, и ролик закрывается сам
+    /// (решение P194).
     private func preset(_ title: String, _ value: Date?) -> some View {
         let ready = value != nil
         return Button {
-            if let value { set(value) }
+            guard let value else { return }
+            if chosen == title, picked == Clock.snap(value) {
+                apply(Clock.text(picked))
+                return
+            }
+            chosen = title
+            set(value)
         } label: {
             Text(title)
                 .font(Look.sans(13))
@@ -595,6 +634,22 @@ struct WelcomeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
+            // Первые шаги по порядку. Системное окно выбора папки незнакомо
+            // многим, и без подсказки человек не знает, куда в нём нажать
+            // (решение P190).
+            VStack(alignment: .leading, spacing: 8) {
+                step(1, "Нажмите «Выбрать место».")
+                step(2, "В окне выберите «iCloud Drive» — записи будут и на Маке. "
+                        + "Или «На iPhone» — только на этом телефоне.")
+                step(3, "Нажмите «Открыть» вверху справа. Приложение предложит "
+                        + "завести там папку «\(Vault.folderName)».")
+                step(4, "Уже есть папка с записями — зайдите в неё и нажмите "
+                        + "«Открыть»: приложение узнает свой архив.")
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Button("Выбрать место") { shell.picking = true }
                 .buttonStyle(.borderedProminent)
 
@@ -606,5 +661,12 @@ struct WelcomeView: View {
             }
         }
         .padding(32)
+    }
+
+    private func step(_ n: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(n)").monospacedDigit().fontWeight(.semibold)
+            Text(text).fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
