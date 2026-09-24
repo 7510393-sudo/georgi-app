@@ -62,6 +62,20 @@ final class StorageSafetyTests: XCTestCase {
 
     // MARK: - Беда 1: файл ещё в iCloud (P182)
 
+    func testЧитаемыйФайлВсегдаЧитается() {
+        // Сборка 58: приложение сперва спрашивало iCloud, скачан ли файл,
+        // и на телефоне все дни разом объявились «ещё в облаке» — записи
+        // пропали с экрана. Файл, который читается, должен читаться всегда,
+        // что бы ни думало о нём облако (решение P187).
+        let текст = "- [ ] дело\n"
+        put(текст, at: planURL())
+        XCTAssertEqual(Vault.reading(at: planURL()), .text(текст))
+        XCTAssertEqual(Vault.reading(at: planURL(), coordinated: false), .text(текст))
+        let день = DayStore(vault: vault, date: today)
+        XCTAssertTrue(день.away.isEmpty, "прочитанный день объявлен недоступным")
+        XCTAssertEqual(день.tasks.map(\.text), ["дело"])
+    }
+
     func testНескачанныйФайлНеПринимаетсяЗаПустой() {
         putStub(for: planURL())
         XCTAssertEqual(vault.reading(.planner, for: today), .away,

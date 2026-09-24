@@ -71,10 +71,7 @@ final class Archive: ObservableObject {
 
             for year in years {
                 guard let files = try? FileManager.default.contentsOfDirectory(
-                        at: year,
-                        includingPropertiesForKeys: [.isUbiquitousItemKey,
-                                                     .ubiquitousItemDownloadingStatusKey])
-                else { continue }
+                        at: year, includingPropertiesForKeys: nil) else { continue }
 
                 for listed in files {
                     // Выгруженный в iCloud файл лежит невидимой заглушкой
@@ -87,10 +84,7 @@ final class Archive: ObservableObject {
                     guard name.hasSuffix(".md") else { continue }
                     let stamp = String(name.dropLast(".md".count))
                     guard let date = Vault.date(from: stamp) else { continue }
-                    // Настоящий файл — тот самый адрес из описи: сведения о
-                    // скачанности к нему уже приложены, второй раз не спрашиваем.
-                    let file = name == listed.lastPathComponent
-                        ? listed : year.appendingPathComponent(name)
+                    let file = year.appendingPathComponent(name)
 
                     var day = found[stamp] ?? Day(stamp: stamp, date: date)
                     let reading = Vault.reading(at: file, coordinated: false)

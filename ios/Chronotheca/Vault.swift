@@ -522,9 +522,19 @@ final class Vault: ObservableObject {
 
     /// Прочитать файл, не приняв недоступный за пустой.
     ///
-    /// `coordinated` — читать через системного посредника для общих файлов:
-    /// он не даёт прочитать файл посреди чужой записи. Для одного дня это
-    /// правильно; для описи всего архива дорого, и там читается напрямую.
+    /// Порядок важен, и он выучен на ошибке. В сборке 58 приложение сперва
+    /// спрашивало у iCloud, скачан ли файл, и только потом читало. На
+    /// телефоне с папкой в iCloud Drive этот вопрос не получал внятного
+    /// ответа — и все дни разом объявлялись «ещё в облаке»: записи пропали
+    /// с экрана, хотя лежали на месте (решение P187).
+    ///
+    /// Теперь сперва читаем так, как читали всегда, — напрямую; это
+    /// проверено на телефоне. Не вышло — через системного посредника, он
+    /// умеет дождаться чужой записи. Не вышло и так — файл есть, но не
+    /// читается: просим iCloud его скачать и писать поверх не даём.
+    ///
+    /// `coordinated` — пробовать ли посредника. Для одного дня да; для описи
+    /// всего архива дорого.
     static func reading(at url: URL, coordinated: Bool = true) -> Reading {
         let fm = FileManager.default
         // Старый способ iCloud: вместо выгруженного файла лежит невидимая
@@ -536,40 +546,26 @@ final class Vault: ObservableObject {
             try? fm.startDownloadingUbiquitousItem(at: url)
             return .away
         }
-        // Новый способ: файл на месте, но без содержимого. Спрашиваем у
-        // системы, скачан ли он, и если нет — просим скачать, а не читаем.
-        let keys: Set<URLResourceKey> = [.isUbiquitousItemKey,
-                                         .ubiquitousItemDownloadingStatusKey]
-        if let v = try? url.resourceValues(forKeys: keys), v.isUbiquitousItem == true {
-            switch v.ubiquitousItemDownloadingStatus {
-            case .current?:
-                break
-            case .downloaded?:
-                // Копия на телефоне есть, но, может быть, не последняя.
-                // Читаем её — без сети человек должен писать, — а свежую
-                // просим скачать; когда придёт, день перечитается.
-                try? fm.startDownloadingUbiquitousItem(at: url)
-            default:
-                try? fm.startDownloadingUbiquitousItem(at: url)
-                return .away
-            }
-        }
 
-        var got = Reading.away
-        let take = { (real: URL) in
-            if let data = try? Data(contentsOf: real),
-               let text = String(data: data, encoding: .utf8) {
-                got = .text(text)
-            }
-        }
+        if let text = text(of: url) { return .text(text) }
+
         if coordinated {
+            var got: String?
             var trouble: NSError?
             NSFileCoordinator(filePresenter: nil)
-                .coordinate(readingItemAt: url, options: [], error: &trouble, byAccessor: take)
-        } else {
-            take(url)
+                .coordinate(readingItemAt: url, options: [], error: &trouble) { real in
+                    got = text(of: real)
+                }
+            if let got { return .text(got) }
         }
-        return got
+
+        try? fm.startDownloadingUbiquitousItem(at: url)
+        return .away
+    }
+
+    private static func text(of url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
     /// Текст файла для показа — там, где писать не будут: соседние
@@ -588,17 +584,27 @@ final class Vault: ObservableObject {
     /// Возвращает описание беды или `nil`, если всё записалось.
     @discardableResult
     static func write(_ text: String, to url: URL) -> String? {
+        let data = Data(text.utf8)
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
-            var failure: Error?
-            var trouble: NSError?
-            NSFileCoordinator(filePresenter: nil)
-                .coordinate(writingItemAt: url, options: .forReplacing, error: &trouble) { real in
-                    do { try Data(text.utf8).write(to: real, options: .atomic) }
-                    catch { failure = error }
-                }
-            if let e = trouble ?? failure { throw e }
+        } catch {
+            return error.localizedDescription
+        }
+        var wrote = false
+        var failure: Error?
+        var trouble: NSError?
+        NSFileCoordinator(filePresenter: nil)
+            .coordinate(writingItemAt: url, options: .forReplacing, error: &trouble) { real in
+                do { try data.write(to: real, options: .atomic); wrote = true }
+                catch { failure = error }
+            }
+        if wrote { return nil }
+        if let failure { return failure.localizedDescription }
+        // Посредник отказал, не дав даже попробовать, — пишем напрямую, как
+        // писали всегда: запись дня важнее вежливости к iCloud (P187).
+        do {
+            try data.write(to: url, options: .atomic)
             return nil
         } catch {
             return error.localizedDescription
