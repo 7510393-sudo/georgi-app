@@ -126,26 +126,67 @@ struct PhotoThumb: View {
     }
 }
 
-/// Фотографии дня на странице дневника: сетка по четыре в ряд.
+/// Фотографии дня — полоска внизу страницы, над кнопками вложений, как в
+/// Diarium. У плана и у дневника она своя (решение P203).
 ///
-/// Сетка, а не лента вбок: движение пальца вбок листает день, и лента
-/// перехватывала бы его.
-struct PhotoGrid: View {
+/// Полоска не прокручивается вбок: движение пальца вбок листает день.
+/// Сколько не поместилось — показывает последняя клетка «+N»; касание по
+/// ней открывает первый из не поместившихся снимков.
+///
+/// В режиме изменений превью подсвечены — видно, что их можно взять.
+struct PhotoStrip: View {
 
     let photos: [URL?]
+    var glowing = false
     var onOpen: ((Int) -> Void)?
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    static let side: CGFloat = 54
+    private let gap: CGFloat = 8
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 6) {
-            ForEach(Array(photos.enumerated()), id: \.offset) { i, url in
-                PhotoThumb(url: url)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onOpen?(i) }
-                    .accessibilityLabel("Фотография \(i + 1)")
+        GeometryReader { geo in
+            let fits = max(1, Int((geo.size.width + gap) / (Self.side + gap)))
+            let shown = photos.count > fits ? fits - 1 : photos.count
+            HStack(spacing: gap) {
+                ForEach(0..<shown, id: \.self) { i in
+                    cell(i)
+                }
+                if photos.count > shown {
+                    more(photos.count - shown, from: shown)
+                }
+                Spacer(minLength: 0)
             }
         }
+        .frame(height: Self.side)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    private func cell(_ i: Int) -> some View {
+        PhotoThumb(url: photos[i])
+            .frame(width: Self.side, height: Self.side)
+            .overlay {
+                if glowing {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(Look.glow, lineWidth: 2)
+                }
+            }
+            .shadow(color: glowing ? Look.glow.opacity(0.8) : .clear, radius: 6)
+            .contentShape(Rectangle())
+            .onTapGesture { onOpen?(i) }
+            .accessibilityLabel("Фотография \(i + 1)")
+    }
+
+    private func more(_ n: Int, from i: Int) -> some View {
+        Text("+\(n)")
+            .font(Look.sans(14, weight: .medium))
+            .foregroundStyle(Look.inkSoft)
+            .frame(width: Self.side, height: Self.side)
+            .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
+            .contentShape(Rectangle())
+            .onTapGesture { onOpen?(i) }
+            .accessibilityLabel("Ещё фотографий: \(n)")
     }
 }
 

@@ -125,6 +125,37 @@ enum Plan {
         return (0...23).contains(h) && (0...59).contains(m)
     }
 
+    // MARK: - Фотографии
+
+    /// Отделить фотографии, стоящие в конце плана, от строк плана.
+    ///
+    /// Фотографии плана и дневника разные: снимок, положенный в план,
+    /// лежит в файле плана и показывается на странице плана (решение P203).
+    static func splitPhotos(_ rows: [PlanRow]) -> (rows: [PlanRow], photos: [String]) {
+        var rows = rows
+        var photos: [String] = []
+        while let last = rows.last, let line = last.verbatim {
+            if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                rows.removeLast()
+            } else if let link = Diary.picture(in: line) {
+                photos.insert(link, at: 0)
+                rows.removeLast()
+            } else {
+                break
+            }
+        }
+        guard !photos.isEmpty else { return (rows, []) }
+        return (rows, photos)
+    }
+
+    /// План вместе с фотографиями в конце.
+    static func body(from rows: [PlanRow], photos: [String]) -> String {
+        let plan = body(from: rows)
+        guard !photos.isEmpty else { return plan }
+        let lines = photos.map(Diary.line).joined(separator: "\n")
+        return plan.isEmpty ? lines : plan + "\n\n" + lines
+    }
+
     // MARK: - Сборка
 
     static func body(from rows: [PlanRow]) -> String {

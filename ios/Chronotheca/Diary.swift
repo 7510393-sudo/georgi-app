@@ -79,30 +79,44 @@ struct Diary: Equatable {
             lines.joined(separator: "\n").trimmingCharacters(in: .newlines))
     }
 
-    private static let picture = try! NSRegularExpression(
+    private static let pictureLine = try! NSRegularExpression(
         pattern: #"^\s*!\[[^\]]*\]\((.+)\)\s*$"#)
 
-    /// Отделить строки-фотографии от текста.
+    /// Ссылка на картинку, если строка — только она и ничего больше.
     ///
-    /// Берутся только строки, в которых нет ничего, кроме ссылки на
-    /// картинку: ссылка посреди фразы — часть того, что человек написал.
+    /// Ссылка посреди фразы — часть того, что человек написал, и картинкой
+    /// не считается.
+    static func picture(in line: String) -> String? {
+        let ns = line as NSString
+        guard let m = pictureLine.firstMatch(in: line, range: NSRange(location: 0, length: ns.length))
+        else { return nil }
+        var link = ns.substring(with: m.range(at: 1))
+        if link.hasPrefix("<"), link.hasSuffix(">") {
+            link = String(link.dropFirst().dropLast())
+        }
+        return link
+    }
+
+    /// Отделить фотографии, стоящие в конце записи, от текста.
+    ///
+    /// Конец записи — это полоска внизу страницы. Фотография, которую
+    /// человек поставил посреди текста, остаётся в тексте на своём месте:
+    /// там её и рисует поле записи (решение P203).
     static func split(_ text: String) -> (text: String, photos: [String]) {
-        var kept: [String] = []
+        var lines = text.components(separatedBy: "\n")
         var photos: [String] = []
-        for line in text.components(separatedBy: "\n") {
-            let ns = line as NSString
-            if let m = picture.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) {
-                var link = ns.substring(with: m.range(at: 1))
-                if link.hasPrefix("<"), link.hasSuffix(">") {
-                    link = String(link.dropFirst().dropLast())
-                }
-                photos.append(link)
+        while let last = lines.last {
+            if last.trimmingCharacters(in: .whitespaces).isEmpty {
+                lines.removeLast()
+            } else if let link = picture(in: last) {
+                photos.insert(link, at: 0)
+                lines.removeLast()
             } else {
-                kept.append(line)
+                break
             }
         }
         guard !photos.isEmpty else { return (text, []) }
-        return (kept.joined(separator: "\n").trimmingCharacters(in: .newlines), photos)
+        return (lines.joined(separator: "\n").trimmingCharacters(in: .newlines), photos)
     }
 
     /// Строка-фотография для файла. Путь с пробелом берётся в угловые

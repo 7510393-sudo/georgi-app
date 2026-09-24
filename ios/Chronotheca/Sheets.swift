@@ -120,11 +120,19 @@ struct SettingsSticker: View {
                 close()
                 shell.picking = true
             }
-            if vault.previousPath != nil {
+            if let before = vault.previousFriendly {
                 StickerItem(title: "Вернуться к прежней папке", edge: Look.noteEdge) {
                     close()
                     vault.goBack()
                 }
+                // Куда именно вернёмся — видно до нажатия, а не после.
+                Text(before)
+                    .font(Look.sans(11.5))
+                    .foregroundStyle(Look.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.top, -4)
+                    .padding(.bottom, 9)
             }
             StickerItem(title: "Чего ещё нет", note: undone ? "▾" : "▸",
                         edge: Look.noteEdge) {
@@ -156,6 +164,17 @@ struct SettingsSticker: View {
             Text(count)
                 .font(Look.sans(11.5))
                 .foregroundStyle(Look.inkSoft)
+            if let parent = vault.nestedIn {
+                Text("Похоже, это папка внутри архива, а не сам архив. Прежние "
+                     + "записи, скорее всего, лежат уровнем выше — в «\(parent)». "
+                     + "Нажмите «Писать в другое место» и выберите саму «\(parent)»: "
+                     + "приложение узнает архив и предложит перенести туда то, "
+                     + "что записано здесь.")
+                    .font(Look.sans(11.5))
+                    .foregroundStyle(Color.red.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+            }
             Text(vault.displayPath)
                 .font(.system(size: 9.5, design: .monospaced))
                 .foregroundStyle(Look.inkFaint)

@@ -58,6 +58,17 @@ final class Vault: ObservableObject {
     /// человеку, а так папку находят, открыв «Файлы» (решение P190).
     var friendlyPath: String { Vault.friendly(displayPath) }
 
+    /// Записи пишутся в папку, названную как наша подпапка, — «Видео»,
+    /// «Дневник». Почти наверняка это промах на ступеньку: архив лежит
+    /// уровнем выше. Возвращает имя папки уровнем выше (P201).
+    var nestedIn: String? {
+        guard let root, Folder(rawValue: root.lastPathComponent) != nil else { return nil }
+        return root.deletingLastPathComponent().lastPathComponent
+    }
+
+    /// Прежнее место словами «Файлов».
+    var previousFriendly: String? { previousPath.map(Vault.friendly) }
+
     static func friendly(_ path: String) -> String {
         let places: [(String, String)] = [
             ("/Mobile Documents/com~apple~CloudDocs", "iCloud Drive"),
@@ -262,6 +273,13 @@ final class Vault: ObservableObject {
     /// важнее всего: человек, ищущий свою папку, легко заходит внутрь неё, и
     /// завести там второй архив — значит разорвать записи надвое.
     private func findVault(from url: URL) -> URL? {
+        // Выбрали папку, названную как наша подпапка — «Видео», «Дневник», —
+        // а уровнем выше лежит архив: значит, промахнулись на ступеньку.
+        // Так 24.09 записи оказались в «Хронотека › Видео» (решение P201).
+        if Folder(rawValue: url.lastPathComponent) != nil {
+            let parent = url.deletingLastPathComponent()
+            if isOurs(parent) { return parent }
+        }
         if isOurs(url) { return url }
 
         let nested = url.appendingPathComponent(Vault.folderName)
@@ -383,6 +401,9 @@ final class Vault: ObservableObject {
         guard let data = UserDefaults.standard.data(forKey: Vault.previousBookmarkKey) else {
             return
         }
+        // Записи, сделанные на нынешнем месте, не бросаются: как и при
+        // выборе новой папки, человеку предложат взять их с собой (P201).
+        let before = root.map { (root: $0, records: Transfer.records(in: $0)) }
         var stale = false
         do {
             let url = try URL(resolvingBookmarkData: data, options: [],
@@ -393,6 +414,7 @@ final class Vault: ObservableObject {
             }
             let subpath = UserDefaults.standard.string(forKey: Vault.previousSubpathKey) ?? ""
             let target = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
+            leaving = before
             use(granted: url, target: target)
         } catch {
             problem = error.localizedDescription
@@ -474,6 +496,14 @@ final class Vault: ObservableObject {
         let fm = FileManager.default
         if fm.fileExists(atPath: url.appendingPathComponent(Vault.markerPath).path) {
             return true
+        }
+        // Метка могла уйти в iCloud или потеряться при копировании. Тогда
+        // архив узнаётся по самим записям: в «Дневнике» или «Планировщике»
+        // лежат папки по годам (P201).
+        for folder in [Folder.diary, .planner] {
+            let years = (try? fm.contentsOfDirectory(
+                atPath: url.appendingPathComponent(folder.rawValue).path)) ?? []
+            if years.contains(where: { $0.count == 4 && Int($0) != nil }) { return true }
         }
         return Folder.allCases.allSatisfy {
             fm.fileExists(atPath: url.appendingPathComponent($0.rawValue).path)

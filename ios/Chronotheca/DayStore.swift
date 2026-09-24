@@ -73,6 +73,8 @@ final class DayStore: ObservableObject {
     @Published var answers: [String: String] = [:]
     /// Ссылки на фотографии дня, как они записаны в файле (P200).
     @Published var photos: [String] = []
+    /// Фотографии плана — свои, отдельно от дневника (P203).
+    @Published var planPhotos: [String] = []
 
     /// Когда дневник правили в последний раз. Лежит в шапке файла, чтобы
     /// отметка времени вела себя одинаково и после перезапуска приложения.
@@ -175,28 +177,45 @@ final class DayStore: ObservableObject {
 
     func touchDiary() { lastEdit = Date() }
 
-    /// Положить фотографию в папку и сослаться на неё из записи дня.
+    /// Положить фотографию в папку и сослаться на неё из файла дня — плана
+    /// или дневника, смотря на какой вкладке её положили.
     ///
-    /// Фотография — часть дневника, поэтому и правила у неё дневниковые:
-    /// в будущий день и в день, который ещё не скачан из iCloud, её не
-    /// положить (P182, P200).
+    /// Правила те же, что у правки вкладки: в закрытый день, в будущий
+    /// дневник и в день, который ещё не скачан из iCloud, её не положить
+    /// (P182, P200, P203).
     @discardableResult
-    func addPhoto(_ data: Data) -> Bool {
-        guard canEditDiary, let link = vault.addPhoto(data, for: date) else { return false }
-        photos.append(link)
-        touchDiary()
+    func addPhoto(_ data: Data, to tab: Shell.Tab) -> Bool {
+        guard canEdit(tab), let link = vault.addPhoto(data, for: date) else { return false }
+        switch tab {
+        case .diary:
+            photos.append(link)
+            touchDiary()
+        case .plan:
+            planPhotos.append(link)
+        }
         save()
         return true
     }
 
-    /// Убрать фотографию из записи. Файл остаётся в папке: удалять файлы
-    /// человека приложение не берётся — это делают в «Файлах».
-    func removePhoto(at index: Int) {
-        guard canEditDiary, photos.indices.contains(index) else { return }
-        photos.remove(at: index)
-        touchDiary()
+    /// Убрать фотографию из файла дня. Сам снимок остаётся в папке:
+    /// удалять файлы человека приложение не берётся — это делают в «Файлах».
+    func removePhoto(at index: Int, from tab: Shell.Tab) {
+        guard canEdit(tab) else { return }
+        switch tab {
+        case .diary:
+            guard photos.indices.contains(index) else { return }
+            photos.remove(at: index)
+            touchDiary()
+        case .plan:
+            guard planPhotos.indices.contains(index) else { return }
+            planPhotos.remove(at: index)
+        }
         save()
     }
+
+    func links(_ tab: Shell.Tab) -> [String] { tab == .diary ? photos : planPhotos }
+
+    func canEdit(_ tab: Shell.Tab) -> Bool { tab == .diary ? canEditDiary : canEditPlan }
 
     /// Где лежит фотография дня.
     func photoURL(_ link: String) -> URL? { vault.mediaURL(link, for: date) }
@@ -218,7 +237,7 @@ final class DayStore: ObservableObject {
         if diaryFile == .away { gone.insert(.diary) }
         away = gone
 
-        planRows = Plan.rows(from: DayFile(text: plan.text).body)
+        (planRows, planPhotos) = Plan.splitPhotos(Plan.rows(from: DayFile(text: plan.text).body))
 
         let file = DayFile(text: diaryFile.text)
         // План читается первым, поэтому названия дел уже известны — по ним
@@ -296,7 +315,7 @@ final class DayStore: ObservableObject {
 
     /// План дня таким, каким он ляжет в файл.
     private func planFile() -> DayFile {
-        var plan = DayFile(body: Plan.body(from: planRows))
+        var plan = DayFile(body: Plan.body(from: planRows, photos: planPhotos))
         plan.set("дата", Vault.stamp(date))
         return plan
     }

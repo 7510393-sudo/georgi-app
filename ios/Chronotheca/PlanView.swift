@@ -311,6 +311,11 @@ struct PlanScaffold<Content: View>: View {
     /// Строка, в которую сейчас пишут: её и надо держать на виду.
     var watching: UUID?
 
+    /// Фотографии плана — полоской внизу страницы (P203).
+    var photos: [URL?] = []
+    var glowing = false
+    var onOpenPhoto: ((Int) -> Void)?
+
     @ViewBuilder let content: () -> Content
 
     @State private var keyboard: CGFloat = 0
@@ -335,6 +340,9 @@ struct PlanScaffold<Content: View>: View {
             // Ход плавный и один: без него страница дёргалась, потому что
             // клавиатура и содержимое ехали вразнобой.
             .animation(.easeOut(duration: 0.25), value: keyboard)
+            if !photos.isEmpty {
+                PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto)
+            }
         }
         .keyboardHeight($keyboard)
     }
@@ -408,7 +416,10 @@ struct PlanView: View {
         VStack(spacing: 0) {
             if store.editing { banner }
             PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
-                         add: add, watching: typingIn) {
+                         add: add, watching: typingIn,
+                         photos: store.planPhotos.map(store.photoURL),
+                         glowing: store.editing,
+                         onOpenPhoto: { shell.openedPhoto = .init(tab: .plan, index: $0) }) {
                 if store.tasks.isEmpty {
                     PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
                 } else {

@@ -22,7 +22,8 @@ struct DiaryView: View {
             editable: store.canEditDiary,
             inCloud: store.away.contains(.diary),
             photos: store.photos.map(store.photoURL),
-            onOpenPhoto: { opened = OpenedPhoto(index: $0) },
+            glowing: store.editing,
+            onOpenPhoto: { shell.openedPhoto = .init(tab: .diary, index: $0) },
             onFocusText: { store.stampIfNeeded() })
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
@@ -30,25 +31,6 @@ struct DiaryView: View {
             store.touchDiary()
             store.scheduleSave()
         }
-        .fullScreenCover(item: $opened) { photo in
-            PhotoViewer(
-                url: store.photos.indices.contains(photo.index)
-                    ? store.photoURL(store.photos[photo.index]) : nil,
-                onRemove: store.canEditDiary ? {
-                    store.removePhoto(at: photo.index)
-                    opened = nil
-                    shell.say("Фотография убрана из записи. Файл остался в папке «Фотографии».")
-                } : nil,
-                close: { opened = nil })
-        }
-    }
-
-    /// Фотография, открытая во весь экран.
-    @State private var opened: OpenedPhoto?
-
-    struct OpenedPhoto: Identifiable {
-        let index: Int
-        var id: Int { index }
     }
 }
 
@@ -70,6 +52,8 @@ struct DiaryPage: View {
     var inCloud = false
     /// Фотографии дня. Стоят над текстом, под заголовком (P200).
     var photos: [URL?] = []
+    /// Режим изменений: превью подсвечены, их можно взять (P203).
+    var glowing = false
     var onOpenPhoto: ((Int) -> Void)?
     /// Возвращает `true`, если приложение поставило отметку времени: тогда
     /// курсор переезжает за неё.
@@ -93,6 +77,18 @@ struct DiaryPage: View {
     private let size = DiaryView.size
 
     var body: some View {
+        VStack(spacing: 0) {
+            page
+            // Фотографии дневника — полоской внизу, над кнопками вложений,
+            // как в Diarium; прокрутке страницы они не мешают (P203).
+            if !photos.isEmpty {
+                PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto)
+                    .background(Look.diaryBg)
+            }
+        }
+    }
+
+    private var page: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if inCloud {
@@ -103,10 +99,6 @@ struct DiaryPage: View {
                 }
                 if !asked.isEmpty { askBlock }
                 titleField
-                if !photos.isEmpty {
-                    PhotoGrid(photos: photos, onOpen: onOpenPhoto)
-                        .padding(.top, 12)
-                }
                 textField
             }
             .padding(.horizontal, 16)

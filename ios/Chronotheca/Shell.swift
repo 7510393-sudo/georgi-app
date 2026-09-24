@@ -16,6 +16,11 @@ final class Shell: ObservableObject {
     }
 
     @Published var screen: Screen = .today
+
+    /// Какая плашка сейчас опущена на книгу. Идёт за `screen`, но не сразу:
+    /// при смене календаря на поиск сперва уходит одна плашка, потом
+    /// опускается другая (решение P202).
+    @Published var lowered: Screen = .today
     @Published var tab: Tab = .plan
 
     /// Дело, чья шторка «Подробности» открыта.
@@ -29,6 +34,14 @@ final class Shell: ObservableObject {
         let id: UUID
         let kind: Kind
     }
+
+    /// Снимок, открытый во весь экран: с какой вкладки и который по счёту.
+    struct OpenedPhoto: Identifiable {
+        let tab: Tab
+        let index: Int
+        var id: String { tab.rawValue + String(index) }
+    }
+    @Published var openedPhoto: OpenedPhoto?
 
     @Published var showingMenu = false
     @Published var showingSettings = false
@@ -101,6 +114,8 @@ final class Shell: ObservableObject {
             screen = .calendar
         default: break
         }
+        // Для снимков плашка стоит на месте сразу, без хода.
+        lowered = screen
     }
 
 }

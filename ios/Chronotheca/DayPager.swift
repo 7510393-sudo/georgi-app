@@ -355,9 +355,10 @@ struct AttachBar: View {
         shell.say("Аудио, файлы и геоточка — следующие. Фото уже работает.")
     }
 
-    /// Фото кладутся в дневник: в будущий день дневника не бывает.
+    /// Фото кладутся туда, где человек стоит: на вкладке плана — в план,
+    /// в дневнике — в дневник (решение P203).
     private func choosePhotos() {
-        guard store.canEditDiary else { return shell.say(store.closedReason) }
+        guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
         choosing = true
     }
 
@@ -365,13 +366,12 @@ struct AttachBar: View {
     @MainActor
     private func take(_ items: [PhotosPickerItem]) {
         Task {
+            let tab = shell.tab
             var added = 0
             for item in items {
                 guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-                if store.addPhoto(data) { added += 1 }
+                if store.addPhoto(data, to: tab) { added += 1 }
             }
-            // Снимки стоят в дневнике — туда и ведём, чтобы их было видно.
-            shell.tab = .diary
             if added == items.count {
                 shell.say(added == 1 ? "Фотография положена в папку «Фотографии»"
                                      : "Фотографий положено в папку: \(added)")
@@ -399,6 +399,7 @@ struct SideDay: View {
     @State private var text = ""
     @State private var answers: [String: String] = [:]
     @State private var photos: [String] = []
+    @State private var planPhotos: [String] = []
 
     var body: some View {
         Group {
@@ -412,7 +413,8 @@ struct SideDay: View {
 
     private var plan: some View {
         PlanPage(rows: tasks, isPast: date < DayStore.today(),
-                 bellColor: Ru.dayColor(date))
+                 bellColor: Ru.dayColor(date),
+                 photos: planPhotos.map { vault.mediaURL($0, for: date) })
     }
 
     private var diary: some View {
@@ -425,7 +427,8 @@ struct SideDay: View {
     }
 
     private func load() {
-        rows = Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body)
+        (rows, planPhotos) = Plan.splitPhotos(
+            Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body))
         let file = DayFile(text: vault.read(.diary, for: date))
         let diary = Diary(body: file.body)
         title = file.value("заголовок") ?? ""
@@ -445,9 +448,10 @@ struct PlanPage: View {
     /// Цвет дня недели: колокольчик красится им и на соседних страницах,
     /// иначе он бледнеет на просвет и вспыхивает после поворота.
     var bellColor: Color = Look.inkFaint
+    var photos: [URL?] = []
 
     var body: some View {
-        PlanScaffold(isPast: isPast, dimmed: isPast) {
+        PlanScaffold(isPast: isPast, dimmed: isPast, photos: photos) {
             if rows.isEmpty {
                 PlanEmpty(isPast: isPast)
             } else {

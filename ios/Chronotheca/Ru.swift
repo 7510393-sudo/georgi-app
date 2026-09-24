@@ -107,6 +107,8 @@ enum Look {
     static let accent    = Color(light: 0x2F4A6B, dark: 0x8FB3E8)
     static let chrome    = Color(light: 0xF4F4F1, dark: 0x191F26)
     static let planBg    = Color(light: 0xFDFDFB, dark: 0x14191F)
+    /// Свет из-под превью в режиме изменений: их можно взять (P203).
+    static let glow      = Color(light: 0x5E9BF0, dark: 0x7FB2FF)
 
     /// Торец плашки: светлая грань, лицо, глубина и тёмная грань.
     static let boardLit  = Color(light: 0xFCFAF4, dark: 0x3E4750)

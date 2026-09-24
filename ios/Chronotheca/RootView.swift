@@ -166,6 +166,21 @@ struct RootView: View {
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
+        .onChange(of: shell.screen) { old, new in follow(from: old, to: new) }
+        // Снимок во весь экран — один на всё приложение: открывают его и
+        // из плана, и из дневника (P203).
+        .fullScreenCover(item: $shell.openedPhoto) { opened in
+            let links = store.links(opened.tab)
+            PhotoViewer(
+                url: links.indices.contains(opened.index)
+                    ? store.photoURL(links[opened.index]) : nil,
+                onRemove: store.canEdit(opened.tab) ? {
+                    store.removePhoto(at: opened.index, from: opened.tab)
+                    shell.openedPhoto = nil
+                    shell.say("Фотография убрана со страницы. Файл остался в папке «Фотографии».")
+                } : nil,
+                close: { shell.openedPhoto = nil })
+        }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {
@@ -279,7 +294,7 @@ struct RootView: View {
     private func panel<V: View>(_ which: Shell.Screen, from edge: Edge,
                                 over size: CGSize,
                                 @ViewBuilder content: () -> V) -> some View {
-        let on = shell.screen == which
+        let on = shell.lowered == which
         // Плашка уезжает ровно на свою высоту — не дальше.
         //
         // Раньше её уводили заведомо далеко, на 1200 точек, и она проходила
@@ -368,8 +383,25 @@ struct RootView: View {
     /// Быстрый ход читался бы как смена экрана, а не как движение вещи.
     private func open(_ target: Shell.Screen) {
         if target != shell.screen { hideKeyboard() }
-        withAnimation(.spring(response: 0.80, dampingFraction: 0.90)) {
-            shell.screen = target
+        shell.screen = target
+    }
+
+    /// Опустить или поднять плашку вслед за сменой экрана.
+    ///
+    /// С календаря на поиск и обратно — по очереди: сперва уходящая плашка
+    /// почти целиком уезжает вверх, и только потом опускается новая.
+    /// Разом они шли навстречу, и новая обгоняла уходящую (решение P202).
+    private func follow(from old: Shell.Screen, to new: Shell.Screen) {
+        let heavy = Animation.spring(response: 0.80, dampingFraction: 0.90)
+        guard old != .today, new != .today, shell.lowered != .today else {
+            withAnimation(heavy) { shell.lowered = new }
+            return
+        }
+        withAnimation(.easeIn(duration: 0.34)) { shell.lowered = .today }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) { [shell] in
+            // Пока уходила плашка, человек мог нажать ещё раз.
+            guard shell.screen == new else { return }
+            withAnimation(heavy) { shell.lowered = new }
         }
     }
 

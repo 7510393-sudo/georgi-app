@@ -163,4 +163,18 @@ final class DiaryTests: XCTestCase {
         let d = Diary(photos: ["../../Фотографии/2026/a.jpg"])
         XCTAssertEqual(d.body(order: []), "![](../../Фотографии/2026/a.jpg)")
     }
+
+    func testФотографияПосредиТекстаОстаётсяНаМесте() {
+        let body = """
+        08:15 Туман.
+        ![](../../Фотографии/2026/a.jpg)
+        23:40 Глава дописана.
+
+        ![](../../Фотографии/2026/b.jpg)
+        """
+        let d = Diary(body: body)
+        XCTAssertEqual(d.photos, ["../../Фотографии/2026/b.jpg"])
+        XCTAssertTrue(d.text.contains("![](../../Фотографии/2026/a.jpg)"))
+        XCTAssertEqual(d.body(order: []), body)
+    }
 }

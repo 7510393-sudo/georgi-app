@@ -77,4 +77,26 @@ final class PlanTests: XCTestCase {
     func testПустойПланДаётПустойФайл() {
         XCTAssertEqual(Plan.body(from: Plan.rows(from: "")), "")
     }
+
+    // MARK: - Фотографии плана (P203)
+
+    func testФотографииПланаОтдельноОтДел() {
+        let body = """
+        - [ ] 09:00 Отвезти документы
+        - [ ] Позвонить
+
+        ![](../../Фотографии/2026/a.jpg)
+        """
+        let (rows, photos) = Plan.splitPhotos(Plan.rows(from: body))
+        XCTAssertEqual(photos, ["../../Фотографии/2026/a.jpg"])
+        XCTAssertEqual(rows.filter(\.isTask).count, 2)
+        XCTAssertEqual(Plan.body(from: rows, photos: photos), body)
+    }
+
+    func testПланБезФотографийНеМеняется() {
+        let body = "- [ ] Позвонить\n\nЗаметка в конце"
+        let (rows, photos) = Plan.splitPhotos(Plan.rows(from: body))
+        XCTAssertTrue(photos.isEmpty)
+        XCTAssertEqual(Plan.body(from: rows, photos: photos), body)
+    }
 }
