@@ -6,6 +6,7 @@ struct ChronothecaApp: App {
     @StateObject private var store: DayStore
     @StateObject private var archive: Archive
     @StateObject private var shell = Shell()
+    @Environment(\.scenePhase) private var phase
 
     init() {
         let vault = Vault()
@@ -21,6 +22,23 @@ struct ChronothecaApp: App {
                 .environmentObject(store)
                 .environmentObject(archive)
                 .environmentObject(shell)
+        }
+        .onChange(of: phase) { _, now in
+            switch now {
+            // Уходя с экрана — записать сразу. Запись идёт через полсекунды
+            // после последней буквы, и смахнутое приложение этих полсекунд
+            // может не дождаться: последние слова пропадали (решение P184).
+            case .inactive, .background:
+                store.save()
+            // Вернувшись — сверить день с диском: пока приложение стояло,
+            // запись могли поправить на Mac или на другом устройстве, и
+            // старая копия не должна лечь поверх новой (P183).
+            case .active:
+                store.comeBack()
+                archive.reload()
+            @unknown default:
+                break
+            }
         }
     }
 }

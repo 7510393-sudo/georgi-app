@@ -17,11 +17,21 @@ final class DayStore: ObservableObject {
     /// План живёт вперёд: на сегодня и на любой будущий день дела заводятся
     /// свободно — ради этого планировщик и нужен. Прошедший день закрыт:
     /// задним числом план не переписывают, кроме как в режиме изменений.
-    var canEditPlan: Bool { !isPast || editing }
+    var canEditPlan: Bool { (!isPast || editing) && !away.contains(.planner) }
 
     /// Дневник живёт назад: вчерашнее дописывают и через неделю (решение P63).
     /// А вот дня, который ещё не наступил, в дневнике не бывает.
-    var canEditDiary: Bool { !isFuture }
+    var canEditDiary: Bool { !isFuture && !away.contains(.diary) }
+
+    /// Файлы дня, которые лежат, но не прочитались — чаще всего ещё не
+    /// скачаны из iCloud. Писать в такой день нельзя: пустая страница на
+    /// экране не значит пустой файл на диске (решение P182).
+    @Published private(set) var away: Set<Vault.Folder> = []
+
+    /// Запись изменили в другом месте, пока она была открыта здесь, и правки
+    /// оказались с обеих сторон. Своя правка положена рядом; человеку надо
+    /// сказать, где она (решение P183).
+    @Published var conflict: String?
 
     /// Режим изменений: открывает прошедший день для правки, меняет порядок
     /// дел и позволяет удалять. Включается вручную в меню страницы и гаснет
@@ -30,8 +40,11 @@ final class DayStore: ObservableObject {
 
     /// Почему в этот день писать нельзя.
     var closedReason: String {
-        isPast ? "День закрыт. Изменения — через режим изменений."
-               : "Этот день ещё не наступил."
+        if !away.isEmpty {
+            return "Запись ещё загружается из iCloud. Как только придёт — её можно будет править."
+        }
+        return isPast ? "День закрыт. Изменения — через режим изменений."
+                      : "Этот день ещё не наступил."
     }
 
     /// Заголовок дня: ближние дни зовутся по имени, дальние — днём недели.
@@ -117,6 +130,7 @@ final class DayStore: ObservableObject {
         save()
         editing = false
         date = Calendar.current.startOfDay(for: newDate)
+        retries = 0
         load()
     }
 
@@ -161,10 +175,24 @@ final class DayStore: ObservableObject {
 
     // MARK: - Диск
 
-    func load() {
-        planRows = Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body)
+    // Что лежало на диске, когда день читали или писали в последний раз, и
+    // как приложение тогда же видело этот день. По первому узнаётся чужая
+    // правка, по второму — своя (решения P182, P183).
+    private var seen: [Vault.Folder: String] = [:]
+    private var mine: [Vault.Folder: String] = [:]
+    private var retries = 0
 
-        let file = DayFile(text: vault.read(.diary, for: date))
+    func load() {
+        let plan = vault.reading(.planner, for: date)
+        let diaryFile = vault.reading(.diary, for: date)
+        var gone: Set<Vault.Folder> = []
+        if plan == .away { gone.insert(.planner) }
+        if diaryFile == .away { gone.insert(.diary) }
+        away = gone
+
+        planRows = Plan.rows(from: DayFile(text: plan.text).body)
+
+        let file = DayFile(text: diaryFile.text)
         // План читается первым, поэтому названия дел уже известны — по ним
         // ответы «Как прошло?» разбираются без догадок (P155).
         let diary = Diary(body: file.body, known: planRows.map(\.text))
@@ -172,6 +200,37 @@ final class DayStore: ObservableObject {
         diaryText = diary.text
         answers = diary.answers
         lastEdit = file.value("правлено").flatMap(DayStore.moment(from:))
+
+        seen = [.planner: plan.text, .diary: diaryFile.text]
+        mine = [.planner: planFile().text, .diary: diaryFileNow().text]
+        if away.isEmpty { retries = 0 } else { waitForCloud() }
+    }
+
+    /// Сверить открытый день с диском.
+    ///
+    /// Зовётся, когда человек возвращается в приложение, и пока запись
+    /// докачивается из iCloud. Сначала своё — записать, потом чужое —
+    /// перечитать: так своя правка не пропадёт, а чужая не затрётся.
+    func refresh() {
+        guard vault.root != nil else { return }
+        save()
+        let stale = [Vault.Folder.planner, .diary].contains { folder in
+            let now = vault.reading(folder, for: date)
+            if now == .away { return false }
+            return away.contains(folder) || now.text != (seen[folder] ?? "")
+        }
+        if stale { load() } else if !away.isEmpty { waitForCloud() }
+    }
+
+    /// Пока файл дня едет из iCloud, заглядывать за ним каждые две секунды.
+    private func waitForCloud() {
+        guard retries < 60 else { return }
+        retries += 1
+        let day = date
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, self.date == day, !self.away.isEmpty else { return }
+            self.refresh()
+        }
     }
 
     private var pendingSave: DispatchWorkItem?
@@ -189,30 +248,97 @@ final class DayStore: ObservableObject {
         pendingSave?.cancel()
         pendingSave = nil
         guard vault.root != nil else { return }
+        // Оба файла собираются до записи: если один из них изменили в другом
+        // месте и день придётся перечитать, правка во втором не должна
+        // пропасть вместе с перечитыванием.
+        let plan = planFile()
+        let diary = diaryFileNow()
+        let a = write(plan, to: .planner, keep: false)
+        // Заголовок дня — это уже запись, даже если под ним пока нет ни строчки.
+        let b = write(diary, to: .diary, keep: !diaryTitle.isEmpty)
+        if a || b { load() }
+    }
 
+    /// Человек вернулся в приложение: сверить день с диском заново.
+    func comeBack() {
+        retries = 0
+        refresh()
+    }
+
+    /// План дня таким, каким он ляжет в файл.
+    private func planFile() -> DayFile {
         var plan = DayFile(body: Plan.body(from: planRows))
         plan.set("дата", Vault.stamp(date))
-        write(plan, to: .planner, keep: false)
+        return plan
+    }
 
+    /// Дневник дня таким, каким он ляжет в файл.
+    private func diaryFileNow() -> DayFile {
         let order = tasks.map(\.text)
         var diary = DayFile(body: Diary(answers: answers, text: diaryText).body(order: order))
         diary.set("дата", Vault.stamp(date))
         if !diaryTitle.isEmpty { diary.set("заголовок", diaryTitle) }
         if let lastEdit { diary.set("правлено", DayStore.moment(lastEdit)) }
-        // Заголовок дня — это уже запись, даже если под ним пока нет ни строчки.
-        write(diary, to: .diary, keep: !diaryTitle.isEmpty)
+        return diary
     }
 
+    /// Записать день — но никогда не поверх того, чего приложение не видело.
+    ///
+    /// Три правила, и каждое закрывает свою дыру:
+    ///
+    /// 1. Файл не прочитался (ещё в iCloud) — не пишем вовсе. Пустая
+    ///    страница на экране не значит пустой файл на диске (P182).
+    /// 2. Файл изменили в другом месте, пока он был открыт здесь, — не
+    ///    затираем. Своей правки нет — перечитываем чужую; есть — кладём
+    ///    свою рядом и перечитываем чужую (P183).
+    /// 3. Ничего не менялось — не переписываем: лишняя запись в iCloud
+    ///    плодит версии и столкновения.
+    ///
     /// Пустой день не оставляет следов: файл заводится, только когда в нём
     /// что-то есть. Иначе пролистывание недели вперёд засеяло бы папку
     /// десятком пустых файлов — а папка не наша, чтобы её засорять.
     ///
     /// `keep` — для того, что живёт в шапке, а не в тексте: день, у которого
     /// есть только заголовок, всё равно записан человеком и пропасть не должен.
-    private func write(_ file: DayFile, to folder: Vault.Folder, keep: Bool) {
+    ///
+    /// Возвращает `true`, если на диске оказалось не то, что приложение
+    /// видело, и день надо перечитать.
+    @discardableResult
+    private func write(_ file: DayFile, to folder: Vault.Folder, keep: Bool) -> Bool {
+        guard !away.contains(folder) else { return false }
+        let ours = file.text
+        guard ours != mine[folder] else { return false }
+
+        let now = vault.reading(folder, for: date)
+        if now == .away {
+            away.insert(folder)
+            waitForCloud()
+            return false
+        }
+        if now.text != (seen[folder] ?? "") {
+            // Та же правка пришла с другой стороны — делить нечего.
+            if now.text == ours {
+                seen[folder] = ours
+                mine[folder] = ours
+                return false
+            }
+            // Своя правка кладётся рядом. Не легла — день не перечитываем,
+            // иначе она пропадёт: пусть остаётся на экране до следующей попытки.
+            guard let name = vault.writeAside(ours, folder: folder, for: date) else {
+                return false
+            }
+            conflict = name
+            return true
+        }
+
         let empty = file.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if empty && !keep && vault.read(folder, for: date).isEmpty { return }
-        vault.write(file.text, to: folder, for: date)
+        if empty && !keep && now.text.isEmpty { return false }
+        vault.write(ours, to: folder, for: date)
+        if vault.problem == nil {
+            seen[folder] = ours
+            mine[folder] = ours
+        }
+        return false
     }
 
     /// То, что действительно лежит на диске — а не то, что помнит приложение.

@@ -20,6 +20,7 @@ struct DiaryView: View {
             title: $store.diaryTitle,
             text: $store.diaryText,
             editable: store.canEditDiary,
+            inCloud: store.away.contains(.diary),
             onFocusText: { store.stampIfNeeded() })
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
@@ -43,6 +44,9 @@ struct DiaryPage: View {
     @Binding var title: String
     @Binding var text: String
     var editable = true
+    /// Файл дневника лежит в iCloud и ещё не скачан: страница пуста не
+    /// потому, что день пуст (решение P182).
+    var inCloud = false
     /// Возвращает `true`, если приложение поставило отметку времени: тогда
     /// курсор переезжает за неё.
     var onFocusText: () -> Bool = { false }
@@ -71,6 +75,12 @@ struct DiaryPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                if inCloud {
+                    Text("Запись этого дня ещё загружается из iCloud. Как только придёт, она появится здесь.")
+                        .font(Look.serif(size - 1))
+                        .foregroundStyle(Look.inkFaint)
+                        .padding(.bottom, 12)
+                }
                 if !asked.isEmpty { askBlock }
                 titleField
                 textField

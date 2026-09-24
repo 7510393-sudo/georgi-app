@@ -114,6 +114,26 @@ struct RootView: View {
         } message: {
             Text(Self.moved + "\n\n" + (vault.moved ?? ""))
         }
+        // Запись поправили в другом месте, пока она была открыта здесь.
+        // Ничего не затёрто: чужая правка на экране, своя — рядом в папке.
+        // Человек должен знать, где её искать (решение P183).
+        .alert("Запись изменилась в другом месте",
+               isPresented: Binding(get: { store.conflict != nil },
+                                    set: { if !$0 { store.conflict = nil } })) {
+            Button("Понятно") { store.conflict = nil }
+        } message: {
+            Text(Self.conflictText(store.conflict ?? ""))
+        }
+    }
+
+    static func conflictText(_ name: String) -> String {
+        """
+        Пока день был открыт здесь, его файл поправили в другом месте — \
+        на Mac или на другом устройстве. На экране теперь та версия.
+
+        Ваша правка не пропала: она лежит рядом, в той же папке, в файле \
+        «\(name)». Откройте его в «Файлах» и перенесите нужное.
+        """
     }
 
     private var app: some View {

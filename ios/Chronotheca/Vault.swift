@@ -492,29 +492,148 @@ final class Vault: ObservableObject {
             .appendingPathComponent(stamp + ".md")
     }
 
+    /// Что удалось прочитать из файла дня.
+    ///
+    /// Три ответа, а не два. Раньше «файла нет» и «файл не прочитался»
+    /// выглядели одинаково — пустой строкой. А это разные вещи: пустой день
+    /// можно писать, а файл, который лежит в iCloud и ещё не скачан на
+    /// телефон, — нельзя. Человек видел пустую страницу, писал заново, и
+    /// приложение затирало настоящую запись (решение P182).
+    enum Reading: Equatable {
+        /// Файла нет — день чистый, писать можно.
+        case none
+        /// Файл прочитан.
+        case text(String)
+        /// Файл есть, но прочитать его не удалось: он ещё в iCloud или не
+        /// читается как текст. Писать поверх нельзя — там может лежать
+        /// запись, которую мы просто не видим.
+        case away
+
+        var text: String {
+            if case .text(let t) = self { return t }
+            return ""
+        }
+    }
+
+    func reading(_ folder: Folder, for date: Date) -> Reading {
+        guard let url = file(folder, for: date) else { return .none }
+        return Vault.reading(at: url)
+    }
+
+    /// Прочитать файл, не приняв недоступный за пустой.
+    ///
+    /// `coordinated` — читать через системного посредника для общих файлов:
+    /// он не даёт прочитать файл посреди чужой записи. Для одного дня это
+    /// правильно; для описи всего архива дорого, и там читается напрямую.
+    static func reading(at url: URL, coordinated: Bool = true) -> Reading {
+        let fm = FileManager.default
+        // Старый способ iCloud: вместо выгруженного файла лежит невидимая
+        // заглушка «.ИМЯ.md.icloud», а самого файла нет.
+        let stub = url.deletingLastPathComponent()
+            .appendingPathComponent("." + url.lastPathComponent + ".icloud")
+        guard fm.fileExists(atPath: url.path) else {
+            guard fm.fileExists(atPath: stub.path) else { return .none }
+            try? fm.startDownloadingUbiquitousItem(at: url)
+            return .away
+        }
+        // Новый способ: файл на месте, но без содержимого. Спрашиваем у
+        // системы, скачан ли он, и если нет — просим скачать, а не читаем.
+        let keys: Set<URLResourceKey> = [.isUbiquitousItemKey,
+                                         .ubiquitousItemDownloadingStatusKey]
+        if let v = try? url.resourceValues(forKeys: keys), v.isUbiquitousItem == true {
+            switch v.ubiquitousItemDownloadingStatus {
+            case .current?:
+                break
+            case .downloaded?:
+                // Копия на телефоне есть, но, может быть, не последняя.
+                // Читаем её — без сети человек должен писать, — а свежую
+                // просим скачать; когда придёт, день перечитается.
+                try? fm.startDownloadingUbiquitousItem(at: url)
+            default:
+                try? fm.startDownloadingUbiquitousItem(at: url)
+                return .away
+            }
+        }
+
+        var got = Reading.away
+        let take = { (real: URL) in
+            if let data = try? Data(contentsOf: real),
+               let text = String(data: data, encoding: .utf8) {
+                got = .text(text)
+            }
+        }
+        if coordinated {
+            var trouble: NSError?
+            NSFileCoordinator(filePresenter: nil)
+                .coordinate(readingItemAt: url, options: [], error: &trouble, byAccessor: take)
+        } else {
+            take(url)
+        }
+        return got
+    }
+
+    /// Текст файла для показа — там, где писать не будут: соседние
+    /// страницы, сверка с диском. Недоступный файл показывается пустым.
     func read(_ folder: Folder, for date: Date) -> String {
-        guard let url = file(folder, for: date),
-              let data = try? Data(contentsOf: url),
-              let text = String(data: data, encoding: .utf8)
-        else { return "" }
-        return text
+        reading(folder, for: date).text
     }
 
     func write(_ text: String, to folder: Folder, for date: Date) {
         guard let url = file(folder, for: date) else { return }
+        problem = Vault.write(text, to: url)
+    }
+
+    /// Записать через системного посредника: iCloud в эту минуту может
+    /// сам менять файл, и запись мимо посредника с ним сталкивается.
+    /// Возвращает описание беды или `nil`, если всё записалось.
+    @discardableResult
+    static func write(_ text: String, to url: URL) -> String? {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
-            try Data(text.utf8).write(to: url, options: .atomic)
-            problem = nil
+            var failure: Error?
+            var trouble: NSError?
+            NSFileCoordinator(filePresenter: nil)
+                .coordinate(writingItemAt: url, options: .forReplacing, error: &trouble) { real in
+                    do { try Data(text.utf8).write(to: real, options: .atomic) }
+                    catch { failure = error }
+                }
+            if let e = trouble ?? failure { throw e }
+            return nil
         } catch {
-            problem = error.localizedDescription
+            return error.localizedDescription
         }
+    }
+
+    /// Положить вторую версию дня рядом с первой.
+    ///
+    /// Нужна, когда файл изменили в другом месте — на Mac, на втором
+    /// устройстве, — пока он был открыт здесь, и правки есть с обеих
+    /// сторон. Затирать нельзя ни ту, ни другую: чужая остаётся в файле
+    /// дня, своя ложится рядом, под именем, которое видно в «Файлах» и не
+    /// путается с самим днём (решение P183).
+    ///
+    /// Возвращает имя положенного файла.
+    func writeAside(_ text: String, folder: Folder, for date: Date) -> String? {
+        guard let url = file(folder, for: date) else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH.mm.ss"
+        let name = Vault.stamp(date) + " — вторая версия " + f.string(from: Date()) + ".md"
+        let aside = url.deletingLastPathComponent().appendingPathComponent(name)
+        if let trouble = Vault.write(text, to: aside) {
+            problem = trouble
+            return nil
+        }
+        return name
     }
 
     /// Обратно из имени файла в дату. Имя файла — это и есть дата записи:
     /// по нему архив читается даже без приложения.
     static func date(from stamp: String) -> Date? {
+        // Ровно ГГГГ-ММ-ДД и ничего сверх: «2026-09-24 — вторая версия»
+        // лежит рядом с днём, но днём не является (P183).
+        guard stamp.count == 10 else { return nil }
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"

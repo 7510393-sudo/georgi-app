@@ -410,7 +410,11 @@ struct PlanView: View {
             if store.editing { banner }
             PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
                          add: add, watching: typingIn) {
-                if store.tasks.isEmpty { PlanEmpty(isPast: store.isPast) } else { list }
+                if store.tasks.isEmpty {
+                    PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
+                } else {
+                    list
+                }
                 // Касание по пустому месту убирает клавиатуру и выходит из
                 // режима изменений: выход должен быть там, куда рука тянется
                 // сама, а не только в кнопке наверху.
@@ -612,11 +616,19 @@ extension View {
 /// Пустой день. Общий для открытой страницы и соседних.
 struct PlanEmpty: View {
     let isPast: Bool
+    /// Файл плана лежит в iCloud и ещё не скачан. Пустая страница здесь
+    /// не значит пустой день — так и надо сказать (решение P182).
+    var inCloud = false
 
     var body: some View {
         VStack(spacing: 4) {
-            Text("На этот день ничего не запланировано.")
-            if !isPast { Text("Нажмите «+», чтобы вписать дело.") }
+            if inCloud {
+                Text("План этого дня ещё загружается из iCloud.")
+                Text("Как только придёт, он появится здесь.")
+            } else {
+                Text("На этот день ничего не запланировано.")
+                if !isPast { Text("Нажмите «+», чтобы вписать дело.") }
+            }
         }
         .font(Look.sans(14))
         .lineSpacing(5)

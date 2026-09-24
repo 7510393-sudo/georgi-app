@@ -16,7 +16,13 @@ final class Archive: ObservableObject {
         var text: String = ""
         var answers: [String: String] = [:]
 
-        var hasSomething: Bool { !tasks.isEmpty || !title.isEmpty || !text.isEmpty }
+        /// Файл дня лежит в iCloud и ещё не скачан. День есть, хотя
+        /// прочитать его пока нечем (решение P182).
+        var inCloud = false
+
+        var hasSomething: Bool {
+            inCloud || !tasks.isEmpty || !title.isEmpty || !text.isEmpty
+        }
 
         /// Начало записи для поиска — без пустых строк.
         ///
@@ -65,16 +71,37 @@ final class Archive: ObservableObject {
 
             for year in years {
                 guard let files = try? FileManager.default.contentsOfDirectory(
-                        at: year, includingPropertiesForKeys: nil) else { continue }
+                        at: year,
+                        includingPropertiesForKeys: [.isUbiquitousItemKey,
+                                                     .ubiquitousItemDownloadingStatusKey])
+                else { continue }
 
-                for file in files where file.pathExtension == "md" {
-                    let stamp = file.deletingPathExtension().lastPathComponent
+                for listed in files {
+                    // Выгруженный в iCloud файл лежит невидимой заглушкой
+                    // «.ГГГГ-ММ-ДД.md.icloud». Раньше такие дни молча выпадали
+                    // из календаря и поиска — будто их не было (решение P182).
+                    var name = listed.lastPathComponent
+                    if name.hasPrefix("."), name.hasSuffix(".md.icloud") {
+                        name = String(name.dropFirst().dropLast(".icloud".count))
+                    }
+                    guard name.hasSuffix(".md") else { continue }
+                    let stamp = String(name.dropLast(".md".count))
                     guard let date = Vault.date(from: stamp) else { continue }
-                    guard let data = try? Data(contentsOf: file),
-                          let text = String(data: data, encoding: .utf8) else { continue }
+                    // Настоящий файл — тот самый адрес из описи: сведения о
+                    // скачанности к нему уже приложены, второй раз не спрашиваем.
+                    let file = name == listed.lastPathComponent
+                        ? listed : year.appendingPathComponent(name)
+
+                    var day = found[stamp] ?? Day(stamp: stamp, date: date)
+                    let reading = Vault.reading(at: file, coordinated: false)
+                    if reading == .away {
+                        day.inCloud = true
+                        found[stamp] = day
+                        continue
+                    }
+                    guard case .text(let text) = reading else { continue }
 
                     let parsed = DayFile(text: text)
-                    var day = found[stamp] ?? Day(stamp: stamp, date: date)
                     if folder == .planner {
                         day.tasks = Plan.rows(from: parsed.body).filter { $0.isTask }
                     } else {
