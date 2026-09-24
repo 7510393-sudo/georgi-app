@@ -42,13 +42,23 @@ struct PlanTitle: UIViewRepresentable {
     static let size: CGFloat = 15
     static let spacing: CGFloat = 3
 
+    /// Насколько вторая строка названия отступает от первой сверх обычного.
+    ///
+    /// Первая строка стоит рядом с номером, временем и колокольчиком, а
+    /// вторая начинается под ними. Без зазора она прилипала к пунктиру
+    /// времени, и «нотариусу» читалось как подпись к «09:00» (решение P186).
+    static let clearance: CGFloat = 5
+
     /// Где проходит строчка письма, считая от верха поля. По ней голова
     /// строки садится на первую строку названия (P171).
     static let baseline: CGFloat = 14
 
     func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+        // Старая раскладка текста, а не новая: только в ней можно дать
+        // отдельный зазор после первой строки (P186).
+        let view = UITextView(usingTextLayoutManager: false)
         view.delegate = context.coordinator
+        view.layoutManager.delegate = context.coordinator
         view.backgroundColor = .clear
         // Ни отступов, ни полей: строчка письма должна считаться от самого
         // верха поля, иначе голова строки сядет мимо.
@@ -110,7 +120,9 @@ struct PlanTitle: UIViewRepresentable {
         let paragraph = NSMutableParagraphStyle()
         paragraph.firstLineHeadIndent = indent
         paragraph.headIndent = wrap
-        paragraph.lineSpacing = Self.spacing
+        // Расстояние между строками задаёт попечитель раскладки — у первой
+        // строки оно своё. Здесь ноль, чтобы оно не сложилось дважды.
+        paragraph.lineSpacing = 0
         return [
             .font: UIFont.systemFont(ofSize: Self.size),
             .foregroundColor: ink,
@@ -131,10 +143,21 @@ struct PlanTitle: UIViewRepresentable {
 
     // MARK: - Поведение
 
-    final class Coordinator: NSObject, UITextViewDelegate {
+    final class Coordinator: NSObject, UITextViewDelegate, NSLayoutManagerDelegate {
         var parent: PlanTitle
 
         init(_ parent: PlanTitle) { self.parent = parent }
+
+        /// После первой строки — зазор, если за ней есть вторая: вторая
+        /// начинается под головой строки и не должна к ней прилипать.
+        /// Одиночное название строку не удлиняет (решение P186).
+        func layoutManager(_ layoutManager: NSLayoutManager,
+                           lineSpacingAfterGlyphAt glyphIndex: Int,
+                           withProposedLineFragmentRect rect: CGRect) -> CGFloat {
+            let первая = rect.minY < 1
+            let дальше = glyphIndex + 1 < layoutManager.numberOfGlyphs
+            return первая && дальше ? PlanTitle.spacing + PlanTitle.clearance : PlanTitle.spacing
+        }
 
         func textViewDidChange(_ view: UITextView) { parent.text = view.text }
 
