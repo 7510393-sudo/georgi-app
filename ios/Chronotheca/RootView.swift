@@ -172,9 +172,9 @@ struct RootView: View {
         .fullScreenCover(item: $shell.openedPhoto) { opened in
             let links = store.links(opened.tab)
             PhotoViewer(
-                url: links.indices.contains(opened.index)
-                    ? store.photoURL(links[opened.index]) : nil,
-                onRemove: store.canEdit(opened.tab) ? {
+                url: opened.url ?? (links.indices.contains(opened.index)
+                    ? store.photoURL(links[opened.index]) : nil),
+                onRemove: opened.url == nil && store.canEdit(opened.tab) ? {
                     store.removePhoto(at: opened.index, from: opened.tab)
                     shell.openedPhoto = nil
                     shell.say("Фотография убрана со страницы. Файл остался в папке «Фотографии».")

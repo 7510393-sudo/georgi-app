@@ -563,8 +563,9 @@ struct DetailsDrawer: View {
                     .padding(.top, 19)
                     .allowsHitTesting(false)
             }
+            // Снимки в подробностях рисуются картинками, как в дневнике (P205).
             DiaryEditor(text: details(at: i), size: 14.5,
-                        serif: false, stamped: false)
+                        serif: false, stamped: false, resolve: store.photoURL)
                 .padding(.horizontal, 6)
                 .disabled(!store.canEditPlan)
         }

@@ -269,3 +269,44 @@ struct PhotoViewer: View {
         .padding(.top, 10)
     }
 }
+
+/// Снимок, поставленный между делами плана, — своей строкой, того же
+/// размера, что снимок в тексте дневника (P204, P205).
+struct PlanPhotoLine: View {
+
+    let url: URL?
+    var onOpen: (() -> Void)?
+    @State private var image: UIImage?
+
+    static let height: CGFloat = DiaryEditor.photoSize.height + 16
+
+    init(url: URL?, onOpen: (() -> Void)? = nil) {
+        self.url = url
+        self.onOpen = onOpen
+        _image = State(initialValue: url.flatMap { Photo.cache.object(forKey: PhotoAttachment.key($0)) })
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Image(uiImage: image ?? PhotoAttachment.empty)
+                .resizable()
+                .frame(width: DiaryEditor.photoSize.width, height: DiaryEditor.photoSize.height)
+                .contentShape(Rectangle())
+                .onTapGesture { onOpen?() }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: Self.height)
+        .task(id: url) {
+            guard image == nil, let url else { return }
+            let got = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+                guard let raw = Photo.load(url, side: DiaryEditor.photoSize.width) else { return nil }
+                return PhotoAttachment.frame(raw)
+            }.value
+            guard let got else { return }
+            Photo.cache.setObject(got, forKey: PhotoAttachment.key(url))
+            image = got
+        }
+        .accessibilityLabel("Фотография")
+    }
+}

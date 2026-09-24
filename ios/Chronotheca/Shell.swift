@@ -39,7 +39,10 @@ final class Shell: ObservableObject {
     struct OpenedPhoto: Identifiable {
         let tab: Tab
         let index: Int
-        var id: String { tab.rawValue + String(index) }
+        /// Снимок, стоящий посреди страницы, а не в полоске: открывается
+        /// прямо по месту, без «убрать» (P205).
+        var url: URL? = nil
+        var id: String { tab.rawValue + String(index) + (url?.path ?? "") }
     }
     @Published var openedPhoto: OpenedPhoto?
 

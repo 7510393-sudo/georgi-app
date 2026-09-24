@@ -412,9 +412,10 @@ struct SideDay: View {
     private var tasks: [PlanRow] { rows.filter { $0.isTask } }
 
     private var plan: some View {
-        PlanPage(rows: tasks, isPast: date < DayStore.today(),
+        PlanPage(rows: rows, isPast: date < DayStore.today(),
                  bellColor: Ru.dayColor(date),
-                 photos: planPhotos.map { vault.mediaURL($0, for: date) })
+                 photos: planPhotos.map { vault.mediaURL($0, for: date) },
+                 resolve: { [vault, date] in vault.mediaURL($0, for: date) })
     }
 
     private var diary: some View {
@@ -450,18 +451,29 @@ struct PlanPage: View {
     /// иначе он бледнеет на просвет и вспыхивает после поворота.
     var bellColor: Color = Look.inkFaint
     var photos: [URL?] = []
+    /// Где лежат снимки, поставленные между делами (P205).
+    var resolve: ((String) -> URL?)?
+
+    private var tasks: [PlanRow] { rows.filter(\.isTask) }
 
     var body: some View {
         PlanScaffold(isPast: isPast, dimmed: isPast, photos: photos) {
-            if rows.isEmpty {
+            if tasks.isEmpty {
                 PlanEmpty(isPast: isPast)
             } else {
+                // Дела и снимки между ними — в том же порядке, что и на
+                // открытой странице; прочие строки файла не рисуются.
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                    PlanRowLine(number: i + 1, row: row, faded: isPast,
-                                bellColor: bellColor)
-                    Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                    if row.isTask {
+                        PlanRowLine(number: rows[..<i].filter(\.isTask).count + 1,
+                                    row: row, faded: isPast, bellColor: bellColor)
+                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                    } else if let link = row.verbatim.flatMap(Diary.picture(in:)) {
+                        PlanPhotoLine(url: resolve?(link))
+                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                    }
                 }
-                PlanStat(planned: rows.count, done: rows.filter(\.done).count)
+                PlanStat(planned: tasks.count, done: tasks.filter(\.done).count)
             }
         }
         .opacity(isPast ? 0.58 : 1)

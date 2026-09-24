@@ -222,6 +222,33 @@ final class DayStore: ObservableObject {
         photos.removeAll { placed.contains($0) }
     }
 
+    /// Поставить снимок плана между делами — своей строкой перед строкой
+    /// `index` (P205). Из полоски он при этом уходит.
+    func placePlanPhoto(_ link: String, at index: Int) {
+        guard canEditPlan else { return }
+        let line = Diary.line(link)
+        planPhotos.removeAll { $0 == link }
+        // Снимок, уже стоящий где-то в плане, переезжает, а не двоится.
+        var at = min(max(index, 0), planRows.count)
+        if let old = planRows.firstIndex(where: { $0.verbatim == line }) {
+            planRows.remove(at: old)
+            if old < at { at -= 1 }
+        }
+        planRows.insert(.verbatim(line), at: at)
+        save()
+    }
+
+    /// Положить снимок плана в шторку дела — строкой подробностей (P205).
+    func attachPlanPhoto(_ link: String, to id: UUID) {
+        guard canEditPlan else { return }
+        let line = Diary.line(link)
+        planPhotos.removeAll { $0 == link }
+        planRows.removeAll { $0.verbatim == line }
+        guard let i = index(of: id) else { return }
+        if !planRows[i].details.contains(line) { planRows[i].details.append(line) }
+        save()
+    }
+
     func links(_ tab: Shell.Tab) -> [String] { tab == .diary ? photos : planPhotos }
 
     func canEdit(_ tab: Shell.Tab) -> Bool { tab == .diary ? canEditDiary : canEditPlan }
