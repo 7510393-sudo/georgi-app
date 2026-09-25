@@ -273,8 +273,15 @@ final class DayStore: ObservableObject {
     /// Записать точку своей строкой: в план — после дел, в дневник — туда,
     /// где стоял курсор (P165, P210, P213).
     @discardableResult
-    func writePoint(_ point: GeoPoint, to tab: Shell.Tab) -> Bool {
+    func writePoint(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false) -> Bool {
         guard canEdit(tab) else { return false }
+        // Первое «где я сейчас» за день становится местом дня: по нему
+        // точка дня на карте и погода. Отдельной кнопки «я здесь» больше
+        // нет (P221).
+        if here, place == nil, canEditDiary {
+            place = Geo.text(point.at)
+            touchDiary()
+        }
         let line = Geo.pointLine(point)
         switch tab {
         case .plan:

@@ -501,7 +501,7 @@ struct AttachBar: View {
             guard let at = location?.coordinate else {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
-            store.writePoint(GeoPoint(title: "", at: at), to: tab)
+            store.writePoint(GeoPoint(title: "", at: at), to: tab, here: true)
             if let location { store.noteWeather(at: location) }
             shell.say(tab == .diary ? "Место вписано в запись" : "Место вписано в план")
         }

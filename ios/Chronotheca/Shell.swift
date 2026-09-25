@@ -57,6 +57,8 @@ final class Shell: ObservableObject {
     /// Точка, выбранная сейчас на карте. По ней работают «в навигатор» и
     /// «скопировать» — и в полоске карты, и в её меню (P219).
     @Published var mapPoint: GeoPoint?
+    /// Карта снимком со спутника, а не схемой (P222).
+    @Published var mapSatellite = false
 
     /// Открыть карту на точке из текста.
     func showPoint(_ point: GeoPoint) {

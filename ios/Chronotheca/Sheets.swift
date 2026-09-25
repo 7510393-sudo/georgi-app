@@ -49,6 +49,20 @@ struct MenuSticker: View {
                 MapActions.copy(point)
                 shell.say("Скопировано: " + Geo.text(point.at))
             }
+            StickerItem(title: "Поделиться точкой",
+                        note: shell.mapPoint == nil ? "выберите точку" : "→") {
+                close()
+                guard let point = shell.mapPoint else {
+                    return shell.say("Сначала выберите точку долгим нажатием на карту.")
+                }
+                MapActions.share(point)
+            }
+            StickerItem(title: "Схема / спутник",
+                        note: shell.mapSatellite ? "спутник" : "схема",
+                        active: shell.mapSatellite) {
+                shell.mapSatellite.toggle()
+                close()
+            }
             StickerItem(title: "Вернуться к странице дня") {
                 close()
                 withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }

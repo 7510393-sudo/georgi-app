@@ -37,6 +37,7 @@ struct MapScreen: View {
             header
             ZStack(alignment: .top) {
                 NativeMap(places: places, days: days, selected: selected, focus: focus,
+                          satellite: shell.mapSatellite,
                           onLongPress: pick, onPlace: choose, onDay: openDay,
                           onSelected: { withAnimation { panel = .cloud } })
                 if let selected, panel == .naming {
@@ -122,14 +123,12 @@ struct MapScreen: View {
     /// палец, открывший карту, попадает в неё не глядя (P213). «Скопировать»
     /// и «в навигатор» бледнеют, пока точка не выбрана (P219).
     private var bar: some View {
-        let marked = store.place != nil
         let point = selected != nil
         return HStack(spacing: 0) {
-            Button(action: markDay) {
-                BarFace(icon: marked ? "mappin.circle.fill" : "mappin.circle",
-                        name: marked ? "день тут" : "я здесь")
-            }
-            .accessibilityLabel(marked ? "Переставить место дня сюда" : "Я здесь в этот день")
+            // Первое место свободно: «я здесь в этот день» убрано — его
+            // делает «Запомнить точку» без выбора и долгое нажатие на
+            // «геоточку» (P221).
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
             Button {
                 guard let selected else { return }
                 MapActions.copy(selected)
@@ -251,32 +250,17 @@ struct MapScreen: View {
             guard let at = location?.coordinate else {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
-            write(GeoPoint(title: "", at: at), to: tab)
+            write(GeoPoint(title: "", at: at), to: tab, here: true)
             if let location { store.noteWeather(at: location) }
         }
     }
 
-    private func write(_ point: GeoPoint, to tab: Shell.Tab) {
-        guard store.writePoint(point, to: tab) else { return shell.say(store.closedReason) }
+    private func write(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false) {
+        guard store.writePoint(point, to: tab, here: here) else {
+            return shell.say(store.closedReason)
+        }
         shell.say(tab == .diary ? "Точка записана в дневник" : "Точка записана в план")
         withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
-    }
-
-    /// Отметить, где человек в открытый день (P207).
-    private func markDay() {
-        guard store.canEditDiary else { return shell.say(store.closedReason) }
-        locating = true
-        Locator.shared.current { location in
-            locating = false
-            guard let at = location?.coordinate else {
-                return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
-            }
-            store.mark(at)
-            if let location { store.noteWeather(at: location) }
-            archive.reload()
-            focus = MapFocus(center: at, meters: 1500)
-            shell.say("Отмечено: здесь вы в этот день")
-        }
     }
 
     private func openDay(_ date: Date) {
@@ -315,6 +299,8 @@ struct NativeMap: UIViewRepresentable {
     var days: [MapDay]
     var selected: Place?
     var focus: MapFocus?
+    /// Спутник вместо схемы — из меню карты (P222).
+    var satellite = false
     var onLongPress: (CLLocationCoordinate2D) -> Void
     var onPlace: (Place) -> Void
     var onDay: (Date) -> Void
@@ -357,6 +343,8 @@ struct NativeMap: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         let keeper = context.coordinator
         keeper.parent = self
+        let kind: MKMapType = satellite ? .hybrid : .standard
+        if map.mapType != kind { map.mapType = kind }
         keeper.sync(map)
         if let focus, focus != keeper.focused {
             keeper.focused = focus
@@ -595,6 +583,29 @@ enum MapActions {
 
     static func copy(_ place: Place) { PlaceActions.copy(place.coordinate) }
     static func copy(_ point: GeoPoint) { PlaceActions.copy(point.at) }
+
+    /// Поделиться точкой: название, координаты и ссылка на Карты — её
+    /// откроет любой iPhone, а на других телефонах — браузер (P222).
+    static func share(_ point: GeoPoint) {
+        var words = point.title.isEmpty ? "" : point.title + "\n"
+        words += Geo.text(point.at)
+        var link = URLComponents(string: "https://maps.apple.com/")
+        link?.queryItems = [
+            URLQueryItem(name: "ll", value: String(format: "%.5f,%.5f",
+                                                  point.at.latitude, point.at.longitude)),
+            URLQueryItem(name: "q", value: point.title.isEmpty ? "Точка" : point.title),
+        ]
+        var items: [Any] = [words]
+        if let url = link?.url { items.append(url) }
+        let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        guard var top = scene?.keyWindow?.rootViewController else { return }
+        while let shown = top.presentedViewController { top = shown }
+        sheet.popoverPresentationController?.sourceView = top.view
+        top.present(sheet, animated: true)
+    }
 }
 
 /// Что можно сделать с точкой: открыть в Картах, скопировать.
