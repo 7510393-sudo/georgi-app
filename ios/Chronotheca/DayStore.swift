@@ -244,6 +244,56 @@ final class DayStore: ObservableObject {
         photos.removeAll { placed.contains($0) }
     }
 
+    /// Отметить, где человек был в этот день. Место — часть дневника:
+    /// в будущий день его не поставить (A9, P207).
+    @discardableResult
+    func mark(_ where_: CLLocationCoordinate2D) -> Bool {
+        guard canEditDiary else { return false }
+        place = Geo.text(where_)
+        touchDiary()
+        save()
+        return true
+    }
+
+    /// Вписать место в текст записи своей строкой `geo:…` (P165, P207).
+    @discardableResult
+    func writePlace(_ where_: CLLocationCoordinate2D) -> Bool {
+        guard canEditDiary else { return false }
+        let body = diaryText.replacingOccurrences(of: "\\s+$", with: "",
+                                                  options: .regularExpression)
+        diaryText = (body.isEmpty ? "" : body + "\n\n") + Geo.line(where_)
+        touchDiary()
+        save()
+        return true
+    }
+
+    var placeCoordinate: CLLocationCoordinate2D? { place.flatMap(Geo.parse) }
+
+    /// Вписать место в план — своей строкой `geo:…` после дел: долгое
+    /// нажатие на геоточку пишет туда, где человек стоит (P210).
+    @discardableResult
+    func writePlanPlace(_ where_: CLLocationCoordinate2D) -> Bool {
+        guard canEditPlan else { return false }
+        planRows.append(.verbatim(Geo.line(where_)))
+        save()
+        return true
+    }
+
+    /// Записать погоду там, где человек сейчас. Только в сегодняшний день:
+    /// погода — это «как было, когда писал», а не справка о прошлом (P208).
+    func noteWeather(at location: CLLocation) {
+        guard isToday, canEditDiary else { return }
+        let day = date
+        Task { [weak self] in
+            guard let words = await WeatherNote.now(at: location) else { return }
+            await MainActor.run {
+                guard let self, self.date == day else { return }
+                self.weather = words
+                self.save()
+            }
+        }
+    }
+
     /// Переставить вложение в полоске — перетаскиванием вбок в режиме
     /// изменений (P210).
     func movePhoto(from: Int, to: Int, in tab: Shell.Tab) {
