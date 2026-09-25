@@ -28,9 +28,27 @@ struct MenuSticker: View {
         }
     }
 
-    /// Меню карты. Состав обсудим с автором — пока то, что уже есть (P210).
+    /// Меню карты: строки повторяют кнопки полоски — для тех, кто ищет
+    /// действие в меню, а не внизу (P219).
     private var mapMenu: some View {
         Sticker(side: .trailing, title: "Меню карты", close: close) {
+            StickerItem(title: "Открыть в навигаторе",
+                        note: shell.mapPoint == nil ? "выберите точку" : "→") {
+                close()
+                guard let point = shell.mapPoint else {
+                    return shell.say("Сначала выберите точку долгим нажатием на карту.")
+                }
+                MapActions.navigate(point)
+            }
+            StickerItem(title: "Скопировать координаты",
+                        note: shell.mapPoint == nil ? "выберите точку" : "→") {
+                close()
+                guard let point = shell.mapPoint else {
+                    return shell.say("Сначала выберите точку долгим нажатием на карту.")
+                }
+                MapActions.copy(point)
+                shell.say("Скопировано: " + Geo.text(point.at))
+            }
             StickerItem(title: "Вернуться к странице дня") {
                 close()
                 withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }

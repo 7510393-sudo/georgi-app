@@ -54,6 +54,18 @@ struct MapScreen: View {
                 }
             }
             .animation(.easeOut(duration: 0.2), value: panel)
+            .overlay(alignment: .bottom) {
+                if selected == nil && panel == nil {
+                    Text("Долгое нажатие — выбрать точку")
+                        .font(Look.sans(12))
+                        .foregroundStyle(Look.inkSoft)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .padding(.bottom, 12)
+                        .allowsHitTesting(false)
+                }
+            }
             bar
         }
         .background(Look.chrome)
@@ -64,6 +76,10 @@ struct MapScreen: View {
             Text("Файл этого места будет удалён из папки «Места».")
         }
         .onAppear(perform: begin)
+        .onChange(of: selected) { _, now in
+            shell.mapPoint = now.map { GeoPoint(title: $0.name, at: $0.coordinate) }
+        }
+        .onDisappear { shell.mapPoint = nil }
     }
 
     /// Название экрана — такое же, как у календаря и поиска. Шестерёнка,
@@ -103,18 +119,31 @@ struct MapScreen: View {
 
     /// Полоска внизу — той же высоты и с теми же местами, что полоска
     /// вложений: «Запомнить точку» стоит ровно там, где «геоточка», и
-    /// палец, открывший карту, попадает в неё не глядя (P213).
+    /// палец, открывший карту, попадает в неё не глядя (P213). «Скопировать»
+    /// и «в навигатор» бледнеют, пока точка не выбрана (P219).
     private var bar: some View {
         let marked = store.place != nil
+        let point = selected != nil
         return HStack(spacing: 0) {
             Button(action: markDay) {
                 BarFace(icon: marked ? "mappin.circle.fill" : "mappin.circle",
                         name: marked ? "день тут" : "я здесь")
             }
-            .buttonStyle(.plain)
             .accessibilityLabel(marked ? "Переставить место дня сюда" : "Я здесь в этот день")
-            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
-            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+            Button {
+                guard let selected else { return }
+                MapActions.copy(selected)
+                shell.say("Скопировано: " + Geo.text(selected.coordinate))
+            } label: {
+                BarFace(icon: "doc.on.doc", name: "скопировать",
+                        tint: point ? Look.inkSoft : Look.inkFaint.opacity(0.6))
+            }
+            .disabled(!point)
+            Button { if let selected { MapActions.navigate(selected) } } label: {
+                BarFace(icon: "arrow.triangle.turn.up.right.diamond", name: "в навигатор",
+                        tint: point ? Look.accent : Look.inkFaint.opacity(0.6))
+            }
+            .disabled(!point)
             Button(action: remember) {
                 if locating {
                     ProgressView().frame(maxWidth: .infinity)
@@ -122,31 +151,15 @@ struct MapScreen: View {
                     BarFace(icon: "pin.fill", name: "запомнить точку", tint: Look.accent)
                 }
             }
-            .buttonStyle(.plain)
-            .accessibilityHint(selected == nil ? "Запишет, где вы сейчас"
-                                               : "Запишет выбранную точку")
+            .accessibilityHint(point ? "Запишет выбранную точку" : "Запишет, где вы сейчас")
         }
-        .overlay {
-            Text(hint)
-                .font(Look.sans(11.5))
-                .foregroundStyle(Look.inkFaint)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 90)
-                .allowsHitTesting(false)
-        }
+        .buttonStyle(.plain)
         .padding(.top, 8)
         .padding(.bottom, 7)
         .background(Look.chrome)
         .overlay(alignment: .top) {
             Rectangle().fill(Look.rule).frame(height: 1)
         }
-    }
-
-    /// Подсказка посреди полоски: что запомнит кнопка справа.
-    private var hint: String {
-        guard let selected else { return "Долгое нажатие — выбрать точку" }
-        return selected.name.isEmpty ? "Выбрана точка" : "Выбрано: " + selected.name
     }
 
     // MARK: - Действия
@@ -568,6 +581,20 @@ struct PlaceCloud: View {
         .padding(.horizontal, 10)
         .padding(.top, 8)
     }
+}
+
+/// Действия с выбранной точкой — общие для полоски карты и её меню.
+enum MapActions {
+    static func navigate(_ place: Place) {
+        PlaceActions.openInMaps(place.coordinate, name: place.name)
+    }
+
+    static func navigate(_ point: GeoPoint) {
+        PlaceActions.openInMaps(point.at, name: point.title)
+    }
+
+    static func copy(_ place: Place) { PlaceActions.copy(place.coordinate) }
+    static func copy(_ point: GeoPoint) { PlaceActions.copy(point.at) }
 }
 
 /// Что можно сделать с точкой: открыть в Картах, скопировать.

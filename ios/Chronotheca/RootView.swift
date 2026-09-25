@@ -387,6 +387,13 @@ struct RootView: View {
                     .frame(width: 35, height: 35)
                 Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
             }
+            // Открытый раздел — на светлой подушке. Подушка выходит за
+            // значок наружу и не меняет высоты полосы (P218).
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(on ? Look.accent.opacity(0.10) : .clear)
+                    .padding(.horizontal, -16)
+                    .padding(.vertical, -3))
             .frame(maxWidth: .infinity)
             .foregroundStyle(on ? Look.accent : Look.inkSoft)
         }
