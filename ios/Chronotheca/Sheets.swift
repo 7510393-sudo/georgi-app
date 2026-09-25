@@ -167,9 +167,10 @@ struct SettingsSticker: View {
                 close()
                 if let link = vault.filesLink { openURL(link) }
             }
+            // Три места вместо одного окна выбора (P223): своя папка на
+            // телефоне — одним касанием; своя папка человека — через окно.
             StickerItem(title: "Писать в другое место", edge: Look.noteEdge) {
-                close()
-                shell.picking = true
+                choosingPlace = true
             }
             if let before = vault.previousFriendly {
                 StickerItem(title: "Вернуться к прежней папке", edge: Look.noteEdge) {
@@ -198,9 +199,33 @@ struct SettingsSticker: View {
             }
             version
         }
+        .confirmationDialog("Где хранить записи", isPresented: $choosingPlace,
+                            titleVisibility: .visible) {
+            if !vault.onPhone {
+                Button("На этом iPhone") {
+                    close()
+                    vault.usePhone()
+                    store.load()
+                    archive.reload()
+                    shell.screen = .today
+                }
+            }
+            Button("В свою папку — iCloud Drive и другие…") {
+                close()
+                shell.picking = true
+            }
+            Button("Отмена", role: .cancel) { }
+        } message: {
+            Text("На iPhone — папка «Chronotheca» в «Файлах» → «На iPhone». Удалите приложение — "
+                 + "iPhone удалит и её, поэтому для надёжности лучше своя папка в iCloud Drive: "
+                 + "там записи переживут и приложение, и телефон. Записи, что уже есть, "
+                 + "приложение предложит перенести.")
+        }
     }
 
     @State private var undone = false
+    @State private var choosingPlace = false
+    @EnvironmentObject private var store: DayStore
 
     @EnvironmentObject private var archive: Archive
     @Environment(\.openURL) private var openURL
@@ -691,15 +716,17 @@ struct WelcomeView: View {
 
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var store: DayStore
+    @EnvironmentObject private var archive: Archive
 
     private static let invitation = """
-        Укажите место — приложение заведёт там свою папку «\(Vault.folderName)» \
-        и сложит записи в неё обычными файлами. Папка ваша: приложение только \
-        пишет и читает. Удалите приложение — записи останутся.
+        Записи ложатся обычными файлами в папку «\(Vault.folderName)». Папка ваша: \
+        приложение только пишет и читает, и её всегда видно в «Файлах».
         """
 
     var body: some View {
-        VStack(spacing: 20) {
+        ScrollView {
+        VStack(spacing: 18) {
             Image(systemName: "folder")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
@@ -711,24 +738,43 @@ struct WelcomeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
+            // Два пути (P223). Одним касанием — своя папка приложения на
+            // телефоне. Через окно выбора — своя папка человека: в iCloud
+            // Drive она переживёт и приложение, и телефон.
+            Button {
+                vault.usePhone()
+                store.load()
+                archive.reload()
+            } label: {
+                Text("Хранить на этом iPhone").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            Text("Одно касание. Папка «\(Vault.folderName)» будет видна в «Файлах» → «На iPhone». "
+                 + "Удалите приложение — iPhone удалит и её.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button {
+                shell.picking = true
+            } label: {
+                Text("Выбрать свою папку…").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
             // Первые шаги по порядку. Системное окно выбора папки незнакомо
             // многим, и без подсказки человек не знает, куда в нём нажать
             // (решение P190).
             VStack(alignment: .leading, spacing: 8) {
-                step(1, "Нажмите «Выбрать место».")
-                step(2, "В окне выберите «iCloud Drive» — записи будут и на Маке. "
-                        + "Или «На iPhone» — только на этом телефоне.")
-                step(3, "Нажмите «Открыть» вверху справа. Приложение предложит "
+                step(1, "В окне выберите «iCloud Drive» — записи будут и на Маке и "
+                        + "переживут удаление приложения.")
+                step(2, "Нажмите «Открыть» вверху справа. Приложение предложит "
                         + "завести там папку «\(Vault.folderName)».")
-                step(4, "Уже есть папка с записями — зайдите в неё и нажмите "
+                step(3, "Уже есть папка с записями — зайдите в неё и нажмите "
                         + "«Открыть»: приложение узнает свой архив.")
             }
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            Button("Выбрать место") { shell.picking = true }
-                .buttonStyle(.borderedProminent)
 
             if let problem = vault.problem {
                 Text(problem)
@@ -737,7 +783,8 @@ struct WelcomeView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(32)
+        .padding(28)
+        }
     }
 
     private func step(_ n: Int, _ text: String) -> some View {

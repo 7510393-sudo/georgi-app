@@ -27,4 +27,11 @@ final class FolderPathTests: XCTestCase {
         let path = "/private/var/mobile/Library/Mobile Documents/iCloud~md~obsidian/Documents/Chronotheca"
         XCTAssertEqual(Vault.friendly(path), "iCloud Drive › Documents › Chronotheca")
     }
+
+    /// Своя папка приложения на телефоне — так, как её называют «Файлы» (P223).
+    func testСвояПапкаНаТелефоне() {
+        let path = "/private/var/mobile/Containers/Data/Application/0A1B/Documents"
+        XCTAssertEqual(Vault.friendly(path), "На iPhone › Chronotheca")
+        XCTAssertEqual(Vault.friendly(path + "/Дневник"), "На iPhone › Chronotheca › Дневник")
+    }
 }

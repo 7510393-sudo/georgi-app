@@ -49,6 +49,18 @@ final class Vault: ObservableObject {
     private static let previousBookmarkKey = "vault.root.bookmark.previous"
     private static let previousSubpathKey = "vault.root.subpath.previous"
     private static let previousPathKey = "vault.root.lastPath.previous"
+    /// Где лежат записи: «phone» — своя папка приложения на телефоне,
+    /// иначе — папка, выбранная человеком (P223).
+    private static let placeKey = "vault.place"
+    private static let previousPlaceKey = "vault.place.previous"
+
+    /// Записи лежат в своей папке приложения на этом iPhone.
+    var onPhone: Bool { UserDefaults.standard.string(forKey: Vault.placeKey) == "phone" }
+
+    /// Своя папка приложения. Её видно в «Файлах» → «На iPhone».
+    static var phoneFolder: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
     private var accessing: URL?
 
     /// Путь, который можно показать человеку. Длинный и некрасивый, зато
@@ -72,6 +84,12 @@ final class Vault: ObservableObject {
     var previousFriendly: String? { previousPath.map(Vault.friendly) }
 
     static func friendly(_ path: String) -> String {
+        // Своя папка приложения на телефоне: в «Файлах» она лежит в «На
+        // iPhone» под именем приложения (P223).
+        if path.contains("/Data/Application/"), let r = path.range(of: "/Documents") {
+            let tail = path[r.upperBound...].split(separator: "/").map(String.init)
+            return (["На iPhone", Vault.folderName] + tail).joined(separator: " › ")
+        }
         let places: [(String, String)] = [
             ("/Mobile Documents/com~apple~CloudDocs", "iCloud Drive"),
             ("/File Provider Storage", "На iPhone"),
@@ -253,7 +271,25 @@ final class Vault: ObservableObject {
             use(granted: url, target: found)
             return
         }
+        // Своё место человек выбрал сам — после согласия завести папку
+        // запишется, что это его папка, а не наша на телефоне.
         proposal = Proposal(granted: url, target: url.appendingPathComponent(Vault.folderName))
+    }
+
+    /// Хранить записи в своей папке приложения на этом iPhone (P223).
+    ///
+    /// Одно касание, без системного окна: папку заводит само приложение, и
+    /// её видно в «Файлах» → «На iPhone» → «Chronotheca». Если записи
+    /// лежали в другом месте, приложение предложит их перенести — тем же
+    /// переносом «копия, проверка, удаление» (P147).
+    func usePhone() {
+        let before = root.map { (root: $0, records: Transfer.records(in: $0)) }
+        // Записи лежат прямо в папке приложения: в «Файлах» это «На iPhone ›
+        // Chronotheca», без второй «Chronotheca» внутри.
+        let home = Vault.phoneFolder
+        _ = begin(home)
+        leaving = before
+        use(granted: home, target: home)
     }
 
     /// Человек согласился завести новую папку.
@@ -312,6 +348,8 @@ final class Vault: ObservableObject {
                              forKey: Vault.previousSubpathKey)
                 defaults.set(defaults.string(forKey: Vault.lastPathKey) ?? "",
                              forKey: Vault.previousPathKey)
+                defaults.set(defaults.string(forKey: Vault.placeKey) ?? "folder",
+                             forKey: Vault.previousPlaceKey)
             }
 
             let subpath = target.path.hasPrefix(url.path)
@@ -322,6 +360,8 @@ final class Vault: ObservableObject {
             UserDefaults.standard.set(try url.bookmarkData(), forKey: Vault.bookmarkKey)
             UserDefaults.standard.set(subpath, forKey: Vault.subpathKey)
             UserDefaults.standard.set(target.path, forKey: Vault.lastPathKey)
+            UserDefaults.standard.set(url == Vault.phoneFolder ? "phone" : "folder",
+                                      forKey: Vault.placeKey)
 
             try makeTree(in: target)
             granted = url
@@ -362,10 +402,14 @@ final class Vault: ObservableObject {
 
         let defaults = UserDefaults.standard
         var stale = false
-        guard let data = defaults.data(forKey: Vault.previousBookmarkKey),
-              let grantedOld = try? URL(resolvingBookmarkData: data, options: [],
-                                        relativeTo: nil, bookmarkDataIsStale: &stale)
-        else {
+        var found: URL?
+        if defaults.string(forKey: Vault.previousPlaceKey) == "phone" {
+            found = Vault.phoneFolder
+        } else if let data = defaults.data(forKey: Vault.previousBookmarkKey) {
+            found = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil,
+                             bookmarkDataIsStale: &stale)
+        }
+        guard let grantedOld = found else {
             problem = "Прежняя папка больше недоступна. Записи в ней целы."
             return
         }
@@ -405,6 +449,9 @@ final class Vault: ObservableObject {
     /// Вернуться к прежнему месту. Ошибочный выбор — обычное дело, и он
     /// не должен стоить человеку архива.
     func goBack() {
+        if UserDefaults.standard.string(forKey: Vault.previousPlaceKey) == "phone" {
+            return usePhone()
+        }
         guard let data = UserDefaults.standard.data(forKey: Vault.previousBookmarkKey) else {
             return
         }
@@ -431,7 +478,7 @@ final class Vault: ObservableObject {
     func forget() {
         for key in [Vault.bookmarkKey, Vault.subpathKey, Vault.lastPathKey,
                     Vault.previousBookmarkKey, Vault.previousSubpathKey,
-                    Vault.previousPathKey] {
+                    Vault.previousPathKey, Vault.placeKey, Vault.previousPlaceKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         proposal = nil
@@ -442,6 +489,21 @@ final class Vault: ObservableObject {
     }
 
     private func restore() {
+        // Своя папка на телефоне ищется заново при каждом запуске: путь к
+        // песочнице приложения меняется после обновлений, закладка на неё
+        // не нужна (P223).
+        if onPhone {
+            let home = Vault.phoneFolder
+            do {
+                try makeTree(in: home)
+                granted = home
+                root = home
+                UserDefaults.standard.set(home.path, forKey: Vault.lastPathKey)
+            } catch {
+                problem = error.localizedDescription
+            }
+            return
+        }
         guard let data = UserDefaults.standard.data(forKey: Vault.bookmarkKey) else { return }
         var stale = false
         do {
