@@ -169,8 +169,6 @@ struct RootView: View {
         .onChange(of: shell.screen) { old, new in follow(from: old, to: new) }
         // Снимок во весь экран — один на всё приложение: открывают его и
         // из плана, и из дневника (P203).
-        // Своя карта мест — за кнопкой «геоточка» (P207).
-        .fullScreenCover(isPresented: $shell.showingMap) { MapScreen() }
         .fullScreenCover(item: $shell.openedPhoto) { opened in
             let links = store.links(opened.tab)
             AttachmentViewer(
@@ -199,6 +197,14 @@ struct RootView: View {
         ZStack(alignment: .trailing) {
             screen
             if shell.drawer != nil { DetailsDrawer() }
+            // Своя карта мест ложится на страницу, а не поверх всего
+            // приложения: шестерёнка, три точки и нижние разделы остаются
+            // на месте и работают (P207, P210).
+            if shell.showingMap {
+                MapScreen()
+                    .transition(.opacity)
+                    .zIndex(2)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Шапка и нижние разделы лежат поверх страницы и прижимают её: обе
@@ -250,6 +256,7 @@ struct RootView: View {
     /// Точки горят, когда в меню включено что-то необычное: режим
     /// изменений на странице дня или поиск не по всему архиву.
     private var dotsLit: Bool {
+        if shell.showingMap { return false }
         switch shell.screen {
         case .today:    return store.editing
         case .calendar: return false
@@ -258,6 +265,7 @@ struct RootView: View {
     }
 
     private var dotsLabel: String {
+        if shell.showingMap { return "Меню карты" }
         switch shell.screen {
         case .today:    return "Меню страницы"
         case .calendar: return "Меню календаря"
@@ -385,6 +393,10 @@ struct RootView: View {
     /// Быстрый ход читался бы как смена экрана, а не как движение вещи.
     private func open(_ target: Shell.Screen) {
         if target != shell.screen { hideKeyboard() }
+        // Нижний раздел уводит и с карты: она лежит на странице дня.
+        if shell.showingMap {
+            withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
+        }
         shell.screen = target
     }
 

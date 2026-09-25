@@ -244,71 +244,20 @@ final class DayStore: ObservableObject {
         photos.removeAll { placed.contains($0) }
     }
 
-    /// Поставить снимок плана между делами — своей строкой перед строкой
-    /// `index` (P205). Из полоски он при этом уходит.
-    func placePlanPhoto(_ link: String, at index: Int) {
-        guard canEditPlan else { return }
-        let line = Diary.line(link)
-        planPhotos.removeAll { $0 == link }
-        // Снимок, уже стоящий где-то в плане, переезжает, а не двоится.
-        var at = min(max(index, 0), planRows.count)
-        if let old = planRows.firstIndex(where: { $0.verbatim == line }) {
-            planRows.remove(at: old)
-            if old < at { at -= 1 }
+    /// Переставить вложение в полоске — перетаскиванием вбок в режиме
+    /// изменений (P210).
+    func movePhoto(from: Int, to: Int, in tab: Shell.Tab) {
+        guard canEdit(tab), from != to else { return }
+        switch tab {
+        case .diary:
+            guard photos.indices.contains(from), photos.indices.contains(to) else { return }
+            photos.insert(photos.remove(at: from), at: to)
+            touchDiary()
+        case .plan:
+            guard planPhotos.indices.contains(from), planPhotos.indices.contains(to) else { return }
+            planPhotos.insert(planPhotos.remove(at: from), at: to)
         }
-        planRows.insert(.verbatim(line), at: at)
         save()
-    }
-
-    /// Положить снимок плана в шторку дела — строкой подробностей (P205).
-    func attachPlanPhoto(_ link: String, to id: UUID) {
-        guard canEditPlan else { return }
-        let line = Diary.line(link)
-        planPhotos.removeAll { $0 == link }
-        planRows.removeAll { $0.verbatim == line }
-        guard let i = index(of: id) else { return }
-        if !planRows[i].details.contains(line) { planRows[i].details.append(line) }
-        save()
-    }
-
-    /// Отметить, где человек был в этот день. Место — часть дневника:
-    /// в будущий день его не поставить (A9, P207).
-    @discardableResult
-    func mark(_ where_: CLLocationCoordinate2D) -> Bool {
-        guard canEditDiary else { return false }
-        place = Geo.text(where_)
-        touchDiary()
-        save()
-        return true
-    }
-
-    /// Вписать место в текст записи своей строкой `geo:…` (P165, P207).
-    @discardableResult
-    func writePlace(_ where_: CLLocationCoordinate2D) -> Bool {
-        guard canEditDiary else { return false }
-        let body = diaryText.replacingOccurrences(of: "\\s+$", with: "",
-                                                  options: .regularExpression)
-        diaryText = (body.isEmpty ? "" : body + "\n\n") + Geo.line(where_)
-        touchDiary()
-        save()
-        return true
-    }
-
-    var placeCoordinate: CLLocationCoordinate2D? { place.flatMap(Geo.parse) }
-
-    /// Записать погоду там, где человек сейчас. Только в сегодняшний день:
-    /// погода — это «как было, когда писал», а не справка о прошлом (P208).
-    func noteWeather(at location: CLLocation) {
-        guard isToday, canEditDiary else { return }
-        let day = date
-        Task { [weak self] in
-            guard let words = await WeatherNote.now(at: location) else { return }
-            await MainActor.run {
-                guard let self, self.date == day else { return }
-                self.weather = words
-                self.save()
-            }
-        }
     }
 
     func links(_ tab: Shell.Tab) -> [String] { tab == .diary ? photos : planPhotos }

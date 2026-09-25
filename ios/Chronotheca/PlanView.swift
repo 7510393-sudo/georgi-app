@@ -1,6 +1,6 @@
 import SwiftUI
 import UIKit
-import UniformTypeIdentifiers
+import CoreLocation
 
 /// Строка дела.
 ///
@@ -34,11 +34,6 @@ struct PlanRowLine: View {
     /// двигают (решение P179).
     var onGrab: ((CGFloat) -> Void)?
     var onDrop: (() -> Void)?
-
-    /// Снимок бросили на закладку: он уходит в шторку этого дела (P205).
-    var onPhotoDrop: ((String) -> Void)?
-    /// Над закладкой держат снимок: она светлеет — сюда можно отпустить.
-    @State private var aimed = false
 
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
@@ -264,37 +259,9 @@ struct PlanRowLine: View {
                 .padding(.vertical, PlanRowLine.bellRise)
         }
         .buttonStyle(.plain)
-        .allowsHitTesting(onDetails != nil || onPhotoDrop != nil)
-        .opacity(editMode && !aimed ? 0.25 : 1)
-        .overlay {
-            if aimed {
-                UnevenRoundedRectangle(topLeadingRadius: 7, bottomLeadingRadius: 7)
-                    .stroke(Look.glow, lineWidth: 2)
-                    .padding(.vertical, PlanRowLine.bellRise)
-                    .shadow(color: Look.glow.opacity(0.8), radius: 6)
-            }
-        }
-        .scaleEffect(aimed ? 1.08 : 1, anchor: .trailing)
-        .animation(.easeOut(duration: 0.15), value: aimed)
-        .onDrop(of: onPhotoDrop == nil ? [] : [UTType.plainText], isTargeted: $aimed) { items in
-            PlanRowLine.photoLink(from: items) { link in onPhotoDrop?(link) }
-        }
+        .allowsHitTesting(onDetails != nil)
+        .opacity(editMode ? 0.25 : 1)
         .accessibilityLabel("Подробности")
-    }
-
-    /// Достать из брошенного строку-ссылку на снимок. Отдаёт её на главном
-    /// потоке; возвращает, взято ли брошенное.
-    static func photoLink(from items: [NSItemProvider],
-                          then take: @escaping (String) -> Void) -> Bool {
-        guard let item = items.first(where: { $0.canLoadObject(ofClass: NSString.self) })
-        else { return false }
-        _ = item.loadObject(ofClass: NSString.self) { object, _ in
-            guard let text = object as? String,
-                  let link = Diary.picture(in: text.trimmingCharacters(in: .whitespacesAndNewlines))
-            else { return }
-            DispatchQueue.main.async { take(link) }
-        }
-        return true
     }
 }
 
@@ -351,6 +318,7 @@ struct PlanScaffold<Content: View>: View {
     var onOpenPhoto: ((Int) -> Void)?
     /// Что несёт палец, взяв превью из полоски (P205).
     var drag: ((Int) -> String)?
+    var onMovePhoto: ((Int, Int) -> Void)?
 
     @ViewBuilder let content: () -> Content
 
@@ -378,7 +346,7 @@ struct PlanScaffold<Content: View>: View {
             .animation(.easeOut(duration: 0.25), value: keyboard)
             if !photos.isEmpty {
                 PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto,
-                           drag: drag)
+                           drag: drag, onMove: onMovePhoto)
             }
         }
         .keyboardHeight($keyboard)
@@ -449,12 +417,6 @@ struct PlanView: View {
     /// вплотную, а расступаются соседи уже по целым строкам.
     @State private var dragOffset: CGFloat = 0
 
-    /// Снимок из полоски держат над списком: перед какой строкой файла он
-    /// встанет. Строки ниже расступаются на его высоту (P205).
-    @State private var gap: Int?
-    /// Середины строк по высоте — по ним видно, между какими строками палец.
-    @State private var middles: [Int: CGFloat] = [:]
-
     var body: some View {
         VStack(spacing: 0) {
             if store.editing { banner }
@@ -463,8 +425,10 @@ struct PlanView: View {
                          photos: store.planPhotos.map(store.photoURL),
                          glowing: store.editing,
                          onOpenPhoto: { shell.openedPhoto = .init(tab: .plan, index: $0) },
-                         drag: store.editing && store.canEditPlan
-                             ? { i in Diary.line(store.planPhotos[i]) } : nil) {
+                         // Снимки плана к делам не носят — только
+                         // переставляют вдоль полоски (P210).
+                         onMovePhoto: store.editing && store.canEditPlan
+                             ? { store.movePhoto(from: $0, to: $1, in: .plan) } : nil) {
                 if store.tasks.isEmpty {
                     PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
                 } else {
@@ -512,42 +476,17 @@ struct PlanView: View {
     }
 
     @ViewBuilder private var list: some View {
-        VStack(spacing: 0) {
-            ForEach(Array($store.planRows.enumerated()), id: \.element.id) { i, row in
-                if row.wrappedValue.isTask {
-                    VStack(spacing: 0) {
-                        taskRow(row)
-                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
-                    }
-                    .background(Middle(index: i))
-                } else if let link = row.wrappedValue.verbatim.flatMap(Diary.picture(in:)),
-                          Diary.kind(of: link) == .photo {
-                    VStack(spacing: 0) {
-                        PlanPhotoLine(url: store.photoURL(link)) {
-                            shell.openedPhoto = .init(tab: .plan, index: 0,
-                                                      url: store.photoURL(link))
-                        }
-                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
-                    }
-                    .offset(y: shift(i))
-                    .animation(.easeOut(duration: 0.16), value: gap)
-                    .background(Middle(index: i))
+        ForEach($store.planRows) { row in
+            if row.wrappedValue.isTask {
+                taskRow(row)
+                Rectangle().fill(Look.ruleSoft).frame(height: 1)
+            } else if let line = row.wrappedValue.verbatim {
+                PlanExtraLine(line: line, resolve: store.photoURL) { url in
+                    shell.openedPhoto = .init(tab: .plan, index: 0, url: url)
                 }
             }
         }
-        .coordinateSpace(name: Middle.space)
-        .onPreferenceChange(Middle.Key.self) { middles = $0 }
-        .onDrop(of: store.editing && store.canEditPlan ? [UTType.plainText] : [],
-                delegate: GapDrop(middles: middles, count: store.planRows.count, gap: $gap) {
-                    link, at in store.placePlanPhoto(link, at: at)
-                })
         stat
-    }
-
-    /// На сколько сдвинута строка файла, пока над списком держат снимок.
-    private func shift(_ index: Int) -> CGFloat {
-        guard let gap, index >= gap else { return 0 }
-        return PlanPhotoLine.height
     }
 
     private var stat: some View {
@@ -582,20 +521,16 @@ struct PlanView: View {
                 dragOffset = сдвиг
                 dragBy = Int((сдвиг / PlanRowLine.height).rounded())
             },
-            onDrop: { drop(id) },
-            onPhotoDrop: store.editing && store.canEditPlan
-                ? { link in store.attachPlanPhoto(link, to: id) } : nil)
+            onDrop: { drop(id) })
             // Взятое дело идёт за пальцем, остальные расступаются по целым
             // строкам — так под ним открывается место, и видно, куда оно
             // встанет (решение P163).
             .id(id)
             .offset(y: dragged == id
                     ? dragOffset
-                    : CGFloat(displaced(id)) * PlanRowLine.height
-                        + shift(store.index(of: id) ?? 0))
+                    : CGFloat(displaced(id)) * PlanRowLine.height)
             .animation(dragged == id ? nil : .easeOut(duration: 0.16),
                        value: displaced(id))
-            .animation(.easeOut(duration: 0.16), value: gap)
             .shadow(color: .black.opacity(dragged == id ? 0.18 : 0),
                     radius: 8, y: 3)
             .zIndex(dragged == id ? 1 : 0)
@@ -743,55 +678,54 @@ struct PlanStat: View {
     }
 }
 
-/// Середина строки плана по высоте, в мерке списка. Меряется по месту
-/// строки в раскладке, а не по тому, куда она сдвинута: иначе расступившиеся
-/// строки уезжали бы из-под пальца, и место снимка прыгало бы.
-struct Middle: View {
-    let index: Int
-
-    static let space = "план"
-
-    struct Key: PreferenceKey {
-        static var defaultValue: [Int: CGFloat] = [:]
-        static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
-            value.merge(nextValue()) { $1 }
-        }
-    }
+/// Строка плана, которая не дело: снимок, поставленный между делами в
+/// прежних сборках, или место `geo:…`, вписанное долгим нажатием на
+/// геоточку. Прочие строки файла не рисуются, но в файле остаются (P210).
+struct PlanExtraLine: View {
+    let line: String
+    var resolve: ((String) -> URL?)?
+    var open: ((URL?) -> Void)?
 
     var body: some View {
-        GeometryReader { geo in
-            Color.clear.preference(key: Key.self,
-                                   value: [index: geo.frame(in: .named(Middle.space)).midY])
+        if let link = Diary.picture(in: line), Diary.kind(of: link) == .photo {
+            PlanPhotoLine(url: resolve?(link)) { open?(resolve?(link)) }
+            Rectangle().fill(Look.ruleSoft).frame(height: 1)
+        } else if line.hasPrefix("geo:"), let at = Geo.parse(line) {
+            PlanPlaceLine(at: at)
+            Rectangle().fill(Look.ruleSoft).frame(height: 1)
         }
     }
 }
 
-/// Снимок из полоски над списком дел: строки расступаются там, где он
-/// встанет, как перед переносимым делом (P163, P205).
-struct GapDrop: DropDelegate {
-    let middles: [Int: CGFloat]
-    let count: Int
-    @Binding var gap: Int?
-    let place: (String, Int) -> Void
+/// Место в плане: булавка и координаты; касание — проложить путь или
+/// скопировать точку (P165, P210).
+struct PlanPlaceLine: View {
+    let at: CLLocationCoordinate2D
 
-    func validateDrop(info: DropInfo) -> Bool {
-        info.hasItemsConforming(to: [UTType.plainText])
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        let at = middles.sorted { $0.key < $1.key }
-            .first { $0.value > info.location.y }?.key ?? count
-        if gap != at { gap = at }
-        return DropProposal(operation: .copy)
-    }
-
-    func dropExited(info: DropInfo) { gap = nil }
-
-    func performDrop(info: DropInfo) -> Bool {
-        let at = gap ?? count
-        gap = nil
-        return PlanRowLine.photoLink(from: info.itemProviders(for: [UTType.plainText])) {
-            place($0, at)
+    var body: some View {
+        Menu {
+            Button {
+                PlaceActions.openInMaps(at, name: "Место из плана")
+            } label: {
+                Label("Проложить путь в Картах", systemImage: "arrow.triangle.turn.up.right.diamond")
+            }
+            Button {
+                PlaceActions.copy(at)
+            } label: {
+                Label("Скопировать точку", systemImage: "doc.on.doc")
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "mappin.and.ellipse")
+                Text(Geo.text(at))
+                    .font(Look.mono(13))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Look.accent)
+            .padding(.horizontal, 16)
+            .frame(height: 40)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }

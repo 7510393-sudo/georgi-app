@@ -142,6 +142,12 @@ struct PhotoStrip: View {
     /// Что понесёт палец, взяв превью: строку-ссылку на снимок. Задано —
     /// превью можно взять долгим нажатием и бросить в текст (P204).
     var drag: ((Int) -> String)?
+    /// Переставить превью в полоске — перетаскиванием вбок в режиме
+    /// изменений (P210).
+    var onMove: ((Int, Int) -> Void)?
+
+    /// Превью, которое сейчас несут, — по нему соседи расступаются.
+    @State private var carrying: Int?
 
     static let side: CGFloat = 54
     private let gap: CGFloat = 8
@@ -197,7 +203,12 @@ struct PhotoStrip: View {
             .onTapGesture { onOpen?(i) }
             // Бросить в текст можно только снимок: голос и документ
             // остаются в полоске (P204, P209).
-            .modifier(Carried(payload: glowing && kind(i) == .photo ? drag.map { $0(i) } : nil))
+            .modifier(Carried(
+                on: glowing && (onMove != nil || (drag != nil && kind(i) == .photo)),
+                text: kind(i) == .photo ? drag.map { $0(i) } : nil,
+                start: { carrying = i }))
+            .onDrop(of: glowing && onMove != nil ? [UTType.plainText, Carried.strip] : [],
+                    delegate: StripDrop(index: i, carrying: $carrying, move: onMove))
             .accessibilityLabel(kind(i) == .photo ? "Фотография \(i + 1)"
                                 : kind(i) == .audio ? "Голосовая запись" : "Файл")
     }
@@ -234,15 +245,55 @@ struct FileTile: View {
 
 /// Превью, которое можно взять пальцем. Несёт строку-ссылку: поле записи
 /// принимает её как текст и рисует на её месте снимок.
+///
+/// Снимок несёт строку-ссылку как текст: поле записи принимает её и рисует
+/// снимок на её месте (P204). Голос и документ несут только свою метку:
+/// в текст их не бросить, только переставить в полоске (P209, P210).
 private struct Carried: ViewModifier {
-    let payload: String?
+    let on: Bool
+    let text: String?
+    let start: () -> Void
+
+    /// Своя метка превью из полоски — её понимает только сама полоска.
+    static let strip = UTType(importedAs: "com.kobiashvili.diary.strip")
 
     func body(content: Content) -> some View {
-        if let payload {
-            content.onDrag { NSItemProvider(object: ("\n" + payload) as NSString) }
+        if on {
+            content.onDrag {
+                start()
+                if let text { return NSItemProvider(object: ("\n" + text) as NSString) }
+                let item = NSItemProvider()
+                item.registerDataRepresentation(forTypeIdentifier: Carried.strip.identifier,
+                                                visibility: .ownProcess) { done in
+                    done(Data(), nil)
+                    return nil
+                }
+                return item
+            }
         } else {
             content
         }
+    }
+}
+
+/// Превью несут вдоль полоски: соседи расступаются, превью встаёт туда,
+/// где его отпустили (P210).
+private struct StripDrop: DropDelegate {
+    let index: Int
+    @Binding var carrying: Int?
+    let move: ((Int, Int) -> Void)?
+
+    func dropEntered(info: DropInfo) {
+        guard let from = carrying, from != index else { return }
+        withAnimation(.easeOut(duration: 0.18)) { move?(from, index) }
+        carrying = index
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        carrying = nil
+        return true
     }
 }
 

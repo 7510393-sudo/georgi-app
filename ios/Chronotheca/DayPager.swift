@@ -422,18 +422,22 @@ struct AttachBar: View {
         }
     }
 
-    /// Вписать, где человек сейчас, в текст записи дня.
+    /// Вписать, где человек сейчас, — на ту вкладку, где он стоит: в
+    /// текст дневника или строкой в план (P210).
     private func writePlace() {
-        guard store.canEditDiary else { return shell.say(store.closedReason) }
+        let tab = shell.tab
+        guard store.canEdit(tab) else { return shell.say(store.closedReason) }
         shell.say("Узнаю, где вы…")
         Locator.shared.current { location in
             guard let at = location?.coordinate else {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
-            store.writePlace(at)
+            switch tab {
+            case .diary: store.writePlace(at)
+            case .plan: store.writePlanPlace(at)
+            }
             if let location { store.noteWeather(at: location) }
-            shell.tab = .diary
-            shell.say("Место вписано в запись")
+            shell.say(tab == .diary ? "Место вписано в запись" : "Место вписано в план")
         }
     }
 
@@ -553,10 +557,8 @@ struct PlanPage: View {
                         PlanRowLine(number: rows[..<i].filter(\.isTask).count + 1,
                                     row: row, faded: isPast, bellColor: bellColor)
                         Rectangle().fill(Look.ruleSoft).frame(height: 1)
-                    } else if let link = row.verbatim.flatMap(Diary.picture(in:)),
-                              Diary.kind(of: link) == .photo {
-                        PlanPhotoLine(url: resolve?(link))
-                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                    } else if let line = row.verbatim {
+                        PlanExtraLine(line: line, resolve: resolve)
                     }
                 }
                 PlanStat(planned: tasks.count, done: tasks.filter(\.done).count)

@@ -27,6 +27,7 @@ struct DiaryView: View {
             resolve: store.photoURL,
             glowing: store.editing,
             onOpenPhoto: { shell.openedPhoto = .init(tab: .diary, index: $0) },
+            onMovePhoto: { store.movePhoto(from: $0, to: $1, in: .diary) },
             // В режиме изменений запись переставляют, а не продолжают:
             // отметка времени тогда ни к чему. Иначе брошенный в текст
             // снимок заодно ставил бы в конец записи новое время.
@@ -68,6 +69,7 @@ struct DiaryPage: View {
     /// Режим изменений: превью подсвечены, их можно взять (P203).
     var glowing = false
     var onOpenPhoto: ((Int) -> Void)?
+    var onMovePhoto: ((Int, Int) -> Void)?
     /// Возвращает `true`, если приложение поставило отметку времени: тогда
     /// курсор переезжает за неё.
     var onFocusText: () -> Bool = { false }
@@ -97,7 +99,8 @@ struct DiaryPage: View {
             if !photos.isEmpty {
                 PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto,
                            drag: editable && photoLinks.count == photos.count
-                               ? { Diary.line(photoLinks[$0]) } : nil)
+                               ? { Diary.line(photoLinks[$0]) } : nil,
+                           onMove: editable ? onMovePhoto : nil)
                     .background(Look.diaryBg)
             }
         }

@@ -25,9 +25,15 @@ struct MapScreen: View {
     /// Место, чьё облачко открыто.
     @State private var opened: Place?
     @State private var locating = false
+    /// Новое место, пока ему дают название: булавка стоит на карте сразу,
+    /// чтобы было видно, что карта поняла палец (P210).
+    @State private var draft: Place?
+    /// Где палец коснулся карты последний раз — туда и встанет новое место.
+    @State private var touch: CGPoint = .zero
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            header
             MapReader { proxy in
                 Map(position: $camera) {
                     UserAnnotation()
@@ -45,34 +51,38 @@ struct MapScreen: View {
                         }
                         .annotationTitles(.hidden)
                     }
+                    ForEach(draft.map { [$0] } ?? []) { place in
+                        Annotation("", coordinate: place.coordinate, anchor: .bottom) {
+                            PlacePin(name: "Новое место")
+                                .opacity(0.8)
+                        }
+                        .annotationTitles(.hidden)
+                    }
                 }
                 .mapControls {
                     MapUserLocationButton()
                     MapCompass()
                 }
-                // Долгое нажатие ставит новое место туда, где палец.
+                // Где палец — запоминается на каждом касании; долгое нажатие
+                // ставит туда булавку сразу, с отдачей в палец, и открывает
+                // название. Прежде булавка не появлялась, и было непонятно,
+                // поняла ли карта палец (P210).
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { touch = $0.location })
                 .simultaneousGesture(
                     LongPressGesture(minimumDuration: 0.5)
-                        .sequenced(before: DragGesture(minimumDistance: 0))
-                        .onEnded { value in
-                            guard case .second(true, let drag?) = value,
-                                  let at = proxy.convert(drag.location, from: .local)
-                            else { return }
+                        .onEnded { _ in
+                            guard let at = proxy.convert(touch, from: .local) else { return }
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            editing = Place(name: "", coordinate: at)
+                            let new = Place(name: "", coordinate: at)
+                            draft = new
+                            editing = new
                         })
             }
-            .ignoresSafeArea(edges: .bottom)
             .safeAreaInset(edge: .bottom) { here }
-            .navigationTitle("Мои места")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Готово") { shell.showingMap = false }
-                        .fontWeight(.semibold)
-                }
-            }
         }
+        .background(Look.chrome)
         .sheet(item: $opened) { place in
             PlaceCloud(place: place) {
                 opened = nil
@@ -80,10 +90,34 @@ struct MapScreen: View {
             }
             .presentationDetents([.fraction(0.35), .medium])
         }
-        .sheet(item: $editing) { place in
+        .sheet(item: $editing, onDismiss: { draft = nil }) { place in
             PlaceEditor(place: place, save: save, remove: remove)
         }
         .onAppear(perform: begin)
+    }
+
+    /// Название экрана — такое же, как у календаря и поиска. Шестерёнка,
+    /// три точки и нижние разделы остаются на месте: карта открывается на
+    /// странице, а не поверх всего приложения (P210).
+    private var header: some View {
+        ZStack {
+            Text("Мои места")
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundStyle(Look.ink)
+            HStack {
+                Spacer()
+                Button {
+                    withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
+                } label: {
+                    Text("Закрыть")
+                        .font(Look.sans(14))
+                        .foregroundStyle(Look.accent)
+                }
+                .padding(.trailing, 16)
+            }
+        }
+        .padding(.top, DayPage.airAbove)
+        .padding(.bottom, 10)
     }
 
     /// Дни, в которые человек отметил, где был.
@@ -157,6 +191,7 @@ struct MapScreen: View {
 
     private func save(_ place: Place) {
         editing = nil
+        draft = nil
         guard let stored = Places.save(place, in: vault) else {
             return shell.say("Место не записалось. Проверьте папку в настройках.")
         }
@@ -229,6 +264,21 @@ struct PlaceCloud: View {
                     .foregroundStyle(place.text.isEmpty ? Look.inkFaint : Look.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            // Дорога туда — в Картах; точку можно и скопировать (P210).
+            HStack(spacing: 12) {
+                Button {
+                    PlaceActions.openInMaps(place.coordinate, name: place.name)
+                } label: {
+                    Label("Проложить путь", systemImage: "arrow.triangle.turn.up.right.diamond")
+                }
+                Spacer()
+                Button {
+                    PlaceActions.copy(place.coordinate)
+                } label: {
+                    Label("Скопировать точку", systemImage: "doc.on.doc")
+                }
+            }
+            .font(Look.sans(14))
         }
         .padding(20)
         .background(Look.sticker)
@@ -280,5 +330,23 @@ struct PlaceEditor: View {
                 Text("Файл этого места будет удалён из папки «Места».")
             }
         }
+    }
+}
+
+/// Что можно сделать с точкой: открыть в Картах, скопировать.
+enum PlaceActions {
+
+    /// Открыть в Картах Apple с дорогой до точки.
+    static func openInMaps(_ c: CLLocationCoordinate2D, name: String) {
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: c))
+        item.name = name
+        item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey:
+                                            MKLaunchOptionsDirectionsModeDefault])
+    }
+
+    /// Скопировать точку словами «59.93863, 30.31413» — их понимает любой
+    /// навигатор и любые карты.
+    static func copy(_ c: CLLocationCoordinate2D) {
+        UIPasteboard.general.string = Geo.text(c)
     }
 }

@@ -17,10 +17,28 @@ struct MenuSticker: View {
     @AppStorage("calendar.kind") private var calendarKind = CalendarView.Kind.month.rawValue
 
     var body: some View {
-        switch shell.screen {
-        case .today:    dayMenu
-        case .calendar: calendarMenu
-        case .search:   searchMenu
+        if shell.showingMap {
+            mapMenu
+        } else {
+            switch shell.screen {
+            case .today:    dayMenu
+            case .calendar: calendarMenu
+            case .search:   searchMenu
+            }
+        }
+    }
+
+    /// Меню карты. Состав обсудим с автором — пока то, что уже есть (P210).
+    private var mapMenu: some View {
+        Sticker(side: .trailing, title: "Меню карты", close: close) {
+            StickerItem(title: "Вернуться к странице дня") {
+                close()
+                withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
+            }
+            StickerItem(title: "Все места списком") {
+                close()
+                shell.say("Список мест ещё не сделан.")
+            }
         }
     }
 
