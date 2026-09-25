@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 
 /// Опись папки: какие дни в ней вообще есть и что в них.
 ///
@@ -18,6 +19,8 @@ final class Archive: ObservableObject {
         /// Сколько фотографий в записи: день с одной фотографией — тоже
         /// запись, и календарь не должен его терять (P200).
         var photos = 0
+        /// Где человек был в этот день, если отметил (P207).
+        var place: CLLocationCoordinate2D?
 
         /// Файл дня лежит в iCloud и ещё не скачан. День есть, хотя
         /// прочитать его пока нечем (решение P182).
@@ -121,6 +124,7 @@ final class Archive: ObservableObject {
                         day.text = diary.text
                         day.answers = diary.answers
                         day.photos = diary.photos.count
+                        day.place = parsed.value("место").flatMap(Geo.parse)
                     }
                     found[stamp] = day
                 }

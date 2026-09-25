@@ -47,6 +47,8 @@ final class Shell: ObservableObject {
     @Published var openedPhoto: OpenedPhoto?
 
     @Published var showingMenu = false
+    /// Своя карта мест — за кнопкой «геоточка» (P207).
+    @Published var showingMap = false
     @Published var showingSettings = false
     @Published var showingFile = false
     @Published var picking = false

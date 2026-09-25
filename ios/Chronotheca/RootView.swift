@@ -169,6 +169,8 @@ struct RootView: View {
         .onChange(of: shell.screen) { old, new in follow(from: old, to: new) }
         // Снимок во весь экран — один на всё приложение: открывают его и
         // из плана, и из дневника (P203).
+        // Своя карта мест — за кнопкой «геоточка» (P207).
+        .fullScreenCover(isPresented: $shell.showingMap) { MapScreen() }
         .fullScreenCover(item: $shell.openedPhoto) { opened in
             let links = store.links(opened.tab)
             PhotoViewer(

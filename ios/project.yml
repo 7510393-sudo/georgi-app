@@ -24,6 +24,8 @@ targets:
         # спрашивает про шифрование у каждой сборки и держит её до ответа.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_CFBundleDisplayName: Chronotheca
+        # Место спрашивается только по нажатию на геоточку (P207).
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Чтобы отметить на вашей карте, где вы сейчас. Место записывается только в ваши файлы и никуда не отправляется."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         TARGETED_DEVICE_FAMILY: "1"

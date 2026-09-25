@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import PhotosUI
 
 /// Дни листаются как страницы книги.
@@ -330,7 +331,10 @@ struct AttachBar: View {
             item("photo", "фото", ready: true) { choosePhotos() }
             item("waveform", "аудио") { notYet() }
             item("doc", "файлы") { notYet() }
-            item("mappin.and.ellipse", "геоточка") { notYet() }
+            // Касание — своя карта мест; долгое нажатие — вписать, где
+            // человек сейчас, строкой в текст записи (P165, P207).
+            item("mappin.and.ellipse", "геоточка", ready: true,
+                 hold: writePlace) { shell.showingMap = true }
         }
         .padding(.top, 8)
         .padding(.bottom, 7)
@@ -350,19 +354,49 @@ struct AttachBar: View {
     }
 
     private func item(_ icon: String, _ name: String, ready: Bool = false,
+                      hold: (() -> Void)? = nil,
                       act: @escaping () -> Void) -> some View {
-        Button(action: act) {
-            VStack(spacing: 3) {
-                Image(systemName: icon).font(.system(size: 17))
-                Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
+        let face = VStack(spacing: 3) {
+            Image(systemName: icon).font(.system(size: 17))
+            Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
+        }
+        .frame(maxWidth: .infinity)
+        .foregroundStyle(ready ? Look.inkSoft : Look.inkFaint)
+        .contentShape(Rectangle())
+        return Group {
+            if let hold {
+                // У кнопки два жеста: касание и долгое нажатие. Обычная
+                // кнопка сработала бы и после долгого — поэтому жесты свои.
+                face
+                    .onTapGesture(perform: act)
+                    .onLongPressGesture(minimumDuration: 0.5) {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        hold()
+                    }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Долгое нажатие — вписать место в запись")
+            } else {
+                Button(action: act) { face }
             }
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(ready ? Look.inkSoft : Look.inkFaint)
+        }
+    }
+
+    /// Вписать, где человек сейчас, в текст записи дня.
+    private func writePlace() {
+        guard store.canEditDiary else { return shell.say(store.closedReason) }
+        shell.say("Узнаю, где вы…")
+        Locator.shared.current { location in
+            guard let at = location?.coordinate else {
+                return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
+            }
+            store.writePlace(at)
+            shell.tab = .diary
+            shell.say("Место вписано в запись")
         }
     }
 
     private func notYet() {
-        shell.say("Аудио, файлы и геоточка — следующие. Фото уже работает.")
+        shell.say("Аудио и файлы — следующие. Фото и геоточка уже работают.")
     }
 
     /// Фото кладутся туда, где человек стоит: на вкладке плана — в план,

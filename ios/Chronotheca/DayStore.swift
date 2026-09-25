@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 
 /// Один день: файл плана и файл дневника.
 ///
@@ -75,6 +76,9 @@ final class DayStore: ObservableObject {
     @Published var photos: [String] = []
     /// Фотографии плана — свои, отдельно от дневника (P203).
     @Published var planPhotos: [String] = []
+    /// Где человек был в этот день — «широта, долгота» в шапке дневника
+    /// (A9, P207). Ставится только его рукой, кнопкой на карте.
+    @Published var place: String?
 
     /// Когда дневник правили в последний раз. Лежит в шапке файла, чтобы
     /// отметка времени вела себя одинаково и после перезапуска приложения.
@@ -249,6 +253,31 @@ final class DayStore: ObservableObject {
         save()
     }
 
+    /// Отметить, где человек был в этот день. Место — часть дневника:
+    /// в будущий день его не поставить (A9, P207).
+    @discardableResult
+    func mark(_ where_: CLLocationCoordinate2D) -> Bool {
+        guard canEditDiary else { return false }
+        place = Geo.text(where_)
+        touchDiary()
+        save()
+        return true
+    }
+
+    /// Вписать место в текст записи своей строкой `geo:…` (P165, P207).
+    @discardableResult
+    func writePlace(_ where_: CLLocationCoordinate2D) -> Bool {
+        guard canEditDiary else { return false }
+        let body = diaryText.replacingOccurrences(of: "\\s+$", with: "",
+                                                  options: .regularExpression)
+        diaryText = (body.isEmpty ? "" : body + "\n\n") + Geo.line(where_)
+        touchDiary()
+        save()
+        return true
+    }
+
+    var placeCoordinate: CLLocationCoordinate2D? { place.flatMap(Geo.parse) }
+
     func links(_ tab: Shell.Tab) -> [String] { tab == .diary ? photos : planPhotos }
 
     func canEdit(_ tab: Shell.Tab) -> Bool { tab == .diary ? canEditDiary : canEditPlan }
@@ -283,6 +312,7 @@ final class DayStore: ObservableObject {
         diaryText = diary.text
         answers = diary.answers
         photos = diary.photos
+        place = file.value("место")
         lastEdit = file.value("правлено").flatMap(DayStore.moment(from:))
 
         seen = [.planner: plan.text, .diary: diaryFile.text]
@@ -339,7 +369,7 @@ final class DayStore: ObservableObject {
         let diary = diaryFileNow()
         let a = write(plan, to: .planner, keep: false)
         // Заголовок дня — это уже запись, даже если под ним пока нет ни строчки.
-        let b = write(diary, to: .diary, keep: !diaryTitle.isEmpty)
+        let b = write(diary, to: .diary, keep: !diaryTitle.isEmpty || place != nil)
         if a || b { load() }
     }
 
@@ -363,6 +393,7 @@ final class DayStore: ObservableObject {
                                      photos: photos).body(order: order))
         diary.set("дата", Vault.stamp(date))
         if !diaryTitle.isEmpty { diary.set("заголовок", diaryTitle) }
+        if let place { diary.set("место", place) }
         if let lastEdit { diary.set("правлено", DayStore.moment(lastEdit)) }
         return diary
     }

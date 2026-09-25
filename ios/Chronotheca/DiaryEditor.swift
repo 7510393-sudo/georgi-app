@@ -197,11 +197,30 @@ struct DiaryEditor: UIViewRepresentable {
                     .foregroundColor: UIColor(Look.inkFaint),
                 ], range: m.range(at: 1))
             }
+            if let place = placeRange(in: ns, line: lineRange) {
+                out.addAttributes(placeLook(size), range: place)
+            }
             if lineRange.length == 0 { break }
             start = lineRange.location + lineRange.length
             if start >= ns.length { break }
         }
         return out
+    }
+
+    // MARK: - Место в тексте
+
+    /// Строка `geo:широта,долгота` — место, вписанное долгим нажатием на
+    /// геоточку. Служебная, как отметка времени: бледнее и моноширинная
+    /// (P165, P207).
+    static func placeRange(in ns: NSString, line: NSRange) -> NSRange? {
+        let content = ns.substring(with: line).trimmingCharacters(in: .newlines)
+        guard content.hasPrefix("geo:"), Geo.parse(content) != nil else { return nil }
+        return NSRange(location: line.location, length: (content as NSString).length)
+    }
+
+    static func placeLook(_ size: CGFloat) -> [NSAttributedString.Key: Any] {
+        [.font: UIFont.monospacedSystemFont(ofSize: size * 0.8, weight: .regular),
+         .foregroundColor: UIColor(Look.accent)]
     }
 
     // MARK: - Снимки в тексте
@@ -525,6 +544,9 @@ struct DiaryEditor: UIViewRepresentable {
             var start = 0
             while parent.stamped, start < ns.length {
                 let line = ns.lineRange(for: NSRange(location: start, length: 0))
+                if let place = DiaryEditor.placeRange(in: ns, line: line) {
+                    storage.addAttributes(DiaryEditor.placeLook(parent.size), range: place)
+                }
                 if let m = DiaryEditor.stamp.firstMatch(in: text, range: line),
                    m.numberOfRanges > 1 {
                     storage.addAttributes([

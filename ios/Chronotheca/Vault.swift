@@ -17,6 +17,8 @@ final class Vault: ObservableObject {
         case audio     = "Аудио"
         case documents = "Документы"
         case service   = "Служебное"
+        /// Места своей карты — по файлу на место (P207).
+        case places    = "Места"
     }
 
     /// Имя папки, которую приложение заводит себе само.
@@ -510,7 +512,8 @@ final class Vault: ObservableObject {
                 atPath: url.appendingPathComponent(folder.rawValue).path)) ?? []
             if years.contains(where: { $0.count == 4 && Int($0) != nil }) { return true }
         }
-        return Folder.allCases.allSatisfy {
+        // «Места» появились позже прочих: старые архивы без них — тоже наши.
+        return Folder.allCases.filter { $0 != .places }.allSatisfy {
             fm.fileExists(atPath: url.appendingPathComponent($0.rawValue).path)
         }
     }
