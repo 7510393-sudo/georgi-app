@@ -2,9 +2,11 @@ import SwiftUI
 
 /// Облачко «…помнишь?».
 ///
-/// Нарисовано автором от руки и обведено в вектор. Выглядывает из-за
-/// вкладки «Дневник» сверху: вкладка накрывает его низ, и видно, что
-/// облачко не часть страницы, а бумажка, подсунутая под неё.
+/// Нарисовано автором от руки и обведено в вектор. Лежит за вкладкой
+/// «Дневник», расслабленно опершись на неё левым локтем: низ облачка
+/// стоит на верхнем крае вкладки, а локоть заходит на саму вкладку и
+/// накрывает её край. Так видно объём, и у приложения появляется свой
+/// симпатичный жилец (решение P206, вместо P140).
 ///
 /// Негромкое: это не напоминание и не требование, а предложение вернуться
 /// к своей же записи (решения P66–P69, P140).
@@ -17,10 +19,14 @@ struct RememberCloud: View {
 
     /// Пропорции рисунка и место для подписи внутри него — доли ширины и
     /// высоты, снятые с самого эскиза.
-    static let ratio: CGFloat = 2.776
-    private static let textLeft: CGFloat = 0.16
-    private static let textRight: CGFloat = 0.38
-    private static let textMiddle: CGFloat = 0.52
+    static let ratio: CGFloat = 1.806
+    /// Где на рисунке верхний край вкладки: на нём облачко стоит, ниже
+    /// уходит только локоть.
+    static let tabEdge: CGFloat = 0.749
+    /// Подпись идёт вверх-вправо, как написана на эскизе.
+    private static let textCenter = CGPoint(x: 0.32, y: 0.43)
+    private static let textWidth: CGFloat = 0.5
+    private static let textAngle: Double = -32
 
     /// Ширина облачка. Подпись набрана шрифтом, а не обведена вместе с
     /// рисунком: от руки она на такой ширине превращается в пятно, а
@@ -44,15 +50,15 @@ struct RememberCloud: View {
                     .resizable()
                     .foregroundStyle(Look.ink)
                 Text("…а помнишь?")
-                    .font(Look.sans(width * 0.080))
+                    .font(Look.sans(width * 0.085))
                     .tracking(0.2)
                     .foregroundStyle(Look.inkSoft)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                    .rotationEffect(.degrees(-5))
-                    .frame(width: width * (1 - Self.textLeft - Self.textRight))
-                    .position(x: width * ((1 - Self.textRight + Self.textLeft) / 2),
-                              y: height * Self.textMiddle)
+                    .frame(width: width * Self.textWidth)
+                    .rotationEffect(.degrees(Self.textAngle))
+                    .position(x: width * Self.textCenter.x,
+                              y: height * Self.textCenter.y)
             }
             .frame(width: width, height: height)
         }

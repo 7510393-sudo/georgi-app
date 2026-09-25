@@ -67,7 +67,7 @@ struct DayPage: View {
             // Облачко лежит на шапке, а вкладки рисуются следом и накрывают
             // его низ. Оттого и видно, что это бумажка, подсунутая под
             // страницу, а не часть страницы (P140).
-            heading.overlay(alignment: .bottomTrailing) { cloud }
+            heading
             tabs
             content
             AttachBar()
@@ -86,12 +86,18 @@ struct DayPage: View {
     @ViewBuilder private var cloud: some View {
         if live, shell.tab == .diary, archive.remembered(for: date) != nil,
            !Remembered.has(Vault.stamp(date), in: read) {
-            RememberCloud(date: date, width: 120) { remembering = true }
-                // Вправо, в свободное место за датой: на живом экране дата
-                // шире, чем на эскизе, и на неё наезжать нельзя. Низ опущен
-                // под край вкладки — там вкладка его и накроет.
-                .offset(x: -6, y: 6)
-                .transition(.opacity)
+            // Облачко стоит на верхнем крае вкладки «Дневник», локоть
+            // заходит на вкладку. Размер и место — доли ширины вкладки, как
+            // на эскизе; сдвинуто чуть правее эскиза, чтобы не накрыть
+            // дату (P206).
+            GeometryReader { geo in
+                let width = geo.size.width * 0.62
+                let height = width / RememberCloud.ratio
+                RememberCloud(date: date, width: width) { remembering = true }
+                    .frame(width: width, height: height)
+                    .offset(x: geo.size.width * 0.31, y: -height * RememberCloud.tabEdge)
+            }
+            .transition(.opacity)
         }
     }
 
@@ -256,7 +262,9 @@ struct DayPage: View {
     private var tabs: some View {
         HStack(spacing: 6) {
             tab(.plan)
-            tab(.diary)
+            // Облачко лежит поверх вкладки: вкладки рисуются после шапки,
+            // и то, что выше края, ложится на шапку, а локоть — на вкладку.
+            tab(.diary).overlay(alignment: .topLeading) { cloud }
         }
         .padding(.horizontal, 12)
         .background(Look.chrome)
