@@ -40,7 +40,10 @@ struct MapScreen: View {
                           onLongPress: pick, onPlace: choose, onDay: openDay,
                           onSelected: { withAnimation { panel = .cloud } })
                 if let selected, panel == .naming {
+                    // Новая булавка — новая панель: поля не должны
+                    // остаться от прежней точки.
                     PointPanel(place: selected, cancel: cancel, done: name)
+                        .id(selected.id)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 } else if let selected, panel == .cloud {
                     PlaceCloud(place: selected,

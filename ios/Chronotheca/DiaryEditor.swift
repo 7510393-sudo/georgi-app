@@ -435,8 +435,9 @@ struct DiaryEditor: UIViewRepresentable {
         }
 
         @objc func tapped(_ g: UITapGestureRecognizer) {
+            // Метка касания не снимается здесь: поле может спросить
+            // разрешения писать уже после этого — и должно получить отказ.
             guard g.state == .ended, let got = pressed else { return }
-            pressed = nil
             if let link = got.photo { parent.onOpenPhoto?(link) }
             if let point = got.point { parent.onOpenPoint?(point) }
         }
