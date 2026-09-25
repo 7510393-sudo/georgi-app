@@ -100,7 +100,9 @@ struct DayPage: View {
                 let height = width / RememberCloud.ratio
                 RememberCloud(date: date, width: width) { remembering = true }
                     .frame(width: width, height: height)
-                    .offset(x: geo.size.width * 0.45, y: -height * 0.80)
+                    // На 2 мм (12 точек) ниже: облачко садится на вкладку
+                    // без зазора (P224).
+                    .offset(x: geo.size.width * 0.45, y: -height * 0.80 + 12)
             }
             .transition(.opacity)
         }
