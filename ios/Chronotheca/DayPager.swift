@@ -325,12 +325,14 @@ struct AttachBar: View {
 
     @State private var choosing = false
     @State private var picked: [PhotosPickerItem] = []
+    @State private var recording = false
+    @State private var browsing = false
 
     var body: some View {
         HStack(spacing: 0) {
             item("photo", "фото", ready: true) { choosePhotos() }
-            item("waveform", "аудио") { notYet() }
-            item("doc", "файлы") { notYet() }
+            item("waveform", "аудио", ready: true) { open { recording = true } }
+            item("doc", "файлы", ready: true) { open { browsing = true } }
             // Касание — своя карта мест; долгое нажатие — вписать, где
             // человек сейчас, строкой в текст записи (P165, P207).
             item("mappin.and.ellipse", "геоточка", ready: true,
@@ -351,6 +353,45 @@ struct AttachBar: View {
             picked = []
             take(items)
         }
+        .sheet(isPresented: $recording) {
+            Recorder(done: keepVoice) { recording = false }
+                .presentationDetents([.height(360)])
+        }
+        .sheet(isPresented: $browsing) {
+            DocumentPicker(pick: keepFiles)
+        }
+    }
+
+    /// Вложение кладётся туда, где человек стоит, — в план или в дневник
+    /// (P203). В закрытый день — нельзя, и об этом говорится.
+    private func open(_ show: () -> Void) {
+        guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
+        show()
+    }
+
+    /// Голос готов: файл — в «Аудио», ссылка — в файл дня (P209).
+    private func keepVoice(_ url: URL) {
+        recording = false
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard let data = try? Data(contentsOf: url), !data.isEmpty,
+              store.addAttachment(data, to: .audio, name: Vault.moment(store.date) + ".m4a",
+                                  tab: shell.tab)
+        else { return shell.say("Запись не сохранилась.") }
+        shell.say("Голос положен в папку «Аудио»")
+    }
+
+    /// Документы выбраны: копии — в «Документы» под своими именами (P209).
+    private func keepFiles(_ urls: [URL]) {
+        browsing = false
+        guard !urls.isEmpty else { return }
+        var kept = 0
+        for url in urls {
+            guard let data = try? Data(contentsOf: url) else { continue }
+            if store.addAttachment(data, to: .documents, name: url.lastPathComponent,
+                                   tab: shell.tab) { kept += 1 }
+        }
+        shell.say(kept == urls.count ? "Положено в папку «Документы»: \(kept)"
+                                     : "Не удалось положить файлов: \(urls.count - kept)")
     }
 
     private func item(_ icon: String, _ name: String, ready: Bool = false,
@@ -390,13 +431,10 @@ struct AttachBar: View {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
             store.writePlace(at)
+            if let location { store.noteWeather(at: location) }
             shell.tab = .diary
             shell.say("Место вписано в запись")
         }
-    }
-
-    private func notYet() {
-        shell.say("Аудио и файлы — следующие. Фото и геоточка уже работают.")
     }
 
     /// Фото кладутся туда, где человек стоит: на вкладке плана — в план,
@@ -444,6 +482,7 @@ struct SideDay: View {
     @State private var answers: [String: String] = [:]
     @State private var photos: [String] = []
     @State private var planPhotos: [String] = []
+    @State private var weather: String?
 
     var body: some View {
         Group {
@@ -468,6 +507,7 @@ struct SideDay: View {
                   title: .constant(title),
                   text: .constant(text),
                   editable: false,
+                  weather: weather,
                   photos: photos.map { vault.mediaURL($0, for: date) },
                   resolve: { [vault, date] in vault.mediaURL($0, for: date) })
     }
@@ -481,6 +521,7 @@ struct SideDay: View {
         text = diary.text
         answers = diary.answers
         photos = diary.photos
+        weather = file.value("погода")
     }
 }
 
@@ -512,7 +553,8 @@ struct PlanPage: View {
                         PlanRowLine(number: rows[..<i].filter(\.isTask).count + 1,
                                     row: row, faded: isPast, bellColor: bellColor)
                         Rectangle().fill(Look.ruleSoft).frame(height: 1)
-                    } else if let link = row.verbatim.flatMap(Diary.picture(in:)) {
+                    } else if let link = row.verbatim.flatMap(Diary.picture(in:)),
+                              Diary.kind(of: link) == .photo {
                         PlanPhotoLine(url: resolve?(link))
                         Rectangle().fill(Look.ruleSoft).frame(height: 1)
                     }

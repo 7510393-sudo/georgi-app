@@ -21,6 +21,7 @@ struct DiaryView: View {
             text: $store.diaryText,
             editable: store.canEditDiary,
             inCloud: store.away.contains(.diary),
+            weather: store.weather,
             photos: store.photos.map(store.photoURL),
             photoLinks: store.photos,
             resolve: store.photoURL,
@@ -56,6 +57,8 @@ struct DiaryPage: View {
     /// Файл дневника лежит в iCloud и ещё не скачан: страница пуста не
     /// потому, что день пуст (решение P182).
     var inCloud = false
+    /// Погода, когда отмечено место: бледной строкой над страницей (P208).
+    var weather: String?
     /// Фотографии дня. Стоят над текстом, под заголовком (P200).
     var photos: [URL?] = []
     /// Строки-ссылки тех же снимков: их несёт палец из полоски в текст.
@@ -108,6 +111,12 @@ struct DiaryPage: View {
                         .font(Look.serif(size - 1))
                         .foregroundStyle(Look.inkFaint)
                         .padding(.bottom, 12)
+                }
+                if let weather {
+                    Label(weather, systemImage: "cloud.sun")
+                        .font(Look.sans(12.5))
+                        .foregroundStyle(Look.inkFaint)
+                        .padding(.bottom, 10)
                 }
                 if !asked.isEmpty { askBlock }
                 titleField

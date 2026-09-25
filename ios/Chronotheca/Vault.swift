@@ -728,30 +728,44 @@ final class Vault: ObservableObject {
     /// уже есть — к имени прибавляется номер: чужое не затирается никогда
     /// (решение P200).
     func addPhoto(_ data: Data, for date: Date) -> String? {
-        guard let root else { return nil }
         guard let jpeg = Photo.jpeg(from: data) else {
             problem = "Эту фотографию не удалось прочитать."
             return nil
         }
-        let stamp = Vault.stamp(date)
-        let year = String(stamp.prefix(4))
-        let folder = root.appendingPathComponent(Folder.photos.rawValue)
-            .appendingPathComponent(year)
+        return addAttachment(jpeg, to: .photos, name: Vault.moment(date) + ".jpg", for: date)
+    }
+
+    /// Имя вложения по дню и нынешнему времени: «2026-09-25_21.40.05».
+    static func moment(_ date: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "HH.mm.ss"
-        let name = stamp + "_" + f.string(from: Date())
-        var url = folder.appendingPathComponent(name + ".jpg")
+        return Vault.stamp(date) + "_" + f.string(from: Date())
+    }
+
+    /// Положить вложение дня в его папку по годам и вернуть ссылку на него
+    /// из файла дня.
+    ///
+    /// Голос — в «Аудио», документ — в «Документы» под своим именем. Файл с
+    /// таким именем уже есть — к имени прибавляется номер: чужое не
+    /// затирается никогда (P200, P209).
+    func addAttachment(_ data: Data, to kind: Folder, name: String, for date: Date) -> String? {
+        guard let root else { return nil }
+        let year = String(Vault.stamp(date).prefix(4))
+        let folder = root.appendingPathComponent(kind.rawValue).appendingPathComponent(year)
+        let base = (name as NSString).deletingPathExtension
+        let ext = (name as NSString).pathExtension
+        var url = folder.appendingPathComponent(name)
         var n = 2
         while FileManager.default.fileExists(atPath: url.path) {
-            url = folder.appendingPathComponent("\(name)-\(n).jpg")
+            url = folder.appendingPathComponent(ext.isEmpty ? "\(base) \(n)" : "\(base) \(n).\(ext)")
             n += 1
         }
-        if let trouble = Vault.write(data: jpeg, to: url) {
+        if let trouble = Vault.write(data: data, to: url) {
             problem = trouble
             return nil
         }
-        return "../../" + Folder.photos.rawValue + "/" + year + "/" + url.lastPathComponent
+        return "../../" + kind.rawValue + "/" + year + "/" + url.lastPathComponent
     }
 
     /// Где лежит вложение, на которое ссылается запись дня.

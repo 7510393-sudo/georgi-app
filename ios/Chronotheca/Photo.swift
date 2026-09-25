@@ -165,8 +165,26 @@ struct PhotoStrip: View {
         .padding(.vertical, 8)
     }
 
+    private func kind(_ i: Int) -> Diary.Kind {
+        photos[i].map { Diary.kind(of: $0.lastPathComponent) } ?? .photo
+    }
+
+    /// Снимок — уменьшенной картинкой; голос и документ — плиткой с
+    /// значком и расширением (P209).
+    @ViewBuilder private func face(_ i: Int) -> some View {
+        switch kind(i) {
+        case .photo:
+            PhotoThumb(url: photos[i])
+        case .audio:
+            FileTile(icon: "waveform", label: "голос")
+        case .file:
+            FileTile(icon: "doc.text",
+                     label: photos[i].map { $0.pathExtension.lowercased() } ?? "файл")
+        }
+    }
+
     private func cell(_ i: Int) -> some View {
-        PhotoThumb(url: photos[i])
+        face(i)
             .frame(width: Self.side, height: Self.side)
             .overlay {
                 if glowing {
@@ -177,8 +195,11 @@ struct PhotoStrip: View {
             .shadow(color: glowing ? Look.glow.opacity(0.8) : .clear, radius: 6)
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
-            .modifier(Carried(payload: glowing ? drag.map { $0(i) } : nil))
-            .accessibilityLabel("Фотография \(i + 1)")
+            // Бросить в текст можно только снимок: голос и документ
+            // остаются в полоске (P204, P209).
+            .modifier(Carried(payload: glowing && kind(i) == .photo ? drag.map { $0(i) } : nil))
+            .accessibilityLabel(kind(i) == .photo ? "Фотография \(i + 1)"
+                                : kind(i) == .audio ? "Голосовая запись" : "Файл")
     }
 
     private func more(_ n: Int, from i: Int) -> some View {
@@ -191,6 +212,23 @@ struct PhotoStrip: View {
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
             .accessibilityLabel("Ещё фотографий: \(n)")
+    }
+}
+
+/// Плитка голоса или документа в полоске.
+struct FileTile: View {
+    let icon: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon).font(.system(size: 18))
+            Text(label).font(Look.sans(9.5)).lineLimit(1)
+        }
+        .foregroundStyle(Look.inkSoft)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
     }
 }
 

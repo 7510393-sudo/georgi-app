@@ -258,7 +258,7 @@ struct DiaryEditor: UIViewRepresentable {
         while start < ns.length {
             let line = ns.lineRange(for: NSRange(location: start, length: 0))
             let content = ns.substring(with: line).trimmingCharacters(in: .newlines)
-            if let link = Diary.picture(in: content) {
+            if let link = Diary.picture(in: content), Diary.kind(of: link) == .photo {
                 found.append((NSRange(location: line.location,
                                       length: (content as NSString).length), link))
             }
@@ -280,7 +280,9 @@ struct DiaryEditor: UIViewRepresentable {
     /// что бросили в текст или вписали руками.
     static func hasLoosePicture(_ text: String) -> Bool {
         guard text.contains("![") else { return false }
-        return text.components(separatedBy: "\n").contains { Diary.picture(in: $0) != nil }
+        return text.components(separatedBy: "\n").contains {
+            Diary.picture(in: $0).map { Diary.kind(of: $0) == .photo } ?? false
+        }
     }
 
     // MARK: - Поведение

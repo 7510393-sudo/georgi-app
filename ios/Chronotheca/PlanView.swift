@@ -520,7 +520,8 @@ struct PlanView: View {
                         Rectangle().fill(Look.ruleSoft).frame(height: 1)
                     }
                     .background(Middle(index: i))
-                } else if let link = row.wrappedValue.verbatim.flatMap(Diary.picture(in:)) {
+                } else if let link = row.wrappedValue.verbatim.flatMap(Diary.picture(in:)),
+                          Diary.kind(of: link) == .photo {
                     VStack(spacing: 0) {
                         PlanPhotoLine(url: store.photoURL(link)) {
                             shell.openedPhoto = .init(tab: .plan, index: 0,

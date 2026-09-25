@@ -158,6 +158,28 @@ def main():
         sys.exit(1)
     bundle_ref = found["data"][0]["id"]
 
+    # Погода Apple (WeatherKit) — право, которое включается у самого знака
+    # приложения. Включаем сами; не вышло — не беда: сборка идёт дальше,
+    # а приложение скажет «погода недоступна» (решение P208).
+    try:
+        caps = api(f"/v1/bundleIds/{bundle_ref}/bundleIdCapabilities", tok=tok)
+        have = [c["attributes"].get("capabilityType")
+                for c in caps.get("data", [])]
+        print(f"  права знака: {sorted(h for h in have if h)}")
+        if "WEATHERKIT" not in have:
+            api("/v1/bundleIdCapabilities", "POST", {
+                "data": {
+                    "type": "bundleIdCapabilities",
+                    "attributes": {"capabilityType": "WEATHERKIT"},
+                    "relationships": {
+                        "bundleId": {"data": {"id": bundle_ref, "type": "bundleIds"}}},
+                }}, tok)
+            print("  погода Apple включена для знака")
+    except Exception as e:  # noqa: BLE001 — погода не повод ронять сборку
+        print(f"::warning::Погоду Apple включить не удалось ({e}). Сборка идёт "
+              "без неё; включить можно вручную: developer.apple.com → "
+              "Identifiers → com.kobiashvili.diary → WeatherKit.")
+
     for p in api("/v1/profiles?limit=200", tok=tok).get("data", []):
         if p["attributes"]["name"] == PROFILE_NAME:
             print(f"  убираю прежний профиль {p['id']}")

@@ -139,6 +139,12 @@ struct SettingsSticker: View {
                 undone.toggle()
             }
             if undone { missing }
+            // Погода в записях — от Погоды Apple; её условия положено
+            // показывать там, где приложение показывает погоду (P208).
+            StickerItem(title: "Погода — Погода Apple", note: "условия",
+                        edge: Look.noteEdge) {
+                openURL(WeatherNote.legal)
+            }
             version
         }
     }
@@ -198,7 +204,7 @@ struct SettingsSticker: View {
 
     private var missing: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Вложения: фото, аудио, файлы, геоточка")
+            Text("Видео и снимок с камеры")
             Text("Напоминания на телефон")
             Text("Замок и ночной вид")
         }

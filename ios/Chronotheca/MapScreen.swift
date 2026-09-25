@@ -124,6 +124,7 @@ struct MapScreen: View {
                     return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
                 }
                 store.mark(at)
+                if let location { store.noteWeather(at: location) }
                 archive.reload()
                 withAnimation {
                     camera = .region(MKCoordinateRegion(center: at, latitudinalMeters: 1500,

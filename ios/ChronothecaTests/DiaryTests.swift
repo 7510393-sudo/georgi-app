@@ -206,4 +206,31 @@ final class DiaryTests: XCTestCase {
         let shown = NSAttributedString(string: "Текст\u{FFFC} дальше")
         XCTAssertEqual(DiaryEditor.plain(shown), "Текст дальше")
     }
+
+    // MARK: - Голос и документы (P209)
+
+    func testГолосИДокументСтрокамиСоСсылкой() {
+        let голос = "../../Аудио/2026/2026-09-25_21.40.05.m4a"
+        let справка = "../../Документы/2026/Справка из банка.pdf"
+        XCTAssertEqual(Diary.line(голос), "[2026-09-25_21.40.05](../../Аудио/2026/2026-09-25_21.40.05.m4a)")
+        XCTAssertEqual(Diary.line(справка), "[Справка из банка](<../../Документы/2026/Справка из банка.pdf>)")
+        XCTAssertEqual(Diary.picture(in: Diary.line(голос)), голос)
+        XCTAssertEqual(Diary.picture(in: Diary.line(справка)), справка)
+        XCTAssertEqual(Diary.kind(of: голос), .audio)
+        XCTAssertEqual(Diary.kind(of: справка), .file)
+        XCTAssertEqual(Diary.kind(of: "a.JPG"), .photo)
+    }
+
+    func testВложенияВКонцеЗаписиВсеВПолоске() {
+        let d = Diary(photos: ["../../Фотографии/2026/a.jpg", "../../Аудио/2026/b.m4a"])
+        let обратно = Diary(body: d.body(order: []))
+        XCTAssertEqual(обратно.photos, d.photos)
+        XCTAssertEqual(обратно.text, "")
+    }
+
+    func testСсылкаНаСайтНеВложение() {
+        let d = Diary(body: "Интересное:\n[статья](https://example.com/a)")
+        XCTAssertTrue(d.photos.isEmpty)
+        XCTAssertTrue(d.text.contains("https://example.com/a"))
+    }
 }

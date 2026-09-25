@@ -80,21 +80,35 @@ struct Diary: Equatable {
     }
 
     private static let pictureLine = try! NSRegularExpression(
-        pattern: #"^\s*!\[[^\]]*\]\((.+)\)\s*$"#)
+        pattern: #"^\s*(!?)\[[^\]]*\]\((.+)\)\s*$"#)
 
-    /// Ссылка на картинку, если строка — только она и ничего больше.
+    /// Ссылка на вложение, если строка — только она и ничего больше:
+    /// `![](снимок.jpg)` или `[голос](голос.m4a)`.
     ///
-    /// Ссылка посреди фразы — часть того, что человек написал, и картинкой
-    /// не считается.
+    /// Ссылка посреди фразы — часть того, что человек написал, и вложением
+    /// не считается. Ссылка на сайт — тоже: вложение лежит в папке
+    /// (P200, P209).
     static func picture(in line: String) -> String? {
         let ns = line as NSString
         guard let m = pictureLine.firstMatch(in: line, range: NSRange(location: 0, length: ns.length))
         else { return nil }
-        var link = ns.substring(with: m.range(at: 1))
+        var link = ns.substring(with: m.range(at: 2))
         if link.hasPrefix("<"), link.hasSuffix(">") {
             link = String(link.dropFirst().dropLast())
         }
+        guard !link.contains("://") else { return nil }
         return link
+    }
+
+    /// Какого рода вложение — по расширению файла.
+    enum Kind { case photo, audio, file }
+
+    static func kind(of link: String) -> Kind {
+        switch (link as NSString).pathExtension.lowercased() {
+        case "jpg", "jpeg", "png", "heic", "heif", "gif", "webp": return .photo
+        case "m4a", "mp3", "wav", "aac", "caf", "aiff": return .audio
+        default: return .file
+        }
     }
 
     /// Отделить фотографии, стоящие в конце записи, от текста.
@@ -119,10 +133,14 @@ struct Diary: Equatable {
         return (lines.joined(separator: "\n").trimmingCharacters(in: .newlines), photos)
     }
 
-    /// Строка-фотография для файла. Путь с пробелом берётся в угловые
-    /// скобки — так его читают редакторы разметки.
+    /// Строка-вложение для файла. Снимок — картинкой `![](…)`, остальное —
+    /// ссылкой с именем файла `[имя](…)`: так их показывают редакторы
+    /// разметки. Путь с пробелом берётся в угловые скобки.
     static func line(_ link: String) -> String {
-        link.contains(" ") ? "![](<\(link)>)" : "![](\(link))"
+        let path = link.contains(" ") ? "<\(link)>" : link
+        if kind(of: link) == .photo { return "![](\(path))" }
+        let name = ((link as NSString).lastPathComponent as NSString).deletingPathExtension
+        return "[\(name)](\(path))"
     }
 
     /// Собрать обратно. Порядок ответов задаётся списком дел, чтобы файл не

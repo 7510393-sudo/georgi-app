@@ -79,6 +79,8 @@ final class DayStore: ObservableObject {
     /// Где человек был в этот день — «широта, долгота» в шапке дневника
     /// (A9, P207). Ставится только его рукой, кнопкой на карте.
     @Published var place: String?
+    /// Погода, когда отмечено место: «+12°, туман» (P208).
+    @Published var weather: String?
 
     /// Когда дневник правили в последний раз. Лежит в шапке файла, чтобы
     /// отметка времени вела себя одинаково и после перезапуска приложения.
@@ -190,6 +192,23 @@ final class DayStore: ObservableObject {
     @discardableResult
     func addPhoto(_ data: Data, to tab: Shell.Tab) -> Bool {
         guard canEdit(tab), let link = vault.addPhoto(data, for: date) else { return false }
+        attach(link, to: tab)
+        return true
+    }
+
+    /// Положить голос или документ в его папку и сослаться на него из файла
+    /// дня — там же, где лежат фотографии (P209).
+    @discardableResult
+    func addAttachment(_ data: Data, to kind: Vault.Folder, name: String,
+                       tab: Shell.Tab) -> Bool {
+        guard canEdit(tab),
+              let link = vault.addAttachment(data, to: kind, name: name, for: date)
+        else { return false }
+        attach(link, to: tab)
+        return true
+    }
+
+    private func attach(_ link: String, to tab: Shell.Tab) {
         switch tab {
         case .diary:
             photos.append(link)
@@ -198,7 +217,6 @@ final class DayStore: ObservableObject {
             planPhotos.append(link)
         }
         save()
-        return true
     }
 
     /// Убрать фотографию из файла дня. Сам снимок остаётся в папке:
@@ -278,6 +296,21 @@ final class DayStore: ObservableObject {
 
     var placeCoordinate: CLLocationCoordinate2D? { place.flatMap(Geo.parse) }
 
+    /// Записать погоду там, где человек сейчас. Только в сегодняшний день:
+    /// погода — это «как было, когда писал», а не справка о прошлом (P208).
+    func noteWeather(at location: CLLocation) {
+        guard isToday, canEditDiary else { return }
+        let day = date
+        Task { [weak self] in
+            guard let words = await WeatherNote.now(at: location) else { return }
+            await MainActor.run {
+                guard let self, self.date == day else { return }
+                self.weather = words
+                self.save()
+            }
+        }
+    }
+
     func links(_ tab: Shell.Tab) -> [String] { tab == .diary ? photos : planPhotos }
 
     func canEdit(_ tab: Shell.Tab) -> Bool { tab == .diary ? canEditDiary : canEditPlan }
@@ -313,6 +346,7 @@ final class DayStore: ObservableObject {
         answers = diary.answers
         photos = diary.photos
         place = file.value("место")
+        weather = file.value("погода")
         lastEdit = file.value("правлено").flatMap(DayStore.moment(from:))
 
         seen = [.planner: plan.text, .diary: diaryFile.text]
@@ -369,7 +403,7 @@ final class DayStore: ObservableObject {
         let diary = diaryFileNow()
         let a = write(plan, to: .planner, keep: false)
         // Заголовок дня — это уже запись, даже если под ним пока нет ни строчки.
-        let b = write(diary, to: .diary, keep: !diaryTitle.isEmpty || place != nil)
+        let b = write(diary, to: .diary, keep: !diaryTitle.isEmpty || place != nil || weather != nil)
         if a || b { load() }
     }
 
@@ -394,6 +428,7 @@ final class DayStore: ObservableObject {
         diary.set("дата", Vault.stamp(date))
         if !diaryTitle.isEmpty { diary.set("заголовок", diaryTitle) }
         if let place { diary.set("место", place) }
+        if let weather { diary.set("погода", weather) }
         if let lastEdit { diary.set("правлено", DayStore.moment(lastEdit)) }
         return diary
     }

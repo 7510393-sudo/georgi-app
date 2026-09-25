@@ -173,13 +173,13 @@ struct RootView: View {
         .fullScreenCover(isPresented: $shell.showingMap) { MapScreen() }
         .fullScreenCover(item: $shell.openedPhoto) { opened in
             let links = store.links(opened.tab)
-            PhotoViewer(
+            AttachmentViewer(
                 url: opened.url ?? (links.indices.contains(opened.index)
                     ? store.photoURL(links[opened.index]) : nil),
                 onRemove: opened.url == nil && store.canEdit(opened.tab) ? {
                     store.removePhoto(at: opened.index, from: opened.tab)
                     shell.openedPhoto = nil
-                    shell.say("Фотография убрана со страницы. Файл остался в папке «Фотографии».")
+                    shell.say("Убрано со страницы. Сам файл остался в папке.")
                 } : nil,
                 close: { shell.openedPhoto = nil })
         }
