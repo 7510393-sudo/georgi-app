@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import AVFoundation
+import AVKit
 import QuickLook
 import UniformTypeIdentifiers
 
@@ -258,6 +259,7 @@ struct AttachmentViewer: View {
 
     let url: URL?
     var onRemove: (() -> Void)?
+    var onReturn: (() -> Void)?
     let close: () -> Void
 
     @State private var ready: URL?
@@ -266,7 +268,15 @@ struct AttachmentViewer: View {
     var body: some View {
         switch url.map({ Diary.kind(of: $0.lastPathComponent) }) ?? .photo {
         case .photo:
-            PhotoViewer(url: url, onRemove: onRemove, close: close)
+            PhotoViewer(url: url, onRemove: onRemove, onReturn: onReturn, close: close)
+        case .video:
+            framed {
+                if let ready { VideoPlayer(player: AVPlayer(url: ready)) } else { ProgressView() }
+            }
+            .task {
+                guard let url else { return }
+                ready = await Task.detached { Attachment.fetch(url) }.value
+            }
         case .audio:
             framed { AudioPlayerView(url: url) }
         case .file:

@@ -87,6 +87,51 @@ enum Geo {
     }
 }
 
+/// Точка, записанная в текст дня: название и координаты (P213).
+///
+/// В файле — ссылкой, которую понимают редакторы разметки и Карты:
+/// `[Дом в Петербурге](geo:59.93863,30.31413)`; без названия — просто
+/// `geo:59.93863,30.31413`. На странице — кнопочка бледным цветом, как у
+/// отметки времени; касание открывает карту на этой точке.
+struct GeoPoint {
+    var title: String
+    var at: CLLocationCoordinate2D
+
+    /// Надпись на кнопочке: название, затем координаты.
+    var label: String { title.isEmpty ? Geo.text(at) : title + " · " + Geo.text(at) }
+}
+
+extension Geo {
+
+    private static let titled = try! NSRegularExpression(
+        pattern: #"^\[([^\]]*)\]\((geo:[^)]+)\)$"#)
+
+    /// Точка, если строка — только она: `geo:…` или `[название](geo:…)`.
+    static func point(in line: String) -> GeoPoint? {
+        let t = line.trimmingCharacters(in: .whitespaces)
+        if t.hasPrefix("geo:") {
+            return parse(t).map { GeoPoint(title: "", at: $0) }
+        }
+        let ns = t as NSString
+        guard t.hasPrefix("["),
+              let m = titled.firstMatch(in: t, range: NSRange(location: 0, length: ns.length)),
+              let at = parse(ns.substring(with: m.range(at: 2)))
+        else { return nil }
+        let title = ns.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespaces)
+        return GeoPoint(title: title, at: at)
+    }
+
+    /// Строка точки для файла.
+    static func pointLine(_ p: GeoPoint) -> String {
+        let title = p.title
+            .replacingOccurrences(of: "[", with: "(")
+            .replacingOccurrences(of: "]", with: ")")
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+        return title.isEmpty ? line(p.at) : "[\(title)](\(line(p.at)))"
+    }
+}
+
 /// Все места человека — чтение и запись папки «Места».
 enum Places {
 

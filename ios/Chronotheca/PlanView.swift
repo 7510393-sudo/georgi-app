@@ -419,15 +419,15 @@ struct PlanView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if store.editing { banner }
+            if store.editing(.plan) { EditBanner(tab: .plan) }
             PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
                          add: add, watching: typingIn,
                          photos: store.planPhotos.map(store.photoURL),
-                         glowing: store.editing,
+                         glowing: store.editing(.plan),
                          onOpenPhoto: { shell.openedPhoto = .init(tab: .plan, index: $0) },
                          // Снимки плана к делам не носят — только
                          // переставляют вдоль полоски (P210).
-                         onMovePhoto: store.editing && store.canEditPlan
+                         onMovePhoto: store.editing(.plan) && store.canEditPlan
                              ? { store.movePhoto(from: $0, to: $1, in: .plan) } : nil) {
                 if store.tasks.isEmpty {
                     PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
@@ -442,37 +442,19 @@ struct PlanView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         hideKeyboard()
-                        if store.editing {
-                            withAnimation(.easeOut(duration: 0.2)) { store.editing = false }
+                        if store.editing(.plan) {
+                            withAnimation(.easeOut(duration: 0.2)) { store.setEditing(.plan, false) }
                         }
                     }
             }
         }
         .onChange(of: store.date) { _, _ in typingIn = nil }
-        .opacity(store.isPast && !store.editing ? 0.58 : 1)
+        .opacity(store.isPast && !store.editing(.plan) ? 0.58 : 1)
     }
 
     private func add() {
         guard let id = store.addTask() else { return shell.say(store.closedReason) }
         typingIn = id
-    }
-
-    private var banner: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("Режим изменений: правка текста, порядок, удаление.")
-                .font(Look.sans(12.5))
-            Spacer(minLength: 0)
-            Button("Выйти") { store.editing = false }
-                .font(Look.sans(12.5))
-                .underline()
-        }
-        .foregroundStyle(Look.accent)
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .overlay(RoundedRectangle(cornerRadius: 7)
-            .strokeBorder(Look.accent, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-        .padding(.horizontal, 12)
-        .padding(.top, 10)
     }
 
     @ViewBuilder private var list: some View {
@@ -481,9 +463,11 @@ struct PlanView: View {
                 taskRow(row)
                 Rectangle().fill(Look.ruleSoft).frame(height: 1)
             } else if let line = row.wrappedValue.verbatim {
-                PlanExtraLine(line: line, resolve: store.photoURL) { url in
-                    shell.openedPhoto = .init(tab: .plan, index: 0, url: url)
-                }
+                PlanExtraLine(line: line, resolve: store.photoURL,
+                              open: { url in
+                                  shell.openedPhoto = .init(tab: .plan, index: 0, url: url)
+                              },
+                              openPoint: { shell.showPoint($0) })
             }
         }
         stat
@@ -500,11 +484,11 @@ struct PlanView: View {
         return PlanRowLine(
             number: shown,
             row: row.wrappedValue,
-            faded: store.isPast && !store.editing,
+            faded: store.isPast && !store.editing(.plan),
             bellColor: Ru.dayColor(store.date),
             text: row.text,
             typing: typingIn == id,
-            editMode: store.editing,
+            editMode: store.editing(.plan),
             onTime: { openRoller(id, .time) },
             onBell: { openRoller(id, .bell) },
             onDetails: { hideKeyboard(); openDetails(id) },
@@ -534,17 +518,17 @@ struct PlanView: View {
             .shadow(color: .black.opacity(dragged == id ? 0.18 : 0),
                     radius: 8, y: 3)
             .zIndex(dragged == id ? 1 : 0)
-            .background(store.editing ? Look.ruleSoft.opacity(0.5) : .clear)
+            .background(store.editing(.plan) ? Look.ruleSoft.opacity(0.5) : .clear)
             .contentShape(Rectangle())
             .onLongPressGesture(minimumDuration: 0.35) {
-                guard !store.editing else { return }
+                guard !store.editing(.plan) else { return }
                 toggle(row)
             }
             // Короткое нажатие ставит курсор в текст дела, длинное затеняет
             // выполненное. Раньше короткое делало и то и другое: человек
             // тянулся поправить слово, а дело гасло (решение P156).
             .onTapGesture {
-                guard store.canEditPlan, !store.editing, typingIn != id else { return }
+                guard store.canEditPlan, !store.editing(.plan), typingIn != id else { return }
                 typingIn = id
             }
     }
@@ -679,53 +663,85 @@ struct PlanStat: View {
 }
 
 /// Строка плана, которая не дело: снимок, поставленный между делами в
-/// прежних сборках, или место `geo:…`, вписанное долгим нажатием на
-/// геоточку. Прочие строки файла не рисуются, но в файле остаются (P210).
+/// прежних сборках, или точка с карты. Прочие строки файла не рисуются,
+/// но в файле остаются (P210, P213).
 struct PlanExtraLine: View {
     let line: String
     var resolve: ((String) -> URL?)?
     var open: ((URL?) -> Void)?
+    /// Касание по точке — карта на ней. Пусто — на соседних страницах.
+    var openPoint: ((GeoPoint) -> Void)?
 
     var body: some View {
         if let link = Diary.picture(in: line), Diary.kind(of: link) == .photo {
             PlanPhotoLine(url: resolve?(link)) { open?(resolve?(link)) }
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
-        } else if line.hasPrefix("geo:"), let at = Geo.parse(line) {
-            PlanPlaceLine(at: at)
+        } else if let point = Geo.point(in: line) {
+            PlanPointLine(point: point, open: openPoint)
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         }
     }
 }
 
-/// Место в плане: булавка и координаты; касание — проложить путь или
-/// скопировать точку (P165, P210).
-struct PlanPlaceLine: View {
-    let at: CLLocationCoordinate2D
+/// Точка в плане — та же кнопочка, что в дневнике: название и координаты
+/// бледным цветом; касание открывает карту на ней (P213).
+struct PlanPointLine: View {
+    let point: GeoPoint
+    var open: ((GeoPoint) -> Void)?
 
     var body: some View {
-        Menu {
-            Button {
-                PlaceActions.openInMaps(at, name: "Место из плана")
-            } label: {
-                Label("Проложить путь в Картах", systemImage: "arrow.triangle.turn.up.right.diamond")
-            }
-            Button {
-                PlaceActions.copy(at)
-            } label: {
-                Label("Скопировать точку", systemImage: "doc.on.doc")
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "mappin.and.ellipse")
-                Text(Geo.text(at))
-                    .font(Look.mono(13))
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(Look.accent)
-            .padding(.horizontal, 16)
-            .frame(height: 40)
-            .contentShape(Rectangle())
+        HStack(spacing: 0) {
+            PointChipView(point: point)
+                .contentShape(Capsule())
+                .onTapGesture { open?(point) }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Точка на карте: " + point.label)
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 14)
+        .frame(height: 40)
+    }
+}
+
+/// Кнопочка точки для SwiftUI — нарисована тем же кодом, что в тексте
+/// дневника, чтобы не расходилась с ним.
+struct PointChipView: View {
+    let point: GeoPoint
+
+    var body: some View {
+        let picture = PointChip.draw(point.label)
+        Image(uiImage: picture)
+            .frame(width: picture.size.width, height: picture.size.height)
+    }
+}
+
+/// Надпись над страницей в режиме изменений: что сейчас можно и как выйти.
+/// Своя у каждой вкладки (P211).
+struct EditBanner: View {
+
+    let tab: Shell.Tab
+
+    @EnvironmentObject private var store: DayStore
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(tab == .plan ? "Режим изменений: правка текста, порядок, удаление."
+                              : "Режим изменений: снимки можно брать и переносить.")
+                .font(Look.sans(12.5))
+            Spacer(minLength: 0)
+            Button("Выйти") {
+                withAnimation(.easeOut(duration: 0.2)) { store.setEditing(tab, false) }
+            }
+            .font(Look.sans(12.5, weight: .semibold))
+            .underline()
+        }
+        .foregroundStyle(Look.accent)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(Look.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 7))
+        .overlay(RoundedRectangle(cornerRadius: 7)
+            .strokeBorder(Look.accent, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
     }
 }

@@ -4,13 +4,15 @@ import MapKit
 
 /// Своя карта человека: его места с названиями и дни, где он был.
 ///
-/// Открывается кнопкой «геоточка». Название места видно всегда, прямо на
-/// карте; касание по месту — облачко с тем, что человек о нём написал;
-/// долгое нажатие на карту — новое место. Кнопка внизу отмечает, где
-/// человек в открытый день (решение P207).
+/// Открывается кнопкой «геоточка». Сама карта — Карты Apple со всеми их
+/// жестами: двойное касание приближает, касание двумя пальцами отдаляет,
+/// щипок, поворот (P217). Долгое нажатие ставит булавку и открывает
+/// сверху панель «Точка» — название и что здесь было. Кнопка «Запомнить
+/// точку» стоит там же, где «геоточка», и пишет точку в план или в
+/// дневник — туда, откуда открыли карту (P213).
 ///
-/// Карта — Карты Apple; своих серверов у приложения нет (P198). Места —
-/// файлы в папке «Места», по файлу на место.
+/// Своих серверов у приложения нет (P198). Места — файлы в папке «Места»,
+/// по файлу на место.
 struct MapScreen: View {
 
     @EnvironmentObject private var vault: Vault
@@ -19,79 +21,44 @@ struct MapScreen: View {
     @EnvironmentObject private var shell: Shell
 
     @State private var places: [Place] = []
-    @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
-    /// Место, которое сейчас заводят или правят.
-    @State private var editing: Place?
-    /// Место, чьё облачко открыто.
-    @State private var opened: Place?
+    /// Выбранная точка: поставленная долгим нажатием, нажатое место или
+    /// точка из текста. Её и запомнит кнопка внизу.
+    @State private var selected: Place?
+    /// Что открыто сверху: панель названия или облачко места.
+    @State private var panel: Panel?
+    @State private var focus: MapFocus?
     @State private var locating = false
-    /// Новое место, пока ему дают название: булавка стоит на карте сразу,
-    /// чтобы было видно, что карта поняла палец (P210).
-    @State private var draft: Place?
-    /// Где палец коснулся карты последний раз — туда и встанет новое место.
-    @State private var touch: CGPoint = .zero
+    @State private var asking = false
+
+    enum Panel { case naming, cloud }
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            MapReader { proxy in
-                Map(position: $camera) {
-                    UserAnnotation()
-                    ForEach(days) { day in
-                        Annotation(Ru.shortDate(day.date), coordinate: day.at, anchor: .center) {
-                            DayDot(today: day.id == Vault.stamp(store.date))
-                                .onTapGesture { openDay(day.date) }
-                        }
-                        .annotationTitles(.hidden)
-                    }
-                    ForEach(places) { place in
-                        Annotation(place.name, coordinate: place.coordinate, anchor: .bottom) {
-                            PlacePin(name: place.name)
-                                .onTapGesture { opened = place }
-                        }
-                        .annotationTitles(.hidden)
-                    }
-                    ForEach(draft.map { [$0] } ?? []) { place in
-                        Annotation("", coordinate: place.coordinate, anchor: .bottom) {
-                            PlacePin(name: "Новое место")
-                                .opacity(0.8)
-                        }
-                        .annotationTitles(.hidden)
-                    }
+            ZStack(alignment: .top) {
+                NativeMap(places: places, days: days, selected: selected, focus: focus,
+                          onLongPress: pick, onPlace: choose, onDay: openDay,
+                          onSelected: { withAnimation { panel = .cloud } })
+                if let selected, panel == .naming {
+                    PointPanel(place: selected, cancel: cancel, done: name)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                } else if let selected, panel == .cloud {
+                    PlaceCloud(place: selected,
+                               edit: { withAnimation { panel = .naming } },
+                               remove: selected.file == nil ? nil : { asking = true },
+                               close: { withAnimation { panel = nil } })
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                .mapControls {
-                    MapUserLocationButton()
-                    MapCompass()
-                }
-                // Где палец — запоминается на каждом касании; долгое нажатие
-                // ставит туда булавку сразу, с отдачей в палец, и открывает
-                // название. Прежде булавка не появлялась, и было непонятно,
-                // поняла ли карта палец (P210).
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { touch = $0.location })
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.5)
-                        .onEnded { _ in
-                            guard let at = proxy.convert(touch, from: .local) else { return }
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            let new = Place(name: "", coordinate: at)
-                            draft = new
-                            editing = new
-                        })
             }
-            .safeAreaInset(edge: .bottom) { here }
+            .animation(.easeOut(duration: 0.2), value: panel)
+            bar
         }
         .background(Look.chrome)
-        .sheet(item: $opened) { place in
-            PlaceCloud(place: place) {
-                opened = nil
-                editing = place
-            }
-            .presentationDetents([.fraction(0.35), .medium])
-        }
-        .sheet(item: $editing, onDismiss: { draft = nil }) { place in
-            PlaceEditor(place: place, save: save, remove: remove)
+        .confirmationDialog("Убрать «\(selected?.name ?? "")» с карты?", isPresented: $asking,
+                            titleVisibility: .visible) {
+            Button("Убрать", role: .destructive) { remove() }
+        } message: {
+            Text("Файл этого места будет удалён из папки «Места».")
         }
         .onAppear(perform: begin)
     }
@@ -107,6 +74,7 @@ struct MapScreen: View {
             HStack {
                 Spacer()
                 Button {
+                    hideKeyboard()
                     withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
                 } label: {
                     Text("Закрыть")
@@ -120,216 +88,482 @@ struct MapScreen: View {
         .padding(.bottom, 10)
     }
 
-    /// Дни, в которые человек отметил, где был.
-    private struct DayPoint: Identifiable {
-        let id: String
-        let date: Date
-        let at: CLLocationCoordinate2D
-    }
-
-    private var days: [DayPoint] {
-        archive.days.values.compactMap { day in
-            day.place.map { DayPoint(id: day.stamp, date: day.date, at: $0) }
+    private var days: [MapDay] {
+        let today = Vault.stamp(store.date)
+        return archive.days.values.compactMap { day in
+            day.place.map { MapDay(stamp: day.stamp, date: day.date, at: $0,
+                                   today: day.stamp == today) }
         }
     }
 
-    /// Открыть карту: на дне, где место отмечено, — там; иначе — где
+    // MARK: - Нижняя полоска
+
+    /// Полоска внизу — той же высоты и с теми же местами, что полоска
+    /// вложений: «Запомнить точку» стоит ровно там, где «геоточка», и
+    /// палец, открывший карту, попадает в неё не глядя (P213).
+    private var bar: some View {
+        let marked = store.place != nil
+        return HStack(spacing: 0) {
+            Button(action: markDay) {
+                BarFace(icon: marked ? "mappin.circle.fill" : "mappin.circle",
+                        name: marked ? "день тут" : "я здесь")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(marked ? "Переставить место дня сюда" : "Я здесь в этот день")
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+            Button(action: remember) {
+                if locating {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else {
+                    BarFace(icon: "pin.fill", name: "запомнить точку", tint: Look.accent)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(selected == nil ? "Запишет, где вы сейчас"
+                                               : "Запишет выбранную точку")
+        }
+        .overlay {
+            Text(hint)
+                .font(Look.sans(11.5))
+                .foregroundStyle(Look.inkFaint)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 90)
+                .allowsHitTesting(false)
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 7)
+        .background(Look.chrome)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Look.rule).frame(height: 1)
+        }
+    }
+
+    /// Подсказка посреди полоски: что запомнит кнопка справа.
+    private var hint: String {
+        guard let selected else { return "Долгое нажатие — выбрать точку" }
+        return selected.name.isEmpty ? "Выбрана точка" : "Выбрано: " + selected.name
+    }
+
+    // MARK: - Действия
+
+    /// Открыть карту: на точке из текста, на месте дня, иначе — где
     /// человек сейчас. Разрешение на место просится здесь, по его жесту.
     private func begin() {
         places = Places.all(in: vault)
         archive.reload()
-        if let at = store.placeCoordinate {
-            camera = .region(MKCoordinateRegion(center: at, latitudinalMeters: 2000,
-                                                longitudinalMeters: 2000))
+        if let point = shell.mapFocus {
+            shell.mapFocus = nil
+            let known = places.first { near($0.coordinate, point.at) }
+            selected = known ?? Place(name: point.title, coordinate: point.at)
+            panel = .cloud
+            focus = MapFocus(center: point.at, meters: 1500)
+        } else if let at = store.placeCoordinate {
+            focus = MapFocus(center: at, meters: 2000)
         } else {
-            Locator.shared.current { _ in }
+            Locator.shared.current { location in
+                guard let at = location?.coordinate else { return }
+                focus = MapFocus(center: at, meters: 2000)
+            }
         }
     }
 
-    /// Кнопка внизу: отметить, где человек в открытый день.
-    private var here: some View {
-        let marked = store.place != nil
-        return Button {
-            guard store.canEditDiary else { return shell.say(store.closedReason) }
-            locating = true
-            Locator.shared.current { location in
-                locating = false
-                guard let at = location?.coordinate else {
-                    return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
-                }
-                store.mark(at)
-                if let location { store.noteWeather(at: location) }
-                archive.reload()
-                withAnimation {
-                    camera = .region(MKCoordinateRegion(center: at, latitudinalMeters: 1500,
-                                                        longitudinalMeters: 1500))
-                }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                if locating { ProgressView() } else {
-                    Image(systemName: marked ? "mappin.circle.fill" : "mappin.and.ellipse")
-                }
-                Text(marked ? "Переставить место дня сюда" : "Я здесь в этот день")
-            }
-            .font(Look.sans(15, weight: .medium))
-            .foregroundStyle(Look.planBg)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 11)
-            .background(Look.accent, in: Capsule())
+    private func near(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
+        abs(a.latitude - b.latitude) < 0.00002 && abs(a.longitude - b.longitude) < 0.00002
+    }
+
+    /// Долгое нажатие: булавка на месте пальца и панель «Точка» сверху.
+    private func pick(_ at: CLLocationCoordinate2D) {
+        selected = Place(name: "", coordinate: at)
+        withAnimation { panel = .naming }
+    }
+
+    /// Нажали на своё место: оно выбрано, сверху — облачко о нём.
+    private func choose(_ place: Place) {
+        hideKeyboard()
+        selected = place
+        withAnimation { panel = .cloud }
+    }
+
+    private func cancel() {
+        hideKeyboard()
+        // Отмена у нового места убирает булавку; у записанного — только
+        // закрывает правку.
+        if selected?.file == nil { selected = nil }
+        withAnimation { panel = nil }
+    }
+
+    /// «Готово»: с названием место ложится в папку «Места» и остаётся на
+    /// карте; без названия — остаётся просто выбранной точкой.
+    private func name(_ place: Place) {
+        hideKeyboard()
+        withAnimation { panel = nil }
+        guard !place.name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            selected = place
+            return
         }
-        .buttonStyle(.plain)
-        .padding(.bottom, 12)
+        guard let stored = Places.save(place, in: vault) else {
+            selected = place
+            return shell.say("Место не записалось. Проверьте папку в настройках.")
+        }
+        places.removeAll { $0.id == place.id || ($0.file != nil && $0.file == place.file) }
+        places.append(stored)
+        selected = stored
+    }
+
+    private func remove() {
+        guard let place = selected else { return }
+        Places.delete(place, in: vault)
+        places.removeAll { $0.id == place.id }
+        selected = nil
+        withAnimation { panel = nil }
+    }
+
+    /// «Запомнить точку»: выбранную — или ту, где телефон сейчас. Пишется
+    /// туда, откуда открыли карту: в план или в дневник на место курсора.
+    private func remember() {
+        let tab = shell.tab
+        guard store.canEdit(tab) else { return shell.say(store.closedReason) }
+        hideKeyboard()
+        if let place = selected {
+            return write(GeoPoint(title: place.name, at: place.coordinate), to: tab)
+        }
+        locating = true
+        Locator.shared.current { location in
+            locating = false
+            guard let at = location?.coordinate else {
+                return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
+            }
+            write(GeoPoint(title: "", at: at), to: tab)
+            if let location { store.noteWeather(at: location) }
+        }
+    }
+
+    private func write(_ point: GeoPoint, to tab: Shell.Tab) {
+        guard store.writePoint(point, to: tab) else { return shell.say(store.closedReason) }
+        shell.say(tab == .diary ? "Точка записана в дневник" : "Точка записана в план")
+        withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
+    }
+
+    /// Отметить, где человек в открытый день (P207).
+    private func markDay() {
+        guard store.canEditDiary else { return shell.say(store.closedReason) }
+        locating = true
+        Locator.shared.current { location in
+            locating = false
+            guard let at = location?.coordinate else {
+                return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
+            }
+            store.mark(at)
+            if let location { store.noteWeather(at: location) }
+            archive.reload()
+            focus = MapFocus(center: at, meters: 1500)
+            shell.say("Отмечено: здесь вы в этот день")
+        }
     }
 
     private func openDay(_ date: Date) {
         store.go(to: date)
         shell.tab = .diary
         shell.screen = .today
-        shell.showingMap = false
-    }
-
-    private func save(_ place: Place) {
-        editing = nil
-        draft = nil
-        guard let stored = Places.save(place, in: vault) else {
-            return shell.say("Место не записалось. Проверьте папку в настройках.")
-        }
-        places.removeAll { $0.id == place.id || ($0.file != nil && $0.file == place.file) }
-        places.append(stored)
-    }
-
-    private func remove(_ place: Place) {
-        editing = nil
-        Places.delete(place, in: vault)
-        places.removeAll { $0.id == place.id }
+        withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
     }
 }
 
-/// Метка места: булавка и название под ней — всегда на виду.
-struct PlacePin: View {
-    let name: String
+/// Куда повести карту. Новая просьба — новый `id`.
+struct MapFocus: Equatable {
+    let id = UUID()
+    let center: CLLocationCoordinate2D
+    let meters: CLLocationDistance
 
-    var body: some View {
-        VStack(spacing: 2) {
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 26))
-                .foregroundStyle(.white, Look.accent)
-                .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
-            Text(name)
-                .font(Look.sans(12, weight: .semibold))
-                .foregroundStyle(Look.ink)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 140)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Look.sticker.opacity(0.95), in: RoundedRectangle(cornerRadius: 5))
-        }
-        .accessibilityLabel(name)
-    }
+    static func == (a: MapFocus, b: MapFocus) -> Bool { a.id == b.id }
 }
 
-/// Точка дня, в который человек отметил, где был.
-struct DayDot: View {
+/// День, в который человек отметил, где был.
+struct MapDay {
+    let stamp: String
+    let date: Date
+    let at: CLLocationCoordinate2D
     let today: Bool
+}
 
-    var body: some View {
-        Circle()
-            .fill(today ? Look.accent : Look.inkSoft)
-            .frame(width: 12, height: 12)
-            .overlay(Circle().stroke(.white, lineWidth: 2))
-            .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+/// Карты Apple как есть — с их жестами и кнопками (P217).
+///
+/// Прежняя карта была нарисована средствами SwiftUI, и у неё не работало
+/// двойное касание: его перехватывал жест, ловивший место пальца. Здесь
+/// жесты свои у карты, приложение добавляет только долгое нажатие.
+struct NativeMap: UIViewRepresentable {
+
+    var places: [Place]
+    var days: [MapDay]
+    var selected: Place?
+    var focus: MapFocus?
+    var onLongPress: (CLLocationCoordinate2D) -> Void
+    var onPlace: (Place) -> Void
+    var onDay: (Date) -> Void
+    var onSelected: () -> Void
+
+    func makeUIView(context: Context) -> MKMapView {
+        let map = MKMapView()
+        map.delegate = context.coordinator
+        map.showsUserLocation = true
+        map.showsCompass = false
+        map.showsScale = true
+        map.register(MKMarkerAnnotationView.self,
+                     forAnnotationViewWithReuseIdentifier: MKMapViewDefaultAnnotationViewReuseIdentifier)
+
+        let press = UILongPressGestureRecognizer(target: context.coordinator,
+                                                 action: #selector(Coordinator.pressed(_:)))
+        press.minimumPressDuration = 0.45
+        map.addGestureRecognizer(press)
+
+        // «Где я» и компас — справа сверху, как в Картах.
+        let track = MKUserTrackingButton(mapView: map)
+        let compass = MKCompassButton(mapView: map)
+        compass.compassVisibility = .adaptive
+        track.backgroundColor = UIColor(Look.chrome).withAlphaComponent(0.92)
+        track.layer.cornerRadius = 8
+        track.clipsToBounds = true
+        for control in [track, compass] as [UIView] {
+            control.translatesAutoresizingMaskIntoConstraints = false
+            map.addSubview(control)
+        }
+        NSLayoutConstraint.activate([
+            track.trailingAnchor.constraint(equalTo: map.trailingAnchor, constant: -12),
+            track.bottomAnchor.constraint(equalTo: map.bottomAnchor, constant: -28),
+            compass.trailingAnchor.constraint(equalTo: map.trailingAnchor, constant: -12),
+            compass.bottomAnchor.constraint(equalTo: track.topAnchor, constant: -10),
+        ])
+        return map
+    }
+
+    func updateUIView(_ map: MKMapView, context: Context) {
+        let keeper = context.coordinator
+        keeper.parent = self
+        keeper.sync(map)
+        if let focus, focus != keeper.focused {
+            keeper.focused = focus
+            let region = MKCoordinateRegion(center: focus.center,
+                                            latitudinalMeters: focus.meters,
+                                            longitudinalMeters: focus.meters)
+            map.setRegion(region, animated: keeper.shown)
+        }
+        keeper.shown = true
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        var parent: NativeMap
+        var focused: MapFocus?
+        var shown = false
+        /// Что сейчас стоит на карте — чтобы не переставлять метки зря.
+        private var drawn = ""
+
+        init(_ parent: NativeMap) { self.parent = parent }
+
+        func sync(_ map: MKMapView) {
+            let draft = parent.selected.flatMap { $0.file == nil ? $0 : nil }
+            var key = parent.places.map { "\($0.id)\($0.name)\($0.latitude)\($0.longitude)" }
+                .joined(separator: "|")
+            key += parent.days.map { "\($0.stamp)\($0.today)" }.joined(separator: "|")
+            key += draft.map { "\($0.name)\($0.latitude)\($0.longitude)" } ?? "-"
+            guard key != drawn else { return }
+            drawn = key
+            map.removeAnnotations(map.annotations.filter { !($0 is MKUserLocation) })
+            map.addAnnotations(parent.days.map { DayMark($0) })
+            map.addAnnotations(parent.places.map { PlaceMark($0) })
+            if let draft { map.addAnnotation(DraftMark(draft)) }
+        }
+
+        @objc func pressed(_ g: UILongPressGestureRecognizer) {
+            guard g.state == .began, let map = g.view as? MKMapView else { return }
+            let at = map.convert(g.location(in: map), toCoordinateFrom: map)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            parent.onLongPress(at)
+        }
+
+        func mapView(_ map: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            switch annotation {
+            case let mark as PlaceMark:
+                let view = MKMarkerAnnotationView(annotation: mark, reuseIdentifier: "место")
+                view.markerTintColor = UIColor(Look.accent)
+                view.glyphImage = UIImage(systemName: "star.fill")
+                view.titleVisibility = .visible
+                view.displayPriority = .required
+                return view
+            case let mark as DraftMark:
+                let view = MKMarkerAnnotationView(annotation: mark, reuseIdentifier: "точка")
+                view.markerTintColor = .systemRed
+                view.animatesWhenAdded = true
+                view.titleVisibility = .visible
+                view.displayPriority = .required
+                return view
+            case let mark as DayMark:
+                let view = MKAnnotationView(annotation: mark, reuseIdentifier: "день")
+                view.image = DayMark.dot(today: mark.day.today)
+                view.displayPriority = .defaultHigh
+                return view
+            default:
+                return nil
+            }
+        }
+
+        func mapView(_ map: MKMapView, didSelect view: MKAnnotationView) {
+            guard let annotation = view.annotation else { return }
+            switch annotation {
+            case let mark as PlaceMark: parent.onPlace(mark.place)
+            case let mark as DayMark: parent.onDay(mark.day.date)
+            case is DraftMark: parent.onSelected()
+            default: return
+            }
+            // Снять выбор сразу — чтобы ту же метку можно было нажать снова.
+            map.deselectAnnotation(annotation, animated: false)
+        }
     }
 }
 
-/// Облачко места: название и то, что человек о нём написал.
+/// Своё место на карте.
+final class PlaceMark: NSObject, MKAnnotation {
+    let place: Place
+    var coordinate: CLLocationCoordinate2D { place.coordinate }
+    var title: String? { place.name }
+    init(_ place: Place) { self.place = place }
+}
+
+/// Точка, выбранная долгим нажатием, пока у неё нет файла.
+final class DraftMark: NSObject, MKAnnotation {
+    let place: Place
+    var coordinate: CLLocationCoordinate2D { place.coordinate }
+    var title: String? { place.name.isEmpty ? "Точка" : place.name }
+    init(_ place: Place) { self.place = place }
+}
+
+/// День, в который человек отметил, где был.
+final class DayMark: NSObject, MKAnnotation {
+    let day: MapDay
+    var coordinate: CLLocationCoordinate2D { day.at }
+    init(_ day: MapDay) { self.day = day }
+
+    static func dot(today: Bool) -> UIImage {
+        let side: CGFloat = 16
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
+            let box = CGRect(x: 2, y: 2, width: side - 4, height: side - 4)
+            UIColor.white.setFill()
+            UIBezierPath(ovalIn: box).fill()
+            UIColor(today ? Look.accent : Look.inkSoft).setFill()
+            UIBezierPath(ovalIn: box.insetBy(dx: 2, dy: 2)).fill()
+        }
+    }
+}
+
+/// Панель «Точка» сверху карты: название и что здесь было. Полупрозрачная —
+/// под ней видно, куда встала булавка; клавиатура открывается сразу (P213).
+struct PointPanel: View {
+
+    @State var place: Place
+    let cancel: () -> Void
+    let done: (Place) -> Void
+
+    private enum Field { case name, text }
+    @FocusState private var focused: Field?
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Button("Отмена", action: cancel)
+                Spacer()
+                Text("Точка").font(Look.sans(16, weight: .semibold)).foregroundStyle(Look.ink)
+                Spacer()
+                Button("Готово") { done(place) }.fontWeight(.semibold)
+            }
+            .font(Look.sans(15))
+            TextField("Название", text: $place.name)
+                .focused($focused, equals: .name)
+                .submitLabel(.next)
+                .onSubmit { focused = .text }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+            TextField("Что здесь было", text: $place.text, axis: .vertical)
+                .focused($focused, equals: .text)
+                .lineLimit(1...5)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+            Text(Geo.text(place.coordinate))
+                .font(Look.mono(11.5))
+                .foregroundStyle(Look.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(Look.sans(15))
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { focused = .name }
+        }
+    }
+}
+
+/// Облачко выбранной точки сверху карты: название, что человек о ней
+/// написал, дорога туда и координаты (P210, P213).
 struct PlaceCloud: View {
     let place: Place
     let edit: () -> Void
+    var remove: (() -> Void)?
+    let close: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(place.name)
-                    .font(Look.serif(19, weight: .semibold))
+                Text(place.name.isEmpty ? "Точка" : place.name)
+                    .font(Look.serif(18, weight: .semibold))
                     .foregroundStyle(Look.ink)
+                    .lineLimit(2)
                 Spacer()
-                Button("Изменить", action: edit)
+                Button(place.file == nil ? "Назвать" : "Изменить", action: edit)
                     .font(Look.sans(14))
+                Button(action: close) {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Look.inkFaint)
+                }
+                .padding(.leading, 6)
+                .accessibilityLabel("Закрыть")
             }
-            ScrollView {
-                Text(place.text.isEmpty ? "Здесь пока ничего не написано." : place.text)
-                    .font(Look.serif(15.5))
-                    .foregroundStyle(place.text.isEmpty ? Look.inkFaint : Look.ink)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if !place.text.isEmpty {
+                Text(place.text)
+                    .font(Look.serif(15))
+                    .foregroundStyle(Look.ink)
+                    .lineLimit(5)
             }
-            // Дорога туда — в Картах; точку можно и скопировать (P210).
-            HStack(spacing: 12) {
+            Text(Geo.text(place.coordinate))
+                .font(Look.mono(11.5))
+                .foregroundStyle(Look.inkFaint)
+            HStack(spacing: 14) {
                 Button {
                     PlaceActions.openInMaps(place.coordinate, name: place.name)
                 } label: {
                     Label("Проложить путь", systemImage: "arrow.triangle.turn.up.right.diamond")
                 }
-                Spacer()
                 Button {
                     PlaceActions.copy(place.coordinate)
                 } label: {
-                    Label("Скопировать точку", systemImage: "doc.on.doc")
+                    Label("Скопировать", systemImage: "doc.on.doc")
+                }
+                Spacer()
+                if let remove {
+                    Button(action: remove) { Image(systemName: "trash") }
+                        .accessibilityLabel("Убрать с карты")
                 }
             }
             .font(Look.sans(14))
         }
-        .padding(20)
-        .background(Look.sticker)
-    }
-}
-
-/// Завести или поправить место.
-struct PlaceEditor: View {
-
-    @State var place: Place
-    let save: (Place) -> Void
-    let remove: (Place) -> Void
-
-    @State private var asking = false
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Название на карте") {
-                    TextField("Например, «Мой дом в Петербурге»", text: $place.name)
-                }
-                Section("Что здесь было") {
-                    TextEditor(text: $place.text)
-                        .frame(minHeight: 160)
-                }
-                if place.file != nil {
-                    Section {
-                        Button("Убрать место с карты", role: .destructive) { asking = true }
-                    }
-                }
-            }
-            .navigationTitle(place.file == nil ? "Новое место" : "Место")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Отмена") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Готово") { save(place) }
-                        .fontWeight(.semibold)
-                        .disabled(place.name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            .confirmationDialog("Убрать «\(place.name)» с карты?", isPresented: $asking,
-                                titleVisibility: .visible) {
-                Button("Убрать", role: .destructive) { remove(place) }
-            } message: {
-                Text("Файл этого места будет удалён из папки «Места».")
-            }
-        }
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
     }
 }
 

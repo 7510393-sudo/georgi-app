@@ -44,10 +44,11 @@ struct MenuSticker: View {
 
     private var dayMenu: some View {
         Sticker(side: .trailing, title: "Меню страницы", close: close) {
-            StickerItem(title: "Режим изменений",
-                        note: store.editing ? "включён" : "выключен",
-                        active: store.editing) {
-                store.editing.toggle()
+            // Режим — той вкладки, на которой человек стоит (P211).
+            StickerItem(title: "Режим изменений — " + shell.tab.rawValue.lowercased(),
+                        note: store.editing(shell.tab) ? "включён" : "выключен",
+                        active: store.editing(shell.tab)) {
+                store.setEditing(shell.tab, !store.editing(shell.tab))
                 close()
             }
             StickerItem(title: "Показать файл этого дня") {

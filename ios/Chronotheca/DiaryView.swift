@@ -13,6 +13,13 @@ struct DiaryView: View {
     static let leading: CGFloat = size * 0.24
 
     var body: some View {
+        VStack(spacing: 0) {
+            if store.editing(.diary) { EditBanner(tab: .diary) }
+            page
+        }
+    }
+
+    private var page: some View {
         DiaryPage(
             tasks: store.tasks,
             answer: { store.answers[$0] ?? "" },
@@ -25,13 +32,19 @@ struct DiaryView: View {
             photos: store.photos.map(store.photoURL),
             photoLinks: store.photos,
             resolve: store.photoURL,
-            glowing: store.editing,
+            glowing: store.editing(.diary),
             onOpenPhoto: { shell.openedPhoto = .init(tab: .diary, index: $0) },
             onMovePhoto: { store.movePhoto(from: $0, to: $1, in: .diary) },
             // В режиме изменений запись переставляют, а не продолжают:
             // отметка времени тогда ни к чему. Иначе брошенный в текст
             // снимок заодно ставил бы в конец записи новое время.
-            onFocusText: { store.editing ? false : store.stampIfNeeded() })
+            onFocusText: { store.editing(.diary) ? false : store.stampIfNeeded() },
+            onOpenInline: { link in
+                shell.openedPhoto = .init(tab: .diary, index: -1,
+                                          url: store.photoURL(link), link: link)
+            },
+            onOpenPoint: { shell.showPoint($0) },
+            onCaret: { store.diaryCaret = $0 })
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.diaryText) { _, _ in
@@ -73,6 +86,10 @@ struct DiaryPage: View {
     /// Возвращает `true`, если приложение поставило отметку времени: тогда
     /// курсор переезжает за неё.
     var onFocusText: () -> Bool = { false }
+    /// Касание по снимку посреди текста (P216) и по точке (P213).
+    var onOpenInline: ((String) -> Void)?
+    var onOpenPoint: ((GeoPoint) -> Void)?
+    var onCaret: ((Int) -> Void)?
 
     private enum Field: Hashable { case title }
     @FocusState private var focused: Field?
@@ -239,7 +256,8 @@ struct DiaryPage: View {
                     editable: editable, caretToEnd: $caretToEnd,
                     startEditing: $toText,
                     onFocus: { if onFocusText() { caretToEnd = true } },
-                    grows: true, minHeight: 320, resolve: resolve)
+                    grows: true, minHeight: 320, resolve: resolve,
+                    onOpenPhoto: onOpenInline, onOpenPoint: onOpenPoint, onCaret: onCaret)
             .padding(.top, 16)
     }
 }

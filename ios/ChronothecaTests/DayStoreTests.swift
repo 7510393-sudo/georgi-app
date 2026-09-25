@@ -102,11 +102,15 @@ extension DayStoreTests {
     func testРежимИзмененийОткрываетПрошедшийДень() {
         let вчера = store(-1)
         XCTAssertFalse(вчера.canEditPlan)
-        вчера.editing = true
+        // Режим дневника план не открывает: у каждой вкладки свой (P211).
+        вчера.setEditing(.diary, true)
+        XCTAssertFalse(вчера.canEditPlan)
+        вчера.setEditing(.plan, true)
         XCTAssertTrue(вчера.canEditPlan)
         // Уход со дня гасит режим: его нельзя забыть включённым.
         вчера.move(by: -1)
-        XCTAssertFalse(вчера.editing)
+        XCTAssertFalse(вчера.editing(.plan))
+        XCTAssertFalse(вчера.editing(.diary))
     }
 
     func testЗаголовокИОтветыЛожатсяВФайлДневника() {

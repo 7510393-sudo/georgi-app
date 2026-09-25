@@ -21,6 +21,19 @@ final class Archive: ObservableObject {
         var photos = 0
         /// Где человек был в этот день, если отметил (P207).
         var place: CLLocationCoordinate2D?
+        /// Вложения дня — и дневника, и плана, и стоящие посреди текста.
+        var attachments: [String] = []
+
+        /// Что показать превью в поиске: первый снимок, иначе первое
+        /// видео, иначе голос, иначе документ (P215).
+        var cover: String? {
+            for kind in [Diary.Kind.photo, .video, .audio, .file] {
+                if let link = attachments.first(where: { Diary.kind(of: $0) == kind }) {
+                    return link
+                }
+            }
+            return nil
+        }
 
         /// Файл дня лежит в iCloud и ещё не скачан. День есть, хотя
         /// прочитать его пока нечем (решение P182).
@@ -38,7 +51,7 @@ final class Archive: ObservableObject {
         var preview: String {
             text.split(separator: "\n", omittingEmptySubsequences: false)
                 .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty && Diary.picture(in: $0) == nil }
+                .filter { !$0.isEmpty && Diary.picture(in: $0) == nil && Geo.point(in: $0) == nil }
                 .joined(separator: "\n")
         }
 
@@ -117,13 +130,17 @@ final class Archive: ObservableObject {
 
                     let parsed = DayFile(text: text)
                     if folder == .planner {
-                        day.tasks = Plan.rows(from: parsed.body).filter { $0.isTask }
+                        let rows = Plan.rows(from: parsed.body)
+                        day.tasks = rows.filter { $0.isTask }
+                        day.attachments += rows.compactMap { $0.verbatim.flatMap { Diary.picture(in: $0) } }
                     } else {
                         let diary = Diary(body: parsed.body)
                         day.title = parsed.value("заголовок") ?? ""
                         day.text = diary.text
                         day.answers = diary.answers
                         day.photos = diary.photos.count
+                        day.attachments = diary.text.components(separatedBy: "\n")
+                            .compactMap { Diary.picture(in: $0) } + diary.photos + day.attachments
                         day.place = parsed.value("место").flatMap(Geo.parse)
                     }
                     found[stamp] = day

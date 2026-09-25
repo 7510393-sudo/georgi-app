@@ -18,7 +18,7 @@ final class DayStore: ObservableObject {
     /// План живёт вперёд: на сегодня и на любой будущий день дела заводятся
     /// свободно — ради этого планировщик и нужен. Прошедший день закрыт:
     /// задним числом план не переписывают, кроме как в режиме изменений.
-    var canEditPlan: Bool { (!isPast || editing) && !away.contains(.planner) }
+    var canEditPlan: Bool { (!isPast || editing(.plan)) && !away.contains(.planner) }
 
     /// Дневник живёт назад: вчерашнее дописывают и через неделю (решение P63).
     /// А вот дня, который ещё не наступил, в дневнике не бывает.
@@ -37,7 +37,16 @@ final class DayStore: ObservableObject {
     /// Режим изменений: открывает прошедший день для правки, меняет порядок
     /// дел и позволяет удалять. Включается вручную в меню страницы и гаснет
     /// при уходе со дня — чтобы нельзя было забыть его включённым.
-    @Published var editing = false
+    ///
+    /// У каждой вкладки свой: включённый в плане не трогает дневник, и
+    /// наоборот (решение P211).
+    @Published var editingTabs: Set<Shell.Tab> = []
+
+    func editing(_ tab: Shell.Tab) -> Bool { editingTabs.contains(tab) }
+
+    func setEditing(_ tab: Shell.Tab, _ on: Bool) {
+        if on { editingTabs.insert(tab) } else { editingTabs.remove(tab) }
+    }
 
     /// Почему в этот день писать нельзя.
     var closedReason: String {
@@ -138,7 +147,8 @@ final class DayStore: ObservableObject {
     func go(to newDate: Date) {
         prune()
         save()
-        editing = false
+        editingTabs = []
+        diaryCaret = nil
         date = Calendar.current.startOfDay(for: newDate)
         retries = 0
         load()
@@ -255,29 +265,63 @@ final class DayStore: ObservableObject {
         return true
     }
 
-    /// Вписать место в текст записи своей строкой `geo:…` (P165, P207).
+    /// Где стоял курсор в записи дневника — отступом от начала текста.
+    /// Туда встаёт точка с карты (P213). Пусто — курсора не было, и точка
+    /// ложится в конец записи.
+    var diaryCaret: Int?
+
+    /// Записать точку своей строкой: в план — после дел, в дневник — туда,
+    /// где стоял курсор (P165, P210, P213).
     @discardableResult
-    func writePlace(_ where_: CLLocationCoordinate2D) -> Bool {
-        guard canEditDiary else { return false }
-        let body = diaryText.replacingOccurrences(of: "\\s+$", with: "",
-                                                  options: .regularExpression)
-        diaryText = (body.isEmpty ? "" : body + "\n\n") + Geo.line(where_)
-        touchDiary()
+    func writePoint(_ point: GeoPoint, to tab: Shell.Tab) -> Bool {
+        guard canEdit(tab) else { return false }
+        let line = Geo.pointLine(point)
+        switch tab {
+        case .plan:
+            planRows.append(.verbatim(line))
+        case .diary:
+            let (text, caret) = DayStore.insert(line, into: diaryText, at: diaryCaret)
+            diaryText = text
+            diaryCaret = caret
+            touchDiary()
+        }
         save()
         return true
+    }
+
+    /// Вставить строку в текст там, где стоит курсор, — отдельной строкой:
+    /// фраза, в которой стоял курсор, не рвётся посередине слова, а
+    /// переносится. Возвращает текст и место курсора за вставкой.
+    static func insert(_ line: String, into text: String, at caret: Int?) -> (String, Int) {
+        let ns = text as NSString
+        guard let caret, caret >= 0, caret <= ns.length else {
+            let body = text.replacingOccurrences(of: "\\s+$", with: "",
+                                                 options: .regularExpression)
+            let out = (body.isEmpty ? "" : body + "\n\n") + line
+            return (out, (out as NSString).length)
+        }
+        let before = ns.substring(to: caret)
+        let after = ns.substring(from: caret)
+        let lead = before.isEmpty || before.hasSuffix("\n") ? "" : "\n"
+        let tail = after.isEmpty || after.hasPrefix("\n") ? "" : "\n"
+        let head = before + lead + line
+        return (head + tail + after, (head as NSString).length)
+    }
+
+    /// Вернуть снимок, стоящий посреди записи, в полоску внизу (P216).
+    func returnToStrip(_ link: String) {
+        guard canEditDiary else { return }
+        var lines = diaryText.components(separatedBy: "\n")
+        guard let i = lines.firstIndex(where: { Diary.picture(in: $0) == link }) else { return }
+        lines.remove(at: i)
+        diaryText = lines.joined(separator: "\n")
+            .replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
+        photos.append(link)
+        touchDiary()
+        save()
     }
 
     var placeCoordinate: CLLocationCoordinate2D? { place.flatMap(Geo.parse) }
-
-    /// Вписать место в план — своей строкой `geo:…` после дел: долгое
-    /// нажатие на геоточку пишет туда, где человек стоит (P210).
-    @discardableResult
-    func writePlanPlace(_ where_: CLLocationCoordinate2D) -> Bool {
-        guard canEditPlan else { return false }
-        planRows.append(.verbatim(Geo.line(where_)))
-        save()
-        return true
-    }
 
     /// Записать погоду там, где человек сейчас. Только в сегодняшний день:
     /// погода — это «как было, когда писал», а не справка о прошлом (P208).

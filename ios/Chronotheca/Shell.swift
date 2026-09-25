@@ -42,6 +42,9 @@ final class Shell: ObservableObject {
         /// Снимок, стоящий посреди страницы, а не в полоске: открывается
         /// прямо по месту, без «убрать» (P205).
         var url: URL? = nil
+        /// Строка-ссылка снимка из текста: по ней он возвращается в
+        /// полоску (P216).
+        var link: String? = nil
         var id: String { tab.rawValue + String(index) + (url?.path ?? "") }
     }
     @Published var openedPhoto: OpenedPhoto?
@@ -49,6 +52,16 @@ final class Shell: ObservableObject {
     @Published var showingMenu = false
     /// Своя карта мест — за кнопкой «геоточка» (P207).
     @Published var showingMap = false
+    /// Точка, на которой открыть карту: её нажали в тексте дня (P213).
+    @Published var mapFocus: GeoPoint?
+
+    /// Открыть карту на точке из текста.
+    func showPoint(_ point: GeoPoint) {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
+        mapFocus = point
+        withAnimation(.easeOut(duration: 0.25)) { showingMap = true }
+    }
     @Published var showingSettings = false
     @Published var showingFile = false
     @Published var picking = false
@@ -110,7 +123,7 @@ final class Shell: ObservableObject {
         case "remember":  tab = .diary
         case "details":   drawer = store.tasks.first?.id
         case "past":      store.move(by: -1)
-        case "editing":   store.editing = true
+        case "editing":   store.setEditing(.plan, true)
         case "future":    store.move(by: 1); tab = .diary
         case "side":      probingSide = true
         case "list":

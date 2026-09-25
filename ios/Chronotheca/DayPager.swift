@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 import PhotosUI
+import UniformTypeIdentifiers
+import CoreTransferable
 
 /// Дни листаются как страницы книги.
 ///
@@ -276,16 +278,22 @@ struct DayPage: View {
     private func tab(_ which: Shell.Tab) -> some View {
         let on = shell.tab == which
         let page = which == .diary ? Look.diaryBg : Ru.tint(date)
+        let wobbling = live && store.editing(which)
         return Button {
             guard live else { return }
+            // Качающиеся буквы открытой вкладки — выход из режима
+            // изменений (P211).
+            if wobbling && on {
+                withAnimation(.easeOut(duration: 0.2)) { store.setEditing(which, false) }
+                return
+            }
             store.prune()
             store.save()
             shell.tab = which
         } label: {
-            Text(which.rawValue.uppercased())
-                .font(Look.sans(13, weight: on ? .semibold : .regular))
-                .tracking(1.56)
-                .foregroundStyle(on ? Look.ink : Look.inkFaint)
+            WobblyTitle(text: which.rawValue.uppercased(), wobbling: wobbling,
+                        font: Look.sans(13, weight: on || wobbling ? .semibold : .regular),
+                        color: wobbling ? Look.accent : (on ? Look.ink : Look.inkFaint))
                 .frame(maxWidth: .infinity)
                 .padding(.top, 10)
                 .padding(.bottom, 11)
@@ -317,6 +325,69 @@ struct DayPage: View {
     }
 }
 
+/// Лицо кнопки в нижней полоске: значок и подпись. Общее для полоски
+/// вложений и для полоски карты — кнопки стоят на одних и тех же местах
+/// (P213).
+struct BarFace: View {
+    let icon: String
+    let name: String
+    var tint: Color = Look.inkSoft
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Image(systemName: icon).font(.system(size: 17))
+            Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
+        }
+        .frame(maxWidth: .infinity)
+        .foregroundStyle(tint)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Название вкладки. В режиме изменений каждая буква качается вокруг
+/// своей оси, вправо-влево до 15°, каждая в своём ритме: режим виден
+/// издалека, и забыть его включённым трудно (P211).
+struct WobblyTitle: View {
+
+    let text: String
+    let wobbling: Bool
+    let font: Font
+    let color: Color
+
+    var body: some View {
+        if wobbling {
+            TimelineView(.animation) { clock in
+                let t = clock.date.timeIntervalSinceReferenceDate
+                HStack(spacing: 0) {
+                    ForEach(Array(text.enumerated()), id: \.offset) { i, letter in
+                        Text(String(letter))
+                            .font(font)
+                            .tracking(1.56)
+                            .foregroundStyle(color)
+                            .rotationEffect(.degrees(WobblyTitle.angle(t, i)))
+                    }
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(text.capitalized + ". Режим изменений, нажмите, чтобы выйти")
+        } else {
+            Text(text)
+                .font(font)
+                .tracking(1.56)
+                .foregroundStyle(color)
+        }
+    }
+
+    /// Наклон буквы в минуту `t`: две волны с несоразмерными частотами, у
+    /// каждой буквы свои — со стороны это выглядит беспорядком.
+    static func angle(_ t: TimeInterval, _ i: Int) -> Double {
+        let a = 2.3 + Double((i * 7) % 5) * 0.45
+        let b = 3.7 + Double((i * 3) % 4) * 0.6
+        let p = Double(i) * 1.9
+        return 15 * (0.6 * sin(t * a + p) + 0.4 * sin(t * b + p * 0.7))
+    }
+}
+
 /// Полоска вложений. Едет вместе со страницей: вложения принадлежат дню.
 struct AttachBar: View {
 
@@ -335,8 +406,10 @@ struct AttachBar: View {
             item("doc", "файлы", ready: true) { open { browsing = true } }
             // Касание — своя карта мест; долгое нажатие — вписать, где
             // человек сейчас, строкой в текст записи (P165, P207).
-            item("mappin.and.ellipse", "геоточка", ready: true,
-                 hold: writePlace) { shell.showingMap = true }
+            item("mappin.and.ellipse", "геоточка", ready: true, hold: writePlace) {
+                hideKeyboard()
+                withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = true }
+            }
         }
         .padding(.top, 8)
         .padding(.bottom, 7)
@@ -346,8 +419,10 @@ struct AttachBar: View {
         }
         // Системное окно галереи: приложению не нужно разрешение на всю
         // галерею — оно получает только те снимки, которые выбрал человек.
+        // Снимки и видео вместе, без предела на число (P214).
         .photosPicker(isPresented: $choosing, selection: $picked,
-                      maxSelectionCount: 10, matching: .images)
+                      matching: .any(of: [.images, .videos]),
+                      preferredItemEncoding: .current)
         .onChange(of: picked) { _, items in
             guard !items.isEmpty else { return }
             picked = []
@@ -397,13 +472,7 @@ struct AttachBar: View {
     private func item(_ icon: String, _ name: String, ready: Bool = false,
                       hold: (() -> Void)? = nil,
                       act: @escaping () -> Void) -> some View {
-        let face = VStack(spacing: 3) {
-            Image(systemName: icon).font(.system(size: 17))
-            Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
-        }
-        .frame(maxWidth: .infinity)
-        .foregroundStyle(ready ? Look.inkSoft : Look.inkFaint)
-        .contentShape(Rectangle())
+        let face = BarFace(icon: icon, name: name, tint: ready ? Look.inkSoft : Look.inkFaint)
         return Group {
             if let hold {
                 // У кнопки два жеста: касание и долгое нажатие. Обычная
@@ -432,10 +501,7 @@ struct AttachBar: View {
             guard let at = location?.coordinate else {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
-            switch tab {
-            case .diary: store.writePlace(at)
-            case .plan: store.writePlanPlace(at)
-            }
+            store.writePoint(GeoPoint(title: "", at: at), to: tab)
             if let location { store.noteWeather(at: location) }
             shell.say(tab == .diary ? "Место вписано в запись" : "Место вписано в план")
         }
@@ -454,16 +520,57 @@ struct AttachBar: View {
         Task {
             let tab = shell.tab
             var added = 0
+            var videos = 0
+            if items.count > 3 { shell.say("Кладу в папку: \(items.count)…") }
             for item in items {
+                if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
+                    // Видео — в «Видео», как есть, без пережатия (P214).
+                    guard let movie = try? await item.loadTransferable(type: PickedMovie.self)
+                    else { continue }
+                    defer { try? FileManager.default.removeItem(at: movie.url) }
+                    let ext = movie.url.pathExtension.isEmpty ? "mov" : movie.url.pathExtension
+                    guard let data = try? Data(contentsOf: movie.url, options: .mappedIfSafe)
+                    else { continue }
+                    if store.addAttachment(data, to: .videos,
+                                           name: Vault.moment(store.date) + "." + ext.lowercased(),
+                                           tab: tab) {
+                        added += 1
+                        videos += 1
+                    }
+                    continue
+                }
                 guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
                 if store.addPhoto(data, to: tab) { added += 1 }
             }
             if added == items.count {
-                shell.say(added == 1 ? "Фотография положена в папку «Фотографии»"
-                                     : "Фотографий положено в папку: \(added)")
+                if added == 1 {
+                    shell.say(videos == 1 ? "Видео положено в папку «Видео»"
+                                          : "Фотография положена в папку «Фотографии»")
+                } else {
+                    shell.say("Положено в папку: \(added)")
+                }
             } else {
-                shell.say("Не удалось положить фотографий: \(items.count - added)")
+                shell.say("Не удалось положить: \(items.count - added)")
             }
+        }
+    }
+}
+
+/// Видео из галереи: система отдаёт его файлом, а не в память — ролик
+/// может весить гигабайт. Файл сразу копируется к себе: чужой исчезнет,
+/// как только окно галереи закроется.
+struct PickedMovie: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { movie in
+            SentTransferredFile(movie.url)
+        } importing: { received in
+            let ext = received.file.pathExtension.isEmpty ? "mov" : received.file.pathExtension
+            let copy = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + "." + ext)
+            try FileManager.default.copyItem(at: received.file, to: copy)
+            return PickedMovie(url: copy)
         }
     }
 }

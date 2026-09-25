@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import ImageIO
+import AVFoundation
 import UniformTypeIdentifiers
 
 /// Фотографии дня: как их класть в папку и как показывать.
@@ -59,6 +60,17 @@ enum Photo {
         return image
     }
 
+    /// Первый кадр видео, уменьшенный до `side` точек (P214).
+    static func poster(_ url: URL, side: CGFloat) async -> UIImage? {
+        guard let ready = await Task.detached(operation: { Attachment.fetch(url) }).value
+        else { return nil }
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: ready))
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: side * 3, height: side * 3)
+        guard let frame = try? await generator.image(at: .zero).image else { return nil }
+        return UIImage(cgImage: frame)
+    }
+
     /// Снимок для показа: туман над полем. Нужен только снимкам экрана.
     static func sample() -> Data {
         let size = CGSize(width: 1200, height: 900)
@@ -88,10 +100,13 @@ enum Photo {
 struct PhotoThumb: View {
 
     let url: URL?
+    /// Видео: вместо снимка — его первый кадр и знак «играть» (P214).
+    var video = false
     @State private var image: UIImage?
 
-    init(url: URL?) {
+    init(url: URL?, video: Bool = false) {
         self.url = url
+        self.video = video
         _image = State(initialValue: url.flatMap { Photo.cache.object(forKey: $0.path as NSString) })
     }
 
@@ -105,9 +120,19 @@ struct PhotoThumb: View {
                         .resizable()
                         .scaledToFill()
                 } else {
-                    Image(systemName: "photo")
+                    Image(systemName: video ? "video" : "photo")
                         .font(.system(size: 16))
                         .foregroundStyle(Look.inkFaint)
+                }
+            }
+            .overlay(alignment: .bottomLeading) {
+                if video {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white)
+                        .padding(4)
+                        .background(.black.opacity(0.45), in: Circle())
+                        .padding(3)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -117,9 +142,14 @@ struct PhotoThumb: View {
 
     private func load() async {
         guard image == nil, let url else { return }
-        let got = await Task.detached(priority: .userInitiated) {
-            Photo.load(url, side: 160)
-        }.value
+        let got: UIImage?
+        if video {
+            got = await Photo.poster(url, side: 160)
+        } else {
+            got = await Task.detached(priority: .userInitiated) {
+                Photo.load(url, side: 160)
+            }.value
+        }
         guard let got else { return }
         Photo.cache.setObject(got, forKey: url.path as NSString)
         image = got
@@ -181,6 +211,8 @@ struct PhotoStrip: View {
         switch kind(i) {
         case .photo:
             PhotoThumb(url: photos[i])
+        case .video:
+            PhotoThumb(url: photos[i], video: true)
         case .audio:
             FileTile(icon: "waveform", label: "голос")
         case .file:
@@ -210,6 +242,7 @@ struct PhotoStrip: View {
             .onDrop(of: glowing && onMove != nil ? [UTType.plainText, Carried.strip] : [],
                     delegate: StripDrop(index: i, carrying: $carrying, move: onMove))
             .accessibilityLabel(kind(i) == .photo ? "Фотография \(i + 1)"
+                                : kind(i) == .video ? "Видео"
                                 : kind(i) == .audio ? "Голосовая запись" : "Файл")
     }
 
@@ -303,6 +336,8 @@ struct PhotoViewer: View {
     let url: URL?
     /// Убрать снимок из записи. Пусто — день закрыт для правки.
     var onRemove: (() -> Void)?
+    /// Вернуть снимок из текста в полоску внизу (P216).
+    var onReturn: (() -> Void)?
     let close: () -> Void
 
     @State private var image: UIImage?
@@ -346,6 +381,14 @@ struct PhotoViewer: View {
             Spacer()
             if let url {
                 ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
+            }
+            if let onReturn {
+                Button(action: onReturn) {
+                    Label("В полоску", systemImage: "arrow.down.to.line")
+                        .font(.system(size: 15))
+                }
+                .padding(.leading, 18)
+                .accessibilityLabel("Вернуть в полоску внизу страницы")
             }
             if onRemove != nil {
                 Button { asking = true } label: { Image(systemName: "trash") }

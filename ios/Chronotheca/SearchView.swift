@@ -12,6 +12,7 @@ struct SearchView: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var vault: Vault
 
     /// Строка поиска лежит в оболочке: её очищает и меню поиска.
     private var query: String { shell.query }
@@ -153,12 +154,30 @@ struct SearchView: View {
                     }
                 }
                 Spacer(minLength: 0)
+                if let cover = day.cover { preview(cover, of: day) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 18)
             .padding(.vertical, 11)
         }
         .buttonStyle(.plain)
+    }
+
+    /// Превью справа от находки: снимок, кадр видео, голос или документ
+    /// (P215).
+    @ViewBuilder private func preview(_ link: String, of day: Archive.Day) -> some View {
+        let url = vault.mediaURL(link, for: day.date)
+        Group {
+            switch Diary.kind(of: link) {
+            case .photo: PhotoThumb(url: url)
+            case .video: PhotoThumb(url: url, video: true)
+            case .audio: FileTile(icon: "waveform", label: "голос")
+            case .file:  FileTile(icon: "doc.text",
+                                  label: (link as NSString).pathExtension.lowercased())
+            }
+        }
+        .frame(width: 52, height: 52)
+        .padding(.top, 2)
     }
 
     private func message(_ head: String, _ tail: String) -> some View {

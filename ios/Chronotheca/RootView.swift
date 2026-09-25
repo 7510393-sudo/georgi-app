@@ -179,6 +179,11 @@ struct RootView: View {
                     shell.openedPhoto = nil
                     shell.say("Убрано со страницы. Сам файл остался в папке.")
                 } : nil,
+                // Снимок из текста можно вернуть в полоску (P216).
+                onReturn: opened.link != nil && store.canEdit(opened.tab) ? {
+                    if let link = opened.link { store.returnToStrip(link) }
+                    shell.openedPhoto = nil
+                } : nil,
                 close: { shell.openedPhoto = nil })
         }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
@@ -258,7 +263,7 @@ struct RootView: View {
     private var dotsLit: Bool {
         if shell.showingMap { return false }
         switch shell.screen {
-        case .today:    return store.editing
+        case .today:    return store.editing(shell.tab)
         case .calendar: return false
         case .search:   return shell.scope != .all
         }
@@ -347,8 +352,9 @@ struct RootView: View {
             section("сегодня", "Сегодня", .today)
             section("поиск", "Поиск", .search)
         }
-        .padding(.top, 11)
-        .padding(.bottom, 4)
+        // На 5% тоньше, чем было, при книжке на 10% крупнее (P212).
+        .padding(.top, 7)
+        .padding(.bottom, 2)
         .background(Look.chrome)
     }
 
@@ -378,7 +384,7 @@ struct RootView: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 32, height: 32)
+                    .frame(width: 35, height: 35)
                 Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
             }
             .frame(maxWidth: .infinity)

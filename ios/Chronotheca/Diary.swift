@@ -96,16 +96,19 @@ struct Diary: Equatable {
         if link.hasPrefix("<"), link.hasSuffix(">") {
             link = String(link.dropFirst().dropLast())
         }
-        guard !link.contains("://") else { return nil }
+        // Точка на карте `[Дом](geo:…)` — тоже не вложение: у неё нет
+        // файла, она остаётся в тексте кнопкой (P213).
+        guard !link.contains("://"), !link.hasPrefix("geo:") else { return nil }
         return link
     }
 
     /// Какого рода вложение — по расширению файла.
-    enum Kind { case photo, audio, file }
+    enum Kind { case photo, video, audio, file }
 
     static func kind(of link: String) -> Kind {
         switch (link as NSString).pathExtension.lowercased() {
         case "jpg", "jpeg", "png", "heic", "heif", "gif", "webp": return .photo
+        case "mov", "mp4", "m4v", "3gp": return .video
         case "m4a", "mp3", "wav", "aac", "caf", "aiff": return .audio
         default: return .file
         }

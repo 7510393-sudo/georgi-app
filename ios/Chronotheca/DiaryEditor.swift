@@ -50,6 +50,15 @@ struct DiaryEditor: UIViewRepresentable {
     /// значит поле рисует такие строки картинками (решение P204).
     var resolve: ((String) -> URL?)?
 
+    /// Касание по снимку в тексте — открыть его (P216). Пусто — снимки не
+    /// открываются: так на соседних страницах.
+    var onOpenPhoto: ((String) -> Void)?
+    /// Касание по точке в тексте — открыть карту на ней (P213).
+    var onOpenPoint: ((GeoPoint) -> Void)?
+    /// Курсор переставлен: где он теперь, отступом в тексте записи. Туда
+    /// встанет точка с карты (P213).
+    var onCaret: ((Int) -> Void)?
+
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     static let stamp = try! NSRegularExpression(pattern: #"^(\d{2}:\d{2})[  ]"#)
 
@@ -59,6 +68,12 @@ struct DiaryEditor: UIViewRepresentable {
         // Превью из полоски бросают прямо в текст (решение P204).
         view.textDropDelegate = context.coordinator
         context.coordinator.view = view
+        // Касание по снимку или точке в тексте открывает их, а не ставит
+        // курсор рядом (P213, P216).
+        let tap = UITapGestureRecognizer(target: context.coordinator,
+                                         action: #selector(Coordinator.tapped(_:)))
+        tap.delegate = context.coordinator
+        view.addGestureRecognizer(tap)
         view.backgroundColor = .clear
         view.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 40, right: 0)
         view.textContainer.lineFragmentPadding = 0
@@ -86,6 +101,7 @@ struct DiaryEditor: UIViewRepresentable {
     }
 
     func updateUIView(_ view: UITextView, context: Context) {
+        context.coordinator.parent = self
         view.isEditable = editable
         view.isSelectable = editable
         context.coordinator.resolve = resolve
@@ -238,9 +254,12 @@ struct DiaryEditor: UIViewRepresentable {
     static func plain(_ s: NSAttributedString) -> String {
         let ns = s.string as NSString
         var out = ""
-        s.enumerateAttribute(photoKey, in: NSRange(location: 0, length: s.length)) { value, range, _ in
-            if let link = value as? String {
+        s.enumerateAttributes(in: NSRange(location: 0, length: s.length)) { attributes, range, _ in
+            if let link = attributes[photoKey] as? String {
                 out += Array(repeating: Diary.line(link), count: range.length)
+                    .joined(separator: "\n")
+            } else if let line = attributes[lineKey] as? String {
+                out += Array(repeating: line, count: range.length)
                     .joined(separator: "\n")
             } else {
                 out += clean(ns.substring(with: range))
@@ -249,29 +268,40 @@ struct DiaryEditor: UIViewRepresentable {
         return out
     }
 
+    /// Метка точки в поле: на экране — кнопочка, в файле — та же строка,
+    /// что была (P213).
+    static let lineKey = NSAttributedString.Key("chronotheca.line")
+
     /// Заменить строки-ссылки на картинки.
     static func placePhotos(in out: NSMutableAttributedString,
                             resolve: (String) -> URL?) {
         let ns = out.string as NSString
-        var found: [(NSRange, String)] = []
+        var found: [(NSRange, String, GeoPoint?)] = []
         var start = 0
         while start < ns.length {
             let line = ns.lineRange(for: NSRange(location: start, length: 0))
             let content = ns.substring(with: line).trimmingCharacters(in: .newlines)
+            let range = NSRange(location: line.location, length: (content as NSString).length)
             if let link = Diary.picture(in: content), Diary.kind(of: link) == .photo {
-                found.append((NSRange(location: line.location,
-                                      length: (content as NSString).length), link))
+                found.append((range, link, nil))
+            } else if let point = Geo.point(in: content) {
+                found.append((range, content, point))
             }
             guard line.length > 0 else { break }
             start = line.location + line.length
         }
-        for (range, link) in found.reversed() {
-            let attachment = PhotoAttachment(link: link, url: resolve(link))
+        for (range, link, point) in found.reversed() {
+            let attachment: NSTextAttachment
+            if let point {
+                attachment = PointChip(point: point)
+            } else {
+                attachment = PhotoAttachment(link: link, url: resolve(link))
+            }
             let piece = NSMutableAttributedString(attachment: attachment)
             let whole = NSRange(location: 0, length: piece.length)
             piece.addAttributes(out.attributes(at: range.location, effectiveRange: nil),
                                 range: whole)
-            piece.addAttribute(photoKey, value: link, range: whole)
+            piece.addAttribute(point == nil ? photoKey : lineKey, value: link, range: whole)
             out.replaceCharacters(in: range, with: piece)
         }
     }
@@ -279,16 +309,18 @@ struct DiaryEditor: UIViewRepresentable {
     /// Есть ли в поле строка-ссылка, ещё не ставшая картинкой: её только
     /// что бросили в текст или вписали руками.
     static func hasLoosePicture(_ text: String) -> Bool {
-        guard text.contains("![") else { return false }
+        guard text.contains("![") || text.contains("geo:") else { return false }
         return text.components(separatedBy: "\n").contains {
-            Diary.picture(in: $0).map { Diary.kind(of: $0) == .photo } ?? false
+            (Diary.picture(in: $0).map { Diary.kind(of: $0) == .photo } ?? false)
+                || Geo.point(in: $0) != nil
         }
     }
 
     // MARK: - Поведение
 
-    final class Coordinator: NSObject, UITextViewDelegate, UITextDropDelegate {
-        private let parent: DiaryEditor
+    final class Coordinator: NSObject, UITextViewDelegate, UITextDropDelegate,
+                             UIGestureRecognizerDelegate {
+        fileprivate var parent: DiaryEditor
 
         /// Где лежат снимки — обновляется с каждым обновлением поля.
         var resolve: ((String) -> URL?)?
@@ -339,7 +371,8 @@ struct DiaryEditor: UIViewRepresentable {
             while i >= 0 {
                 // Свои снимки не трогаем: это картинки на месте строк-ссылок.
                 if ns.character(at: i) == 0xFFFC,
-                   storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil {
+                   storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil,
+                   storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) == nil {
                     storage.deleteCharacters(in: NSRange(location: i, length: 1))
                     if i < курсор.location { курсор.location -= 1 }
                     changed = true
@@ -352,6 +385,75 @@ struct DiaryEditor: UIViewRepresentable {
                 location: min(курсор.location, storage.length), length: 0)
             parent.text = DiaryEditor.plain(storage)
             restyle(view)
+        }
+
+        // MARK: - Касание по снимку и точке
+
+        /// Что оказалось под пальцем в начале касания, и когда.
+        private var pressed: (photo: String?, point: GeoPoint?)?
+        private var pressedAt = Date.distantPast
+
+        /// Снимок или точка под пальцем.
+        private func hit(_ at: CGPoint, in view: UITextView) -> (photo: String?, point: GeoPoint?)? {
+            guard let position = view.closestPosition(to: at) else { return nil }
+            let storage = view.textStorage
+            let offset = view.offset(from: view.beginningOfDocument, to: position)
+            for i in [offset, offset - 1] where i >= 0 && i < storage.length {
+                guard storage.attribute(.attachment, at: i, effectiveRange: nil) != nil,
+                      let start = view.position(from: view.beginningOfDocument, offset: i),
+                      let end = view.position(from: start, offset: 1),
+                      let range = view.textRange(from: start, to: end),
+                      view.firstRect(for: range).insetBy(dx: -4, dy: -4).contains(at)
+                else { continue }
+                if let link = storage.attribute(DiaryEditor.photoKey, at: i,
+                                                effectiveRange: nil) as? String {
+                    guard parent.onOpenPhoto != nil else { return nil }
+                    return (photo: link, point: nil)
+                }
+                if let line = storage.attribute(DiaryEditor.lineKey, at: i,
+                                                effectiveRange: nil) as? String,
+                   let point = Geo.point(in: line) {
+                    guard parent.onOpenPoint != nil else { return nil }
+                    return (photo: nil, point: point)
+                }
+            }
+            return nil
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let view, parent.onOpenPhoto != nil || parent.onOpenPoint != nil else {
+                return false
+            }
+            pressed = hit(touch.location(in: view), in: view)
+            pressedAt = Date()
+            return pressed != nil
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            true
+        }
+
+        @objc func tapped(_ g: UITapGestureRecognizer) {
+            guard g.state == .ended, let got = pressed else { return }
+            pressed = nil
+            if let link = got.photo { parent.onOpenPhoto?(link) }
+            if let point = got.point { parent.onOpenPoint?(point) }
+        }
+
+        /// Касание пришлось на снимок или точку — клавиатура не нужна:
+        /// человек открывает, а не пишет. Иначе заодно ставилась бы
+        /// отметка времени.
+        func textViewShouldBeginEditing(_ view: UITextView) -> Bool {
+            !(pressed != nil && Date().timeIntervalSince(pressedAt) < 1.5)
+        }
+
+        /// Курсор переставлен — запомнить, где он в тексте записи.
+        func textViewDidChangeSelection(_ view: UITextView) {
+            guard let report = parent.onCaret else { return }
+            let at = min(view.selectedRange.location, view.textStorage.length)
+            let before = view.textStorage.attributedSubstring(from: NSRange(location: 0, length: at))
+            report((DiaryEditor.plain(before) as NSString).length)
         }
 
         // MARK: - Снимки
@@ -562,6 +664,46 @@ struct DiaryEditor: UIViewRepresentable {
             }
             storage.endEditing()
             view.typingAttributes = body
+        }
+    }
+}
+
+/// Точка в тексте записи: кнопочка с названием и координатами, бледная,
+/// как отметка времени (P213).
+final class PointChip: NSTextAttachment {
+
+    init(point: GeoPoint) {
+        super.init(data: nil, ofType: nil)
+        let picture = PointChip.draw(point.label)
+        image = picture
+        bounds = CGRect(origin: CGPoint(x: 0, y: -7), size: picture.size)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    static func draw(_ label: String) -> UIImage {
+        let font = UIFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
+        let ink = UIColor(Look.inkFaint)
+        let words = [NSAttributedString.Key.font: font, .foregroundColor: ink]
+        let pin = UIImage(systemName: "mappin.and.ellipse",
+                          withConfiguration: UIImage.SymbolConfiguration(pointSize: 11))?
+            .withTintColor(ink, renderingMode: .alwaysOriginal)
+        let wide = min((label as NSString).size(withAttributes: words).width, 250)
+        let size = CGSize(width: 10 + 14 + 5 + wide + 10, height: 24)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            let box = CGRect(origin: .zero, size: size).insetBy(dx: 0.5, dy: 0.5)
+            let shape = UIBezierPath(roundedRect: box, cornerRadius: 12)
+            UIColor(Look.chrome).setFill()
+            shape.fill()
+            UIColor(Look.rule).setStroke()
+            shape.lineWidth = 1
+            shape.stroke()
+            pin?.draw(in: CGRect(x: 10, y: 5, width: 14, height: 14))
+            (label as NSString).draw(
+                with: CGRect(x: 29, y: (size.height - font.lineHeight) / 2,
+                             width: wide, height: font.lineHeight),
+                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+                attributes: words, context: nil)
         }
     }
 }
