@@ -87,15 +87,17 @@ struct DayPage: View {
         if live, shell.tab == .diary, archive.remembered(for: date) != nil,
            !Remembered.has(Vault.stamp(date), in: read) {
             // Облачко стоит на верхнем крае вкладки «Дневник», локоть
-            // заходит на вкладку. Размер и место — доли ширины вкладки, как
-            // на эскизе; сдвинуто чуть правее эскиза, чтобы не накрыть
-            // дату (P206).
+            // заходит на вкладку. Размер и место — доли ширины вкладки.
+            // Правее и мельче, чем на эскизе: на телефоне слева дата, а
+            // под локтем надпись вкладки, и накрывать нельзя ни то, ни
+            // другое — самая глубокая точка локтя приходится правее
+            // надписи (P206).
             GeometryReader { geo in
-                let width = geo.size.width * 0.62
+                let width = geo.size.width * 0.50
                 let height = width / RememberCloud.ratio
                 RememberCloud(date: date, width: width) { remembering = true }
                     .frame(width: width, height: height)
-                    .offset(x: geo.size.width * 0.31, y: -height * RememberCloud.tabEdge)
+                    .offset(x: geo.size.width * 0.45, y: -height * 0.80)
             }
             .transition(.opacity)
         }
