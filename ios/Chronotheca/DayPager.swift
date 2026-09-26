@@ -486,7 +486,13 @@ struct WobblyTitle: View {
 }
 
 /// Полоска вложений. Едет вместе со страницей: вложения принадлежат дню.
+///
+/// Пока открыта клавиатура, та же полоска стоит прямо над ней: курсор
+/// остаётся на месте, а всё нужное под пальцем (P253). Справа тогда —
+/// кнопка «убрать клавиатуру».
 struct AttachBar: View {
+
+    var overKeyboard = false
 
     @EnvironmentObject private var shell: Shell
     @EnvironmentObject private var store: DayStore
@@ -508,9 +514,12 @@ struct AttachBar: View {
             item("mappin.and.ellipse", "геоточка", ready: true, hold: writePlace) {
                 shell.say("Задержите палец — впишется, где вы")
             }
+            if overKeyboard {
+                item("keyboard.chevron.compact.down", "убрать", ready: true) { hideKeyboard() }
+            }
         }
-        .padding(.top, 8)
-        .padding(.bottom, 7)
+        .padding(.top, overKeyboard ? 6 : 8)
+        .padding(.bottom, overKeyboard ? 5 : 7)
         .background(Look.chrome)
         .overlay(alignment: .top) {
             Rectangle().fill(Look.rule).frame(height: 1)
@@ -599,8 +608,10 @@ struct AttachBar: View {
             guard let at = location?.coordinate else {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
+            // Курсор помнится и после того, как клавиатуру убрали: точка
+            // встаёт туда, где писали последним, а не в конец (P253).
             store.writePoint(GeoPoint(title: "", at: at), to: tab, here: true,
-                             caret: store.diaryTyping ? store.diaryCaret : nil)
+                             caret: store.diaryCaret, after: store.lastPlanRow)
             if let location { store.noteWeather(at: location) }
             shell.say(tab == .diary ? "Место вписано в запись" : "Место вписано в план")
         }

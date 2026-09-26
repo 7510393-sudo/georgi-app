@@ -80,4 +80,17 @@ final class PlaceTests: XCTestCase {
         let чужое = файл.replacingOccurrences(of: "значок: дом", with: "значок: ракета")
         XCTAssertEqual(Place(text: чужое, file: "Дача.md")?.mark, Glyph.standard)
     }
+
+    /// Курсор после вписанной точки встаёт за ней: в поле точка — один
+    /// знак, в файле — целая строка (P253).
+    func testКурсорЗаТочкойВПоле() {
+        let строка = "geo:1.00000,2.00000"
+        let поле = NSMutableAttributedString(string: "Туман.\n")
+        поле.append(NSAttributedString(string: "\u{FFFC}", attributes: [DiaryEditor.lineKey: строка]))
+        поле.append(NSAttributedString(string: "\nСолнце."))
+        let вФайле = ("Туман.\n" + строка as NSString).length
+        XCTAssertEqual(DiaryEditor.viewOffset(plain: вФайле, in: поле), 8)
+        XCTAssertEqual(DiaryEditor.viewOffset(plain: 3, in: поле), 3)
+        XCTAssertEqual(DiaryEditor.viewOffset(plain: 10_000, in: поле), поле.length)
+    }
 }

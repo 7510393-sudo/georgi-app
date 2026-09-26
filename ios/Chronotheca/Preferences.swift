@@ -95,3 +95,32 @@ struct StickerSection: View {
             .padding(.bottom, 4)
     }
 }
+
+/// Высота клавиатуры над низом экрана. Нужна полоске вложений, которая
+/// стоит над клавиатурой, пока та открыта (P253).
+final class KeyboardWatch: ObservableObject {
+    @Published private(set) var height: CGFloat = 0
+    private var watching: [NSObjectProtocol] = []
+
+    init() {
+        let centre = NotificationCenter.default
+        watching.append(centre.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification,
+                                           object: nil, queue: .main) { [weak self] note in
+            self?.follow(note, hiding: false)
+        })
+        watching.append(centre.addObserver(forName: UIResponder.keyboardWillHideNotification,
+                                           object: nil, queue: .main) { [weak self] note in
+            self?.follow(note, hiding: true)
+        })
+    }
+
+    deinit { watching.forEach(NotificationCenter.default.removeObserver) }
+
+    private func follow(_ note: Notification, hiding: Bool) {
+        let frame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? .zero
+        let screen = UIScreen.main.bounds
+        let now = hiding ? 0 : max(0, screen.maxY - frame.minY)
+        let time = (note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+        withAnimation(.easeOut(duration: time)) { height = now }
+    }
+}

@@ -15,6 +15,9 @@ struct RootView: View {
     /// Карта ещё на плашке, пока та уезжает (P242).
     @State private var keepMap = false
 
+    /// Клавиатура: над ней встаёт полоска вложений (P253).
+    @StateObject private var keyboard = KeyboardWatch()
+
     // Настройки (P249): замок, скрытие страницы, тема.
     @Environment(\.scenePhase) private var phase
     @AppStorage(Prefs.lock) private var lockOn = false
@@ -177,6 +180,21 @@ struct RootView: View {
             }
             .background(Look.chrome.ignoresSafeArea())
 
+            // Пока пишут на странице дня, полоска вложений стоит прямо над
+            // клавиатурой (P253). Она всегда здесь, только не видна: иначе
+            // окно выбора снимков, открытое с неё, закрылось бы вместе с
+            // клавиатурой.
+            Color.clear
+                .overlay(alignment: .bottom) {
+                    let shown = keyboard.height > 0 && shell.screen == .today
+                    AttachBar(overKeyboard: true)
+                        .padding(.bottom, keyboard.height)
+                        .opacity(shown ? 1 : 0)
+                        .allowsHitTesting(shown)
+                        .accessibilityHidden(!shown)
+                }
+                .ignoresSafeArea(.container, edges: .bottom)
+
             // Верхней строки больше нет: шестерёнка и три точки нарисованы
             // на уголках бумаги, торчащих сверху слева и справа, а имя дня
             // поднялось между ними (P229).
@@ -188,6 +206,8 @@ struct RootView: View {
             }
             if let notice = shell.notice {
                 toast(notice)
+                    // Над клавиатурой и полоской на ней, иначе не видно.
+                    .padding(.bottom, keyboard.height > 0 ? keyboard.height + 24 : 0)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
             // Перенос между памятью телефона и iCloud идёт минутами. Пока он

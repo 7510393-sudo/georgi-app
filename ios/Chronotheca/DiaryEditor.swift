@@ -63,6 +63,9 @@ struct DiaryEditor: UIViewRepresentable {
     var moving = false
     /// Поле взяло ввод или отпустило его (P240).
     var onEditing: ((Bool) -> Void)?
+    /// Просьба поставить курсор сюда — отступом в тексте записи. Её подаёт
+    /// геоточка, вписанная посреди набора: писать дальше — за точкой (P253).
+    var placeCaret: Binding<Int?> = .constant(nil)
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     /// В прошедший день за временем идёт дата, когда писали:
@@ -138,6 +141,15 @@ struct DiaryEditor: UIViewRepresentable {
             context.coordinator.loadPhotos()
         } else {
             context.coordinator.restyle(view)
+        }
+
+        if let at = placeCaret.wrappedValue {
+            if view.isFirstResponder {
+                let spot = Self.viewOffset(plain: at, in: view.attributedText)
+                view.selectedRange = NSRange(location: spot, length: 0)
+                view.typingAttributes = Self.body(size, serif: serif)
+            }
+            DispatchQueue.main.async { placeCaret.wrappedValue = nil }
         }
 
         if startEditing.wrappedValue {
@@ -284,6 +296,36 @@ struct DiaryEditor: UIViewRepresentable {
             }
         }
         return out
+    }
+
+    /// Где в поле то место записи, что стоит в файле на отступе `plain`.
+    /// Снимок и точка в поле — один знак, а в файле — целая строка.
+    static func viewOffset(plain target: Int, in s: NSAttributedString) -> Int {
+        let ns = s.string as NSString
+        var seen = 0
+        var found = s.length
+        s.enumerateAttributes(in: NSRange(location: 0, length: s.length)) { attributes, range, stop in
+            var line: String?
+            if let link = attributes[photoKey] as? String { line = Diary.line(link) }
+            if let l = attributes[lineKey] as? String { line = l }
+            if let line {
+                let each = (line as NSString).length
+                for k in 0..<range.length {
+                    if seen >= target { found = range.location + k; stop.pointee = true; return }
+                    seen += each + (k < range.length - 1 ? 1 : 0)
+                }
+            } else {
+                let piece = (clean(ns.substring(with: range)) as NSString).length
+                if seen + piece >= target {
+                    let inside = piece == range.length ? target - seen : range.length
+                    found = range.location + max(0, min(inside, range.length))
+                    stop.pointee = true
+                    return
+                }
+                seen += piece
+            }
+        }
+        return found
     }
 
     /// Метка точки в поле: на экране — кнопочка, в файле — та же строка,

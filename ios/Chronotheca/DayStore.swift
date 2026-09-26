@@ -194,6 +194,8 @@ final class DayStore: ObservableObject {
         save()
         editingTabs = []
         diaryCaret = nil
+        lastPlanRow = nil
+        caretRequest = nil
         leftCaret = nil
         leftRow = nil
         date = Calendar.current.startOfDay(for: newDate)
@@ -322,7 +324,16 @@ final class DayStore: ObservableObject {
     /// Пишет ли человек сейчас в дневник и в какое дело плана. Нужно, чтобы
     /// точка встала туда, где был курсор (P240).
     var diaryTyping = false
-    var planTyping: UUID?
+    var planTyping: UUID? {
+        didSet { if let planTyping { lastPlanRow = planTyping } }
+    }
+
+    /// Дело плана, в котором курсор стоял последним, — даже если
+    /// клавиатуру уже убрали. Туда геоточка кладёт место (P253).
+    private(set) var lastPlanRow: UUID?
+
+    /// Просьба полю дневника поставить курсор за вписанной точкой (P253).
+    @Published var caretRequest: Int?
 
     /// Где был курсор, когда ушли на карту: место в дневнике и дело в плане.
     /// Пусто — курсора не было (P240).
@@ -361,7 +372,9 @@ final class DayStore: ObservableObject {
         let line = Geo.pointLine(point)
         switch tab {
         case .plan:
-            if let anchor = row ?? planRows.last(where: \.isTask)?.id, var i = index(of: anchor) {
+            // Дело, за которым просили, могли уже удалить — тогда под последним.
+            let asked = row.flatMap { index(of: $0) == nil ? nil : $0 }
+            if let anchor = asked ?? planRows.last(where: \.isTask)?.id, var i = index(of: anchor) {
                 // Точки, уже стоящие за этим делом, остаются перед новой.
                 i += 1
                 while i < planRows.count, let v = planRows[i].verbatim, Geo.point(in: v) != nil { i += 1 }
@@ -373,6 +386,7 @@ final class DayStore: ObservableObject {
             let (text, at) = DayStore.insert(line, into: diaryText, at: caret)
             diaryText = text
             diaryCaret = at
+            if diaryTyping { caretRequest = at }
             touchDiary()
         }
         save()
