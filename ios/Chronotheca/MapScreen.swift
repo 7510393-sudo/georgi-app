@@ -30,6 +30,12 @@ struct MapScreen: View {
     @State private var locating = false
     @State private var asking = false
     @State private var choosingTab = false
+    @State private var searching = false
+    /// Что сейчас видно на карте — поиск ищет рядом. Не состояние экрана:
+    /// карта двигается часто, перерисовывать всё незачем.
+    @State private var seen = Seen()
+
+    final class Seen { var region: MKCoordinateRegion? }
     /// Когда поставили последнюю точку долгим нажатием.
     @State private var picked = Date.distantPast
 
@@ -41,7 +47,8 @@ struct MapScreen: View {
                       satellite: shell.mapSatellite,
                       onLongPress: pick, onPlace: choose, onDay: openDay,
                       onSelected: { withAnimation { panel = .cloud } },
-                      onTapEmpty: tapEmpty)
+                      onTapEmpty: tapEmpty,
+                      onRegion: { seen.region = $0 })
             if let selected, panel == .naming {
                 // Новая булавка — новая панель: поля не должны
                 // остаться от прежней точки.
@@ -54,6 +61,15 @@ struct MapScreen: View {
             }
             // Крестика больше нет: карта — раздел внизу, уходят с неё
             // другим разделом, как с календаря и поиска (P239).
+            if panel == nil {
+                // Поиск: слева сверху, под шестерёнкой (P251).
+                MapSearch(open: $searching, places: places,
+                          region: { seen.region }, pick: found)
+                    .padding(.leading, 12)
+                    .padding(.trailing, 64)
+                    .padding(.top, Corner.size + 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .animation(.easeOut(duration: 0.15), value: panel)
         .overlay(alignment: .bottom) { bar }
@@ -177,6 +193,20 @@ struct MapScreen: View {
                 guard let at = location?.coordinate else { return }
                 focus = MapFocus(center: at, meters: 2000)
             }
+        }
+    }
+
+    /// Нашли в поиске: своё место — его облачко; чужое место или
+    /// координаты — булавка, с которой работают кнопки внизу (P251).
+    private func found(_ title: String, _ at: CLLocationCoordinate2D) {
+        hideKeyboard()
+        searching = false
+        focus = MapFocus(center: at, meters: 1200)
+        if let own = places.first(where: { near($0.coordinate, at) }) {
+            choose(own)
+        } else {
+            selected = Place(name: title, coordinate: at)
+            panel = nil
         }
     }
 
@@ -304,6 +334,157 @@ struct MapScreen: View {
     }
 }
 
+/// Поиск на карте (P251): круглая полупрозрачная кнопка с лупой; касание
+/// раскрывает её в строку. Ищет свои места по названию и места на картах
+/// Apple рядом с тем, что видно; координаты («59.93863, 30.31413» или
+/// «geo:…») ставят точку сразу.
+struct MapSearch: View {
+    @Binding var open: Bool
+    let places: [Place]
+    let region: () -> MKCoordinateRegion?
+    let pick: (String, CLLocationCoordinate2D) -> Void
+
+    @State private var query = ""
+    @State private var results: [Found] = []
+    @State private var looking = false
+    @State private var nothing = false
+    @FocusState private var typing: Bool
+
+    struct Found: Identifiable {
+        let id = UUID()
+        let title: String
+        let subtitle: String
+        let at: CLLocationCoordinate2D
+        /// Значок, если это своё место.
+        var mark: String?
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if open { field } else { button }
+            if open && (!results.isEmpty || looking || nothing) { list }
+        }
+        .animation(.easeOut(duration: 0.2), value: open)
+    }
+
+    private var button: some View {
+        Button {
+            open = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { typing = true }
+        } label: {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Look.ink)
+                .frame(width: 42, height: 42)
+                .background(.ultraThinMaterial, in: Circle())
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        }
+        .accessibilityLabel("Поиск на карте")
+    }
+
+    private var field: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Look.inkSoft)
+            TextField("Место, адрес или координаты", text: $query)
+                .focused($typing)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .onSubmit(search)
+                .onChange(of: query) { _, _ in ownOnly() }
+            Button {
+                query = ""
+                results = []
+                typing = false
+                open = false
+            } label: {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(Look.inkFaint)
+            }
+            .accessibilityLabel("Закрыть поиск")
+        }
+        .font(Look.sans(15))
+        .padding(.horizontal, 14)
+        .frame(height: 42)
+        .background(.regularMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        .transition(.scale(scale: 0.2, anchor: .leading).combined(with: .opacity))
+    }
+
+    private var list: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if looking && results.isEmpty {
+                Text("Ищу…").font(Look.sans(13)).foregroundStyle(Look.inkSoft).padding(12)
+            } else if nothing {
+                Text("Ничего не нашлось. Попробуйте иначе или вставьте координаты.")
+                    .font(Look.sans(13)).foregroundStyle(Look.inkSoft).padding(12)
+            }
+            ForEach(results.prefix(8)) { found in
+                Button { pick(found.title, found.at) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: found.mark.map(Glyph.image) ?? "mappin")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(found.mark == nil ? Look.inkSoft : .white)
+                            .frame(width: 24, height: 24)
+                            .background(found.mark == nil ? Color.clear : Look.inkSoft, in: Circle())
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(found.title).font(Look.sans(14.5)).foregroundStyle(Look.ink)
+                                .lineLimit(1)
+                            if !found.subtitle.isEmpty {
+                                Text(found.subtitle).font(Look.sans(12)).foregroundStyle(Look.inkSoft)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Пока пишут — только свои места: их видно сразу, без ожидания.
+    private func ownOnly() {
+        nothing = false
+        results = own(query)
+    }
+
+    private func own(_ text: String) -> [Found] {
+        let needle = text.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !needle.isEmpty else { return [] }
+        return places.filter { $0.name.lowercased().contains(needle) || $0.text.lowercased().contains(needle) }
+            .map { Found(title: $0.name, subtitle: "Моё место", at: $0.coordinate, mark: $0.mark) }
+    }
+
+    /// «Найти»: координаты — сразу туда; иначе свои места и места рядом.
+    private func search() {
+        let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        if let at = Geo.parse(text.replacingOccurrences(of: ";", with: ",")) {
+            return pick(Geo.text(at), at)
+        }
+        let mine = own(text)
+        results = mine
+        looking = true
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = text
+        if let region = region() { request.region = region }
+        MKLocalSearch(request: request).start { response, _ in
+            looking = false
+            let items = (response?.mapItems ?? []).prefix(8).map { item in
+                Found(title: item.name ?? text,
+                      subtitle: item.placemark.title ?? "",
+                      at: item.placemark.coordinate)
+            }
+            results = mine + items
+            nothing = results.isEmpty
+        }
+    }
+}
+
 /// Все свои места списком, с поиском по названию (P249). Касание — карта
 /// на этом месте.
 struct PlacesList: View {
@@ -395,6 +576,7 @@ struct NativeMap: UIViewRepresentable {
     var onDay: (Date) -> Void
     var onSelected: () -> Void
     var onTapEmpty: () -> Void = {}
+    var onRegion: (MKCoordinateRegion) -> Void = { _ in }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
@@ -557,6 +739,10 @@ struct NativeMap: UIViewRepresentable {
             case let mark as DayMark: parent.onDay(mark.day.date)
             default: return
             }
+        }
+
+        func mapView(_ map: MKMapView, regionDidChangeAnimated animated: Bool) {
+            parent.onRegion(map.region)
         }
 
         func mapView(_ map: MKMapView, didSelect view: MKAnnotationView) {
