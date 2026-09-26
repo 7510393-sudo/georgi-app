@@ -55,7 +55,7 @@ struct MapScreen: View {
             // Крестика больше нет: карта — раздел внизу, уходят с неё
             // другим разделом, как с календаря и поиска (P239).
         }
-        .animation(.easeOut(duration: 0.2), value: panel)
+        .animation(.easeOut(duration: 0.15), value: panel)
         .overlay(alignment: .bottom) { bar }
         .background(Look.chrome)
         .confirmationDialog("Удалить точку?", isPresented: $asking, titleVisibility: .visible) {
@@ -186,7 +186,7 @@ struct MapScreen: View {
     private func choose(_ place: Place) {
         hideKeyboard()
         selected = place
-        withAnimation { panel = .cloud }
+        withAnimation(.easeOut(duration: 0.15)) { panel = .cloud }
     }
 
     /// Касание по пустому месту карты: панель и облачко уходят, клавиатура
@@ -446,6 +446,7 @@ struct NativeMap: UIViewRepresentable {
                 view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
                 view.displayPriority = .required
                 view.collisionMode = .rectangle
+                quick(view)
                 return view
             case let mark as DraftMark:
                 let view = MKMarkerAnnotationView(annotation: mark, reuseIdentifier: "точка")
@@ -458,17 +459,35 @@ struct NativeMap: UIViewRepresentable {
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "день")
                 view.image = DayMark.dot(today: mark.day.today)
                 view.displayPriority = .defaultHigh
+                quick(view)
                 return view
             default:
                 return nil
             }
         }
 
-        func mapView(_ map: MKMapView, didSelect view: MKAnnotationView) {
-            guard let annotation = view.annotation else { return }
+        /// Своё касание на метке: откликается сразу. Карта сама выбирает
+        /// метку, лишь дождавшись, не будет ли второго касания, — это почти
+        /// полсекунды, и человеку казалось, что она тормозит (P243).
+        private func quick(_ view: MKAnnotationView) {
+            let tap = UITapGestureRecognizer(target: self, action: #selector(markTapped(_:)))
+            view.addGestureRecognizer(tap)
+        }
+
+        @objc func markTapped(_ g: UITapGestureRecognizer) {
+            guard let annotation = (g.view as? MKAnnotationView)?.annotation else { return }
             switch annotation {
             case let mark as PlaceMark: parent.onPlace(mark.place)
             case let mark as DayMark: parent.onDay(mark.day.date)
+            default: return
+            }
+        }
+
+        func mapView(_ map: MKMapView, didSelect view: MKAnnotationView) {
+            guard let annotation = view.annotation else { return }
+            switch annotation {
+            // Свои места и дни отвечают на своё касание сразу (P243).
+            case is PlaceMark, is DayMark: break
             case is DraftMark: parent.onSelected()
             default: return
             }
