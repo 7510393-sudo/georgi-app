@@ -101,7 +101,9 @@ struct DayPage: View {
                 RememberCloud(date: date, width: width) { remembering = true }
                     .frame(width: width, height: height)
                     // Опускали на 2 мм (P224) — вышло лишнее, вернули (P227).
-                    .offset(x: geo.size.width * 0.45, y: -height * 0.80)
+                    // Край вкладки на рисунке — на верхнем крае вкладки,
+                    // чуть выше, как было принято на прежнем облачке (P230).
+                    .offset(x: geo.size.width * 0.45, y: -height * (RememberCloud.tabEdge + 0.05))
             }
             .transition(.opacity)
         }

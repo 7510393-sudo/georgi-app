@@ -17,20 +17,14 @@ struct RememberCloud: View {
 
     let date: Date
 
-    /// Пропорции рисунка и место для подписи внутри него — доли ширины и
-    /// высоты, снятые с самого эскиза.
-    static let ratio: CGFloat = 1.806
+    /// Пропорции рисунка — снятые с эскиза 26 сентября (P230).
+    static let ratio: CGFloat = 1.757
     /// Где на рисунке верхний край вкладки: на нём облачко стоит, ниже
     /// уходит только локоть.
-    static let tabEdge: CGFloat = 0.749
-    /// Подпись идёт вверх-вправо, как написана на эскизе.
-    private static let textCenter = CGPoint(x: 0.32, y: 0.43)
-    private static let textWidth: CGFloat = 0.5
-    private static let textAngle: Double = -32
+    static let tabEdge: CGFloat = 0.823
 
-    /// Ширина облачка. Подпись набрана шрифтом, а не обведена вместе с
-    /// рисунком: от руки она на такой ширине превращается в пятно, а
-    /// набранная читается и растёт вместе с системным размером текста.
+    /// Ширина облачка. Подпись «…а помнишь?» теперь от руки автора и
+    /// обведена вместе с рисунком (P230).
     let width: CGFloat
 
     /// Последним: замыкание в хвосте вызова связывается с последним
@@ -49,16 +43,6 @@ struct RememberCloud: View {
                     .renderingMode(.template)
                     .resizable()
                     .foregroundStyle(Look.ink)
-                Text("…а помнишь?")
-                    .font(Look.sans(width * 0.085))
-                    .tracking(0.2)
-                    .foregroundStyle(Look.inkSoft)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .frame(width: width * Self.textWidth)
-                    .rotationEffect(.degrees(Self.textAngle))
-                    .position(x: width * Self.textCenter.x,
-                              y: height * Self.textCenter.y)
             }
             .frame(width: width, height: height)
         }
