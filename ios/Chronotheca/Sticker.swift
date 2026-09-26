@@ -29,7 +29,7 @@ struct Sticker<Content: View>: View {
             sheet
         }
         // Бумажку вытягивают за уголок: она выезжает из-за верхнего края
-        // со своей стороны, чуть повёрнутая, как уголок, и распрямляется
+        // со своей стороны, ровно, без поворота
         // (P233).
         .transition(.modifier(active: Pulled(side: side, amount: 1),
                               identity: Pulled(side: side, amount: 0)))
@@ -94,10 +94,9 @@ struct Pulled: ViewModifier {
 
     func body(content: Content) -> some View {
         let sign: CGFloat = side == .leading ? -1 : 1
+        // Без поворота: стикеры наклеены ровно (P236).
         content
-            .rotationEffect(.degrees(Double(sign * -9 * amount)),
-                            anchor: side == .leading ? .topLeading : .topTrailing)
-            .offset(x: sign * 140 * amount, y: -720 * amount)
+            .offset(x: sign * 60 * amount, y: -720 * amount)
     }
 }
 
