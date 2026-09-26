@@ -101,13 +101,27 @@ struct DayPage: View {
             GeometryReader { geo in
                 let width = geo.size.width * 0.50
                 let height = width / RememberCloud.ratio
+                let left = geo.size.width * 0.45
                 RememberCloud(date: date, width: width) { remembering = true }
                     .frame(width: width, height: height)
                     // Опускали на 2 мм (P224) — вышло лишнее, вернули (P227).
                     // Край вкладки на рисунке — на верхнем крае вкладки,
                     // чуть выше, как было принято на прежнем облачке (P230),
-                    // и на 1 мм (6 точек) ниже того (P254).
-                    .offset(x: geo.size.width * 0.45, y: -height * (RememberCloud.tabEdge + 0.05) + 6)
+                    // на 1 мм ниже того (P254) и на полмиллиметра обратно
+                    // вверх (P256): итого 3 точки ниже.
+                    .offset(x: left, y: -height * (RememberCloud.tabEdge + 0.05) + 3)
+                // Серая черта вкладки идёт и под облачком — прерывается только
+                // там, где на вкладку опирается локоть (P256). Открытая
+                // вкладка опущена на точку — и черта с ней.
+                TabBorder(radius: 10)
+                    .stroke(Look.inkFaint, lineWidth: 1)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .mask(ElbowGap(start: left,
+                                   from: left + width * RememberCloud.elbow.lowerBound,
+                                   to: left + width * RememberCloud.elbow.upperBound,
+                                   end: left + width))
+                    .offset(y: 1)
+                    .allowsHitTesting(false)
             }
             .transition(.opacity)
         }
@@ -614,7 +628,7 @@ struct AttachBar: View {
             // по-старому, строкой под последним делом.
             let point = GeoPoint(title: "", at: at)
             if tab == .plan, store.lastPlanRow != nil, let field = PlanTitle.last,
-               field.insert(Geo.pointLine(point)) {
+               field.insert(point) {
                 store.notePlace(point)
                 if let location { store.noteWeather(at: location) }
                 store.save()
@@ -794,5 +808,21 @@ struct PlanPage: View {
             }
         }
         .opacity(isPast ? 0.58 : 1)
+    }
+}
+
+/// Полоса под облачком без того места, где локоть лежит на вкладке
+/// (P256). Вне облачка черта уже нарисована — второй раз не нужно.
+private struct ElbowGap: Shape {
+    let start: CGFloat
+    let from: CGFloat
+    let to: CGFloat
+    let end: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.addRect(CGRect(x: start, y: rect.minY, width: max(0, from - start), height: rect.height))
+        p.addRect(CGRect(x: to, y: rect.minY, width: max(0, end - to), height: rect.height))
+        return p
     }
 }

@@ -76,15 +76,21 @@ struct PlanTitle: UIViewRepresentable {
         // клавиша уводит на строку ниже, как ей и положено (решение P180).
         view.returnKeyType = .default
         context.coordinator.view = view
+        // Касание по точке в названии открывает карту на ней (P256).
+        let tap = UITapGestureRecognizer(target: context.coordinator,
+                                         action: #selector(Coordinator.tapped(_:)))
+        tap.delegate = context.coordinator
+        view.addGestureRecognizer(tap)
         return view
     }
 
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.parent = self
+        context.coordinator.open = context.environment.openPoint
         (view as? TitleView)?.indent = indent
         view.isEditable = editable
         view.isSelectable = editable
-        apply(to: view)
+        apply(to: view, context.coordinator)
 
         if typing, !view.isFirstResponder {
             view.becomeFirstResponder()
@@ -132,15 +138,40 @@ struct PlanTitle: UIViewRepresentable {
         ]
     }
 
+    /// Название с точками-кнопочками: координаты в строке дела стоят
+    /// кнопочкой, как в дневнике, а в файле — той же ссылкой (P256).
+    func styled() -> NSAttributedString {
+        let out = NSMutableAttributedString(string: shown, attributes: style)
+        for (range, point) in Geo.points(inText: shown).reversed() {
+            let token = (shown as NSString).substring(with: range)
+            out.replaceCharacters(in: range, with: Self.chip(point, token: token, style: style))
+        }
+        return out
+    }
+
+    static func chip(_ point: GeoPoint, token: String,
+                     style: [NSAttributedString.Key: Any]) -> NSAttributedString {
+        let piece = NSMutableAttributedString(attachment: PointChip(point: point, small: true))
+        let whole = NSRange(location: 0, length: piece.length)
+        piece.addAttributes(style, range: whole)
+        piece.addAttribute(DiaryEditor.lineKey, value: token, range: whole)
+        return piece
+    }
+
     /// Переписать содержимое, не сдвинув курсор.
-    private func apply(to view: UITextView) {
-        let styled = NSAttributedString(string: shown, attributes: style)
+    private func apply(to view: UITextView, _ coordinator: Coordinator) {
         // Оформление набора ставится всегда, даже когда текст не менялся:
         // у пустого поля только по нему и видно, где начинать строку.
         view.typingAttributes = style
-        guard styled != view.attributedText else { return }
+        // Кнопочки каждый раз рисуются заново и на равенство не проверишь —
+        // сверяется текст и то, от чего зависит вид.
+        let look = "\(indent)|\(wrap)|\(faded)|\(text.isEmpty)|\(editable)"
+        guard DiaryEditor.plain(view.attributedText) != shown || coordinator.look != look
+        else { return }
+        coordinator.look = look
+        let fresh = styled()
         let было = view.selectedRange
-        view.attributedText = styled
+        view.attributedText = fresh
         view.typingAttributes = style
         let длина = (view.text as NSString).length
         view.selectedRange = NSRange(location: min(было.location, длина), length: 0)
@@ -152,15 +183,52 @@ struct PlanTitle: UIViewRepresentable {
     /// геоточка вписывает координаты — прямо в строку дела (P255).
     static weak var last: Coordinator?
 
-    final class Coordinator: NSObject, UITextViewDelegate, NSLayoutManagerDelegate {
+    final class Coordinator: NSObject, UITextViewDelegate, NSLayoutManagerDelegate,
+                             UIGestureRecognizerDelegate {
         var parent: PlanTitle
         weak var view: UITextView?
+        var open: ((GeoPoint) -> Void)?
+        /// С каким видом название нарисовано в последний раз.
+        var look = ""
+
+        /// Какая точка под пальцем, если под ним кнопочка.
+        func point(at g: UIGestureRecognizer) -> GeoPoint? {
+            guard let view = g.view as? UITextView, view.textStorage.length > 0 else { return nil }
+            var p = g.location(in: view)
+            p.x -= view.textContainerInset.left
+            p.y -= view.textContainerInset.top
+            let layout = view.layoutManager
+            let glyph = layout.glyphIndex(for: p, in: view.textContainer)
+            let box = layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1),
+                                          in: view.textContainer)
+            guard box.insetBy(dx: -4, dy: -6).contains(p) else { return nil }
+            let i = layout.characterIndexForGlyph(at: glyph)
+            guard i < view.textStorage.length,
+                  let token = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
+                                                         effectiveRange: nil) as? String
+            else { return nil }
+            return Geo.points(inText: token).first?.point
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            open != nil
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            true
+        }
+
+        @objc func tapped(_ g: UITapGestureRecognizer) {
+            guard let point = point(at: g) else { return }
+            open?(point)
+        }
 
         func textViewDidBeginEditing(_ view: UITextView) { PlanTitle.last = self }
 
         /// Вписать кусок на место курсора, отделив пробелами, и поставить
         /// курсор за ним. Курсор помнится и когда клавиатуру уже убрали.
-        func insert(_ piece: String) -> Bool {
+        func insert(_ point: GeoPoint) -> Bool {
             guard parent.editable, let view, view.window != nil else { return false }
             let ns = view.text as NSString
             var range = view.selectedRange
@@ -169,13 +237,14 @@ struct PlanTitle: UIViewRepresentable {
             }
             let before = ns.substring(to: range.location)
             let after = ns.substring(from: NSMaxRange(range))
-            let lead = before.isEmpty || before.hasSuffix(" ") ? "" : " "
-            let tail = after.hasPrefix(" ") ? "" : " "
-            let add = lead + piece + tail
-            view.textStorage.replaceCharacters(
-                in: range, with: NSAttributedString(string: add, attributes: view.typingAttributes))
-            view.selectedRange = NSRange(location: range.location + (add as NSString).length, length: 0)
-            parent.text = view.text
+            let style = view.typingAttributes
+            let add = NSMutableAttributedString(
+                string: before.isEmpty || before.hasSuffix(" ") ? "" : " ", attributes: style)
+            add.append(PlanTitle.chip(point, token: Geo.pointLine(point), style: style))
+            add.append(NSAttributedString(string: after.hasPrefix(" ") ? "" : " ", attributes: style))
+            view.textStorage.replaceCharacters(in: range, with: add)
+            view.selectedRange = NSRange(location: range.location + add.length, length: 0)
+            parent.text = DiaryEditor.plain(view.attributedText)
             return true
         }
 
@@ -192,7 +261,18 @@ struct PlanTitle: UIViewRepresentable {
             return первая && дальше ? PlanTitle.spacing + PlanTitle.clearance : PlanTitle.spacing
         }
 
-        func textViewDidChange(_ view: UITextView) { parent.text = view.text }
+        /// Буквы, набранные сразу за кнопочкой, — обычные буквы, а не
+        /// продолжение точки.
+        func textViewDidChangeSelection(_ view: UITextView) {
+            if view.typingAttributes[DiaryEditor.lineKey] != nil
+                || view.typingAttributes[.attachment] != nil {
+                view.typingAttributes = parent.style
+            }
+        }
+
+        func textViewDidChange(_ view: UITextView) {
+            parent.text = DiaryEditor.plain(view.attributedText)
+        }
 
         func textViewDidEndEditing(_ view: UITextView) { parent.onDone() }
 
@@ -236,5 +316,18 @@ final class TitleView: UITextView {
         var r = super.caretRect(for: position)
         if text.isEmpty, r.minX < indent { r.origin.x = indent }
         return r
+    }
+}
+
+/// Что делать по касанию на точку в тексте: открыть карту на ней. Задано
+/// только на открытой странице (P256).
+private struct OpenPointKey: EnvironmentKey {
+    static let defaultValue: ((GeoPoint) -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    var openPoint: ((GeoPoint) -> Void)? {
+        get { self[OpenPointKey.self] }
+        set { self[OpenPointKey.self] = newValue }
     }
 }

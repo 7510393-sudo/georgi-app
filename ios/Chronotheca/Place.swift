@@ -148,6 +148,24 @@ extension Geo {
         return GeoPoint(title: title, at: at)
     }
 
+    /// Точки посреди текста: `geo:…` и `[название](geo:…)` где угодно в
+    /// строке, а не только строкой целиком (P256).
+    private static let inline = try! NSRegularExpression(
+        pattern: #"\[([^\]\n]*)\]\((geo:-?\d{1,3}(?:\.\d+)?,\s?-?\d{1,3}(?:\.\d+)?)\)|geo:-?\d{1,3}(?:\.\d+)?,\s?-?\d{1,3}(?:\.\d+)?"#)
+
+    static func points(inText s: String) -> [(range: NSRange, point: GeoPoint)] {
+        let ns = s as NSString
+        return inline.matches(in: s, range: NSRange(location: 0, length: ns.length)).compactMap { m in
+            if m.range(at: 2).location != NSNotFound {
+                guard let at = parse(ns.substring(with: m.range(at: 2))) else { return nil }
+                let title = ns.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespaces)
+                return (m.range, GeoPoint(title: title, at: at))
+            }
+            guard let at = parse(ns.substring(with: m.range)) else { return nil }
+            return (m.range, GeoPoint(title: "", at: at))
+        }
+    }
+
     /// Строка точки для файла.
     static func pointLine(_ p: GeoPoint) -> String {
         let title = p.title

@@ -448,6 +448,11 @@ struct PlanView: View {
                     }
             }
         }
+        // Точка в названии дела открывает карту, как точка строкой (P256).
+        .environment(\.openPoint, { point in
+            store.noteLeaving(fromToday: true)
+            shell.showPoint(point)
+        })
         .onChange(of: store.date) { _, _ in typingIn = nil }
         // Где курсор в плане — туда встанет точка с карты (P240).
         .onChange(of: typingIn) { _, now in store.planTyping = now }

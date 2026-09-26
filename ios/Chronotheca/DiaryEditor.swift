@@ -289,8 +289,19 @@ struct DiaryEditor: UIViewRepresentable {
                 out += Array(repeating: Diary.line(link), count: range.length)
                     .joined(separator: "\n")
             } else if let line = attributes[lineKey] as? String {
-                out += Array(repeating: line, count: range.length)
-                    .joined(separator: "\n")
+                // Точкой становится только сама кнопочка. Буква, набранная
+                // вплотную за ней, могла унаследовать метку, — она остаётся
+                // буквой (P256).
+                var chips = 0
+                for ch in ns.substring(with: range) {
+                    if ch == placeholder {
+                        out += (chips > 0 ? "\n" : "") + line
+                        chips += 1
+                    } else {
+                        out += String(ch)
+                        chips = 0
+                    }
+                }
             } else {
                 out += clean(ns.substring(with: range))
             }
@@ -346,6 +357,12 @@ struct DiaryEditor: UIViewRepresentable {
                 found.append((range, link, nil))
             } else if let point = Geo.point(in: content) {
                 found.append((range, content, point))
+            } else if content.contains("geo:") {
+                // Точка посреди строки — тоже кнопочка (P256).
+                for (r, point) in Geo.points(inText: content) {
+                    found.append((NSRange(location: line.location + r.location, length: r.length),
+                                  (content as NSString).substring(with: r), point))
+                }
             }
             guard line.length > 0 else { break }
             start = line.location + line.length
@@ -373,6 +390,11 @@ struct DiaryEditor: UIViewRepresentable {
         return text.components(separatedBy: "\n").contains {
             (Diary.picture(in: $0).map { Diary.kind(of: $0) == .photo } ?? false)
                 || Geo.point(in: $0) != nil
+                // Посреди строки — когда точка дописана: за ней пробел или
+                // она в скобках с названием. Иначе кнопочкой стали бы
+                // цифры, которые ещё набирают (P256).
+                || $0.range(of: #"\]\(geo:[^)\s]+\)|geo:-?\d+(\.\d+)?,\s?-?\d+(\.\d+)?\s"#,
+                            options: .regularExpression) != nil
         }
     }
 
@@ -629,6 +651,10 @@ struct DiaryEditor: UIViewRepresentable {
 
         /// Курсор переставлен — запомнить, где он в тексте записи.
         func textViewDidChangeSelection(_ view: UITextView) {
+            if view.typingAttributes[DiaryEditor.lineKey] != nil
+                || view.typingAttributes[DiaryEditor.photoKey] != nil {
+                view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+            }
             guard let report = parent.onCaret else { return }
             let at = min(view.selectedRange.location, view.textStorage.length)
             let before = view.textStorage.attributedSubstring(from: NSRange(location: 0, length: at))
@@ -853,31 +879,35 @@ struct DiaryEditor: UIViewRepresentable {
 /// как отметка времени (P213).
 final class PointChip: NSTextAttachment {
 
-    init(point: GeoPoint, glowing: Bool = false) {
+    /// `small` — для строки дела в плане: кнопочка не выше букв названия,
+    /// иначе строка раздаётся и номер со временем съезжают с неё (P256).
+    init(point: GeoPoint, glowing: Bool = false, small: Bool = false) {
         super.init(data: nil, ofType: nil)
-        let picture = PointChip.draw(point.label, glowing: glowing)
+        let picture = PointChip.draw(point.label, glowing: glowing, small: small)
         image = picture
-        bounds = CGRect(origin: CGPoint(x: 0, y: glowing ? -12 : -7), size: picture.size)
+        let drop: CGFloat = small ? -4 : (glowing ? -12 : -7)
+        bounds = CGRect(origin: CGPoint(x: 0, y: drop), size: picture.size)
     }
 
     required init?(coder: NSCoder) { nil }
 
     /// В режиме изменений точка светится, как превью снимков (P241).
-    static func draw(_ label: String, glowing: Bool = false) -> UIImage {
-        let font = UIFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
+    static func draw(_ label: String, glowing: Bool = false, small: Bool = false) -> UIImage {
+        let font = UIFont.monospacedSystemFont(ofSize: small ? 11 : 12.5, weight: .regular)
         let ink = UIColor(Look.inkFaint)
         let words = [NSAttributedString.Key.font: font, .foregroundColor: ink]
         let pin = UIImage(systemName: "mappin.and.ellipse",
                           withConfiguration: UIImage.SymbolConfiguration(pointSize: 11))?
             .withTintColor(ink, renderingMode: .alwaysOriginal)
         let wide = min((label as NSString).size(withAttributes: words).width, 250)
-        let chip = CGSize(width: 10 + 14 + 5 + wide + 10, height: 24)
-        let pad: CGFloat = glowing ? 5 : 0
+        let pinSide: CGFloat = small ? 11 : 14
+        let chip = CGSize(width: 10 + pinSide + 5 + wide + 10, height: small ? 18 : 24)
+        let pad: CGFloat = glowing && !small ? 5 : 0
         let size = CGSize(width: chip.width + pad * 2, height: chip.height + pad * 2)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let box = CGRect(x: pad, y: pad, width: chip.width, height: chip.height)
                 .insetBy(dx: 0.5, dy: 0.5)
-            let shape = UIBezierPath(roundedRect: box, cornerRadius: 12)
+            let shape = UIBezierPath(roundedRect: box, cornerRadius: chip.height / 2)
             if glowing {
                 ctx.cgContext.setShadow(offset: .zero, blur: 5, color: UIColor(Look.glow).cgColor)
             }
@@ -887,9 +917,10 @@ final class PointChip: NSTextAttachment {
             UIColor(glowing ? Look.glow : Look.rule).setStroke()
             shape.lineWidth = glowing ? 2 : 1
             shape.stroke()
-            pin?.draw(in: CGRect(x: pad + 10, y: pad + 5, width: 14, height: 14))
+            pin?.draw(in: CGRect(x: pad + 10, y: pad + (chip.height - pinSide) / 2,
+                                 width: pinSide, height: pinSide))
             (label as NSString).draw(
-                with: CGRect(x: pad + 29, y: (size.height - font.lineHeight) / 2,
+                with: CGRect(x: pad + 15 + pinSide, y: (size.height - font.lineHeight) / 2,
                              width: wide, height: font.lineHeight),
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: words, context: nil)

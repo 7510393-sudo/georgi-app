@@ -93,4 +93,24 @@ final class PlaceTests: XCTestCase {
         XCTAssertEqual(DiaryEditor.viewOffset(plain: 3, in: поле), 3)
         XCTAssertEqual(DiaryEditor.viewOffset(plain: 10_000, in: поле), поле.length)
     }
+
+    /// Точки посреди строки находятся и с названием, и без (P256).
+    func testТочкиПосредиСтроки() {
+        let строка = "Встреча [Кафе](geo:51.50000,-0.12000) потом geo:51.60000,-0.20000 дальше"
+        let точки = Geo.points(inText: строка)
+        XCTAssertEqual(точки.count, 2)
+        XCTAssertEqual(точки[0].point.title, "Кафе")
+        XCTAssertEqual((строка as NSString).substring(with: точки[0].range),
+                       "[Кафе](geo:51.50000,-0.12000)")
+        XCTAssertEqual(точки[1].point.title, "")
+        XCTAssertEqual(точки[1].point.at.latitude, 51.6, accuracy: 0.00001)
+        XCTAssertTrue(Geo.points(inText: "просто текст").isEmpty)
+    }
+
+    /// Буква, набранная вплотную за кнопочкой, остаётся буквой (P256).
+    func testБукваЗаТочкойНеТочка() {
+        let строка = "geo:1.00000,2.00000"
+        let поле = NSMutableAttributedString(string: "\u{FFFC}я", attributes: [DiaryEditor.lineKey: строка])
+        XCTAssertEqual(DiaryEditor.plain(поле), строка + "я")
+    }
 }
