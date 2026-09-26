@@ -501,15 +501,13 @@ struct AttachBar: View {
             item("photo", "фото", ready: true) { choosePhotos() }
             item("waveform", "аудио", ready: true) { open { recording = true } }
             item("doc", "файлы", ready: true) { open { browsing = true } }
-            // Касание вписывает, где человек сейчас, — координатами туда,
-            // где стоит курсор. Карта теперь раздел внизу (P239).
-            // Долгое нажатие открывает карту; точка с неё ляжет туда, где
-            // стоял курсор (P240).
-            item("mappin.and.ellipse", "геоточка", ready: true, hold: {
-                store.noteLeaving(fromToday: true)
-                hideKeyboard()
-                shell.screen = .map
-            }, act: writePlace)
+            // Только долгое нажатие вписывает, где человек сейчас, —
+            // координатами туда, где стоит курсор. Короткое ничего не
+            // пишет, лишь подсказывает: случайная точка в записи хуже
+            // лишнего движения пальца. Карта открывается глобусом (P252).
+            item("mappin.and.ellipse", "геоточка", ready: true, hold: writePlace) {
+                shell.say("Задержите палец — впишется, где вы")
+            }
         }
         .padding(.top, 8)
         .padding(.bottom, 7)
@@ -584,7 +582,7 @@ struct AttachBar: View {
                         hold()
                     }
                     .accessibilityAddTraits(.isButton)
-                    .accessibilityHint("Долгое нажатие — открыть карту")
+                    .accessibilityHint("Долгое нажатие — вписать, где вы")
             } else {
                 Button(action: act) { face }
             }
