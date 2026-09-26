@@ -267,7 +267,14 @@ struct DayPage: View {
             tab(.diary).overlay(alignment: .topLeading) { cloud }
         }
         .padding(.horizontal, 12)
-        .background(Look.chrome)
+        // Верхний край открытой страницы — черта через всю ширину. Открытая
+        // вкладка лежит поверх неё, закрытая — за ней (P250).
+        .background(alignment: .bottom) {
+            ZStack(alignment: .bottom) {
+                Look.chrome
+                Rectangle().fill(Look.inkFaint).frame(height: 1)
+            }
+        }
     }
 
     private func tab(_ which: Shell.Tab) -> some View {
@@ -298,6 +305,18 @@ struct DayPage: View {
                 // Верх и бока вкладки обведены заметной чертой: видно, какая
                 // вкладка лежит поверх другой (P246).
                 .overlay(TabBorder(radius: 10).stroke(Look.inkFaint, lineWidth: 1))
+                // Закрытая вкладка — лист, лежащий глубже: чуть притенена, и
+                // край открытой страницы проходит по её низу (P250).
+                .overlay {
+                    if !on {
+                        UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10)
+                            .fill(Color.black.opacity(0.045))
+                            .allowsHitTesting(false)
+                    }
+                }
+                .overlay(alignment: .bottom) {
+                    if !on { Rectangle().fill(Look.inkFaint).frame(height: 1) }
+                }
         }
         .offset(y: on ? 1 : 0)
         .zIndex(on ? 1 : 0)
