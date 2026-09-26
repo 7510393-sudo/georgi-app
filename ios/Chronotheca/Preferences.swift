@@ -100,6 +100,8 @@ struct StickerSection: View {
 /// стоит над клавиатурой, пока та открыта (P253).
 final class KeyboardWatch: ObservableObject {
     @Published private(set) var height: CGFloat = 0
+    /// Верхний край клавиатуры на экране; без клавиатуры — низ экрана.
+    @Published private(set) var top: CGFloat = UIScreen.main.bounds.maxY
     private var watching: [NSObjectProtocol] = []
 
     init() {
@@ -121,6 +123,9 @@ final class KeyboardWatch: ObservableObject {
         let screen = UIScreen.main.bounds
         let now = hiding ? 0 : max(0, screen.maxY - frame.minY)
         let time = (note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
-        withAnimation(.easeOut(duration: time)) { height = now }
+        withAnimation(.easeOut(duration: time)) {
+            height = now
+            top = screen.maxY - now
+        }
     }
 }

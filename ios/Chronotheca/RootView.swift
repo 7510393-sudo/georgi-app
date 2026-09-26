@@ -184,16 +184,19 @@ struct RootView: View {
             // клавиатурой (P253). Она всегда здесь, только не видна: иначе
             // окно выбора снимков, открытое с неё, закрылось бы вместе с
             // клавиатурой.
-            Color.clear
-                .overlay(alignment: .bottom) {
-                    let shown = keyboard.height > 0 && shell.screen == .today
-                    AttachBar(overKeyboard: true)
-                        .padding(.bottom, keyboard.height)
-                        .opacity(shown ? 1 : 0)
-                        .allowsHitTesting(shown)
-                        .accessibilityHidden(!shown)
-                }
-                .ignoresSafeArea(.container, edges: .bottom)
+            // Сколько поднять — меряется по месту: от низа этого слоя до
+            // верхнего края клавиатуры. Иначе между полоской и клавиатурой
+            // оставалась щель высотой с нижний край экрана.
+            GeometryReader { geo in
+                let shown = keyboard.height > 0 && shell.screen == .today
+                let lift = max(0, geo.frame(in: .global).maxY - keyboard.top)
+                AttachBar(overKeyboard: true)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, lift)
+                    .opacity(shown ? 1 : 0)
+                    .allowsHitTesting(shown)
+                    .accessibilityHidden(!shown)
+            }
 
             // Верхней строки больше нет: шестерёнка и три точки нарисованы
             // на уголках бумаги, торчащих сверху слева и справа, а имя дня
