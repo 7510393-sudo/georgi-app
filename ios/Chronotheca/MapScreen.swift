@@ -573,13 +573,7 @@ struct PointPanel: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            TextField(Geo.text(place.coordinate), text: $place.name)
-                .focused($focused, equals: .name)
-                .submitLabel(.next)
-                .onSubmit { focused = .text }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+            // Сверху значки, ниже название, ещё ниже запись (P238).
             // Каким значком отметить точку (P234).
             HStack(spacing: 0) {
                 ForEach(Glyph.all.indices, id: \.self) { i in
@@ -599,6 +593,13 @@ struct PointPanel: View {
                     .accessibilityLabel("Значок: " + glyph.name)
                 }
             }
+            TextField(Geo.text(place.coordinate), text: $place.name)
+                .focused($focused, equals: .name)
+                .submitLabel(.next)
+                .onSubmit { focused = .text }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
             // Не выше шести строк; длиннее — прокручивается внутри.
             TextField("Что здесь было", text: $place.text, axis: .vertical)
                 .focused($focused, equals: .text)
