@@ -28,7 +28,11 @@ struct Sticker<Content: View>: View {
                 .onTapGesture(perform: close)
             sheet
         }
-        .transition(.move(edge: .top).combined(with: .opacity))
+        // Бумажку вытягивают за уголок: она выезжает из-за верхнего края
+        // со своей стороны, чуть повёрнутая, как уголок, и распрямляется
+        // (P233).
+        .transition(.modifier(active: Pulled(side: side, amount: 1),
+                              identity: Pulled(side: side, amount: 0)))
     }
 
     private var sheet: some View {
@@ -81,6 +85,26 @@ struct Sticker<Content: View>: View {
         .padding(.top, 12)
         .accessibilityLabel("Закрыть")
     }
+}
+
+/// Бумажка на пути из-за края экрана: `amount` 1 — за краем, 0 — на месте.
+struct Pulled: ViewModifier {
+    let side: StickerSide
+    let amount: CGFloat
+
+    func body(content: Content) -> some View {
+        let sign: CGFloat = side == .leading ? -1 : 1
+        content
+            .rotationEffect(.degrees(Double(sign * -9 * amount)),
+                            anchor: side == .leading ? .topLeading : .topTrailing)
+            .offset(x: sign * 140 * amount, y: -520 * amount)
+    }
+}
+
+/// Как бумажку тянут и отпускают: тяжело, без отскока — как экраны (P202).
+extension Animation {
+    static let pull = Animation.spring(response: 0.6, dampingFraction: 0.9)
+    static let tuck = Animation.easeIn(duration: 0.28)
 }
 
 /// Строка бумажки.

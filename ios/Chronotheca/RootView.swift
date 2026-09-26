@@ -232,23 +232,32 @@ struct RootView: View {
     private var corners: some View {
         HStack(alignment: .top) {
             Button {
-                withAnimation(.easeOut(duration: 0.2)) { shell.showingSettings = true }
+                withAnimation(.pull) { shell.showingSettings = true }
             } label: {
                 Corner(leading: true, paper: Look.note, edge: Look.noteEdge, icon: "gearshape",
                        tint: shell.showingSettings ? Look.accent : Look.inkSoft)
             }
             .buttonStyle(.plain)
+            // Уголок можно и потянуть вниз, как бумажку (P233).
+            .simultaneousGesture(DragGesture(minimumDistance: 8).onEnded {
+                guard $0.translation.height > 24 else { return }
+                withAnimation(.pull) { shell.showingSettings = true }
+            })
             .accessibilityLabel("Настройки")
 
             Spacer(minLength: 0)
 
             Button {
-                withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
+                withAnimation(.pull) { shell.showingMenu = true }
             } label: {
                 Corner(leading: false, paper: Look.sticker, edge: Look.stickerEdge, icon: "ellipsis",
                        tint: dotsLit ? Look.accent : Look.inkSoft)
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(DragGesture(minimumDistance: 8).onEnded {
+                guard $0.translation.height > 24 else { return }
+                withAnimation(.pull) { shell.showingMenu = true }
+            })
             .accessibilityLabel(dotsLabel)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
