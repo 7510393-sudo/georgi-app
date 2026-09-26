@@ -245,12 +245,12 @@ extension DayStoreTests {
         let вчера = store(-1)
         XCTAssertTrue(вчера.stampIfNeeded())
         XCTAssertNotNil(вчера.diaryText.range(
-            of: #"^\d{2}\.\d{2}\.\d{2} \d{2}:\d{2} $"#, options: .regularExpression))
+            of: #"^\d{2}:\d{2} \d{2}\.\d{2}\.\d{2} $"#, options: .regularExpression))
         let сегодня = store(0)
         XCTAssertTrue(сегодня.stampIfNeeded())
         XCTAssertNotNil(сегодня.diaryText.range(
             of: #"^\d{2}:\d{2} $"#, options: .regularExpression))
-        let строка = "25.09.26 08:15 Дописал"
+        let строка = "08:15 25.09.26 Дописал"
         XCTAssertEqual(DiaryEditor.stamp.firstMatch(
             in: строка, range: NSRange(location: 0, length: (строка as NSString).length))?
             .numberOfRanges, 2)
