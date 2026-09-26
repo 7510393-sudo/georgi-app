@@ -75,6 +75,7 @@ struct PlanTitle: UIViewRepresentable {
         // Обычный «Ввод» со стрелкой, а не синее «Готово» с галочкой:
         // клавиша уводит на строку ниже, как ей и положено (решение P180).
         view.returnKeyType = .default
+        context.coordinator.view = view
         return view
     }
 
@@ -147,8 +148,36 @@ struct PlanTitle: UIViewRepresentable {
 
     // MARK: - Поведение
 
+    /// Название, которое правили последним. Туда, на место курсора,
+    /// геоточка вписывает координаты — прямо в строку дела (P255).
+    static weak var last: Coordinator?
+
     final class Coordinator: NSObject, UITextViewDelegate, NSLayoutManagerDelegate {
         var parent: PlanTitle
+        weak var view: UITextView?
+
+        func textViewDidBeginEditing(_ view: UITextView) { PlanTitle.last = self }
+
+        /// Вписать кусок на место курсора, отделив пробелами, и поставить
+        /// курсор за ним. Курсор помнится и когда клавиатуру уже убрали.
+        func insert(_ piece: String) -> Bool {
+            guard parent.editable, let view, view.window != nil else { return false }
+            let ns = view.text as NSString
+            var range = view.selectedRange
+            if range.location == NSNotFound || NSMaxRange(range) > ns.length {
+                range = NSRange(location: ns.length, length: 0)
+            }
+            let before = ns.substring(to: range.location)
+            let after = ns.substring(from: NSMaxRange(range))
+            let lead = before.isEmpty || before.hasSuffix(" ") ? "" : " "
+            let tail = after.hasPrefix(" ") ? "" : " "
+            let add = lead + piece + tail
+            view.textStorage.replaceCharacters(
+                in: range, with: NSAttributedString(string: add, attributes: view.typingAttributes))
+            view.selectedRange = NSRange(location: range.location + (add as NSString).length, length: 0)
+            parent.text = view.text
+            return true
+        }
 
         init(_ parent: PlanTitle) { self.parent = parent }
 

@@ -362,13 +362,7 @@ final class DayStore: ObservableObject {
     func writePoint(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false,
                     caret: Int? = nil, after row: UUID? = nil) -> Bool {
         guard canEdit(tab) else { return false }
-        // Первое «где я сейчас» за день становится местом дня: по нему
-        // точка дня на карте и погода. Отдельной кнопки «я здесь» больше
-        // нет (P221).
-        if here, place == nil, canEditDiary {
-            place = Geo.text(point.at)
-            touchDiary()
-        }
+        if here { notePlace(point) }
         let line = Geo.pointLine(point)
         switch tab {
         case .plan:
@@ -391,6 +385,15 @@ final class DayStore: ObservableObject {
         }
         save()
         return true
+    }
+
+    /// Первое «где я сейчас» за день становится местом дня: по нему
+    /// точка дня на карте и погода. Отдельной кнопки «я здесь» больше
+    /// нет (P221).
+    func notePlace(_ point: GeoPoint) {
+        guard place == nil, canEditDiary else { return }
+        place = Geo.text(point.at)
+        touchDiary()
     }
 
     /// Вставить строку в текст там, где стоит курсор, — отдельной строкой:

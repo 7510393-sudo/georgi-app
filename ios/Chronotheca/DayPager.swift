@@ -609,6 +609,17 @@ struct AttachBar: View {
             guard let at = location?.coordinate else {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
+            // В плане координаты встают прямо в название дела, на место
+            // курсора, а не отдельной строкой (P255). Дела ещё не правили —
+            // по-старому, строкой под последним делом.
+            let point = GeoPoint(title: "", at: at)
+            if tab == .plan, store.lastPlanRow != nil, let field = PlanTitle.last,
+               field.insert(Geo.pointLine(point)) {
+                store.notePlace(point)
+                if let location { store.noteWeather(at: location) }
+                store.save()
+                return shell.say("Место вписано в дело")
+            }
             // Курсор помнится и после того, как клавиатуру убрали: точка
             // встаёт туда, где писали последним, а не в конец (P253).
             store.writePoint(GeoPoint(title: "", at: at), to: tab, here: true,
