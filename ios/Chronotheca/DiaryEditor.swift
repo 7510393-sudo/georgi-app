@@ -63,7 +63,10 @@ struct DiaryEditor: UIViewRepresentable {
     var moving = false
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
-    static let stamp = try! NSRegularExpression(pattern: #"^(\d{2}:\d{2})[  ]"#)
+    /// В прошедший день к времени прибавляется дата, когда писали:
+    /// «25.09.26 08:15 » (P227).
+    static let stamp = try! NSRegularExpression(
+        pattern: #"^((?:\d{2}\.\d{2}\.\d{2} )?\d{2}:\d{2})[  ]"#)
 
     func makeUIView(context: Context) -> UITextView {
         let view = UITextView()
@@ -738,7 +741,8 @@ struct DiaryEditor: UIViewRepresentable {
                   let first = text.first, first.isLowercase else { return true }
             let before = (view.text as NSString).substring(to: range.location)
             guard let line = before.components(separatedBy: .newlines).last,
-                  line.range(of: #"^\d{2}:\d{2}[  ]+$"#, options: .regularExpression) != nil
+                  line.range(of: #"^(\d{2}\.\d{2}\.\d{2} )?\d{2}:\d{2}[  ]+$"#,
+                             options: .regularExpression) != nil
             else { return true }
 
             let upper = String(first).uppercased() + String(text.dropFirst())

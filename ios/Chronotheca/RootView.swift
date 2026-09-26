@@ -139,12 +139,16 @@ struct RootView: View {
     private var app: some View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 0) {
-                appbar
                 canvas
                 Rectangle().fill(Look.rule).frame(height: 1)
                 tabbar
             }
             .background(Look.chrome.ignoresSafeArea())
+
+            // Верхней строки больше нет: шестерёнка и три точки нарисованы
+            // на уголках бумаги, торчащих сверху слева и справа, а имя дня
+            // поднялось между ними (P229).
+            corners
 
             if shell.showingMenu { MenuSticker() }
             if shell.showingSettings {
@@ -215,47 +219,39 @@ struct RootView: View {
         // Шапка и нижние разделы лежат поверх страницы и прижимают её: обе
         // бросают на неё тень. Так видно, что они сверху, а страница под
         // ними — на любом экране (решение P192).
-        .overlay(alignment: .top) { Shade(down: true) }
         .overlay(alignment: .bottom) { Shade(down: false) }
         .clipped()
     }
 
     // MARK: - Шапка
 
-    /// Только то, что принадлежит приложению, а не дню: настройки и меню
-    /// страницы. Имя дня, дата и вкладки уехали внутрь страницы — они
-    /// перелистываются вместе с ней.
-    private var appbar: some View {
-        HStack {
+    /// Шестерёнка и три точки — на уголках бумаги, торчащих сверху: левый
+    /// голубой, как бумажка настроек, правый желтоватый, как бумажка меню.
+    /// У уголков тень — они лежат поверх страницы (P229). Меню у каждого
+    /// экрана своё; кнопка не пропадает, что бы ни было открыто (P188).
+    private var corners: some View {
+        HStack(alignment: .top) {
             Button {
                 withAnimation(.easeOut(duration: 0.2)) { shell.showingSettings = true }
             } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 19))
-                    .foregroundStyle(shell.showingSettings ? Look.accent : Look.inkSoft)
-                    .frame(width: 44, height: 38)
+                Corner(leading: true, paper: Look.note, icon: "gearshape",
+                       tint: shell.showingSettings ? Look.accent : Look.inkSoft)
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Настройки")
 
             Spacer(minLength: 0)
 
-            // Три точки стоят на каждом экране, но меню у каждого своё:
-            // на странице дня — режим изменений и файл дня, на календаре и
-            // в поиске — то, чем там можно управлять. Кнопка не пропадает,
-            // что бы ни было открыто (решение P188, вместо P169).
             Button {
                 withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
             } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 18))
-                    .foregroundStyle(dotsLit ? Look.accent : Look.inkSoft)
-                    .frame(width: 44, height: 38)
+                Corner(leading: false, paper: Look.sticker, icon: "ellipsis",
+                       tint: dotsLit ? Look.accent : Look.inkSoft)
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(dotsLabel)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 8)
-        .background(Look.chrome)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     /// Точки горят, когда в меню включено что-то необычное: режим
@@ -358,6 +354,14 @@ struct RootView: View {
         .background(Look.chrome)
     }
 
+    private func scale(_ target: Shell.Screen) -> CGFloat {
+        switch target {
+        case .today:    return 1.10
+        case .search:   return 1.05
+        case .calendar: return 1
+        }
+    }
+
     private func section(_ icon: String, _ name: String, _ target: Shell.Screen) -> some View {
         let on = shell.screen == target
         return Button {
@@ -384,7 +388,8 @@ struct RootView: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 35, height: 35)
+                    // Книжка на 10%, микроскоп на 5% крупнее прочих (P227).
+                    .frame(width: 35 * scale(target), height: 35 * scale(target))
                 Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
             }
             // Открытый раздел — на светлой подушке. Подушка выходит за
@@ -483,6 +488,50 @@ struct TabBorder: Shape {
         p.addArc(center: CGPoint(x: r.maxX - radius, y: r.minY + radius), radius: radius,
                  startAngle: .degrees(270), endAngle: .degrees(0), clockwise: false)
         p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        return p
+    }
+}
+
+/// Уголок бумаги, торчащий сверху слева или справа, со значком на нём.
+struct Corner: View {
+    static let size: CGFloat = 54
+
+    let leading: Bool
+    let paper: Color
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        ZStack(alignment: leading ? .topLeading : .topTrailing) {
+            CornerShape(leading: leading)
+                .fill(paper)
+                .shadow(color: .black.opacity(0.22), radius: 3, x: leading ? 1.5 : -1.5, y: 2)
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 26)
+                .padding(leading ? .leading : .trailing, 6)
+                .padding(.top, 7)
+        }
+        .frame(width: Corner.size, height: Corner.size)
+        .contentShape(Rectangle())
+    }
+}
+
+/// Уголок бумаги: две прямые стороны по краям экрана и выпуклый срез.
+struct CornerShape: Shape {
+    let leading: Bool
+
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let edge = leading ? r.minX : r.maxX
+        let far = leading ? r.maxX : r.minX
+        p.move(to: CGPoint(x: edge, y: r.minY))
+        p.addLine(to: CGPoint(x: far, y: r.minY))
+        p.addQuadCurve(to: CGPoint(x: edge, y: r.maxY),
+                       control: CGPoint(x: leading ? r.minX + r.width * 0.62 : r.maxX - r.width * 0.62,
+                                        y: r.minY + r.height * 0.62))
+        p.closeSubpath()
         return p
     }
 }

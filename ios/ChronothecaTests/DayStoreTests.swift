@@ -238,4 +238,21 @@ extension DayStoreTests {
         XCTAssertEqual(день.planRows.map { $0.verbatim ?? $0.text },
                        ["Первое", "[Дом](geo:54.32110,-2.74560)", "Второе", ""])
     }
+
+    /// Дописывая вчерашний день, человек видит, когда дописал: к времени
+    /// встаёт короткая дата (P227). В сегодняшнем — только время.
+    func testВПрошедшийДеньОтметкаСДатой() {
+        let вчера = store(-1)
+        XCTAssertTrue(вчера.stampIfNeeded())
+        XCTAssertNotNil(вчера.diaryText.range(
+            of: #"^\d{2}\.\d{2}\.\d{2} \d{2}:\d{2} $"#, options: .regularExpression))
+        let сегодня = store(0)
+        XCTAssertTrue(сегодня.stampIfNeeded())
+        XCTAssertNotNil(сегодня.diaryText.range(
+            of: #"^\d{2}:\d{2} $"#, options: .regularExpression))
+        let строка = "25.09.26 08:15 Дописал"
+        XCTAssertEqual(DiaryEditor.stamp.firstMatch(
+            in: строка, range: NSRange(location: 0, length: (строка as NSString).length))?
+            .numberOfRanges, 2)
+    }
 }

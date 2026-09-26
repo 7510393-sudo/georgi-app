@@ -204,7 +204,9 @@ final class DayStore: ObservableObject {
 
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "HH:mm"
+        // Дописывая прошедший день, человек пишет не в тот день, о котором
+        // запись: к времени встаёт и дата, когда писал (P227).
+        f.dateFormat = isToday ? "HH:mm" : "dd.MM.yy HH:mm"
         diaryText = (body.isEmpty ? "" : body + "\n\n") + f.string(from: Date()) + " "
         lastEdit = Date()
         save()

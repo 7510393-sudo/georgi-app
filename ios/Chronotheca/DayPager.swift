@@ -100,9 +100,8 @@ struct DayPage: View {
                 let height = width / RememberCloud.ratio
                 RememberCloud(date: date, width: width) { remembering = true }
                     .frame(width: width, height: height)
-                    // На 2 мм (12 точек) ниже: облачко садится на вкладку
-                    // без зазора (P224).
-                    .offset(x: geo.size.width * 0.45, y: -height * 0.80 + 12)
+                    // Опускали на 2 мм (P224) — вышло лишнее, вернули (P227).
+                    .offset(x: geo.size.width * 0.45, y: -height * 0.80)
             }
             .transition(.opacity)
         }
@@ -133,6 +132,9 @@ struct DayPage: View {
             // ним: иначе взгляд скачет вверх-вниз и всякий раз перестраивается
             // с крупного на мелкое. Строка задана ростом жёстко, чтобы шапка
             // была одной высоты на любой странице (P113).
+            // Имя дня поднялось на место прежней верхней строки, между
+            // уголками с шестерёнкой и тремя точками; по бокам — только
+            // стрелки, слов «вчера / завтра» рядом больше нет (P229).
             HStack(spacing: 0) {
                 side(-1)
                 Text(live ? store.title : DayPage.title(for: date))
@@ -154,7 +156,8 @@ struct DayPage: View {
                 .font(Look.sans(15))
                 .foregroundStyle(Look.inkSoft)
         }
-        .padding(.horizontal, 6)
+        // Шапка на 30% уже экрана: по бокам — уголки бумаги (P229).
+        .padding(.horizontal, Corner.size + 4)
         // Над названием — воздух: когда под шапкой легла тень, название
         // казалось прижатым к ней (решение P192).
         .padding(.top, DayPage.airAbove)
@@ -172,22 +175,14 @@ struct DayPage: View {
     /// менять рост от того, горит стрелка или нет (P113).
     static let headLine: CGFloat = 31
 
-    /// Имя соседнего дня, а рядом с ним — стрелка.
-    ///
-    /// Стрелка стоит в промежутке между именами, с той стороны, куда ведёт:
-    /// слово снаружи, стрелка внутри. Имя на треть мельче нынешнего дня и
-    /// бледное — соседний день предлагается, а не зовёт.
+    /// Стрелка к соседнему дню. Слова «вчера / завтра» рядом с ней убраны
+    /// (P229): имя открытого дня и так говорит, где мы.
     ///
     /// Горит та стрелка, что показывает дорогу к сегодняшнему дню (P127).
     /// Размер у обеих одинаковый: разным он менял бы рост строки.
     private func side(_ step: Int) -> some View {
         let lit = toward == step
         let sign = step < 0 ? "‹" : "›"
-        let word = Text(neighbour(step))
-            .font(Look.sans(15.5))
-            .foregroundStyle(Look.inkFaint)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
         let arrow = Text(sign)
             .font(.system(size: 21, weight: lit ? .bold : .regular))
             .foregroundStyle(lit ? Look.accent : Look.inkFaint)
@@ -195,18 +190,8 @@ struct DayPage: View {
             .background(lit ? Look.accent.opacity(0.12) : .clear,
                         in: RoundedRectangle(cornerRadius: 7))
 
-        return HStack(spacing: 2) {
-            if step < 0 {
-                Spacer(minLength: 0)
-                word
-                arrow
-            } else {
-                arrow
-                word
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(width: 108)
+        return arrow
+            .frame(width: 34)
         .contentShape(Rectangle())
         // Дорога домой одна, какой кнопкой её ни начинай (решение P168).
         .onLongPressGesture(minimumDuration: 0.4) {
@@ -339,6 +324,8 @@ struct BarFace: View {
         VStack(spacing: 3) {
             Image(systemName: icon).font(.system(size: 17))
             Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity)
         .foregroundStyle(tint)
@@ -383,8 +370,10 @@ struct WobblyTitle: View {
     /// Наклон буквы в минуту `t`: две волны с несоразмерными частотами, у
     /// каждой буквы свои — со стороны это выглядит беспорядком.
     static func angle(_ t: TimeInterval, _ i: Int) -> Double {
-        let a = 2.3 + Double((i * 7) % 5) * 0.45
-        let b = 3.7 + Double((i * 3) % 4) * 0.6
+        // Впятеро-вшестеро живее прежнего: буквы дрожат, а не покачиваются
+        // (P227).
+        let a = (2.3 + Double((i * 7) % 5) * 0.45) * 5.5
+        let b = (3.7 + Double((i * 3) % 4) * 0.6) * 5.5
         let p = Double(i) * 1.9
         return 15 * (0.6 * sin(t * a + p) + 0.4 * sin(t * b + p * 0.7))
     }

@@ -33,79 +33,59 @@ struct MapScreen: View {
     enum Panel { case naming, cloud }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            ZStack(alignment: .top) {
-                NativeMap(places: places, days: days, selected: selected, focus: focus,
-                          satellite: shell.mapSatellite,
-                          onLongPress: pick, onPlace: choose, onDay: openDay,
-                          onSelected: { withAnimation { panel = .cloud } })
-                if let selected, panel == .naming {
-                    // Новая булавка — новая панель: поля не должны
-                    // остаться от прежней точки.
-                    PointPanel(place: selected, cancel: cancel, done: name)
-                        .id(selected.id)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                } else if let selected, panel == .cloud {
-                    PlaceCloud(place: selected,
-                               edit: { withAnimation { panel = .naming } },
-                               remove: selected.file == nil ? nil : { asking = true },
-                               close: { withAnimation { panel = nil } })
-                        .transition(.move(edge: .top).combined(with: .opacity))
+        ZStack(alignment: .top) {
+            NativeMap(places: places, days: days, selected: selected, focus: focus,
+                      satellite: shell.mapSatellite,
+                      onLongPress: pick, onPlace: choose, onDay: openDay,
+                      onSelected: { withAnimation { panel = .cloud } },
+                      onTapEmpty: tapEmpty)
+            if let selected, panel == .naming {
+                // Новая булавка — новая панель: поля не должны
+                // остаться от прежней точки.
+                PointPanel(place: selected, cancel: cancel, done: name)
+                    .id(selected.id)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            } else if let selected, panel == .cloud {
+                PlaceCloud(place: selected, edit: { withAnimation { panel = .naming } })
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            } else {
+                // Закрыть карту — крестик слева сверху, под шестерёнкой.
+                // Строки «Мои места / Закрыть» больше нет: карта занимает
+                // всю страницу (P228).
+                HStack {
+                    Button {
+                        hideKeyboard()
+                        withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Look.ink)
+                            .frame(width: 40, height: 40)
+                            .background(.regularMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                    }
+                    .accessibilityLabel("Закрыть карту")
+                    Spacer()
                 }
+                .padding(.leading, 12)
+                .padding(.top, Corner.size + 6)
             }
-            .animation(.easeOut(duration: 0.2), value: panel)
-            .overlay(alignment: .bottom) {
-                if selected == nil && panel == nil {
-                    Text("Долгое нажатие — выбрать точку")
-                        .font(Look.sans(12))
-                        .foregroundStyle(Look.inkSoft)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .padding(.bottom, 12)
-                        .allowsHitTesting(false)
-                }
-            }
-            bar
         }
+        .animation(.easeOut(duration: 0.2), value: panel)
+        .overlay(alignment: .bottom) { bar }
         .background(Look.chrome)
-        .confirmationDialog("Убрать «\(selected?.name ?? "")» с карты?", isPresented: $asking,
-                            titleVisibility: .visible) {
-            Button("Убрать", role: .destructive) { remove() }
+        .confirmationDialog("Удалить точку?", isPresented: $asking, titleVisibility: .visible) {
+            Button("Удалить точку", role: .destructive) { remove() }
+            Button("Оставить точку", role: .cancel) { }
         } message: {
-            Text("Файл этого места будет удалён из папки «Места».")
+            Text(selected?.file == nil ? "Булавка уйдёт с карты."
+                 : "Файл этой точки будет удалён из папки «Места».")
         }
         .onAppear(perform: begin)
         .onChange(of: selected) { _, now in
             shell.mapPoint = now.map { GeoPoint(title: $0.name, at: $0.coordinate) }
         }
         .onDisappear { shell.mapPoint = nil }
-    }
-
-    /// Название экрана — такое же, как у календаря и поиска. Шестерёнка,
-    /// три точки и нижние разделы остаются на месте: карта открывается на
-    /// странице, а не поверх всего приложения (P210).
-    private var header: some View {
-        ZStack {
-            Text("Мои места")
-                .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(Look.ink)
-            HStack {
-                Spacer()
-                Button {
-                    hideKeyboard()
-                    withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
-                } label: {
-                    Text("Закрыть")
-                        .font(Look.sans(14))
-                        .foregroundStyle(Look.accent)
-                }
-                .padding(.trailing, 16)
-            }
-        }
-        .padding(.top, DayPage.airAbove)
-        .padding(.bottom, 10)
     }
 
     private var days: [MapDay] {
@@ -116,38 +96,40 @@ struct MapScreen: View {
         }
     }
 
-    // MARK: - Нижняя полоска
+    // MARK: - Кнопки внизу
 
-    /// Полоска внизу — той же высоты и с теми же местами, что полоска
-    /// вложений: «Запомнить точку» стоит ровно там, где «геоточка», и
-    /// палец, открывший карту, попадает в неё не глядя (P213). «Скопировать»
-    /// и «в навигатор» бледнеют, пока точка не выбрана (P219).
+    /// Кнопки внизу — овальные, поверх карты, а не сплошной полосой: карту
+    /// видно между ними (P228). Стоят на тех же местах, что кнопки полоски
+    /// вложений: «Запомнить точку» — ровно там, где «геоточка» (P213).
+    /// Корзина, «скопировать» и «в навигатор» бледнеют, пока точка не
+    /// выбрана (P219).
     private var bar: some View {
         let point = selected != nil
         return HStack(spacing: 0) {
-            // Первое место свободно: «я здесь в этот день» убрано — его
-            // делает «Запомнить точку» без выбора и долгое нажатие на
-            // «геоточку» (P221).
-            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+            Button { asking = true } label: {
+                oval(BarFace(icon: "trash", name: "удалить",
+                             tint: point ? Look.inkSoft : Look.inkFaint.opacity(0.6)))
+            }
+            .disabled(!point)
             Button {
                 guard let selected else { return }
                 MapActions.copy(selected)
                 shell.say("Скопировано: " + Geo.text(selected.coordinate))
             } label: {
-                BarFace(icon: "doc.on.doc", name: "скопировать",
-                        tint: point ? Look.inkSoft : Look.inkFaint.opacity(0.6))
+                oval(BarFace(icon: "doc.on.doc", name: "скопировать",
+                             tint: point ? Look.inkSoft : Look.inkFaint.opacity(0.6)))
             }
             .disabled(!point)
             Button { if let selected { MapActions.navigate(selected) } } label: {
-                BarFace(icon: "arrow.triangle.turn.up.right.diamond", name: "в навигатор",
-                        tint: point ? Look.accent : Look.inkFaint.opacity(0.6))
+                oval(BarFace(icon: "arrow.triangle.turn.up.right.diamond", name: "в навигатор",
+                             tint: point ? Look.accent : Look.inkFaint.opacity(0.6)))
             }
             .disabled(!point)
             Button(action: remember) {
                 if locating {
-                    ProgressView().frame(maxWidth: .infinity)
+                    oval(ProgressView().frame(maxWidth: .infinity))
                 } else {
-                    BarFace(icon: "pin.fill", name: "запомнить точку", tint: Look.accent)
+                    oval(BarFace(icon: "pin.fill", name: "запомнить точку", tint: Look.accent))
                 }
             }
             .accessibilityHint(point ? "Запишет выбранную точку" : "Запишет, где вы сейчас")
@@ -155,10 +137,17 @@ struct MapScreen: View {
         .buttonStyle(.plain)
         .padding(.top, 8)
         .padding(.bottom, 7)
-        .background(Look.chrome)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Look.rule).frame(height: 1)
-        }
+    }
+
+    /// Овал под кнопкой. Выходит за подпись и значок наружу и не меняет
+    /// их места — кнопки стоят там же, где кнопки полоски вложений.
+    private func oval<C: View>(_ face: C) -> some View {
+        face.background(
+            Capsule()
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.16), radius: 4, y: 2)
+                .padding(.horizontal, 5)
+                .padding(.vertical, -6))
     }
 
     // MARK: - Действия
@@ -201,6 +190,16 @@ struct MapScreen: View {
         withAnimation { panel = .cloud }
     }
 
+    /// Касание по пустому месту карты: панель и облачко уходят, клавиатура
+    /// опускается. Новая булавка без названия уходит вместе с панелью (P228).
+    private func tapEmpty() {
+        guard selected != nil || panel != nil else { return }
+        hideKeyboard()
+        if selected?.file == nil { selected = nil }
+        if panel == .cloud { selected = nil }
+        withAnimation { panel = nil }
+    }
+
     private func cancel() {
         hideKeyboard()
         // Отмена у нового места убирает булавку; у записанного — только
@@ -209,14 +208,14 @@ struct MapScreen: View {
         withAnimation { panel = nil }
     }
 
-    /// «Готово»: с названием место ложится в папку «Места» и остаётся на
-    /// карте; без названия — остаётся просто выбранной точкой.
-    private func name(_ place: Place) {
+    /// «Готово»: точка ложится в папку «Места» и остаётся на карте. Не
+    /// назвали — названием остаются координаты (P228).
+    private func name(_ given: Place) {
         hideKeyboard()
         withAnimation { panel = nil }
-        guard !place.name.trimmingCharacters(in: .whitespaces).isEmpty else {
-            selected = place
-            return
+        var place = given
+        if place.name.trimmingCharacters(in: .whitespaces).isEmpty {
+            place.name = Geo.text(place.coordinate)
         }
         guard let stored = Places.save(place, in: vault) else {
             selected = place
@@ -229,7 +228,7 @@ struct MapScreen: View {
 
     private func remove() {
         guard let place = selected else { return }
-        Places.delete(place, in: vault)
+        if place.file != nil { Places.delete(place, in: vault) }
         places.removeAll { $0.id == place.id }
         selected = nil
         withAnimation { panel = nil }
@@ -242,7 +241,9 @@ struct MapScreen: View {
         guard store.canEdit(tab) else { return shell.say(store.closedReason) }
         hideKeyboard()
         if let place = selected {
-            return write(GeoPoint(title: place.name, at: place.coordinate), to: tab)
+            // Названием остались координаты — в текст они ляжут один раз.
+            let title = place.name == Geo.text(place.coordinate) ? "" : place.name
+            return write(GeoPoint(title: title, at: place.coordinate), to: tab)
         }
         locating = true
         Locator.shared.current { location in
@@ -305,6 +306,7 @@ struct NativeMap: UIViewRepresentable {
     var onPlace: (Place) -> Void
     var onDay: (Date) -> Void
     var onSelected: () -> Void
+    var onTapEmpty: () -> Void = {}
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
@@ -320,6 +322,18 @@ struct NativeMap: UIViewRepresentable {
         press.minimumPressDuration = 0.45
         map.addGestureRecognizer(press)
 
+        // Касание по пустому месту — закрыть панель. Ждёт, не будет ли
+        // второго касания: двойное касание остаётся приближением.
+        let tap = UITapGestureRecognizer(target: context.coordinator,
+                                         action: #selector(Coordinator.tapped(_:)))
+        tap.delegate = context.coordinator
+        let inner = (map.gestureRecognizers ?? [])
+            + map.subviews.flatMap { $0.gestureRecognizers ?? [] }
+        for case let double as UITapGestureRecognizer in inner where double.numberOfTapsRequired == 2 {
+            tap.require(toFail: double)
+        }
+        map.addGestureRecognizer(tap)
+
         // «Где я» и компас — справа сверху, как в Картах.
         let track = MKUserTrackingButton(mapView: map)
         let compass = MKCompassButton(mapView: map)
@@ -332,10 +346,11 @@ struct NativeMap: UIViewRepresentable {
             map.addSubview(control)
         }
         NSLayoutConstraint.activate([
+            // Справа сверху, под уголком с тремя точками (P228).
             track.trailingAnchor.constraint(equalTo: map.trailingAnchor, constant: -12),
-            track.bottomAnchor.constraint(equalTo: map.bottomAnchor, constant: -28),
+            track.topAnchor.constraint(equalTo: map.topAnchor, constant: Corner.size + 6),
             compass.trailingAnchor.constraint(equalTo: map.trailingAnchor, constant: -12),
-            compass.bottomAnchor.constraint(equalTo: track.topAnchor, constant: -10),
+            compass.topAnchor.constraint(equalTo: track.bottomAnchor, constant: 10),
         ])
         return map
     }
@@ -358,7 +373,7 @@ struct NativeMap: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
-    final class Coordinator: NSObject, MKMapViewDelegate {
+    final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
         var parent: NativeMap
         var focused: MapFocus?
         var shown = false
@@ -379,6 +394,22 @@ struct NativeMap: UIViewRepresentable {
             map.addAnnotations(parent.days.map { DayMark($0) })
             map.addAnnotations(parent.places.map { PlaceMark($0) })
             if let draft { map.addAnnotation(DraftMark(draft)) }
+        }
+
+        @objc func tapped(_ g: UITapGestureRecognizer) {
+            guard let map = g.view as? MKMapView else { return }
+            // Касание по метке — это выбор метки, а не пустое место.
+            var hit = map.hitTest(g.location(in: map), with: nil)
+            while let view = hit {
+                if view is MKAnnotationView { return }
+                hit = view.superview
+            }
+            parent.onTapEmpty()
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            true
         }
 
         @objc func pressed(_ g: UILongPressGestureRecognizer) {
@@ -462,8 +493,11 @@ final class DayMark: NSObject, MKAnnotation {
     }
 }
 
-/// Панель «Точка» сверху карты: название и что здесь было. Полупрозрачная —
-/// под ней видно, куда встала булавка; клавиатура открывается сразу (P213).
+/// Панель новой точки сверху карты: название и что здесь было.
+/// Полупрозрачная — под ней видно, куда встала булавка; клавиатура
+/// открывается сразу. В поле названия бледно стоят координаты: не назвали —
+/// они и останутся названием. «Отмена» — внизу слева, «Готово» — внизу
+/// справа (P213, P228).
 struct PointPanel: View {
 
     @State var place: Place
@@ -475,99 +509,78 @@ struct PointPanel: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack {
-                Button("Отмена", action: cancel)
-                Spacer()
-                Text("Точка").font(Look.sans(16, weight: .semibold)).foregroundStyle(Look.ink)
-                Spacer()
-                Button("Готово") { done(place) }.fontWeight(.semibold)
-            }
-            .font(Look.sans(15))
-            TextField("Название", text: $place.name)
+            TextField(Geo.text(place.coordinate), text: $place.name)
                 .focused($focused, equals: .name)
                 .submitLabel(.next)
                 .onSubmit { focused = .text }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+            // Не выше шести строк; длиннее — прокручивается внутри.
             TextField("Что здесь было", text: $place.text, axis: .vertical)
                 .focused($focused, equals: .text)
-                .lineLimit(1...5)
+                .lineLimit(1...6)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
-            Text(Geo.text(place.coordinate))
-                .font(Look.mono(11.5))
-                .foregroundStyle(Look.inkFaint)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack {
+                Button("Отмена", action: cancel)
+                Spacer()
+                Button("Готово") { done(place) }.fontWeight(.semibold)
+            }
+            .font(Look.sans(15))
+            .padding(.horizontal, 4)
         }
         .font(Look.sans(15))
         .padding(12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .padding(.horizontal, 10)
-        .padding(.top, 8)
+        .padding(.top, Corner.size + 2)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { focused = .name }
         }
     }
 }
 
-/// Облачко выбранной точки сверху карты: название, что человек о ней
-/// написал, дорога туда и координаты (P210, P213).
+/// Облачко выбранной точки сверху карты: название и что о ней написано —
+/// и больше ничего. Дорога, копия и корзина — кнопками внизу (P228).
+/// Клавиатура не открывается: точку смотрят, а не правят.
 struct PlaceCloud: View {
     let place: Place
     let edit: () -> Void
-    var remove: (() -> Void)?
-    let close: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text(place.name.isEmpty ? "Точка" : place.name)
-                    .font(Look.serif(18, weight: .semibold))
+                Text(place.name.isEmpty ? Geo.text(place.coordinate) : place.name)
+                    .font(Look.serif(17, weight: .semibold))
                     .foregroundStyle(Look.ink)
                     .lineLimit(2)
                 Spacer()
                 Button(place.file == nil ? "Назвать" : "Изменить", action: edit)
                     .font(Look.sans(14))
-                Button(action: close) {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(Look.inkFaint)
-                }
-                .padding(.leading, 6)
-                .accessibilityLabel("Закрыть")
             }
             if !place.text.isEmpty {
-                Text(place.text)
-                    .font(Look.serif(15))
-                    .foregroundStyle(Look.ink)
-                    .lineLimit(5)
+                // Не выше шести строк; длиннее — прокручивается пальцем.
+                ViewThatFits(in: .vertical) {
+                    words
+                    ScrollView { words }.frame(height: 6 * 20)
+                }
+                .frame(maxHeight: 6 * 20)
             }
-            Text(Geo.text(place.coordinate))
-                .font(Look.mono(11.5))
-                .foregroundStyle(Look.inkFaint)
-            HStack(spacing: 14) {
-                Button {
-                    PlaceActions.openInMaps(place.coordinate, name: place.name)
-                } label: {
-                    Label("Проложить путь", systemImage: "arrow.triangle.turn.up.right.diamond")
-                }
-                Button {
-                    PlaceActions.copy(place.coordinate)
-                } label: {
-                    Label("Скопировать", systemImage: "doc.on.doc")
-                }
-                Spacer()
-                if let remove {
-                    Button(action: remove) { Image(systemName: "trash") }
-                        .accessibilityLabel("Убрать с карты")
-                }
-            }
-            .font(Look.sans(14))
         }
         .padding(12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .padding(.horizontal, 10)
-        .padding(.top, 8)
+        .padding(.top, Corner.size + 2)
+    }
+
+    private var words: some View {
+        Text(place.text)
+            .font(Look.serif(15))
+            .foregroundStyle(Look.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
