@@ -291,7 +291,9 @@ struct CalendarView: View {
         return Button { pick(stamp, date) } label: {
             VStack(spacing: 1) {
                 Text("\(cal.component(.day, from: date))")
-                    .font(Look.sans(14, weight: isToday ? .semibold : .regular))
+                    // Цифры плотнее, сегодняшняя — крупнее и жирнее всех
+                    // (P247).
+                    .font(Look.sans(isToday ? 18 : 14.5, weight: isToday ? .bold : .medium))
                     .foregroundStyle(Look.ink)
                 dots(count: archive.tasks(stamp).count, light: false)
             }
@@ -390,7 +392,7 @@ struct CalendarView: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(spacing: 1) {
                     Text("\(cal.component(.day, from: date))")
-                        .font(Look.mono(15))
+                        .font(stamp == today ? Look.sans(18, weight: .bold) : Look.mono(15))
                         .foregroundStyle(stamp == today ? Look.accent : Look.ink)
                     Text(Ru.weekdayShort(date))
                         .font(Look.sans(10))
