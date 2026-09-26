@@ -263,6 +263,7 @@ struct AttachmentViewer: View {
     let close: () -> Void
 
     @State private var ready: URL?
+    @State private var player: AVPlayer?
     @State private var asking = false
 
     var body: some View {
@@ -271,12 +272,20 @@ struct AttachmentViewer: View {
             PhotoViewer(url: url, onRemove: onRemove, onReturn: onReturn, close: close)
         case .video:
             framed {
-                if let ready { VideoPlayer(player: AVPlayer(url: ready)) } else { ProgressView() }
+                if let player { VideoPlayer(player: player) } else { ProgressView() }
             }
+            // Видео начинает играть само, как только открыто: касание по
+            // превью и есть «играть» (P225).
             .task {
-                guard let url else { return }
-                ready = await Task.detached { Attachment.fetch(url) }.value
+                guard let url,
+                      let ready = await Task.detached(operation: { Attachment.fetch(url) }).value
+                else { return }
+                try? AVAudioSession.sharedInstance().setCategory(.playback)
+                let p = AVPlayer(url: ready)
+                player = p
+                p.play()
             }
+            .onDisappear { player?.pause() }
         case .audio:
             framed { AudioPlayerView(url: url) }
         case .file:
