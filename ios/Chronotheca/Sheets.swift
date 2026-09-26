@@ -144,7 +144,7 @@ struct MenuSticker: View {
     }
 
     private func close() {
-        withAnimation(.tuck) { shell.showingMenu = false }
+        shell.tuckIn(settings: false)
     }
 }
 
@@ -310,7 +310,7 @@ struct SettingsSticker: View {
     }
 
     private func close() {
-        withAnimation(.tuck) { shell.showingSettings = false }
+        shell.tuckIn(settings: true)
     }
 }
 

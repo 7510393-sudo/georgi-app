@@ -12,6 +12,8 @@ enum StickerSide { case leading, trailing }
 
 struct Sticker<Content: View>: View {
 
+    @EnvironmentObject private var shell: Shell
+
     let side: StickerSide
     let title: String
     var paper: Color = Look.sticker
@@ -28,11 +30,13 @@ struct Sticker<Content: View>: View {
                 .onTapGesture(perform: close)
             sheet
         }
-        // Бумажку вытягивают за уголок: она выезжает из-за верхнего края
-        // со своей стороны, ровно, без поворота
-        // (P233).
-        .transition(.modifier(active: Pulled(side: side, amount: 1),
-                              identity: Pulled(side: side, amount: 0)))
+        // Появление и уход — не переходом, а тем, насколько листок вытянут
+        // (P237): им управляет уголок.
+    }
+
+    /// Насколько листок ещё за краем: 1 — торчит один угол, 0 — весь виден.
+    private var amount: CGFloat {
+        (side == .leading ? shell.settingsPull : shell.menuPull) ?? 0
     }
 
     private var sheet: some View {
@@ -45,6 +49,15 @@ struct Sticker<Content: View>: View {
         .clipShape(shape)
         .overlay(StickerBorder(radius: 12, side: side).stroke(edge, lineWidth: 1))
         .shadow(color: .black.opacity(0.32), radius: 14, y: 6)
+        // Спрятанный листок стоит так, что его нижний угол — ровно уголок
+        // над экраном; вытягивают его за этот угол (P237).
+        .visualEffect { [amount, side] content, geo in
+            let cornerW = Corner.size * 0.86
+            let cornerH = Corner.size * 0.80
+            let x = side == .leading ? cornerW - geo.size.width : geo.size.width - cornerW
+            let y = cornerH - geo.size.height
+            return content.offset(x: x * amount, y: y * amount)
+        }
         .padding(side == .trailing ? .leading : .trailing, 24)
     }
 

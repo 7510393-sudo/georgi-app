@@ -150,13 +150,9 @@ struct RootView: View {
             // поднялось между ними (P229).
             corners
 
-            if shell.showingMenu {
-                MenuSticker()
-                    .modifier(Pulled(side: .trailing, amount: shell.menuPull ?? 0))
-            }
+            if shell.showingMenu { MenuSticker() }
             if shell.showingSettings {
                 SettingsSticker().frame(maxWidth: .infinity, alignment: .topLeading)
-                    .modifier(Pulled(side: .leading, amount: shell.settingsPull ?? 0))
             }
             if let notice = shell.notice {
                 toast(notice)
@@ -236,10 +232,12 @@ struct RootView: View {
     private var corners: some View {
         HStack(alignment: .top) {
             Button {
-                withAnimation(.pull) { shell.showingSettings = true }
+                shell.pullOut(settings: true)
             } label: {
                 Corner(leading: true, paper: Look.note, edge: Look.noteEdge, icon: "gearshape",
                        tint: shell.showingSettings ? Look.accent : Look.inkSoft)
+                    // Пока листок вытянут, его угол — это и есть уголок.
+                    .opacity(shell.showingSettings ? 0 : 1)
             }
             .buttonStyle(.plain)
             // Уголок тянут вниз, и бумажка идёт за пальцем (P233).
@@ -249,10 +247,11 @@ struct RootView: View {
             Spacer(minLength: 0)
 
             Button {
-                withAnimation(.pull) { shell.showingMenu = true }
+                shell.pullOut(settings: false)
             } label: {
                 Corner(leading: false, paper: Look.sticker, edge: Look.stickerEdge, icon: "ellipsis",
                        tint: dotsLit ? Look.accent : Look.inkSoft)
+                    .opacity(shell.showingMenu ? 0 : 1)
             }
             .buttonStyle(.plain)
             .simultaneousGesture(pull(\.showingMenu, \.menuPull))
@@ -271,22 +270,15 @@ struct RootView: View {
                 still.disablesAnimations = true
                 withTransaction(still) {
                     if !shell[keyPath: showing] { shell[keyPath: showing] = true }
-                    shell[keyPath: amount] = max(0, 1 - max(0, drag.translation.height) / 320)
+                    shell[keyPath: amount] = max(0, 1 - max(0, drag.translation.height) / 420)
                 }
             }
             .onEnded { drag in
+                let settings = showing == \Shell.showingSettings
                 if drag.translation.height > 90 || drag.predictedEndTranslation.height > 220 {
-                    withAnimation(.pull) { shell[keyPath: amount] = nil }
+                    shell.pullOut(settings: settings)
                 } else {
-                    withAnimation(.tuck) { shell[keyPath: amount] = 1 }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [shell] in
-                        var still = Transaction()
-                        still.disablesAnimations = true
-                        withTransaction(still) {
-                            shell[keyPath: showing] = false
-                            shell[keyPath: amount] = nil
-                        }
-                    }
+                    shell.tuckIn(settings: settings)
                 }
             }
     }
