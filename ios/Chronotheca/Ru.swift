@@ -90,16 +90,6 @@ enum Ru {
         Color(light: 0xB0403A, dark: 0xE08B84),   // пт
         Color(light: 0x2C7E96, dark: 0x6FC0D6),   // сб
     ]
-
-= [
-        Color(light: 0xFBEFE3, dark: 0x291F15),   // вс
-        Color(light: 0xEAF0FA, dark: 0x182130),   // пн
-        Color(light: 0xE9F3EC, dark: 0x15231B),   // вт
-        Color(light: 0xF7F1DE, dark: 0x252015),   // ср
-        Color(light: 0xF0EBF8, dark: 0x211B2C),   // чт
-        Color(light: 0xFAECEA, dark: 0x2A1B1A),   // пт
-        Color(light: 0xE6F2F6, dark: 0x132329),   // сб
-    ]
 }
 
 extension Color {
