@@ -150,9 +150,13 @@ struct RootView: View {
             // поднялось между ними (P229).
             corners
 
-            if shell.showingMenu { MenuSticker() }
+            if shell.showingMenu {
+                MenuSticker()
+                    .modifier(Pulled(side: .trailing, amount: shell.menuPull ?? 0))
+            }
             if shell.showingSettings {
                 SettingsSticker().frame(maxWidth: .infinity, alignment: .topLeading)
+                    .modifier(Pulled(side: .leading, amount: shell.settingsPull ?? 0))
             }
             if let notice = shell.notice {
                 toast(notice)
@@ -238,11 +242,8 @@ struct RootView: View {
                        tint: shell.showingSettings ? Look.accent : Look.inkSoft)
             }
             .buttonStyle(.plain)
-            // Уголок можно и потянуть вниз, как бумажку (P233).
-            .simultaneousGesture(DragGesture(minimumDistance: 8).onEnded {
-                guard $0.translation.height > 24 else { return }
-                withAnimation(.pull) { shell.showingSettings = true }
-            })
+            // Уголок тянут вниз, и бумажка идёт за пальцем (P233).
+            .simultaneousGesture(pull(\.showingSettings, \.settingsPull))
             .accessibilityLabel("Настройки")
 
             Spacer(minLength: 0)
@@ -254,13 +255,40 @@ struct RootView: View {
                        tint: dotsLit ? Look.accent : Look.inkSoft)
             }
             .buttonStyle(.plain)
-            .simultaneousGesture(DragGesture(minimumDistance: 8).onEnded {
-                guard $0.translation.height > 24 else { return }
-                withAnimation(.pull) { shell.showingMenu = true }
-            })
+            .simultaneousGesture(pull(\.showingMenu, \.menuPull))
             .accessibilityLabel(dotsLabel)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// Бумажку вытягивают за уголок: она идёт за пальцем; отпустили,
+    /// протянув заметно, — доезжает сама, иначе уезжает обратно (P233).
+    private func pull(_ showing: ReferenceWritableKeyPath<Shell, Bool>,
+                      _ amount: ReferenceWritableKeyPath<Shell, CGFloat?>) -> some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { drag in
+                var still = Transaction()
+                still.disablesAnimations = true
+                withTransaction(still) {
+                    if !shell[keyPath: showing] { shell[keyPath: showing] = true }
+                    shell[keyPath: amount] = max(0, 1 - max(0, drag.translation.height) / 320)
+                }
+            }
+            .onEnded { drag in
+                if drag.translation.height > 90 || drag.predictedEndTranslation.height > 220 {
+                    withAnimation(.pull) { shell[keyPath: amount] = nil }
+                } else {
+                    withAnimation(.tuck) { shell[keyPath: amount] = 1 }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [shell] in
+                        var still = Transaction()
+                        still.disablesAnimations = true
+                        withTransaction(still) {
+                            shell[keyPath: showing] = false
+                            shell[keyPath: amount] = nil
+                        }
+                    }
+                }
+            }
     }
 
     /// Точки горят, когда в меню включено что-то необычное: режим

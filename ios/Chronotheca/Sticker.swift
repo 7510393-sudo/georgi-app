@@ -97,7 +97,7 @@ struct Pulled: ViewModifier {
         content
             .rotationEffect(.degrees(Double(sign * -9 * amount)),
                             anchor: side == .leading ? .topLeading : .topTrailing)
-            .offset(x: sign * 140 * amount, y: -520 * amount)
+            .offset(x: sign * 140 * amount, y: -720 * amount)
     }
 }
 
