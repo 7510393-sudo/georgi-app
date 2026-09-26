@@ -169,6 +169,8 @@ final class DayStore: ObservableObject {
         save()
         editingTabs = []
         diaryCaret = nil
+        leftCaret = nil
+        leftRow = nil
         date = Calendar.current.startOfDay(for: newDate)
         retries = 0
         load()
@@ -292,10 +294,35 @@ final class DayStore: ObservableObject {
     /// ложится в конец записи.
     var diaryCaret: Int?
 
-    /// Записать точку своей строкой: в план — после дел, в дневник — туда,
-    /// где стоял курсор (P165, P210, P213).
+    /// Пишет ли человек сейчас в дневник и в какое дело плана. Нужно, чтобы
+    /// точка встала туда, где был курсор (P240).
+    var diaryTyping = false
+    var planTyping: UUID?
+
+    /// Где был курсор, когда ушли на карту: место в дневнике и дело в плане.
+    /// Пусто — курсора не было (P240).
+    private(set) var leftCaret: Int?
+    private(set) var leftRow: UUID?
+
+    /// Запомнить, где был курсор, перед уходом на карту. Уходят не со
+    /// страницы дня — курсора нет.
+    func noteLeaving(fromToday: Bool) {
+        leftCaret = fromToday && diaryTyping ? diaryCaret : nil
+        leftRow = fromToday ? planTyping : nil
+    }
+
+    /// Записать точку с карты — туда, где был курсор перед уходом на карту.
     @discardableResult
-    func writePoint(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false) -> Bool {
+    func writeFromMap(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false) -> Bool {
+        writePoint(point, to: tab, here: here, caret: leftCaret, after: leftRow)
+    }
+
+    /// Записать точку своей строкой (P165, P213, P240). В дневник — туда,
+    /// где стоит курсор, а без курсора — следующей строкой в конце. В план —
+    /// после дела, в котором курсор, а без курсора — после последнего дела.
+    @discardableResult
+    func writePoint(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false,
+                    caret: Int? = nil, after row: UUID? = nil) -> Bool {
         guard canEdit(tab) else { return false }
         // Первое «где я сейчас» за день становится местом дня: по нему
         // точка дня на карте и погода. Отдельной кнопки «я здесь» больше
@@ -307,11 +334,18 @@ final class DayStore: ObservableObject {
         let line = Geo.pointLine(point)
         switch tab {
         case .plan:
-            planRows.append(.verbatim(line))
+            if let anchor = row ?? planRows.last(where: \.isTask)?.id, var i = index(of: anchor) {
+                // Точки, уже стоящие за этим делом, остаются перед новой.
+                i += 1
+                while i < planRows.count, let v = planRows[i].verbatim, Geo.point(in: v) != nil { i += 1 }
+                planRows.insert(.verbatim(line), at: i)
+            } else {
+                planRows.append(.verbatim(line))
+            }
         case .diary:
-            let (text, caret) = DayStore.insert(line, into: diaryText, at: diaryCaret)
+            let (text, at) = DayStore.insert(line, into: diaryText, at: caret)
             diaryText = text
-            diaryCaret = caret
+            diaryCaret = at
             touchDiary()
         }
         save()
@@ -326,7 +360,8 @@ final class DayStore: ObservableObject {
         guard let caret, caret >= 0, caret <= ns.length else {
             let body = text.replacingOccurrences(of: "\\s+$", with: "",
                                                  options: .regularExpression)
-            let out = (body.isEmpty ? "" : body + "\n\n") + line
+            // Курсора нет — следующей строкой в конце записи (P240).
+            let out = (body.isEmpty ? "" : body + "\n") + line
             return (out, (out as NSString).length)
         }
         let before = ns.substring(to: caret)

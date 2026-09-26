@@ -16,7 +16,13 @@ final class Shell: ObservableObject {
         var id: String { rawValue }
     }
 
-    @Published var screen: Screen = .today
+    @Published var screen: Screen = .today {
+        didSet { if screen == .map && oldValue != .map { mapFrom = oldValue } }
+    }
+    /// С какого экрана пришли на карту: с «Сегодня» точка ложится туда, где
+    /// был курсор; из календаря и поиска — спрашивается, в план или в
+    /// дневник (P240).
+    private(set) var mapFrom: Screen = .today
 
     /// Какая плашка сейчас опущена на книгу. Идёт за `screen`, но не сразу:
     /// при смене календаря на поиск сперва уходит одна плашка, потом

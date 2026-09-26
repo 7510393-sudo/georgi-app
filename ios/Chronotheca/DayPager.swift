@@ -399,7 +399,13 @@ struct AttachBar: View {
             item("doc", "файлы", ready: true) { open { browsing = true } }
             // Касание вписывает, где человек сейчас, — координатами туда,
             // где стоит курсор. Карта теперь раздел внизу (P239).
-            item("mappin.and.ellipse", "геоточка", ready: true, act: writePlace)
+            // Долгое нажатие открывает карту; точка с неё ляжет туда, где
+            // стоял курсор (P240).
+            item("mappin.and.ellipse", "геоточка", ready: true, hold: {
+                store.noteLeaving(fromToday: true)
+                hideKeyboard()
+                shell.screen = .map
+            }, act: writePlace)
         }
         .padding(.top, 8)
         .padding(.bottom, 7)
@@ -474,7 +480,7 @@ struct AttachBar: View {
                         hold()
                     }
                     .accessibilityAddTraits(.isButton)
-                    .accessibilityHint("Долгое нажатие — вписать место в запись")
+                    .accessibilityHint("Долгое нажатие — открыть карту")
             } else {
                 Button(action: act) { face }
             }
@@ -491,7 +497,9 @@ struct AttachBar: View {
             guard let at = location?.coordinate else {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
-            store.writePoint(GeoPoint(title: "", at: at), to: tab, here: true)
+            store.writePoint(GeoPoint(title: "", at: at), to: tab, here: true,
+                             caret: store.diaryTyping ? store.diaryCaret : nil,
+                             after: store.planTyping)
             if let location { store.noteWeather(at: location) }
             shell.say(tab == .diary ? "Место вписано в запись" : "Место вписано в план")
         }

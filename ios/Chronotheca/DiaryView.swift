@@ -43,8 +43,12 @@ struct DiaryView: View {
                 shell.openedPhoto = .init(tab: .diary, index: -1,
                                           url: store.photoURL(link), link: link)
             },
-            onOpenPoint: { shell.showPoint($0) },
-            onCaret: { store.diaryCaret = $0 })
+            onOpenPoint: {
+                store.noteLeaving(fromToday: true)
+                shell.showPoint($0)
+            },
+            onCaret: { store.diaryCaret = $0 },
+            onEditing: { store.diaryTyping = $0 })
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.diaryText) { _, _ in
@@ -90,6 +94,7 @@ struct DiaryPage: View {
     var onOpenInline: ((String) -> Void)?
     var onOpenPoint: ((GeoPoint) -> Void)?
     var onCaret: ((Int) -> Void)?
+    var onEditing: ((Bool) -> Void)?
 
     private enum Field: Hashable { case title }
     @FocusState private var focused: Field?
@@ -258,7 +263,7 @@ struct DiaryPage: View {
                     onFocus: { if onFocusText() { caretToEnd = true } },
                     grows: true, minHeight: 320, resolve: resolve,
                     onOpenPhoto: onOpenInline, onOpenPoint: onOpenPoint, onCaret: onCaret,
-                    moving: glowing && editable)
+                    moving: glowing && editable, onEditing: onEditing)
             .padding(.top, 16)
     }
 }

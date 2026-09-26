@@ -61,6 +61,8 @@ struct DiaryEditor: UIViewRepresentable {
     /// Режим изменений: снимок или точку в тексте можно взять долгим
     /// нажатием и перенести в другое место записи (P226).
     var moving = false
+    /// Поле взяло ввод или отпустило его (P240).
+    var onEditing: ((Bool) -> Void)?
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     /// В прошедший день за временем идёт дата, когда писали:
@@ -355,6 +357,7 @@ struct DiaryEditor: UIViewRepresentable {
         }
 
         func textViewDidBeginEditing(_ view: UITextView) {
+            parent.onEditing?(true)
             parent.onFocus()
             // Клавиатура могла подняться раньше — например, человек писал
             // заголовок дня и перешёл в запись. Тогда вестей о ней больше
@@ -363,6 +366,7 @@ struct DiaryEditor: UIViewRepresentable {
         }
 
         func textViewDidEndEditing(_ view: UITextView) {
+            parent.onEditing?(false)
             scrub()
             makeRoom(scroll: false)
         }

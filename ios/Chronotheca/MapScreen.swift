@@ -29,6 +29,7 @@ struct MapScreen: View {
     @State private var focus: MapFocus?
     @State private var locating = false
     @State private var asking = false
+    @State private var choosingTab = false
     /// Когда поставили последнюю точку долгим нажатием.
     @State private var picked = Date.distantPast
 
@@ -63,6 +64,12 @@ struct MapScreen: View {
         } message: {
             Text(selected?.file == nil ? "Булавка уйдёт с карты."
                  : "Файл этой точки будет удалён из папки «Места».")
+        }
+        .confirmationDialog("Куда записать точку?", isPresented: $choosingTab,
+                            titleVisibility: .visible) {
+            Button("В план") { remember(to: .plan) }
+            Button("В дневник") { remember(to: .diary) }
+            Button("Отмена", role: .cancel) { }
         }
         .onAppear(perform: begin)
         .onChange(of: selected) { _, now in
@@ -232,9 +239,17 @@ struct MapScreen: View {
     /// «Запомнить точку»: выбранную — или ту, где телефон сейчас. Пишется
     /// туда, откуда открыли карту: в план или в дневник на место курсора.
     private func remember() {
-        let tab = shell.tab
-        guard store.canEdit(tab) else { return shell.say(store.closedReason) }
         hideKeyboard()
+        // Пришли не со страницы дня — спросить, куда записать (P240).
+        guard shell.mapFrom == .today else {
+            choosingTab = true
+            return
+        }
+        remember(to: shell.tab)
+    }
+
+    private func remember(to tab: Shell.Tab) {
+        guard store.canEdit(tab) else { return shell.say(store.closedReason) }
         if let place = selected {
             // Названием остались координаты — в текст они ляжут один раз.
             let title = place.name == Geo.text(place.coordinate) ? "" : place.name
@@ -252,11 +267,13 @@ struct MapScreen: View {
     }
 
     private func write(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false) {
-        guard store.writePoint(point, to: tab, here: here) else {
+        guard store.writeFromMap(point, to: tab, here: here) else {
             return shell.say(store.closedReason)
         }
         shell.say(tab == .diary ? "Точка записана в дневник" : "Точка записана в план")
-        // Записали — назад к странице дня, где точка теперь видна.
+        // Записали — назад к странице дня, на ту вкладку, где точка теперь
+        // видна.
+        shell.tab = tab
         shell.screen = .today
     }
 

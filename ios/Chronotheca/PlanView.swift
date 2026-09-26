@@ -449,6 +449,8 @@ struct PlanView: View {
             }
         }
         .onChange(of: store.date) { _, _ in typingIn = nil }
+        // Где курсор в плане — туда встанет точка с карты (P240).
+        .onChange(of: typingIn) { _, now in store.planTyping = now }
         .opacity(store.isPast && !store.editing(.plan) ? 0.58 : 1)
     }
 
@@ -468,7 +470,10 @@ struct PlanView: View {
                               open: { url in
                                   shell.openedPhoto = .init(tab: .plan, index: 0, url: url)
                               },
-                              openPoint: { shell.showPoint($0) },
+                              openPoint: {
+                                  store.noteLeaving(fromToday: true)
+                                  shell.showPoint($0)
+                              },
                               onMove: store.editing(.plan) && store.canEditPlan
                                   ? { store.moveLine(id, by: $0) } : nil)
             }
