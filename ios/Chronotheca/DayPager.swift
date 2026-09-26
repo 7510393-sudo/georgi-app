@@ -76,6 +76,9 @@ struct DayPage: View {
             AttachBar()
         }
         .background(background)
+        // Фактура страницы и вкладок отсчитывается от одной точки — клетка
+        // на вкладке продолжает клетку страницы (P246).
+        .coordinateSpace(name: PageTexture.space)
         .sheet(isPresented: $remembering, onDismiss: forget) {
             if let (day, ago) = archive.remembered(for: date) {
                 RememberSheet(day: day, ago: ago, open: $remembering)
@@ -289,10 +292,12 @@ struct DayPage: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 10)
                 .padding(.bottom, 11)
-                .background(page.overlay(PageTexture(tab: which)))
+                .background(page.overlay(PageTexture(tab: which, shift: on ? 1 : 0)))
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10,
                                                   topTrailingRadius: 10))
-                .overlay(TabBorder(radius: 10).stroke(Look.rule, lineWidth: 1))
+                // Верх и бока вкладки обведены заметной чертой: видно, какая
+                // вкладка лежит поверх другой (P246).
+                .overlay(TabBorder(radius: 10).stroke(Look.inkFaint, lineWidth: 1))
         }
         .offset(y: on ? 1 : 0)
         .zIndex(on ? 1 : 0)
@@ -321,12 +326,31 @@ struct DayPage: View {
 /// волокно бумаги (P245). Рисуется один раз и кладётся плиткой.
 struct PageTexture: View {
     let tab: Shell.Tab
+    /// Кусок сдвинут при рисовании (открытая вкладка опущена на точку) —
+    /// узор сдвигается обратно, чтобы клетка не разошлась.
+    var shift: CGFloat = 0
+
+    /// Общая точка отсчёта фактуры — вся страница дня.
+    static let space = "страница"
 
     var body: some View {
-        Image(uiImage: tab == .plan ? PageTexture.grid : PageTexture.grain)
-            .resizable(resizingMode: .tile)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        let picture = tab == .plan ? PageTexture.grid : PageTexture.grain
+        let tile = picture.size
+        GeometryReader { geo in
+            // Узор сдвигается так, будто он нарисован на всей странице
+            // разом, а этот кусок — окно в него.
+            let at = geo.frame(in: .named(PageTexture.space)).origin
+            let dx = at.x.truncatingRemainder(dividingBy: tile.width)
+            let dy = (at.y + shift).truncatingRemainder(dividingBy: tile.height)
+            Image(uiImage: picture)
+                .resizable(resizingMode: .tile)
+                .frame(width: geo.size.width + tile.width * 2,
+                       height: geo.size.height + tile.height * 2)
+                .offset(x: -dx - tile.width, y: -dy - tile.height)
+        }
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     /// Клетка в 18 точек — как в школьной тетради, но еле видная.
