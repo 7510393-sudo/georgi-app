@@ -29,6 +29,8 @@ struct MapScreen: View {
     @State private var focus: MapFocus?
     @State private var locating = false
     @State private var asking = false
+    /// Когда поставили последнюю точку долгим нажатием.
+    @State private var picked = Date.distantPast
 
     enum Panel { case naming, cloud }
 
@@ -106,48 +108,56 @@ struct MapScreen: View {
     private var bar: some View {
         let point = selected != nil
         return HStack(spacing: 0) {
-            Button { asking = true } label: {
-                oval(BarFace(icon: "trash", name: "удалить",
-                             tint: point ? Look.inkSoft : Look.inkFaint.opacity(0.6)))
-            }
-            .disabled(!point)
             Button {
-                guard let selected else { return }
+                guard point else { return hint() }
+                asking = true
+            } label: {
+                oval(MapFace(icon: "trash", name: "удалить", tint: Look.inkSoft), on: point)
+            }
+            Button {
+                guard let selected else { return hint() }
                 MapActions.copy(selected)
                 shell.say("Скопировано: " + Geo.text(selected.coordinate))
             } label: {
-                oval(BarFace(icon: "doc.on.doc", name: "скопировать",
-                             tint: point ? Look.inkSoft : Look.inkFaint.opacity(0.6)))
+                oval(MapFace(icon: "doc.on.doc", name: "скопировать", tint: Look.inkSoft), on: point)
             }
-            .disabled(!point)
-            Button { if let selected { MapActions.navigate(selected) } } label: {
-                oval(BarFace(icon: "arrow.triangle.turn.up.right.diamond", name: "в навигатор",
-                             tint: point ? Look.accent : Look.inkFaint.opacity(0.6)))
+            Button {
+                guard let selected else { return hint() }
+                MapActions.navigate(selected)
+            } label: {
+                oval(MapFace(icon: "arrow.triangle.turn.up.right.diamond", name: "в навигатор",
+                             tint: Look.accent), on: point)
             }
-            .disabled(!point)
             Button(action: remember) {
                 if locating {
-                    oval(ProgressView().frame(maxWidth: .infinity))
+                    oval(ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity), on: true)
                 } else {
-                    oval(BarFace(icon: "pin.fill", name: "запомнить точку", tint: Look.accent))
+                    oval(MapFace(icon: "pin.fill", name: "запомнить точку", tint: Look.accent), on: true)
                 }
             }
             .accessibilityHint(point ? "Запишет выбранную точку" : "Запишет, где вы сейчас")
         }
         .buttonStyle(.plain)
-        .padding(.top, 8)
-        .padding(.bottom, 7)
+        .padding(.horizontal, 4)
+        .padding(.bottom, 6)
     }
 
-    /// Овал под кнопкой. Выходит за подпись и значок наружу и не меняет
-    /// их места — кнопки стоят там же, где кнопки полоски вложений.
-    private func oval<C: View>(_ face: C) -> some View {
-        face.background(
-            Capsule()
+    /// Точка не выбрана — кнопка не пропадает, а бледнеет и объясняет, чего
+    /// ей не хватает (P235).
+    private func hint() {
+        shell.say("Сначала выберите точку: долгое нажатие на карту или касание по своему месту.")
+    }
+
+    /// Овал под кнопкой. Неактивная — бледнее, но видна целиком (P235).
+    private func oval<C: View>(_ face: C, on: Bool) -> some View {
+        face
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(Capsule()
                 .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.16), radius: 4, y: 2)
-                .padding(.horizontal, 5)
-                .padding(.vertical, -6))
+                .shadow(color: .black.opacity(0.16), radius: 4, y: 2))
+            .opacity(on ? 1 : 0.55)
+            .padding(.horizontal, 4)
     }
 
     // MARK: - Действия
@@ -179,6 +189,7 @@ struct MapScreen: View {
 
     /// Долгое нажатие: булавка на месте пальца и панель «Точка» сверху.
     private func pick(_ at: CLLocationCoordinate2D) {
+        picked = Date()
         selected = Place(name: "", coordinate: at)
         withAnimation { panel = .naming }
     }
@@ -193,6 +204,9 @@ struct MapScreen: View {
     /// Касание по пустому месту карты: панель и облачко уходят, клавиатура
     /// опускается. Новая булавка без названия уходит вместе с панелью (P228).
     private func tapEmpty() {
+        // Палец, поставивший точку, отпускают уже после неё — это не
+        // касание по пустому месту (P235).
+        guard Date().timeIntervalSince(picked) > 0.8 else { return }
         guard selected != nil || panel != nil else { return }
         hideKeyboard()
         if selected?.file == nil { selected = nil }
@@ -332,6 +346,9 @@ struct NativeMap: UIViewRepresentable {
         for case let double as UITapGestureRecognizer in inner where double.numberOfTapsRequired == 2 {
             tap.require(toFail: double)
         }
+        // Долгое нажатие — не касание: отпущенный после него палец не
+        // должен тут же закрывать только что поставленную точку (P235).
+        tap.require(toFail: press)
         map.addGestureRecognizer(tap)
 
         // «Где я» и компас — справа сверху, как в Картах.
@@ -647,6 +664,29 @@ struct PlaceCloud: View {
             .foregroundStyle(Look.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Лицо овальной кнопки карты: значок и подпись в одну-две строки —
+/// подпись не вылезает за овал (P235).
+struct MapFace: View {
+    let icon: String
+    let name: String
+    var tint: Color = Look.inkSoft
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Image(systemName: icon).font(.system(size: 16))
+            Text(name.uppercased())
+                .font(Look.sans(8.5))
+                .tracking(0.3)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 8)
     }
 }
 
