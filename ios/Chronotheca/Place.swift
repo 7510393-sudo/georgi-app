@@ -20,6 +20,8 @@ struct Place: Identifiable, Equatable {
     var latitude: Double
     var longitude: Double
     var text: String = ""
+    /// Значок на карте — словом, как он лежит в шапке файла (P234).
+    var mark: String = Glyph.standard
     /// Имя файла, если место уже лежит в папке.
     var file: String?
 
@@ -42,6 +44,8 @@ struct Place: Identifiable, Equatable {
         let fallback = (file as NSString).deletingPathExtension
         self.init(name: parsed.value("название") ?? fallback, coordinate: where_,
                   text: parsed.body, file: file)
+        mark = parsed.value("значок").flatMap { Glyph.symbol[$0] == nil ? nil : $0 }
+            ?? Glyph.standard
     }
 
     /// Файл места таким, каким он ляжет в папку.
@@ -49,6 +53,7 @@ struct Place: Identifiable, Equatable {
         var out = DayFile(body: text.trimmingCharacters(in: .whitespacesAndNewlines))
         out.set("название", name)
         out.set("место", Geo.text(coordinate))
+        out.set("значок", mark)
         return out.text
     }
 
@@ -60,6 +65,28 @@ struct Place: Identifiable, Equatable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return (clean.isEmpty ? "Место" : clean) + ".md"
     }
+}
+
+/// Значки мест на карте. В файле — словом («дом»), на экране — рисунком
+/// (P234). Спокойные, одного цвета: место отмечено, но не кричит.
+enum Glyph {
+    static let standard = "точка"
+
+    /// По порядку — так они стоят в панели выбора.
+    static let all: [(name: String, symbol: String)] = [
+        ("точка", "circle.fill"),
+        ("дом", "house.fill"),
+        ("сердце", "heart.fill"),
+        ("флаг", "flag.fill"),
+        ("звезда", "star.fill"),
+        ("кафе", "cup.and.saucer.fill"),
+        ("природа", "leaf.fill"),
+        ("снимок", "camera.fill"),
+    ]
+
+    static let symbol: [String: String] = Dictionary(uniqueKeysWithValues: all.map { ($0.name, $0.symbol) })
+
+    static func image(_ name: String) -> String { symbol[name] ?? "circle.fill" }
 }
 
 /// Координаты словами — так, как они лежат в файлах.

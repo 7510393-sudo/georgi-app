@@ -384,7 +384,7 @@ struct NativeMap: UIViewRepresentable {
 
         func sync(_ map: MKMapView) {
             let draft = parent.selected.flatMap { $0.file == nil ? $0 : nil }
-            var key = parent.places.map { "\($0.id)\($0.name)\($0.latitude)\($0.longitude)" }
+            var key = parent.places.map { "\($0.id)\($0.name)\($0.mark)\($0.latitude)\($0.longitude)" }
                 .joined(separator: "|")
             key += parent.days.map { "\($0.stamp)\($0.today)" }.joined(separator: "|")
             key += draft.map { "\($0.name)\($0.latitude)\($0.longitude)" } ?? "-"
@@ -422,11 +422,15 @@ struct NativeMap: UIViewRepresentable {
         func mapView(_ map: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             switch annotation {
             case let mark as PlaceMark:
-                let view = MKMarkerAnnotationView(annotation: mark, reuseIdentifier: "место")
-                view.markerTintColor = UIColor(Look.accent)
-                view.glyphImage = UIImage(systemName: "star.fill")
-                view.titleVisibility = .visible
+                // Своя метка: спокойный кружок со значком и название на
+                // светлой плашке — его не спутать с подписями самой карты
+                // (P234).
+                let view = MKAnnotationView(annotation: mark, reuseIdentifier: "место")
+                let picture = PlaceLabel.draw(mark.place.name, symbol: Glyph.image(mark.place.mark))
+                view.image = picture
+                view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
                 view.displayPriority = .required
+                view.collisionMode = .rectangle
                 return view
             case let mark as DraftMark:
                 let view = MKMarkerAnnotationView(annotation: mark, reuseIdentifier: "точка")
@@ -465,6 +469,49 @@ final class PlaceMark: NSObject, MKAnnotation {
     var coordinate: CLLocationCoordinate2D { place.coordinate }
     var title: String? { place.name }
     init(_ place: Place) { self.place = place }
+}
+
+/// Метка своего места: кружок со значком, под ним — название на плашке.
+enum PlaceLabel {
+    static let dot: CGFloat = 24
+
+    static func draw(_ name: String, symbol: String) -> UIImage {
+        let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
+        let text = (name as NSString)
+        let wide = min(text.size(withAttributes: words).width, 150)
+        let plate = CGSize(width: wide + 12, height: font.lineHeight + 6)
+        let size = CGSize(width: max(dot, plate.width) + 4, height: dot + 3 + plate.height + 4)
+        return UIGraphicsImageRenderer(size: size).image { ctx in
+            let mid = size.width / 2
+            let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
+            ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
+                                    color: UIColor.black.withAlphaComponent(0.25).cgColor)
+            UIColor(Look.inkSoft).setFill()
+            UIBezierPath(ovalIn: circle).fill()
+            ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            UIColor.white.setStroke()
+            let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1, dy: 1))
+            ring.lineWidth = 1.5
+            ring.stroke()
+            if let glyph = UIImage(systemName: symbol,
+                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))?
+                .withTintColor(.white, renderingMode: .alwaysOriginal) {
+                let g = glyph.size
+                glyph.draw(in: CGRect(x: circle.midX - g.width / 2, y: circle.midY - g.height / 2,
+                                      width: g.width, height: g.height))
+            }
+            let box = CGRect(x: mid - plate.width / 2, y: dot + 4, width: plate.width, height: plate.height)
+            ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
+                                    color: UIColor.black.withAlphaComponent(0.2).cgColor)
+            UIColor(Look.sticker).withAlphaComponent(0.96).setFill()
+            UIBezierPath(roundedRect: box, cornerRadius: 5).fill()
+            ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            text.draw(with: CGRect(x: box.minX + 6, y: box.minY + 3, width: wide, height: font.lineHeight),
+                      options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+                      attributes: words, context: nil)
+        }
+    }
 }
 
 /// Точка, выбранная долгим нажатием, пока у неё нет файла.
@@ -516,6 +563,25 @@ struct PointPanel: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+            // Каким значком отметить точку (P234).
+            HStack(spacing: 0) {
+                ForEach(Glyph.all.indices, id: \.self) { i in
+                    let glyph = Glyph.all[i]
+                    Button {
+                        place.mark = glyph.name
+                    } label: {
+                        Image(systemName: glyph.symbol)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(place.mark == glyph.name ? .white : Look.inkSoft)
+                            .frame(width: 32, height: 32)
+                            .background(place.mark == glyph.name ? Look.inkSoft : Look.planBg.opacity(0.85),
+                                        in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Значок: " + glyph.name)
+                }
+            }
             // Не выше шести строк; длиннее — прокручивается внутри.
             TextField("Что здесь было", text: $place.text, axis: .vertical)
                 .focused($focused, equals: .text)

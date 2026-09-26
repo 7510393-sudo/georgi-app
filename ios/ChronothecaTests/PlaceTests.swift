@@ -68,4 +68,16 @@ final class PlaceTests: XCTestCase {
         let (сНачала, _) = DayStore.insert("geo:1.00000,2.00000", into: "", at: 0)
         XCTAssertEqual(сНачала, "geo:1.00000,2.00000")
     }
+
+    /// Значок места лежит в шапке файла словом и читается обратно; чужое
+    /// слово — обычная точка (P234).
+    func testЗначокМестаВФайле() {
+        var дача = Place(name: "Дача", coordinate: CLLocationCoordinate2D(latitude: 55, longitude: 37))
+        дача.mark = "дом"
+        let файл = дача.fileText
+        XCTAssertTrue(файл.contains("значок: дом"))
+        XCTAssertEqual(Place(text: файл, file: "Дача.md")?.mark, "дом")
+        let чужое = файл.replacingOccurrences(of: "значок: дом", with: "значок: ракета")
+        XCTAssertEqual(Place(text: чужое, file: "Дача.md")?.mark, Glyph.standard)
+    }
 }
