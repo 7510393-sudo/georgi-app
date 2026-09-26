@@ -142,6 +142,26 @@ final class DayStore: ObservableObject {
         save()
     }
 
+    /// Переставить строку-точку или снимок между делами — на столько
+    /// видимых строк, на сколько её протащили (P226). Невидимые строки
+    /// файла остаются, где были.
+    func moveLine(_ id: UUID, by steps: Int) {
+        guard canEditPlan, steps != 0, let i = index(of: id) else { return }
+        let shown = planRows.indices.filter { k in
+            planRows[k].isTask || planRows[k].verbatim.map {
+                Diary.picture(in: $0) != nil || Geo.point(in: $0) != nil
+            } ?? false
+        }
+        guard let p = shown.firstIndex(of: i) else { return }
+        let q = min(max(p + steps, 0), shown.count - 1)
+        guard q != p else { return }
+        let row = planRows.remove(at: i)
+        var target = shown[q]
+        if target > i { target -= 1 }
+        planRows.insert(row, at: steps > 0 ? target + 1 : target)
+        save()
+    }
+
     // MARK: - Дни
 
     func go(to newDate: Date) {

@@ -58,6 +58,9 @@ struct DiaryEditor: UIViewRepresentable {
     /// Курсор переставлен: где он теперь, отступом в тексте записи. Туда
     /// встанет точка с карты (P213).
     var onCaret: ((Int) -> Void)?
+    /// Режим изменений: снимок или точку в тексте можно взять долгим
+    /// нажатием и перенести в другое место записи (P226).
+    var moving = false
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     static let stamp = try! NSRegularExpression(pattern: #"^(\d{2}:\d{2})[  ]"#)
@@ -74,6 +77,11 @@ struct DiaryEditor: UIViewRepresentable {
                                          action: #selector(Coordinator.tapped(_:)))
         tap.delegate = context.coordinator
         view.addGestureRecognizer(tap)
+        let carry = UILongPressGestureRecognizer(target: context.coordinator,
+                                                 action: #selector(Coordinator.carried(_:)))
+        carry.minimumPressDuration = 0.25
+        carry.delegate = context.coordinator
+        view.addGestureRecognizer(carry)
         view.backgroundColor = .clear
         view.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 40, right: 0)
         view.textContainer.lineFragmentPadding = 0
@@ -421,6 +429,11 @@ struct DiaryEditor: UIViewRepresentable {
         }
 
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            if g is UILongPressGestureRecognizer {
+                guard parent.moving, let view else { return false }
+                taken = attachment(at: touch.location(in: view), in: view)
+                return taken != nil
+            }
             guard let view, parent.onOpenPhoto != nil || parent.onOpenPoint != nil else {
                 return false
             }
@@ -431,7 +444,115 @@ struct DiaryEditor: UIViewRepresentable {
 
         func gestureRecognizer(_ g: UIGestureRecognizer,
                                shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
-            true
+            !(g is UILongPressGestureRecognizer)
+        }
+
+        // MARK: - Перенос снимка и точки по тексту (P226)
+
+        /// Место в тексте поля, где лежит взятое.
+        private var taken: Int?
+        /// Картинка взятого, которая идёт за пальцем.
+        private var ghost: UIImageView?
+
+        /// Снимок или точка под пальцем — их место в тексте поля.
+        private func attachment(at at: CGPoint, in view: UITextView) -> Int? {
+            guard let position = view.closestPosition(to: at) else { return nil }
+            let storage = view.textStorage
+            let offset = view.offset(from: view.beginningOfDocument, to: position)
+            for i in [offset, offset - 1] where i >= 0 && i < storage.length {
+                guard storage.attribute(.attachment, at: i, effectiveRange: nil) != nil,
+                      storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) != nil
+                        || storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil,
+                      let start = view.position(from: view.beginningOfDocument, offset: i),
+                      let end = view.position(from: start, offset: 1),
+                      let range = view.textRange(from: start, to: end),
+                      view.firstRect(for: range).insetBy(dx: -4, dy: -4).contains(at)
+                else { continue }
+                return i
+            }
+            return nil
+        }
+
+        @objc func carried(_ g: UILongPressGestureRecognizer) {
+            guard let view, let i = taken else { return }
+            let at = g.location(in: view)
+            switch g.state {
+            case .began:
+                // Прочие жесты поля — лупа, выделение — отпускают палец.
+                for other in view.gestureRecognizers ?? [] where other !== g && other.isEnabled {
+                    other.isEnabled = false
+                    other.isEnabled = true
+                }
+                let picture = (view.textStorage.attribute(.attachment, at: i, effectiveRange: nil)
+                               as? NSTextAttachment)?.image
+                let shadow = UIImageView(image: picture)
+                shadow.alpha = 0.85
+                shadow.layer.shadowOpacity = 0.3
+                shadow.layer.shadowRadius = 8
+                shadow.center = at
+                view.addSubview(shadow)
+                ghost = shadow
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            case .changed:
+                ghost?.center = at
+            case .ended:
+                ghost?.removeFromSuperview()
+                ghost = nil
+                taken = nil
+                if let position = view.closestPosition(to: at) {
+                    move(from: i, to: view.offset(from: view.beginningOfDocument, to: position),
+                         in: view)
+                }
+            default:
+                ghost?.removeFromSuperview()
+                ghost = nil
+                taken = nil
+            }
+        }
+
+        /// Переставить строку снимка или точки: она встаёт своей строкой в
+        /// конец абзаца, над которым её отпустили, — как превью из полоски
+        /// (P204). Правится текст записи, а поле перерисовывается по нему.
+        private func move(from i: Int, to drop: Int, in view: UITextView) {
+            let storage = view.textStorage
+            let ns = storage.string as NSString
+            let para = ns.paragraphRange(for: NSRange(location: min(drop, ns.length), length: 0))
+            var j = para.location + para.length
+            if j > para.location, ns.character(at: j - 1) == 10 { j -= 1 }
+            guard j != i, j != i + 1 else { return }
+
+            func plainLength(_ upTo: Int) -> Int {
+                (DiaryEditor.plain(storage.attributedSubstring(
+                    from: NSRange(location: 0, length: upTo))) as NSString).length
+            }
+            let piece = DiaryEditor.plain(storage.attributedSubstring(
+                from: NSRange(location: i, length: 1)))
+            let text = DiaryEditor.plain(storage) as NSString
+            var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
+            var target = plainLength(j)
+            // Строка уходит вместе со своим переводом строки.
+            if cut.location + cut.length < text.length,
+               text.character(at: cut.location + cut.length) == 10 {
+                cut.length += 1
+            } else if cut.location > 0, text.character(at: cut.location - 1) == 10 {
+                cut.location -= 1
+                cut.length += 1
+            }
+            if target >= cut.location + cut.length {
+                target -= cut.length
+            } else if target > cut.location {
+                target = cut.location
+            }
+            let rest = text.replacingCharacters(in: cut, with: "") as NSString
+            target = min(target, rest.length)
+            let result = rest.replacingCharacters(in: NSRange(location: target, length: 0),
+                                                  with: (target == 0 ? "" : "\n") + piece
+                                                      + (target == 0 && rest.length > 0 ? "\n" : ""))
+            view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
+                                                     stamped: parent.stamped, resolve: resolve)
+            view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+            loadPhotos()
+            parent.text = result
         }
 
         @objc func tapped(_ g: UITapGestureRecognizer) {

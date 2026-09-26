@@ -463,11 +463,14 @@ struct PlanView: View {
                 taskRow(row)
                 Rectangle().fill(Look.ruleSoft).frame(height: 1)
             } else if let line = row.wrappedValue.verbatim {
+                let id = row.wrappedValue.id
                 PlanExtraLine(line: line, resolve: store.photoURL,
                               open: { url in
                                   shell.openedPhoto = .init(tab: .plan, index: 0, url: url)
                               },
-                              openPoint: { shell.showPoint($0) })
+                              openPoint: { shell.showPoint($0) },
+                              onMove: store.editing(.plan) && store.canEditPlan
+                                  ? { store.moveLine(id, by: $0) } : nil)
             }
         }
         stat
@@ -671,14 +674,44 @@ struct PlanExtraLine: View {
     var open: ((URL?) -> Void)?
     /// Касание по точке — карта на ней. Пусто — на соседних страницах.
     var openPoint: ((GeoPoint) -> Void)?
+    /// Режим изменений: строку тащат за ручку справа вверх или вниз, и
+    /// она встаёт на столько строк, на сколько её протащили (P226).
+    var onMove: ((Int) -> Void)?
+
+    @State private var dragged: CGFloat = 0
 
     var body: some View {
         if let link = Diary.picture(in: line), Diary.kind(of: link) == .photo {
             PlanPhotoLine(url: resolve?(link)) { open?(resolve?(link)) }
+                .overlay(alignment: .trailing) { grip }
+                .offset(y: dragged)
+                .zIndex(dragged == 0 ? 0 : 1)
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         } else if let point = Geo.point(in: line) {
             PlanPointLine(point: point, open: openPoint)
+                .overlay(alignment: .trailing) { grip }
+                .offset(y: dragged)
+                .zIndex(dragged == 0 ? 0 : 1)
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
+        }
+    }
+
+    @ViewBuilder private var grip: some View {
+        if let onMove {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 17))
+                .foregroundStyle(Look.accent)
+                .frame(width: 44, height: 40)
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 2)
+                    .onChanged { dragged = $0.translation.height }
+                    .onEnded { end in
+                        let steps = Int((end.translation.height / PlanRowLine.height).rounded())
+                        dragged = 0
+                        if steps != 0 { onMove(steps) }
+                    })
+                .padding(.trailing, 6)
+                .accessibilityLabel("Перетащить строку")
         }
     }
 }

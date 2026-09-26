@@ -257,7 +257,8 @@ struct DiaryPage: View {
                     startEditing: $toText,
                     onFocus: { if onFocusText() { caretToEnd = true } },
                     grows: true, minHeight: 320, resolve: resolve,
-                    onOpenPhoto: onOpenInline, onOpenPoint: onOpenPoint, onCaret: onCaret)
+                    onOpenPhoto: onOpenInline, onOpenPoint: onOpenPoint, onCaret: onCaret,
+                    moving: glowing && editable)
             .padding(.top, 16)
     }
 }

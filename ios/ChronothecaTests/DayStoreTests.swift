@@ -223,4 +223,19 @@ extension DayStoreTests {
         день.writePoint(GeoPoint(title: "", at: чужое), to: .diary, here: true)
         XCTAssertEqual(день.place, "54.32110, -2.74560")
     }
+
+    /// Точку в плане переставляют между делами; скрытые строки файла
+    /// остаются на месте (P226).
+    func testТочкаПереставляетсяМеждуДелами() {
+        let день = store(0)
+        день.planRows = [.task("Первое"), .task("Второе"),
+                         .verbatim("[Дом](geo:54.32110,-2.74560)"), .verbatim("")]
+        let точка = день.planRows[2].id
+        день.moveLine(точка, by: -2)
+        XCTAssertEqual(день.planRows.map { $0.verbatim ?? $0.text },
+                       ["[Дом](geo:54.32110,-2.74560)", "Первое", "Второе", ""])
+        день.moveLine(точка, by: 1)
+        XCTAssertEqual(день.planRows.map { $0.verbatim ?? $0.text },
+                       ["Первое", "[Дом](geo:54.32110,-2.74560)", "Второе", ""])
+    }
 }
