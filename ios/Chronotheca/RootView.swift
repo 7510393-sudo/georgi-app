@@ -12,6 +12,9 @@ struct RootView: View {
     @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
 
+    /// Карта ещё на плашке, пока та уезжает (P242).
+    @State private var keepMap = false
+
 
     /// Человек должен увидеть полный путь до того, как что-то создано.
     private static func proposalText(_ p: Vault.Proposal) -> String {
@@ -170,7 +173,16 @@ struct RootView: View {
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
-        .onChange(of: shell.screen) { old, new in follow(from: old, to: new) }
+        .onChange(of: shell.screen) { old, new in
+            follow(from: old, to: new)
+            if new == .map {
+                keepMap = true
+            } else if old == .map {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+                    if shell.screen != .map { keepMap = false }
+                }
+            }
+        }
         // Снимок во весь экран — один на всё приложение: открывают его и
         // из плана, и из дневника (P203).
         .fullScreenCover(item: $shell.openedPhoto) { opened in
@@ -317,8 +329,10 @@ struct RootView: View {
                 panel(.calendar, from: .top, over: geo.size) { CalendarView() }
                 // Карта — такая же плашка. Рисуется, только пока нужна:
                 // иначе приложение спрашивало бы место при самом запуске.
+                // Уходя, она остаётся на плашке, пока та не уедет за край, —
+                // иначе плашка уезжала пустой и карта просто пропадала (P242).
                 panel(.map, from: .top, over: geo.size) {
-                    if shell.screen == .map || shell.lowered == .map { MapScreen() } else { Color.clear }
+                    if shell.screen == .map || keepMap { MapScreen() } else { Color.clear }
                 }
                 panel(.search, from: .top, over: geo.size) { SearchView() }
             }
