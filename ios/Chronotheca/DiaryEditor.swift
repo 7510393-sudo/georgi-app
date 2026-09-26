@@ -123,10 +123,14 @@ struct DiaryEditor: UIViewRepresentable {
         // диктовка, система держит в поле свой временный знак; переписать
         // из-за него поле — вырвать знак у неё из рук, и он остаётся в
         // тексте «OBJ» (решение P197).
-        if DiaryEditor.plain(view.attributedText) != text || view.attributedText.length == 0 {
+        // Режим изменений включили или выключили — точки перерисовываются
+        // со свечением или без (P241).
+        if DiaryEditor.plain(view.attributedText) != text || view.attributedText.length == 0
+            || context.coordinator.drawnMoving != moving {
+            context.coordinator.drawnMoving = moving
             let selection = view.selectedRange
             view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped,
-                                              resolve: resolve)
+                                              resolve: resolve, glowing: moving)
             view.typingAttributes = Self.body(size, serif: serif)
             view.selectedRange = selection.location <= (view.text as NSString).length
                 ? selection
@@ -211,10 +215,11 @@ struct DiaryEditor: UIViewRepresentable {
     }
 
     static func styled(_ text: String, size: CGFloat, serif: Bool, stamped: Bool,
-                       resolve: ((String) -> URL?)? = nil) -> NSAttributedString {
+                       resolve: ((String) -> URL?)? = nil,
+                       glowing: Bool = false) -> NSAttributedString {
         let out = NSMutableAttributedString(string: clean(text),
                                             attributes: body(size, serif: serif))
-        defer { if let resolve { placePhotos(in: out, resolve: resolve) } }
+        defer { if let resolve { placePhotos(in: out, resolve: resolve, glowing: glowing) } }
         guard stamped else { return out }
         let ns = text as NSString
         var start = 0
@@ -287,7 +292,7 @@ struct DiaryEditor: UIViewRepresentable {
 
     /// Заменить строки-ссылки на картинки.
     static func placePhotos(in out: NSMutableAttributedString,
-                            resolve: (String) -> URL?) {
+                            resolve: (String) -> URL?, glowing: Bool = false) {
         let ns = out.string as NSString
         var found: [(NSRange, String, GeoPoint?)] = []
         var start = 0
@@ -306,7 +311,7 @@ struct DiaryEditor: UIViewRepresentable {
         for (range, link, point) in found.reversed() {
             let attachment: NSTextAttachment
             if let point {
-                attachment = PointChip(point: point)
+                attachment = PointChip(point: point, glowing: glowing)
             } else {
                 attachment = PhotoAttachment(link: link, url: resolve(link))
             }
@@ -337,6 +342,8 @@ struct DiaryEditor: UIViewRepresentable {
 
         /// Где лежат снимки — обновляется с каждым обновлением поля.
         var resolve: ((String) -> URL?)?
+        /// Нарисованы ли точки со свечением режима изменений.
+        var drawnMoving = false
 
         /// Поле, за которым присматривает этот попечитель.
         weak var view: UITextView?
@@ -556,7 +563,8 @@ struct DiaryEditor: UIViewRepresentable {
                                                   with: (target == 0 ? "" : "\n") + piece
                                                       + (target == 0 && rest.length > 0 ? "\n" : ""))
             view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
-                                                     stamped: parent.stamped, resolve: resolve)
+                                                     stamped: parent.stamped, resolve: resolve,
+                                                     glowing: parent.moving)
             view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
             loadPhotos()
             parent.text = result
@@ -724,7 +732,8 @@ struct DiaryEditor: UIViewRepresentable {
                 view.attributedText = DiaryEditor.styled(now, size: parent.size,
                                                          serif: parent.serif,
                                                          stamped: parent.stamped,
-                                                         resolve: resolve)
+                                                         resolve: resolve,
+                                                         glowing: parent.moving)
                 view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
                 view.selectedRange = NSRange(location: min(at, view.textStorage.length), length: 0)
                 loadPhotos()
@@ -802,16 +811,17 @@ struct DiaryEditor: UIViewRepresentable {
 /// как отметка времени (P213).
 final class PointChip: NSTextAttachment {
 
-    init(point: GeoPoint) {
+    init(point: GeoPoint, glowing: Bool = false) {
         super.init(data: nil, ofType: nil)
-        let picture = PointChip.draw(point.label)
+        let picture = PointChip.draw(point.label, glowing: glowing)
         image = picture
-        bounds = CGRect(origin: CGPoint(x: 0, y: -7), size: picture.size)
+        bounds = CGRect(origin: CGPoint(x: 0, y: glowing ? -12 : -7), size: picture.size)
     }
 
     required init?(coder: NSCoder) { nil }
 
-    static func draw(_ label: String) -> UIImage {
+    /// В режиме изменений точка светится, как превью снимков (P241).
+    static func draw(_ label: String, glowing: Bool = false) -> UIImage {
         let font = UIFont.monospacedSystemFont(ofSize: 12.5, weight: .regular)
         let ink = UIColor(Look.inkFaint)
         let words = [NSAttributedString.Key.font: font, .foregroundColor: ink]
@@ -819,18 +829,25 @@ final class PointChip: NSTextAttachment {
                           withConfiguration: UIImage.SymbolConfiguration(pointSize: 11))?
             .withTintColor(ink, renderingMode: .alwaysOriginal)
         let wide = min((label as NSString).size(withAttributes: words).width, 250)
-        let size = CGSize(width: 10 + 14 + 5 + wide + 10, height: 24)
-        return UIGraphicsImageRenderer(size: size).image { _ in
-            let box = CGRect(origin: .zero, size: size).insetBy(dx: 0.5, dy: 0.5)
+        let chip = CGSize(width: 10 + 14 + 5 + wide + 10, height: 24)
+        let pad: CGFloat = glowing ? 5 : 0
+        let size = CGSize(width: chip.width + pad * 2, height: chip.height + pad * 2)
+        return UIGraphicsImageRenderer(size: size).image { ctx in
+            let box = CGRect(x: pad, y: pad, width: chip.width, height: chip.height)
+                .insetBy(dx: 0.5, dy: 0.5)
             let shape = UIBezierPath(roundedRect: box, cornerRadius: 12)
+            if glowing {
+                ctx.cgContext.setShadow(offset: .zero, blur: 5, color: UIColor(Look.glow).cgColor)
+            }
             UIColor(Look.chrome).setFill()
             shape.fill()
-            UIColor(Look.rule).setStroke()
-            shape.lineWidth = 1
+            ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            UIColor(glowing ? Look.glow : Look.rule).setStroke()
+            shape.lineWidth = glowing ? 2 : 1
             shape.stroke()
-            pin?.draw(in: CGRect(x: 10, y: 5, width: 14, height: 14))
+            pin?.draw(in: CGRect(x: pad + 10, y: pad + 5, width: 14, height: 14))
             (label as NSString).draw(
-                with: CGRect(x: 29, y: (size.height - font.lineHeight) / 2,
+                with: CGRect(x: pad + 29, y: (size.height - font.lineHeight) / 2,
                              width: wide, height: font.lineHeight),
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: words, context: nil)

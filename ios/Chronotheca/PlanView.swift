@@ -679,8 +679,9 @@ struct PlanExtraLine: View {
     var open: ((URL?) -> Void)?
     /// Касание по точке — карта на ней. Пусто — на соседних страницах.
     var openPoint: ((GeoPoint) -> Void)?
-    /// Режим изменений: строку тащат за ручку справа вверх или вниз, и
-    /// она встаёт на столько строк, на сколько её протащили (P226).
+    /// Режим изменений: строку цепляют долгим нажатием и тащат к нужному
+    /// делу; она встаёт на столько строк, на сколько её протащили (P226,
+    /// P241). Пока режим включён, точка светится, как превью снимков.
     var onMove: ((Int) -> Void)?
 
     @State private var dragged: CGFloat = 0
@@ -688,48 +689,65 @@ struct PlanExtraLine: View {
     var body: some View {
         if let link = Diary.picture(in: line), Diary.kind(of: link) == .photo {
             PlanPhotoLine(url: resolve?(link)) { open?(resolve?(link)) }
-                .overlay(alignment: .trailing) { grip }
-                .offset(y: dragged)
-                .zIndex(dragged == 0 ? 0 : 1)
+                .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove))
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         } else if let point = Geo.point(in: line) {
-            PlanPointLine(point: point, open: openPoint)
-                .overlay(alignment: .trailing) { grip }
-                .offset(y: dragged)
-                .zIndex(dragged == 0 ? 0 : 1)
+            PlanPointLine(point: point, open: openPoint, glowing: onMove != nil)
+                .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove))
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         }
     }
+}
 
-    @ViewBuilder private var grip: some View {
-        if let onMove {
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 17))
-                .foregroundStyle(Look.accent)
-                .frame(width: 44, height: 40)
-                .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 2)
-                    .onChanged { dragged = $0.translation.height }
-                    .onEnded { end in
-                        let steps = Int((end.translation.height / PlanRowLine.height).rounded())
+/// Строку плана цепляют долгим нажатием и тащат вверх-вниз.
+private struct Carry: ViewModifier {
+    let on: Bool
+    @Binding var dragged: CGFloat
+    let move: ((Int) -> Void)?
+
+    func body(content: Content) -> some View {
+        if on {
+            content
+                .offset(y: dragged)
+                .zIndex(dragged == 0 ? 0 : 1)
+                .shadow(color: .black.opacity(dragged == 0 ? 0 : 0.18), radius: 8, y: 3)
+                .gesture(LongPressGesture(minimumDuration: 0.3)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .onChanged { value in
+                        if case .second(true, let drag?) = value {
+                            dragged = drag.translation.height
+                        }
+                    }
+                    .onEnded { value in
+                        guard case .second(true, let drag?) = value else { dragged = 0; return }
+                        let steps = Int((drag.translation.height / PlanRowLine.height).rounded())
                         dragged = 0
-                        if steps != 0 { onMove(steps) }
+                        if steps != 0 { move?(steps) }
                     })
-                .padding(.trailing, 6)
-                .accessibilityLabel("Перетащить строку")
+                .accessibilityHint("Долгое нажатие — перетащить к другому делу")
+        } else {
+            content
         }
     }
 }
 
 /// Точка в плане — та же кнопочка, что в дневнике: название и координаты
-/// бледным цветом; касание открывает карту на ней (P213).
+/// бледным цветом; касание открывает карту на ней (P213). В режиме
+/// изменений — со светящейся рамкой (P241).
 struct PlanPointLine: View {
     let point: GeoPoint
     var open: ((GeoPoint) -> Void)?
+    var glowing = false
 
     var body: some View {
         HStack(spacing: 0) {
             PointChipView(point: point)
+                .overlay {
+                    if glowing {
+                        Capsule().strokeBorder(Look.glow, lineWidth: 2)
+                    }
+                }
+                .shadow(color: glowing ? Look.glow.opacity(0.8) : .clear, radius: 6)
                 .contentShape(Capsule())
                 .onTapGesture { open?(point) }
                 .accessibilityAddTraits(.isButton)

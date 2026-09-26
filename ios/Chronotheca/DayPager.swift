@@ -498,8 +498,7 @@ struct AttachBar: View {
                 return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
             }
             store.writePoint(GeoPoint(title: "", at: at), to: tab, here: true,
-                             caret: store.diaryTyping ? store.diaryCaret : nil,
-                             after: store.planTyping)
+                             caret: store.diaryTyping ? store.diaryCaret : nil)
             if let location { store.noteWeather(at: location) }
             shell.say(tab == .diary ? "Место вписано в запись" : "Место вписано в план")
         }
