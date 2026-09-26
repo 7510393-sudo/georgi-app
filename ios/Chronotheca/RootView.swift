@@ -234,7 +234,7 @@ struct RootView: View {
             Button {
                 withAnimation(.easeOut(duration: 0.2)) { shell.showingSettings = true }
             } label: {
-                Corner(leading: true, paper: Look.note, icon: "gearshape",
+                Corner(leading: true, paper: Look.note, edge: Look.noteEdge, icon: "gearshape",
                        tint: shell.showingSettings ? Look.accent : Look.inkSoft)
             }
             .buttonStyle(.plain)
@@ -245,7 +245,7 @@ struct RootView: View {
             Button {
                 withAnimation(.easeOut(duration: 0.2)) { shell.showingMenu = true }
             } label: {
-                Corner(leading: false, paper: Look.sticker, icon: "ellipsis",
+                Corner(leading: false, paper: Look.sticker, edge: Look.stickerEdge, icon: "ellipsis",
                        tint: dotsLit ? Look.accent : Look.inkSoft)
             }
             .buttonStyle(.plain)
@@ -492,12 +492,16 @@ struct TabBorder: Shape {
     }
 }
 
-/// Уголок бумаги, торчащий сверху слева или справа, со значком на нём.
+/// Уголок стикера, наклеенного выше экрана: слева торчит правый нижний
+/// угол голубого стикера, справа — левый нижний угол желтоватого. Угол
+/// острый, стикер чуть повёрнут; у него тень — он лежит поверх страницы
+/// (P229, уточнено P231).
 struct Corner: View {
-    static let size: CGFloat = 54
+    static let size: CGFloat = 58
 
     let leading: Bool
     let paper: Color
+    let edge: Color
     let icon: String
     let tint: Color
 
@@ -505,32 +509,40 @@ struct Corner: View {
         ZStack(alignment: leading ? .topLeading : .topTrailing) {
             CornerShape(leading: leading)
                 .fill(paper)
-                .shadow(color: .black.opacity(0.22), radius: 3, x: leading ? 1.5 : -1.5, y: 2)
+                .shadow(color: .black.opacity(0.25), radius: 3, x: leading ? 1.5 : -1.5, y: 2.5)
+            CornerShape(leading: leading)
+                .stroke(edge, lineWidth: 0.8)
             Image(systemName: icon)
                 .font(.system(size: 18))
                 .foregroundStyle(tint)
                 .frame(width: 30, height: 26)
-                .padding(leading ? .leading : .trailing, 6)
+                .padding(leading ? .leading : .trailing, 9)
                 .padding(.top, 7)
         }
         .frame(width: Corner.size, height: Corner.size)
-        .contentShape(Rectangle())
+        .contentShape(CornerShape(leading: leading))
     }
 }
 
-/// Уголок бумаги: две прямые стороны по краям экрана и выпуклый срез.
+/// Видимая часть стикера: от края экрана его нижняя сторона идёт вниз к
+/// острому углу, от угла боковая сторона уходит вверх за край экрана.
 struct CornerShape: Shape {
     let leading: Bool
 
     func path(in r: CGRect) -> Path {
+        // Точки для левого уголка; правый — зеркально.
+        let points: [CGPoint] = [
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: 1, y: 0),                 // боковая сторона уходит за верх
+            CGPoint(x: 0.76, y: 0.84),           // острый угол
+            CGPoint(x: 0, y: 0.52),              // нижняя сторона уходит за край
+        ]
         var p = Path()
-        let edge = leading ? r.minX : r.maxX
-        let far = leading ? r.maxX : r.minX
-        p.move(to: CGPoint(x: edge, y: r.minY))
-        p.addLine(to: CGPoint(x: far, y: r.minY))
-        p.addQuadCurve(to: CGPoint(x: edge, y: r.maxY),
-                       control: CGPoint(x: leading ? r.minX + r.width * 0.62 : r.maxX - r.width * 0.62,
-                                        y: r.minY + r.height * 0.62))
+        for (i, pt) in points.enumerated() {
+            let x = leading ? r.minX + pt.x * r.width : r.maxX - pt.x * r.width
+            let at = CGPoint(x: x, y: r.minY + pt.y * r.height)
+            if i == 0 { p.move(to: at) } else { p.addLine(to: at) }
+        }
         p.closeSubpath()
         return p
     }
