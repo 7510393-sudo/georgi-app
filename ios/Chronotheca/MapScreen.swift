@@ -539,8 +539,14 @@ enum PlaceLabel {
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
                                     color: UIColor.black.withAlphaComponent(0.2).cgColor)
             UIColor(Look.sticker).withAlphaComponent(0.96).setFill()
-            UIBezierPath(roundedRect: box, cornerRadius: 5).fill()
+            let plateShape = UIBezierPath(roundedRect: box, cornerRadius: 5)
+            plateShape.fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            // Кромка — чтобы плашка читалась на пёстрой карте (P244).
+            UIColor(Look.inkSoft).withAlphaComponent(0.55).setStroke()
+            let edge = UIBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 5)
+            edge.lineWidth = 1
+            edge.stroke()
             text.draw(with: CGRect(x: box.minX + 6, y: box.minY + 3, width: wide, height: font.lineHeight),
                       options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                       attributes: words, context: nil)
