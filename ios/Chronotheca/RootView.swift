@@ -206,14 +206,6 @@ struct RootView: View {
         ZStack(alignment: .trailing) {
             screen
             if shell.drawer != nil { DetailsDrawer() }
-            // Своя карта мест ложится на страницу, а не поверх всего
-            // приложения: шестерёнка, три точки и нижние разделы остаются
-            // на месте и работают (P207, P210).
-            if shell.showingMap {
-                MapScreen()
-                    .transition(.opacity)
-                    .zIndex(2)
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Шапка и нижние разделы лежат поверх страницы и прижимают её: обе
@@ -286,19 +278,18 @@ struct RootView: View {
     /// Точки горят, когда в меню включено что-то необычное: режим
     /// изменений на странице дня или поиск не по всему архиву.
     private var dotsLit: Bool {
-        if shell.showingMap { return false }
         switch shell.screen {
         case .today:    return store.editing(shell.tab)
-        case .calendar: return false
+        case .calendar, .map: return false
         case .search:   return shell.scope != .all
         }
     }
 
     private var dotsLabel: String {
-        if shell.showingMap { return "Меню карты" }
         switch shell.screen {
         case .today:    return "Меню страницы"
         case .calendar: return "Меню календаря"
+        case .map:      return "Меню карты"
         case .search:   return "Меню поиска"
         }
     }
@@ -324,6 +315,11 @@ struct RootView: View {
                 DayPages()
                     .allowsHitTesting(shell.screen == .today)
                 panel(.calendar, from: .top, over: geo.size) { CalendarView() }
+                // Карта — такая же плашка. Рисуется, только пока нужна:
+                // иначе приложение спрашивало бы место при самом запуске.
+                panel(.map, from: .top, over: geo.size) {
+                    if shell.screen == .map || shell.lowered == .map { MapScreen() } else { Color.clear }
+                }
                 panel(.search, from: .top, over: geo.size) { SearchView() }
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -373,8 +369,11 @@ struct RootView: View {
 
     private var tabbar: some View {
         HStack(spacing: 0) {
-            section("календарь", "Календарь", .calendar)
+            // Сегодня, календарь, карта, поиск (P239). Значок карты пока
+            // системный — рисунок автора ещё впереди.
             section("сегодня", "Сегодня", .today)
+            section("календарь", "Календарь", .calendar)
+            section("map", "Карта", .map, system: true)
             section("поиск", "Поиск", .search)
         }
         // На 5% тоньше, чем было, при книжке на 10% крупнее (P212).
@@ -387,11 +386,12 @@ struct RootView: View {
         switch target {
         case .today:    return 1.10
         case .search:   return 1.05
-        case .calendar: return 1
+        case .calendar, .map: return 1
         }
     }
 
-    private func section(_ icon: String, _ name: String, _ target: Shell.Screen) -> some View {
+    private func section(_ icon: String, _ name: String, _ target: Shell.Screen,
+                         system: Bool = false) -> some View {
         let on = shell.screen == target
         return Button {
             store.prune()
@@ -413,12 +413,15 @@ struct RootView: View {
             VStack(spacing: 5) {
                 // Значки нарисованы автором от руки и обведены в вектор:
                 // ежедневник, раскрытый в начале, посередине и в конце.
-                Image(icon)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    // Книжка на 10%, микроскоп на 5% крупнее прочих (P227).
-                    .frame(width: 35 * scale(target), height: 35 * scale(target))
+                Group {
+                    if system {
+                        Image(systemName: icon).resizable().scaledToFit().padding(4)
+                    } else {
+                        Image(icon).renderingMode(.template).resizable().scaledToFit()
+                    }
+                }
+                // Книжка на 10%, микроскоп на 5% крупнее прочих (P227).
+                .frame(width: 35 * scale(target), height: 35 * scale(target))
                 Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
             }
             // Открытый раздел — на светлой подушке. Подушка выходит за
@@ -440,10 +443,6 @@ struct RootView: View {
     /// Быстрый ход читался бы как смена экрана, а не как движение вещи.
     private func open(_ target: Shell.Screen) {
         if target != shell.screen { hideKeyboard() }
-        // Нижний раздел уводит и с карты: она лежит на странице дня.
-        if shell.showingMap {
-            withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
-        }
         shell.screen = target
     }
 

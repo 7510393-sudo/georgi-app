@@ -50,28 +50,9 @@ struct MapScreen: View {
             } else if let selected, panel == .cloud {
                 PlaceCloud(place: selected, edit: { withAnimation { panel = .naming } })
                     .transition(.move(edge: .top).combined(with: .opacity))
-            } else {
-                // Закрыть карту — крестик слева сверху, под шестерёнкой.
-                // Строки «Мои места / Закрыть» больше нет: карта занимает
-                // всю страницу (P228).
-                HStack {
-                    Button {
-                        hideKeyboard()
-                        withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Look.ink)
-                            .frame(width: 40, height: 40)
-                            .background(.regularMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
-                    }
-                    .accessibilityLabel("Закрыть карту")
-                    Spacer()
-                }
-                .padding(.leading, 12)
-                .padding(.top, Corner.size + 6)
             }
+            // Крестика больше нет: карта — раздел внизу, уходят с неё
+            // другим разделом, как с календаря и поиска (P239).
         }
         .animation(.easeOut(duration: 0.2), value: panel)
         .overlay(alignment: .bottom) { bar }
@@ -275,14 +256,14 @@ struct MapScreen: View {
             return shell.say(store.closedReason)
         }
         shell.say(tab == .diary ? "Точка записана в дневник" : "Точка записана в план")
-        withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
+        // Записали — назад к странице дня, где точка теперь видна.
+        shell.screen = .today
     }
 
     private func openDay(_ date: Date) {
         store.go(to: date)
         shell.tab = .diary
         shell.screen = .today
-        withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
     }
 }
 

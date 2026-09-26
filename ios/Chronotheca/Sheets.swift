@@ -17,14 +17,11 @@ struct MenuSticker: View {
     @AppStorage("calendar.kind") private var calendarKind = CalendarView.Kind.month.rawValue
 
     var body: some View {
-        if shell.showingMap {
-            mapMenu
-        } else {
-            switch shell.screen {
-            case .today:    dayMenu
-            case .calendar: calendarMenu
-            case .search:   searchMenu
-            }
+        switch shell.screen {
+        case .today:    dayMenu
+        case .calendar: calendarMenu
+        case .map:      mapMenu
+        case .search:   searchMenu
         }
     }
 
@@ -65,7 +62,7 @@ struct MenuSticker: View {
             }
             StickerItem(title: "Вернуться к странице дня") {
                 close()
-                withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = false }
+                shell.screen = .today
             }
             StickerItem(title: "Все места списком") {
                 close()

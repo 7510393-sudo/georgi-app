@@ -397,12 +397,9 @@ struct AttachBar: View {
             item("photo", "фото", ready: true) { choosePhotos() }
             item("waveform", "аудио", ready: true) { open { recording = true } }
             item("doc", "файлы", ready: true) { open { browsing = true } }
-            // Касание — своя карта мест; долгое нажатие — вписать, где
-            // человек сейчас, строкой в текст записи (P165, P207).
-            item("mappin.and.ellipse", "геоточка", ready: true, hold: writePlace) {
-                hideKeyboard()
-                withAnimation(.easeOut(duration: 0.25)) { shell.showingMap = true }
-            }
+            // Касание вписывает, где человек сейчас, — координатами туда,
+            // где стоит курсор. Карта теперь раздел внизу (P239).
+            item("mappin.and.ellipse", "геоточка", ready: true, act: writePlace)
         }
         .padding(.top, 8)
         .padding(.bottom, 7)

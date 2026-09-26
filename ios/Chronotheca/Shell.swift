@@ -7,7 +7,8 @@ import SwiftUI
 /// и это не потеря.
 final class Shell: ObservableObject {
 
-    enum Screen { case today, calendar, search }
+    /// Разделы внизу: сегодня, календарь, карта, поиск (P239).
+    enum Screen { case today, calendar, map, search }
 
     enum Tab: String, CaseIterable, Identifiable {
         case plan = "План"
@@ -50,8 +51,12 @@ final class Shell: ObservableObject {
     @Published var openedPhoto: OpenedPhoto?
 
     @Published var showingMenu = false
-    /// Своя карта мест — за кнопкой «геоточка» (P207).
-    @Published var showingMap = false
+    /// Своя карта мест — теперь раздел внизу, плашка сверху, как календарь
+    /// и поиск (P239).
+    var showingMap: Bool {
+        get { screen == .map }
+        set { screen = newValue ? .map : (screen == .map ? .today : screen) }
+    }
     /// Точка, на которой открыть карту: её нажали в тексте дня (P213).
     @Published var mapFocus: GeoPoint?
     /// Точка, выбранная сейчас на карте. По ней работают «в навигатор» и
@@ -65,7 +70,7 @@ final class Shell: ObservableObject {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                         to: nil, from: nil, for: nil)
         mapFocus = point
-        withAnimation(.easeOut(duration: 0.25)) { showingMap = true }
+        screen = .map
     }
     @Published var showingSettings = false
     /// Бумажку тянут за уголок: сколько её ещё за краем, 1 — вся, 0 — на
