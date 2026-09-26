@@ -139,6 +139,16 @@ final class Shell: ObservableObject {
     @Published var query = ""
     @Published var scope: Scope = .all
 
+    /// Что искать: всё или только дни со снимками, видео, голосом,
+    /// файлами, местами (P249).
+    enum Find: String, CaseIterable { case all = "Всё", photo = "Снимки", video = "Видео",
+                                          audio = "Голос", file = "Файлы", place = "Места" }
+    @Published var find: Find = .all
+
+    /// Просьбы к карте из её меню: показать все места, открыть список мест.
+    @Published var mapShowAll = 0
+    @Published var mapList = false
+
     @Published var notice: String?
     private var hiding: DispatchWorkItem?
 

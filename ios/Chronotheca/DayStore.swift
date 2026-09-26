@@ -162,6 +162,31 @@ final class DayStore: ObservableObject {
         save()
     }
 
+    /// День словами — чтобы поделиться им в сообщении или письме (P249).
+    /// Строки-вложения не передаются: это пути в папке, другому человеку
+    /// они ничего не скажут; точки — словами и координатами.
+    func shareText() -> String {
+        var out = Ru.weekday(date).capitalized + ", " + Ru.longDate(date)
+        let plan = tasks.filter { !$0.text.isEmpty }
+        if !plan.isEmpty {
+            out += "\n\nПлан:\n" + plan.map { row in
+                (row.done ? "✓ " : "• ") + (row.time.map { $0 + " " } ?? "") + row.text
+            }.joined(separator: "\n")
+        }
+        let lines = diaryText.components(separatedBy: "\n").compactMap { line -> String? in
+            if Diary.picture(in: line) != nil { return nil }
+            if let point = Geo.point(in: line) { return "📍 " + point.label }
+            return line
+        }
+        let text = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !diaryTitle.isEmpty || !text.isEmpty {
+            out += "\n\nДневник"
+            if !diaryTitle.isEmpty { out += " — " + diaryTitle }
+            out += ":\n" + text
+        }
+        return out
+    }
+
     // MARK: - Дни
 
     func go(to newDate: Date) {

@@ -72,6 +72,15 @@ struct MapScreen: View {
             Button("Отмена", role: .cancel) { }
         }
         .onAppear(perform: begin)
+        // Из меню карты: все места разом и список мест (P249).
+        .onChange(of: shell.mapShowAll) { _, _ in showAll() }
+        .sheet(isPresented: $shell.mapList) {
+            PlacesList(places: places) { place in
+                shell.mapList = false
+                choose(place)
+                focus = MapFocus(center: place.coordinate, meters: 1500)
+            }
+        }
         .onChange(of: selected) { _, now in
             shell.mapPoint = now.map { GeoPoint(title: $0.name, at: $0.coordinate) }
         }
@@ -169,6 +178,17 @@ struct MapScreen: View {
                 focus = MapFocus(center: at, meters: 2000)
             }
         }
+    }
+
+    /// Отдалить карту так, чтобы все свои места были видны разом.
+    private func showAll() {
+        guard !places.isEmpty else { return shell.say("Своих мест на карте пока нет.") }
+        let lats = places.map(\.latitude), lons = places.map(\.longitude)
+        guard let s = lats.min(), let n = lats.max(), let w = lons.min(), let e = lons.max() else { return }
+        let center = CLLocationCoordinate2D(latitude: (s + n) / 2, longitude: (w + e) / 2)
+        let tall = (n - s) * 111_000
+        let wide = (e - w) * 111_000 * cos(center.latitude * .pi / 180)
+        focus = MapFocus(center: center, meters: max(tall, wide) * 1.5 + 1500)
     }
 
     private func near(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
@@ -281,6 +301,62 @@ struct MapScreen: View {
         store.go(to: date)
         shell.tab = .diary
         shell.screen = .today
+    }
+}
+
+/// Все свои места списком, с поиском по названию (P249). Касание — карта
+/// на этом месте.
+struct PlacesList: View {
+    let places: [Place]
+    let pick: (Place) -> Void
+
+    @State private var query = ""
+    @Environment(\.dismiss) private var dismiss
+
+    private var shown: [Place] {
+        let sorted = places.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !needle.isEmpty else { return sorted }
+        return sorted.filter {
+            $0.name.lowercased().contains(needle) || $0.text.lowercased().contains(needle)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(shown) { place in
+                Button { pick(place) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: Glyph.image(place.mark))
+                            .foregroundStyle(.white)
+                            .frame(width: 26, height: 26)
+                            .background(Look.inkSoft, in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(place.name).font(Look.sans(15)).foregroundStyle(Look.ink)
+                            if !place.text.isEmpty {
+                                Text(place.text).font(Look.sans(12.5)).foregroundStyle(Look.inkSoft)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+            }
+            .overlay {
+                if places.isEmpty {
+                    Text("Своих мест пока нет. Долгое нажатие на карту — новое место.")
+                        .font(Look.sans(14))
+                        .foregroundStyle(Look.inkSoft)
+                        .multilineTextAlignment(.center)
+                        .padding(32)
+                }
+            }
+            .searchable(text: $query, prompt: "Название или запись")
+            .navigationTitle("Мои места")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Готово") { dismiss() } }
+            }
+        }
     }
 }
 
@@ -756,6 +832,14 @@ enum PlaceActions {
 
     /// Открыть в Картах Apple с дорогой до точки.
     static func openInMaps(_ c: CLLocationCoordinate2D, name: String) {
+        // Куда вести — из настроек: Карты Apple или Google Карты (P220,
+        // P249). Ссылка Google открывает их приложение, а без него — сайт.
+        if UserDefaults.standard.string(forKey: Prefs.navigator) == "google",
+           let url = URL(string: String(format: "https://www.google.com/maps/dir/?api=1&destination=%.6f,%.6f",
+                                        c.latitude, c.longitude)) {
+            UIApplication.shared.open(url)
+            return
+        }
         let item = MKMapItem(placemark: MKPlacemark(coordinate: c))
         item.name = name
         item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey:

@@ -9,6 +9,8 @@ struct ChronothecaApp: App {
     @Environment(\.scenePhase) private var phase
 
     init() {
+        // Граница суток из настроек — до того, как откроется «сегодня».
+        Prefs.applyBoundary()
         let vault = Vault()
         _vault = StateObject(wrappedValue: vault)
         _store = StateObject(wrappedValue: DayStore(vault: vault))

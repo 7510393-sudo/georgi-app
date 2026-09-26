@@ -60,13 +60,17 @@ struct MenuSticker: View {
                 shell.mapSatellite.toggle()
                 close()
             }
-            StickerItem(title: "Вернуться к странице дня") {
+            StickerItem(title: "Показать все мои места") {
                 close()
-                shell.screen = .today
+                shell.mapShowAll += 1
             }
             StickerItem(title: "Все места списком") {
                 close()
-                shell.say("Список мест ещё не сделан.")
+                shell.mapList = true
+            }
+            StickerItem(title: "Вернуться к странице дня") {
+                close()
+                shell.screen = .today
             }
         }
     }
@@ -84,18 +88,14 @@ struct MenuSticker: View {
                 close()
                 shell.showingFile = true
             }
-            StickerItem(title: "Перенести дело на другой день") {
-                close()
-                shell.say("Перенос дела ещё не сделан.")
-            }
+            soon("Перенести дело на другой день")
             StickerItem(title: "Поделиться днём") {
                 close()
-                shell.say("«Поделиться днём» ещё не сделано.")
+                // Текстом — план и запись; вложения остаются в папке (P249).
+                Share.present([store.shareText()])
             }
-            StickerItem(title: "Удалить день") {
-                close()
-                shell.say("Удаление дня ещё не сделано.")
-            }
+            soon("Печать / PDF дня")
+            soon("Удалить день — в корзину")
         }
     }
 
@@ -107,10 +107,8 @@ struct MenuSticker: View {
                 close()
                 shell.calendarHome = true
             }
-            StickerItem(title: "Поделиться месяцем") {
-                close()
-                shell.say("«Поделиться месяцем» ещё не сделано.")
-            }
+            soon("Показывать в клетках: дела / записи / фото")
+            soon("Поделиться месяцем, PDF")
         }
     }
 
@@ -121,6 +119,14 @@ struct MenuSticker: View {
             scopeItem("Искать везде", .all)
             scopeItem("Только в дневнике", .diary)
             scopeItem("Только в плане", .plan)
+            // Что искать — только дни, где есть это (P249).
+            ForEach(Shell.Find.allCases, id: \.self) { kind in
+                StickerItem(title: kind == .all ? "Искать всё" : "Только: " + kind.rawValue.lowercased(),
+                            note: shell.find == kind ? "✓" : "", active: shell.find == kind) {
+                    shell.find = kind
+                    close()
+                }
+            }
             StickerItem(title: "Очистить поиск") {
                 close()
                 if shell.query.isEmpty {
@@ -129,6 +135,15 @@ struct MenuSticker: View {
                     shell.query = ""
                 }
             }
+        }
+    }
+
+    /// Строка того, что задумано, но ещё не сделано: видна, а касание
+    /// честно говорит, что её пока нет (P249).
+    private func soon(_ title: String) -> some View {
+        StickerItem(title: title, note: "скоро") {
+            close()
+            shell.say("«\(title)» ещё не сделано.")
         }
     }
 
@@ -159,6 +174,10 @@ struct SettingsSticker: View {
     var body: some View {
         Sticker(side: .leading, title: "Настройки",
                 paper: Look.note, edge: Look.noteEdge, width: 300, close: close) {
+          // Длинная бумажка прокручивается: разделов стало много (P249).
+          ScrollView {
+           VStack(spacing: 0) {
+            StickerSection(title: "Записи")
             place
             StickerItem(title: "Открыть папку в «Файлах»", edge: Look.noteEdge) {
                 close()
@@ -183,6 +202,49 @@ struct SettingsSticker: View {
                     .padding(.top, -4)
                     .padding(.bottom, 9)
             }
+
+            StickerSection(title: "Защита")
+            StickerItem(title: "Замок: Face ID или код", note: locked ? "включён" : "выключен",
+                        active: locked, edge: Look.noteEdge) {
+                // Включить замок можно, только доказав, что телефон свой:
+                // иначе можно запереться и не открыть (P249).
+                LockView.check(reason: locked ? "Снять замок с записей"
+                                              : "Закрыть записи замком") { ok in
+                    if ok { locked.toggle() } else {
+                        shell.say("Телефон не подтвердил владельца — замок не изменён.")
+                    }
+                }
+            }
+            StickerItem(title: "Прятать страницу при переключении приложений",
+                        note: hiding ? "да" : "нет", active: hiding, edge: Look.noteEdge) {
+                hiding.toggle()
+            }
+
+            StickerSection(title: "День")
+            StickerItem(title: "Новый день начинается в", note: "\(boundary):00",
+                        edge: Look.noteEdge) {
+                boundary = (boundary + 1) % 7
+                Prefs.applyBoundary()
+                store.go(to: DayStore.today())
+            }
+            StickerItem(title: "Открывать приложение на",
+                        note: startTab == "diary" ? "дневнике" : "плане", edge: Look.noteEdge) {
+                startTab = startTab == "diary" ? "plan" : "diary"
+            }
+
+            StickerSection(title: "Вид")
+            StickerItem(title: "Тема", note: themeName, edge: Look.noteEdge) {
+                theme = theme == "system" ? "light" : theme == "light" ? "dark" : "system"
+            }
+
+            StickerSection(title: "Карта")
+            StickerItem(title: "«В навигатор» открывает",
+                        note: navigator == "google" ? "Google Карты" : "Карты Apple",
+                        edge: Look.noteEdge) {
+                navigator = navigator == "google" ? "apple" : "google"
+            }
+
+            StickerSection(title: "О приложении")
             StickerItem(title: "Чего ещё нет", note: undone ? "▾" : "▸",
                         edge: Look.noteEdge) {
                 undone.toggle()
@@ -195,6 +257,9 @@ struct SettingsSticker: View {
                 openURL(WeatherNote.legal)
             }
             version
+           }
+          }
+          .frame(maxHeight: 600)
         }
         .confirmationDialog("Где хранить записи", isPresented: $choosingPlace,
                             titleVisibility: .visible) {
@@ -221,6 +286,20 @@ struct SettingsSticker: View {
     }
 
     @State private var undone = false
+    @AppStorage(Prefs.lock) private var locked = false
+    @AppStorage(Prefs.hide) private var hiding = false
+    @AppStorage(Prefs.boundary) private var boundary = 4
+    @AppStorage(Prefs.startTab) private var startTab = "plan"
+    @AppStorage(Prefs.theme) private var theme = "system"
+    @AppStorage(Prefs.navigator) private var navigator = "apple"
+
+    private var themeName: String {
+        switch theme {
+        case "light": return "светлая"
+        case "dark":  return "тёмная"
+        default:      return "как в iPhone"
+        }
+    }
     @State private var choosingPlace = false
     @EnvironmentObject private var store: DayStore
 
@@ -277,9 +356,13 @@ struct SettingsSticker: View {
 
     private var missing: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Видео и снимок с камеры")
-            Text("Напоминания на телефон")
-            Text("Замок и ночной вид")
+            Text("Напоминания на телефон — о делах и вечером")
+            Text("Снимок с камеры")
+            Text("Размер текста; что показывать на странице")
+            Text("Первый день недели")
+            Text("Корзина удалённых дней")
+            Text("Перенос из Day One и «Дневника» Apple")
+            Text("Всё в PDF, печать")
         }
         .font(Look.sans(12))
         .foregroundStyle(Look.inkFaint)

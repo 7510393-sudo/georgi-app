@@ -31,6 +31,8 @@ targets:
         # Своя папка приложения видна в «Файлах»: «На iPhone › Chronotheca» (P223).
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
+        # Замок записей (P249).
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "Чтобы закрыть ваши записи замком: без вашего лица или кода их не откроет никто."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         TARGETED_DEVICE_FAMILY: "1"

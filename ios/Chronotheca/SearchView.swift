@@ -84,7 +84,7 @@ struct SearchView: View {
 
     /// Ответы «Как прошло?» — часть дневника: их пишут там, а не в плане.
     private var found: [Archive.Day] {
-        let days = archive.newestFirst
+        let days = archive.newestFirst.filter(kept)
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !needle.isEmpty else { return days }
         let scope = shell.scope
@@ -100,6 +100,20 @@ struct SearchView: View {
                 return day.tasks.contains { $0.text.lowercased().contains(needle) }
             }
             return false
+        }
+    }
+
+    /// Подходит ли день под «что искать» из меню поиска (P249).
+    private func kept(_ day: Archive.Day) -> Bool {
+        let kinds = day.attachments.map { Diary.kind(of: $0) }
+        switch shell.find {
+        case .all:   return true
+        case .photo: return kinds.contains(.photo)
+        case .video: return kinds.contains(.video)
+        case .audio: return kinds.contains(.audio)
+        case .file:  return kinds.contains(.file)
+        case .place:
+            return day.place != nil || day.text.contains("geo:")
         }
     }
 

@@ -15,6 +15,23 @@ struct RootView: View {
     /// Карта ещё на плашке, пока та уезжает (P242).
     @State private var keepMap = false
 
+    // Настройки (P249): замок, скрытие страницы, тема.
+    @Environment(\.scenePhase) private var phase
+    @AppStorage(Prefs.lock) private var lockOn = false
+    @AppStorage(Prefs.hide) private var hideOn = false
+    @AppStorage(Prefs.theme) private var theme = "system"
+    @State private var locked = UserDefaults.standard.bool(forKey: Prefs.lock)
+
+    private var scheme: ColorScheme? {
+        theme == "light" ? .light : theme == "dark" ? .dark : nil
+    }
+
+    private func unlock() {
+        LockView.check(reason: "Открыть записи") { ok in
+            if ok { locked = false }
+        }
+    }
+
 
     /// Человек должен увидеть полный путь до того, как что-то создано.
     private static func proposalText(_ p: Vault.Proposal) -> String {
@@ -68,6 +85,18 @@ struct RootView: View {
         Group {
             if vault.root == nil { WelcomeView() } else { app }
         }
+        // Замок и скрытие страницы в переключателе приложений (P249).
+        .overlay {
+            if lockOn && locked {
+                LockView(unlock: unlock)
+            } else if (hideOn || lockOn) && phase != .active {
+                Look.chrome.ignoresSafeArea()
+            }
+        }
+        .onChange(of: phase) { _, now in
+            if now == .background && lockOn { locked = true }
+        }
+        .preferredColorScheme(scheme)
         .fileImporter(isPresented: $shell.picking, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result {
                 vault.adopt(url)
@@ -209,6 +238,8 @@ struct RootView: View {
             // облачко «…помнишь?» не знает, есть ли что вспомнить, и не
             // появляется никогда. Читаем папку сразу при запуске.
             archive.reload()
+            // С какой вкладки открывать — из настроек (P249).
+            if UserDefaults.standard.string(forKey: Prefs.startTab) == "diary" { shell.tab = .diary }
             shell.openRequestedScreen(store)
         }
     }
