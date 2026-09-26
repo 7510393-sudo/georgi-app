@@ -123,7 +123,7 @@ struct DiaryPage: View {
                            drag: editable && photoLinks.count == photos.count
                                ? { Diary.line(photoLinks[$0]) } : nil,
                            onMove: editable ? onMovePhoto : nil)
-                    .background(Look.diaryBg)
+                    .background(Color.clear)
             }
         }
     }
@@ -154,7 +154,7 @@ struct DiaryPage: View {
             .padding(.bottom, 20 + keyboard)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Look.diaryBg)
+        .background(Color.clear)
         .keyboardHeight($keyboard)
     }
 

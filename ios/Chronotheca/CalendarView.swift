@@ -291,16 +291,17 @@ struct CalendarView: View {
         return Button { pick(stamp, date) } label: {
             VStack(spacing: 1) {
                 Text("\(cal.component(.day, from: date))")
-                    .font(Look.sans(14))
-                    .foregroundStyle(isToday ? Look.planBg : Look.ink)
-                dots(count: archive.tasks(stamp).count, light: isToday)
+                    .font(Look.sans(14, weight: isToday ? .semibold : .regular))
+                    .foregroundStyle(Look.ink)
+                dots(count: archive.tasks(stamp).count, light: false)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 32)
-            .background(isToday ? Look.accent : .clear,
-                        in: RoundedRectangle(cornerRadius: 8))
+            // Клетка — того же цвета, что страница этого дня: сегодня
+            // абрикосовое, прошлое голубеет, будущее зеленеет (P245).
+            .background(Ru.tint(date), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isSelected && !isToday ? Look.accent : .clear, lineWidth: 1.5))
+                .strokeBorder(isSelected ? Look.accent : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
     }
@@ -432,8 +433,11 @@ struct CalendarView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
-            .background(open ? Look.ruleSoft : .clear)
+            // Строка дня — цвета его страницы (P245); выбранная обведена.
+            .background(Ru.tint(date))
             .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(open ? Look.accent.opacity(0.6) : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
     }

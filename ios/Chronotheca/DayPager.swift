@@ -118,8 +118,11 @@ struct DayPage: View {
         }
     }
 
-    private var background: Color {
-        shell.tab == .diary ? Look.diaryBg : Ru.tint(date)
+    /// Цвет страницы — по удалённости от сегодня, одинаковый у плана и
+    /// дневника; различаются они фактурой: план — в клетку, дневник — на
+    /// бумаге с волокном (P245).
+    private var background: some View {
+        Ru.tint(date).overlay(PageTexture(tab: shell.tab))
     }
 
     // MARK: - Шапка дня
@@ -266,7 +269,7 @@ struct DayPage: View {
 
     private func tab(_ which: Shell.Tab) -> some View {
         let on = shell.tab == which
-        let page = which == .diary ? Look.diaryBg : Ru.tint(date)
+        let page = Ru.tint(date)
         let wobbling = live && store.editing(which)
         return Button {
             guard live else { return }
@@ -286,7 +289,7 @@ struct DayPage: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 10)
                 .padding(.bottom, 11)
-                .background(page)
+                .background(page.overlay(PageTexture(tab: which)))
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10,
                                                   topTrailingRadius: 10))
                 .overlay(TabBorder(radius: 10).stroke(Look.rule, lineWidth: 1))
@@ -312,6 +315,64 @@ struct DayPage: View {
             SideDay(date: date)
         }
     }
+}
+
+/// Фактура страницы: у плана — бледная клетка, как в тетради; у дневника —
+/// волокно бумаги (P245). Рисуется один раз и кладётся плиткой.
+struct PageTexture: View {
+    let tab: Shell.Tab
+
+    var body: some View {
+        Image(uiImage: tab == .plan ? PageTexture.grid : PageTexture.grain)
+            .resizable(resizingMode: .tile)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    /// Клетка в 18 точек — как в школьной тетради, но еле видная.
+    static let grid: UIImage = {
+        let side: CGFloat = 18
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { ctx in
+            UIColor(Look.accent).withAlphaComponent(0.09).setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: side, height: 0.6))
+            ctx.fill(CGRect(x: 0, y: 0, width: 0.6, height: side))
+        }
+    }()
+
+    /// Волокно бумаги: мелкие крапинки и короткие волоски, светлые и
+    /// тёмные вперемешку. Узор один и тот же при каждом запуске — иначе
+    /// соседние страницы различались бы на снимках (P114).
+    static let grain: UIImage = {
+        let side: CGFloat = 160
+        var seed: UInt64 = 0x5EED_2026
+        func next() -> CGFloat {
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return CGFloat(seed >> 33) / CGFloat(UInt64(1) << 31)
+        }
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { ctx in
+            for _ in 0..<700 {
+                let x = next() * side, y = next() * side
+                let r = 0.3 + next() * 0.7
+                let dark = next() < 0.6
+                (dark ? UIColor(Look.ink).withAlphaComponent(0.035 + next() * 0.03)
+                      : UIColor.white.withAlphaComponent(0.25 + next() * 0.2)).setFill()
+                ctx.cgContext.fillEllipse(in: CGRect(x: x, y: y, width: r, height: r))
+            }
+            for _ in 0..<40 {
+                let x = next() * side, y = next() * side
+                let angle = next() * .pi
+                let length = 3 + next() * 6
+                let fibre = UIBezierPath()
+                fibre.move(to: CGPoint(x: x, y: y))
+                fibre.addQuadCurve(to: CGPoint(x: x + cos(angle) * length, y: y + sin(angle) * length),
+                                   controlPoint: CGPoint(x: x + cos(angle + 0.6) * length / 2,
+                                                         y: y + sin(angle + 0.6) * length / 2))
+                fibre.lineWidth = 0.4
+                UIColor(Look.ink).withAlphaComponent(0.05).setStroke()
+                fibre.stroke()
+            }
+        }
+    }()
 }
 
 /// Лицо кнопки в нижней полоске: значок и подпись. Общее для полоски

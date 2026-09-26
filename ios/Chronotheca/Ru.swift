@@ -49,8 +49,37 @@ enum Ru {
     /// Цвет названия дня недели.
     static func dayColor(_ date: Date) -> Color { dayColours[index(date)] }
 
-    /// Лёгкий оттенок всего экрана — свой у каждого дня недели.
-    static func tint(_ date: Date) -> Color { dayTints[index(date)] }
+    /// Цвет страницы дня — по тому, далеко ли он от сегодня (P245).
+    ///
+    /// Сегодня — тёплый абрикосовый, самый насыщенный. Прошлое остывает в
+    /// серо-голубой, будущее — в шалфейный зелёный; вчера и завтра — ярче,
+    /// позавчера и послезавтра — бледнее, дальше цвет не меняется. Так с
+    /// одного взгляда видно, в прошлом человек или в будущем и далеко ли
+    /// ушёл. Все цвета светлые: текст читается с контрастом не ниже 12 к 1.
+    static func tint(_ date: Date) -> Color {
+        let cal = Calendar.current
+        let n = cal.dateComponents([.day], from: DayStore.today(),
+                                   to: cal.startOfDay(for: date)).day ?? 0
+        switch n {
+        case ...(-3): return timeTints[0]
+        case -2:      return timeTints[1]
+        case -1:      return timeTints[2]
+        case 0:       return timeTints[3]
+        case 1:       return timeTints[4]
+        case 2:       return timeTints[5]
+        default:      return timeTints[6]
+        }
+    }
+
+    private static let timeTints: [Color] = [
+        Color(light: 0xF1F2F5, dark: 0x181B21),   // три дня назад и раньше
+        Color(light: 0xE9ECF3, dark: 0x1A1F28),   // позавчера
+        Color(light: 0xDFE5F1, dark: 0x1D2432),   // вчера
+        Color(light: 0xFFE2C9, dark: 0x33261B),   // сегодня
+        Color(light: 0xE3EFDF, dark: 0x1B2A1D),   // завтра
+        Color(light: 0xEBF2E7, dark: 0x1A231B),   // послезавтра
+        Color(light: 0xF0F4ED, dark: 0x181E19),   // через три дня и дальше
+    ]
 
     private static let dayColours: [Color] = [
         Color(light: 0xC06A22, dark: 0xE0A06A),   // вс
@@ -62,7 +91,7 @@ enum Ru {
         Color(light: 0x2C7E96, dark: 0x6FC0D6),   // сб
     ]
 
-    private static let dayTints: [Color] = [
+= [
         Color(light: 0xFBEFE3, dark: 0x291F15),   // вс
         Color(light: 0xEAF0FA, dark: 0x182130),   // пн
         Color(light: 0xE9F3EC, dark: 0x15231B),   // вт
