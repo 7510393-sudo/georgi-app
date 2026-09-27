@@ -271,4 +271,18 @@ extension DayStoreTests {
                        ["Первое [Дом](geo:1.00000,2.00000)", "Второе geo:1.00000,2.00000", ""])
         XCTAssertEqual(Geo.stripped("Второе geo:1.00000,2.00000"), "Второе")
     }
+
+    /// Шаг назад возвращает план, каким он был; шаг вперёд — обратно (P261).
+    func testШагНазадИВперёдВПлане() {
+        let день = store(0)
+        let было = день.planRows
+        день.planRows = было + [.task("Новое")]
+        XCTAssertEqual(день.planBack.count, 1)
+        день.undoPlan()
+        XCTAssertEqual(день.planRows, было)
+        XCTAssertEqual(день.planAhead.count, 1)
+        день.redoPlan()
+        XCTAssertEqual(день.planRows.last?.text, "Новое")
+        XCTAssertTrue(день.planAhead.isEmpty)
+    }
 }

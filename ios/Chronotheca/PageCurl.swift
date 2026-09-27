@@ -13,6 +13,20 @@ func wayHome(_ distance: Int) -> [Int] {
     distance == 0 ? [] : [distance]
 }
 
+/// Сколько листов пролетает по дороге домой — вихрем, почти разом, а не
+/// по одному (P266). Соседний день — один лист, дальше — от двух до пяти:
+/// чем дальше ушли, тем больше.
+func whirlLeaves(_ distance: Int) -> Int {
+    switch abs(distance) {
+    case 0:        return 0
+    case 1:        return 1
+    case 2:        return 2
+    case 3...6:    return 3
+    case 7...30:   return 4
+    default:       return 5
+    }
+}
+
 /// Перелистывание страницы, как в бумажной книге.
 ///
 /// Тот же механизм, что в «Книгах» Apple: страница поднимается за пальцем,
@@ -85,6 +99,71 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
         func obey(_ pages: UIPageViewController) {
             guard !busy, let step = parent.plan.wrappedValue.first, step != 0 else { return }
             busy = true
+            // Издалека — сперва вихрь листов, затем последний ложится
+            // настоящим поворотом (P266).
+            let extra = whirlLeaves(step) - 1
+            if extra > 0, let page = pages.viewControllers?.first?.view {
+                Coordinator.whirl(over: page, in: pages.view, leaves: extra,
+                                  forward: step > 0) { [weak self] in
+                    self?.turn(pages, step)
+                }
+            } else {
+                turn(pages, step)
+            }
+        }
+
+        /// Вихрь страниц: снимки листа один за другим, почти разом,
+        /// поднимаются от корешка — или прилетают к нему, если идём назад.
+        /// Каждый шелестит сам.
+        static func whirl(over page: UIView, in host: UIView, leaves: Int,
+                          forward: Bool, done: @escaping () -> Void) {
+            var perspective = CATransform3DIdentity
+            perspective.m34 = -1.0 / 1400
+            let away = CATransform3DRotate(perspective, -.pi / 2 * 0.98, 0, 1, 0)
+            var flying: [UIView] = []
+            for _ in 0..<leaves {
+                guard let leaf = page.snapshotView(afterScreenUpdates: false) else { continue }
+                let frame = page.convert(page.bounds, to: host)
+                leaf.frame = frame
+                // Лист вращается вокруг корешка — левого края.
+                leaf.layer.anchorPoint = CGPoint(x: 0, y: 0.5)
+                leaf.layer.position = CGPoint(x: frame.minX, y: frame.midY)
+                leaf.layer.shadowColor = UIColor.black.cgColor
+                leaf.layer.shadowOpacity = 0.2
+                leaf.layer.shadowRadius = 8
+                leaf.isUserInteractionEnabled = false
+                leaf.layer.transform = forward ? perspective : away
+                leaf.alpha = forward ? 1 : 0.4
+                host.addSubview(leaf)
+                flying.append(leaf)
+            }
+            guard !flying.isEmpty else { return done() }
+            let each = 0.30
+            let gap = 0.075
+            for (i, leaf) in flying.enumerated() {
+                // Вперёд первым уходит верхний лист, назад — первым
+                // прилетает нижний.
+                let order = forward ? flying.count - 1 - i : i
+                let start = Double(order) * gap
+                UIView.animate(withDuration: each, delay: start, options: [.curveEaseIn]) {
+                    leaf.layer.transform = forward ? away : perspective
+                    leaf.alpha = forward ? 0.25 : 1
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + start) {
+                    Sounds.flip(volume: 0.35, rate: 0.9 + Float(order % 3) * 0.1)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.5)
+                }
+            }
+            let total = each + gap * Double(flying.count - 1)
+            DispatchQueue.main.asyncAfter(deadline: .now() + total) {
+                flying.forEach { $0.removeFromSuperview() }
+                done()
+            }
+        }
+
+        /// Настоящий поворот — последний лист дороги.
+        private func turn(_ pages: UIPageViewController, _ step: Int) {
+            Sounds.flip()
             let forward = step > 0
             let host = make(step)
             // Лист, который пойдёт вперёд, получает торец: при повороте
@@ -177,6 +256,12 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
         func pageViewController(_ pages: UIPageViewController,
                                 viewControllerAfter vc: UIViewController) -> UIViewController? {
             (vc as? Host).map { make($0.offset + 1) }
+        }
+
+        /// Страницу потянули пальцем — шелест (P265).
+        func pageViewController(_ pages: UIPageViewController,
+                                willTransitionTo pending: [UIViewController]) {
+            Sounds.flip()
         }
 
         func pageViewController(_ pages: UIPageViewController,

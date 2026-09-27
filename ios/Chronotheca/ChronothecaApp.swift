@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct ChronothecaApp: App {
@@ -11,6 +12,10 @@ struct ChronothecaApp: App {
     init() {
         // Граница суток из настроек — до того, как откроется «сегодня».
         Prefs.applyBoundary()
+        // Напоминания видны и при открытом приложении (P260).
+        if NSClassFromString("XCTestCase") == nil {
+            UNUserNotificationCenter.current().delegate = BellDelegate.shared
+        }
         let vault = Vault()
         _vault = StateObject(wrappedValue: vault)
         _store = StateObject(wrappedValue: DayStore(vault: vault))
@@ -38,6 +43,7 @@ struct ChronothecaApp: App {
             case .active:
                 store.comeBack()
                 archive.reload()
+                store.syncUpcomingReminders()
             @unknown default:
                 break
             }

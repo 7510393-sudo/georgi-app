@@ -220,12 +220,14 @@ struct DayPage: View {
         .onLongPressGesture(minimumDuration: 0.4) {
             guard live, lit else { return }
             hideKeyboard()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             shell.say("Вернулись на сегодня")
             shell.goHome = true
         } onPressingChanged: { _ in }
         .onTapGesture {
             guard live else { return }
             hideKeyboard()
+            Sounds.flip()
             store.move(by: step)
         }
         .accessibilityLabel(lit ? neighbour(step) + ". Долгое нажатие — на сегодня"
@@ -522,13 +524,8 @@ struct AttachBar: View {
             item("photo", "фото", ready: true) { choosePhotos() }
             item("waveform", "аудио", ready: true) { open { recording = true } }
             item("doc", "файлы", ready: true) { open { browsing = true } }
-            // Только долгое нажатие вписывает, где человек сейчас, —
-            // координатами туда, где стоит курсор. Короткое ничего не
-            // пишет, лишь подсказывает: случайная точка в записи хуже
-            // лишнего движения пальца. Карта открывается глобусом (P252).
-            item("mappin.and.ellipse", "геоточка", ready: true, hold: writePlace) {
-                shell.say("Задержите палец — впишется, где вы")
-            }
+            // Кнопки «геоточка» больше нет (P264): место — с карты,
+            // «Запомнить точку».
             if overKeyboard {
                 item("keyboard.chevron.compact.down", "убрать", ready: true) { hideKeyboard() }
             }
@@ -610,36 +607,6 @@ struct AttachBar: View {
             } else {
                 Button(action: act) { face }
             }
-        }
-    }
-
-    /// Вписать, где человек сейчас, — на ту вкладку, где он стоит: в
-    /// текст дневника или строкой в план (P210).
-    private func writePlace() {
-        let tab = shell.tab
-        guard store.canEdit(tab) else { return shell.say(store.closedReason) }
-        shell.say("Узнаю, где вы…")
-        Locator.shared.current { location in
-            guard let at = location?.coordinate else {
-                return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
-            }
-            // В плане координаты встают прямо в название дела, на место
-            // курсора, а не отдельной строкой (P255). Дела ещё не правили —
-            // по-старому, строкой под последним делом.
-            let point = GeoPoint(title: "", at: at)
-            if tab == .plan, store.lastPlanRow != nil, let field = PlanTitle.last,
-               field.insert(point) {
-                store.notePlace(point)
-                if let location { store.noteWeather(at: location) }
-                store.save()
-                return shell.say("Место вписано в дело")
-            }
-            // Курсор помнится и после того, как клавиатуру убрали: точка
-            // встаёт туда, где писали последним, а не в конец (P253).
-            store.writePoint(GeoPoint(title: "", at: at), to: tab, here: true,
-                             caret: store.diaryCaret, after: store.lastPlanRow)
-            if let location { store.noteWeather(at: location) }
-            shell.say(tab == .diary ? "Место вписано в запись" : "Место вписано в план")
         }
     }
 

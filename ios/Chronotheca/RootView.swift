@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 /// Оболочка приложения: шапка, вкладки, экран, нижние кнопки.
@@ -225,6 +226,10 @@ struct RootView: View {
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
+        // Экран опускается или поднимается — мягкий толчок в руку (P263).
+        .onChange(of: shell.lowered) { _, _ in
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.8)
+        }
         .onChange(of: shell.screen) { old, new in
             follow(from: old, to: new)
             if new == .map {
@@ -464,6 +469,11 @@ struct RootView: View {
         return Button {
             store.prune()
             store.save()
+            // Второе касание по открытому разделу поднимает его и
+            // возвращает на «Сегодня» — туда, где было (P262).
+            if target != .today, shell.screen == target {
+                return open(.today)
+            }
             if target == .today {
                 if shell.screen == .today && !store.isToday {
                     // Возвращаемся не мгновенно, а перелистнув страницы:

@@ -59,4 +59,20 @@ final class WayHomeTests: XCTestCase {
         XCTAssertEqual(DayPages.wayHome(from: вчера), [1])
         XCTAssertEqual(DayPages.wayHome(from: DayStore.today()), [])
     }
+
+    /// Вихрь: соседний день — один лист, дальше — от двух до пяти, и чем
+    /// дальше, тем больше (P266).
+    func testВихрьОтДвухДоПятиЛистов() {
+        XCTAssertEqual(whirlLeaves(0), 0)
+        XCTAssertEqual(whirlLeaves(1), 1)
+        XCTAssertEqual(whirlLeaves(-1), 1)
+        var прежде = 1
+        for расстояние in 2...400 {
+            let листов = whirlLeaves(расстояние)
+            XCTAssertTrue((2...5).contains(листов), "расстояние \(расстояние)")
+            XCTAssertGreaterThanOrEqual(листов, прежде)
+            XCTAssertEqual(whirlLeaves(-расстояние), листов)
+            прежде = листов
+        }
+    }
 }

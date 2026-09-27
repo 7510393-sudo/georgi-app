@@ -236,6 +236,10 @@ struct SettingsSticker: View {
             StickerItem(title: "Тема", note: themeName, edge: Look.noteEdge) {
                 theme = theme == "system" ? "light" : theme == "light" ? "dark" : "system"
             }
+            StickerItem(title: "Шелест страниц", note: quiet ? "выключен" : "включён",
+                        edge: Look.noteEdge) {
+                quiet.toggle()
+            }
 
             StickerSection(title: "Карта")
             StickerItem(title: "«В навигатор» открывает",
@@ -292,6 +296,7 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.startTab) private var startTab = "plan"
     @AppStorage(Prefs.theme) private var theme = "system"
     @AppStorage(Prefs.navigator) private var navigator = "apple"
+    @AppStorage(Prefs.quiet) private var quiet = false
 
     private var themeName: String {
         switch theme {
@@ -549,6 +554,16 @@ struct RollerSheet: View {
         if let i = store.index(of: roller.id) {
             if isBell { store.planRows[i].bell = value } else { store.planRows[i].time = value }
             store.save()
+        }
+        // Колокольчик поставлен — спросить у iPhone разрешение звонить
+        // (P260). Запрещено — сказать, где разрешить.
+        if isBell, value != nil {
+            let shell = shell
+            Reminders.ask { ok in
+                if !ok {
+                    shell.say("Напоминания выключены: Настройки iPhone → Хронотека → Уведомления")
+                }
+            }
         }
         shell.roller = nil
     }

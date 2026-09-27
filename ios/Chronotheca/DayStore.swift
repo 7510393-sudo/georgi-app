@@ -77,7 +77,53 @@ final class DayStore: ObservableObject {
     static let stampGap: TimeInterval = 60 * 60
 
     @Published var date: Date
-    @Published var planRows: [PlanRow] = []
+    @Published var planRows: [PlanRow] = [] {
+        didSet { notePlanChange(from: oldValue) }
+    }
+
+    // MARK: Шаг назад и вперёд в плане (P261)
+
+    /// Прежние состояния плана — для «шага назад», и отменённые — для
+    /// «шага вперёд». Только открытый день и пока он открыт.
+    @Published private(set) var planBack: [[PlanRow]] = []
+    @Published private(set) var planAhead: [[PlanRow]] = []
+    /// Чтение с диска и сами шаги в историю не пишутся.
+    private var quietPlan = false
+    private var planTouched = Date.distantPast
+
+    /// Правка плана — в историю. Буквы, набранные без остановки, — один
+    /// шаг, а не по шагу на букву.
+    private func notePlanChange(from old: [PlanRow]) {
+        guard !quietPlan, old != planRows else { return }
+        let now = Date()
+        if now.timeIntervalSince(planTouched) > 1.2 {
+            planBack.append(old)
+            if planBack.count > 60 { planBack.removeFirst() }
+            planAhead = []
+        }
+        planTouched = now
+    }
+
+    func undoPlan() {
+        guard canEditPlan, let back = planBack.popLast() else { return }
+        quietPlan = true
+        planAhead.append(planRows)
+        planRows = back
+        quietPlan = false
+        planTouched = .distantPast
+        save()
+    }
+
+    func redoPlan() {
+        guard canEditPlan, let ahead = planAhead.popLast() else { return }
+        quietPlan = true
+        planBack.append(planRows)
+        planRows = ahead
+        quietPlan = false
+        planTouched = .distantPast
+        save()
+    }
+
     @Published var diaryTitle: String = ""
     @Published var diaryText: String = ""
     @Published var answers: [String: String] = [:]
@@ -193,6 +239,8 @@ final class DayStore: ObservableObject {
         prune()
         save()
         editingTabs = []
+        planBack = []
+        planAhead = []
         diaryCaret = nil
         lastPlanRow = nil
         caretRequest = nil
@@ -491,7 +539,9 @@ final class DayStore: ObservableObject {
         if diaryFile == .away { gone.insert(.diary) }
         away = gone
 
+        quietPlan = true
         (planRows, planPhotos) = Plan.splitPhotos(Plan.rows(from: DayFile(text: plan.text).body))
+        quietPlan = false
 
         let file = DayFile(text: diaryFile.text)
         // План читается первым, поэтому названия дел уже известны — по ним
@@ -561,6 +611,22 @@ final class DayStore: ObservableObject {
         // Заголовок дня — это уже запись, даже если под ним пока нет ни строчки.
         let b = write(diary, to: .diary, keep: !diaryTitle.isEmpty || place != nil || weather != nil)
         if a || b { load() }
+        // Напоминания дня — по тому, что теперь в плане (P260). Недокачанный
+        // план не трогаем: пустой список снял бы настоящие напоминания.
+        if !away.contains(.planner) { Reminders.sync(day: date, rows: planRows) }
+    }
+
+    /// Расставить напоминания на две недели вперёд — по файлам: колокольчик
+    /// могли поставить на другом устройстве или в редакторе на Mac.
+    func syncUpcomingReminders() {
+        guard vault.root != nil else { return }
+        let cal = Calendar.current
+        for k in 0..<14 {
+            guard let day = cal.date(byAdding: .day, value: k, to: DayStore.today()) else { continue }
+            let reading = vault.reading(.planner, for: day)
+            if reading == .away { continue }
+            Reminders.sync(day: day, rows: Plan.rows(from: DayFile(text: reading.text).body))
+        }
     }
 
     /// Человек вернулся в приложение: сверить день с диском заново.

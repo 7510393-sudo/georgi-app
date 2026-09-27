@@ -11,6 +11,7 @@ enum Prefs {
     static let boundary = "prefs.boundary"      // час границы суток, 0…6
     static let startTab = "prefs.startTab"      // "plan", "diary"
     static let navigator = "prefs.navigator"    // "apple", "google"
+    static let quiet = "prefs.quiet"            // true — без звуков (P265)
 
     static var scheme: ColorScheme? {
         switch UserDefaults.standard.string(forKey: theme) {

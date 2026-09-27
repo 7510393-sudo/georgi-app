@@ -308,6 +308,10 @@ struct PlanScaffold<Content: View>: View {
     let isPast: Bool
     var dimmed = false
     var add: (() -> Void)?
+    /// Шаг назад и вперёд (P261). Соседние страницы показывают те же
+    /// кнопки, только погашенными.
+    var undo: (() -> Void)?
+    var redo: (() -> Void)?
 
     /// Строка, в которую сейчас пишут: её и надо держать на виду.
     var watching: UUID?
@@ -326,7 +330,7 @@ struct PlanScaffold<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PlanHead(isPast: isPast, dimmed: dimmed, add: add)
+            PlanHead(isPast: isPast, dimmed: dimmed, add: add, undo: undo, redo: redo)
             ScrollView {
                 ScrollViewReader { proxy in
                     LazyVStack(alignment: .leading, spacing: 0) {
@@ -370,9 +374,11 @@ struct PlanHead: View {
     let isPast: Bool
     var dimmed = false
     var add: (() -> Void)?
+    var undo: (() -> Void)?
+    var redo: (() -> Void)?
 
     var body: some View {
-        HStack {
+        HStack(spacing: 8) {
             if isPast {
                 Text("день закрыт")
                     .font(Look.mono(11))
@@ -380,6 +386,9 @@ struct PlanHead: View {
                     .foregroundStyle(Look.inkFaint)
             }
             Spacer()
+            // Шаг назад и шаг вперёд — слева от «плюса» (P261).
+            step("arrow.uturn.backward", undo, "Шаг назад")
+            step("arrow.uturn.forward", redo, "Шаг вперёд")
             Text("+")
                 .font(.system(size: 21))
                 .foregroundStyle(Look.accent)
@@ -393,6 +402,24 @@ struct PlanHead: View {
         .padding(.trailing, 12)
         .padding(.top, isPast ? 12 : 6)
         .padding(.bottom, isPast ? 8 : 0)
+    }
+
+    private func step(_ icon: String, _ act: (() -> Void)?, _ name: String) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(Look.accent)
+            .frame(width: 34, height: 34)
+            .overlay(Circle().strokeBorder(Look.rule))
+            .opacity(act == nil || dimmed ? 0.3 : 1)
+            .contentShape(Circle())
+            .onTapGesture {
+                guard let act else { return }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                hideKeyboard()
+                act()
+            }
+            .accessibilityLabel(name)
+            .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -421,7 +448,10 @@ struct PlanView: View {
         VStack(spacing: 0) {
             if store.editing(.plan) { EditBanner(tab: .plan) }
             PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
-                         add: add, watching: typingIn,
+                         add: add,
+                         undo: store.planBack.isEmpty || !store.canEditPlan ? nil : { store.undoPlan() },
+                         redo: store.planAhead.isEmpty || !store.canEditPlan ? nil : { store.redoPlan() },
+                         watching: typingIn,
                          photos: store.planPhotos.map(store.photoURL),
                          glowing: store.editing(.plan),
                          onOpenPhoto: { shell.openedPhoto = .init(tab: .plan, index: $0) },
