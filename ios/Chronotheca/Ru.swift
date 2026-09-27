@@ -33,6 +33,13 @@ enum Ru {
         return "\(c.day ?? 1) \(months[(c.month ?? 1) - 1]) \(c.year ?? 2026) г."
     }
 
+    /// «13 сентября ’26» — год двумя цифрами, для строки под именем дня
+    /// (P271).
+    static func headDate(_ date: Date) -> String {
+        let c = Calendar.current.dateComponents([.day, .month, .year], from: date)
+        return "\(c.day ?? 1) \(months[(c.month ?? 1) - 1]) ’\(String(format: "%02d", (c.year ?? 2026) % 100))"
+    }
+
     /// «13 сентября»
     static func shortDate(_ date: Date) -> String {
         let c = Calendar.current.dateComponents([.day, .month], from: date)

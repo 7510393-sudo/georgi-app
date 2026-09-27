@@ -171,13 +171,16 @@ struct DayPage: View {
             }
             .frame(height: DayPage.headLine)
 
-            Text(Ru.weekday(date))
-                .font(Look.sans(12.5))
-                .tracking(0.75)
-                .foregroundStyle(Ru.dayColor(date))
-            Text(Ru.longDate(date))
-                .font(Look.sans(15))
-                .foregroundStyle(Look.inkSoft)
+            // День недели и дата — одной строкой, год двумя цифрами:
+            // вкладки поднимаются выше, под текст больше места (P271).
+            (Text(Ru.weekday(date))
+                .foregroundColor(Ru.dayColor(date))
+                .tracking(0.6)
+             + Text(",  " + Ru.headDate(date))
+                .foregroundColor(Look.inkSoft))
+                .font(Look.sans(14))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         // Шапка на 30% уже экрана: по бокам — уголки бумаги (P229).
         .padding(.horizontal, Corner.size + 4)
@@ -187,7 +190,7 @@ struct DayPage: View {
         // Отступ до вкладок держит шапка, а не вкладки: тогда её нижний край
         // совпадает с верхним краем вкладки, и облачко уходит именно за
         // вкладку, а не за пустую полоску над ней.
-        .padding(.bottom, 18)
+        .padding(.bottom, 14)
         .frame(maxWidth: .infinity)
         .background(Look.chrome)
         .contentShape(Rectangle())
