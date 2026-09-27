@@ -368,7 +368,12 @@ final class DayStore: ObservableObject {
         case .plan:
             // Дело, за которым просили, могли уже удалить — тогда под последним.
             let asked = row.flatMap { index(of: $0) == nil ? nil : $0 }
-            if let anchor = asked ?? planRows.last(where: \.isTask)?.id, var i = index(of: anchor) {
+            if let anchor = asked ?? planRows.last(where: \.isTask)?.id, let i = index(of: anchor),
+               planRows[i].isTask {
+                // Прямо в название дела, в конец, — не отдельной строкой (P259).
+                let title = planRows[i].text.trimmingCharacters(in: .whitespaces)
+                planRows[i].text = title + (title.isEmpty ? "" : " ") + line
+            } else if let anchor = asked ?? planRows.last(where: \.isTask)?.id, var i = index(of: anchor) {
                 // Точки, уже стоящие за этим делом, остаются перед новой.
                 i += 1
                 while i < planRows.count, let v = planRows[i].verbatim, Geo.point(in: v) != nil { i += 1 }
@@ -396,24 +401,24 @@ final class DayStore: ObservableObject {
         touchDiary()
     }
 
-    /// Вставить строку в текст там, где стоит курсор, — отдельной строкой:
-    /// фраза, в которой стоял курсор, не рвётся посередине слова, а
-    /// переносится. Возвращает текст и место курсора за вставкой.
+    /// Вставить точку в текст там, где стоит курсор, — прямо в строку,
+    /// отделив пробелами (P259). Возвращает текст и место курсора за
+    /// вставкой.
     static func insert(_ line: String, into text: String, at caret: Int?) -> (String, Int) {
         let ns = text as NSString
         guard let caret, caret >= 0, caret <= ns.length else {
+            // Курсора нет — в конец записи, той же строкой.
             let body = text.replacingOccurrences(of: "\\s+$", with: "",
                                                  options: .regularExpression)
-            // Курсора нет — следующей строкой в конце записи (P240).
-            let out = (body.isEmpty ? "" : body + "\n") + line
+            let out = body + (body.isEmpty ? "" : " ") + line
             return (out, (out as NSString).length)
         }
         let before = ns.substring(to: caret)
         let after = ns.substring(from: caret)
-        let lead = before.isEmpty || before.hasSuffix("\n") ? "" : "\n"
-        let tail = after.isEmpty || after.hasPrefix("\n") ? "" : "\n"
-        let head = before + lead + line
-        return (head + tail + after, (head as NSString).length)
+        let lead = before.isEmpty || before.last?.isWhitespace == true ? "" : " "
+        let tail = after.first?.isWhitespace == true ? "" : " "
+        let head = before + lead + line + tail
+        return (head + after, (head as NSString).length)
     }
 
     /// Вернуть снимок, стоящий посреди записи, в полоску внизу (P216).

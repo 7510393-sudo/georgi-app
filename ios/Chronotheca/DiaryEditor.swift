@@ -370,7 +370,7 @@ struct DiaryEditor: UIViewRepresentable {
         for (range, link, point) in found.reversed() {
             let attachment: NSTextAttachment
             if let point {
-                attachment = PointChip(point: point, glowing: glowing)
+                attachment = PointChip(mini: point, glowing: glowing)
             } else {
                 attachment = PhotoAttachment(link: link, url: resolve(link))
             }
@@ -594,11 +594,6 @@ struct DiaryEditor: UIViewRepresentable {
         private func move(from i: Int, to drop: Int, in view: UITextView) {
             let storage = view.textStorage
             let ns = storage.string as NSString
-            let para = ns.paragraphRange(for: NSRange(location: min(drop, ns.length), length: 0))
-            var j = para.location + para.length
-            if j > para.location, ns.character(at: j - 1) == 10 { j -= 1 }
-            guard j != i, j != i + 1 else { return }
-
             func plainLength(_ upTo: Int) -> Int {
                 (DiaryEditor.plain(storage.attributedSubstring(
                     from: NSRange(location: 0, length: upTo))) as NSString).length
@@ -606,6 +601,41 @@ struct DiaryEditor: UIViewRepresentable {
             let piece = DiaryEditor.plain(storage.attributedSubstring(
                 from: NSRange(location: i, length: 1)))
             let text = DiaryEditor.plain(storage) as NSString
+
+            // Точка — значок в строке: встаёт ровно туда, где отпустили,
+            // посреди текста, а не своей строкой (P259).
+            if storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil {
+                let spot = min(drop, ns.length)
+                guard spot != i, spot != i + 1 else { return }
+                var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
+                if NSMaxRange(cut) < text.length, text.character(at: NSMaxRange(cut)) == 32 {
+                    cut.length += 1
+                } else if cut.location > 0, text.character(at: cut.location - 1) == 32 {
+                    cut.location -= 1
+                    cut.length += 1
+                }
+                var target = plainLength(spot)
+                if target >= NSMaxRange(cut) {
+                    target -= cut.length
+                } else if target > cut.location {
+                    target = cut.location
+                }
+                let rest = text.replacingCharacters(in: cut, with: "")
+                let (result, _) = DayStore.insert(piece, into: rest,
+                                                  at: min(target, (rest as NSString).length))
+                view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
+                                                         stamped: parent.stamped, resolve: resolve,
+                                                         glowing: parent.moving)
+                view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+                loadPhotos()
+                parent.text = result
+                return
+            }
+
+            let para = ns.paragraphRange(for: NSRange(location: min(drop, ns.length), length: 0))
+            var j = para.location + para.length
+            if j > para.location, ns.character(at: j - 1) == 10 { j -= 1 }
+            guard j != i, j != i + 1 else { return }
             var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
             var target = plainLength(j)
             // Строка уходит вместе со своим переводом строки.
@@ -887,6 +917,47 @@ final class PointChip: NSTextAttachment {
         image = picture
         let drop: CGFloat = small ? -4 : (glowing ? -12 : -7)
         bounds = CGRect(origin: CGPoint(x: 0, y: drop), size: picture.size)
+    }
+
+    /// Точка в тексте — значок шириной в знак-два, прямо в строке (P259).
+    /// Название и координаты — на карте, куда ведёт касание.
+    init(mini point: GeoPoint, glowing: Bool = false) {
+        super.init(data: nil, ofType: nil)
+        let picture = PointChip.mark(glowing: glowing)
+        image = picture
+        let pad: CGFloat = glowing ? 3 : 0
+        bounds = CGRect(origin: CGPoint(x: 0, y: -3 - pad), size: picture.size)
+        accessibilityLabel = "Точка на карте: " + point.label
+    }
+
+    static func mark(glowing: Bool) -> UIImage {
+        let pad: CGFloat = glowing ? 3 : 0
+        let chip = CGSize(width: 20, height: 17)
+        let size = CGSize(width: chip.width + pad * 2, height: chip.height + pad * 2)
+        let pin = UIImage(systemName: "mappin.and.ellipse",
+                          withConfiguration: UIImage.SymbolConfiguration(pointSize: 10.5,
+                                                                         weight: .medium))?
+            .withTintColor(UIColor(Look.inkSoft), renderingMode: .alwaysOriginal)
+        return UIGraphicsImageRenderer(size: size).image { ctx in
+            let box = CGRect(x: pad, y: pad, width: chip.width, height: chip.height)
+                .insetBy(dx: 0.5, dy: 0.5)
+            let shape = UIBezierPath(roundedRect: box, cornerRadius: 6)
+            if glowing {
+                ctx.cgContext.setShadow(offset: .zero, blur: 4, color: UIColor(Look.glow).cgColor)
+            }
+            UIColor(Look.chrome).setFill()
+            shape.fill()
+            ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            UIColor(glowing ? Look.glow : Look.rule).setStroke()
+            shape.lineWidth = glowing ? 1.5 : 1
+            shape.stroke()
+            if let pin {
+                let s = pin.size
+                pin.draw(in: CGRect(x: pad + (chip.width - s.width) / 2,
+                                    y: pad + (chip.height - s.height) / 2,
+                                    width: s.width, height: s.height))
+            }
+        }
     }
 
     required init?(coder: NSCoder) { nil }

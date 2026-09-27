@@ -61,10 +61,10 @@ final class PlaceTests: XCTestCase {
     func testТочкаВстаётНаМестоКурсора() {
         let (посреди, курсор) = DayStore.insert("geo:1.00000,2.00000",
                                                 into: "Утром туман. Днём солнце.", at: 12)
-        XCTAssertEqual(посреди, "Утром туман.\ngeo:1.00000,2.00000\n Днём солнце.")
-        XCTAssertEqual(курсор, ("Утром туман.\ngeo:1.00000,2.00000" as NSString).length)
+        XCTAssertEqual(посреди, "Утром туман. geo:1.00000,2.00000 Днём солнце.")
+        XCTAssertEqual(курсор, ("Утром туман. geo:1.00000,2.00000 " as NSString).length)
         let (вКонце, _) = DayStore.insert("geo:1.00000,2.00000", into: "Туман.\n", at: nil)
-        XCTAssertEqual(вКонце, "Туман.\ngeo:1.00000,2.00000")
+        XCTAssertEqual(вКонце, "Туман. geo:1.00000,2.00000")
         let (сНачала, _) = DayStore.insert("geo:1.00000,2.00000", into: "", at: 0)
         XCTAssertEqual(сНачала, "geo:1.00000,2.00000")
     }

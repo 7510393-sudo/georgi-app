@@ -184,7 +184,7 @@ struct DiaryPage: View {
     }
 
     private func askRow(_ task: PlanRow) -> some View {
-        AskLine(label: task.text + ":",
+        AskLine(label: Geo.stripped(task.text) + ":",
                 answer: Binding(get: { answer(task.text) },
                                 set: { setAnswer?(task.text, $0) }),
                 editable: editable && setAnswer != nil,

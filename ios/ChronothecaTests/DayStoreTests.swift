@@ -256,18 +256,19 @@ extension DayStoreTests {
             .numberOfRanges, 2)
     }
 
-    /// Точка в план без курсора встаёт после последнего дела, а с курсором —
-    /// после того дела, где он стоит (P240).
-    func testТочкаВПланЗаДелом() {
+    /// Точка в план без курсора встаёт в последнее дело, а с курсором — в
+    /// то дело, где он стоит: прямо в название, не отдельной строкой (P259).
+    func testТочкаВПланВНазваниеДела() {
         let день = store(0)
         день.planRows = [.task("Первое"), .task("Второе"), .verbatim("")]
         let первое = день.planRows[0].id
         let c = CLLocationCoordinate2D(latitude: 1, longitude: 2)
         день.writePoint(GeoPoint(title: "", at: c), to: .plan)
         XCTAssertEqual(день.planRows.map { $0.verbatim ?? $0.text },
-                       ["Первое", "Второе", "geo:1.00000,2.00000", ""])
+                       ["Первое", "Второе geo:1.00000,2.00000", ""])
         день.writePoint(GeoPoint(title: "Дом", at: c), to: .plan, after: первое)
         XCTAssertEqual(день.planRows.map { $0.verbatim ?? $0.text },
-                       ["Первое", "[Дом](geo:1.00000,2.00000)", "Второе", "geo:1.00000,2.00000", ""])
+                       ["Первое [Дом](geo:1.00000,2.00000)", "Второе geo:1.00000,2.00000", ""])
+        XCTAssertEqual(Geo.stripped("Второе geo:1.00000,2.00000"), "Второе")
     }
 }

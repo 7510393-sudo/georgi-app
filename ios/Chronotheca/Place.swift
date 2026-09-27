@@ -166,6 +166,18 @@ extension Geo {
         }
     }
 
+    /// Текст без точек — там, где кнопочку не нарисуешь: в подписи
+    /// «Как прошло?» название дела без координат (P259).
+    static func stripped(_ s: String) -> String {
+        var out = s as NSString
+        for (range, _) in points(inText: s).reversed() {
+            out = out.replacingCharacters(in: range, with: "") as NSString
+        }
+        return (out as String)
+            .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+    }
+
     /// Строка точки для файла.
     static func pointLine(_ p: GeoPoint) -> String {
         let title = p.title
