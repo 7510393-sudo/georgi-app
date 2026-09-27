@@ -414,7 +414,7 @@ struct PlanHead: View {
             .contentShape(Circle())
             .onTapGesture {
                 guard let act else { return }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                Feel.light()
                 hideKeyboard()
                 act()
             }
@@ -620,6 +620,8 @@ struct PlanView: View {
             return shell.say("День закрыт. Отметить задним числом — через режим изменений.")
         }
         row.wrappedValue.done.toggle()
+        // Сделано — довольный толчок; снято — лёгкий (P267).
+        if row.wrappedValue.done { Feel.done() } else { Feel.light() }
         store.save()
     }
 

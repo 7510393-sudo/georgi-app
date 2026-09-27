@@ -512,6 +512,9 @@ struct RollerSheet: View {
         let ready = value != nil
         return Button {
             guard let value else { return }
+            // Щелчок, как у будильника (P267). Само колёсико щёлкает
+            // своим, системным.
+            Feel.tick()
             if chosen == title, picked == Clock.snap(value) {
                 apply(Clock.text(picked))
                 return

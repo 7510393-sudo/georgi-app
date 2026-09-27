@@ -94,8 +94,12 @@ final class Shell: ObservableObject {
             else { showingMenu = true; menuPull = menuPull ?? 1 }
         }
         DispatchQueue.main.async {
-            withAnimation(.pull) {
+            // Листок лёг — шлепок бумаги и мягкий толчок (P267).
+            withAnimation(.pull, completionCriteria: .logicallyComplete) {
                 if settings { self.settingsPull = nil } else { self.menuPull = nil }
+            } completion: {
+                Feel.paper()
+                Sounds.play("paper-tap", volume: 0.35)
             }
         }
     }
@@ -107,6 +111,7 @@ final class Shell: ObservableObject {
             if settings { settingsPull = 1 } else { menuPull = 1 }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            Feel.paper()
             var still = Transaction()
             still.disablesAnimations = true
             withTransaction(still) {

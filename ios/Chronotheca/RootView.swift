@@ -226,10 +226,6 @@ struct RootView: View {
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .tint(Look.accent)
-        // Экран опускается или поднимается — мягкий толчок в руку (P263).
-        .onChange(of: shell.lowered) { _, _ in
-            UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.8)
-        }
         .onChange(of: shell.screen) { old, new in
             follow(from: old, to: new)
             if new == .map {
@@ -536,15 +532,24 @@ struct RootView: View {
     /// Разом они шли навстречу, и новая обгоняла уходящую (решение P202).
     private func follow(from old: Shell.Screen, to new: Shell.Screen) {
         let heavy = Animation.spring(response: 0.80, dampingFraction: 0.90)
+        // Толчок — в тот миг, когда плашка ударилась кромкой: опускаясь —
+        // о нижнюю строку, поднимаясь — о верхнюю. Не в начале хода
+        // (P267): так чувствуется вес.
         guard old != .today, new != .today, shell.lowered != .today else {
-            withAnimation(heavy) { shell.lowered = new }
+            withAnimation(heavy, completionCriteria: .logicallyComplete) {
+                shell.lowered = new
+            } completion: { Feel.thud() }
             return
         }
-        withAnimation(.easeIn(duration: 0.34)) { shell.lowered = .today }
+        withAnimation(.easeIn(duration: 0.34), completionCriteria: .logicallyComplete) {
+            shell.lowered = .today
+        } completion: { Feel.thud() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) { [shell] in
             // Пока уходила плашка, человек мог нажать ещё раз.
             guard shell.screen == new else { return }
-            withAnimation(heavy) { shell.lowered = new }
+            withAnimation(heavy, completionCriteria: .logicallyComplete) {
+                shell.lowered = new
+            } completion: { Feel.thud() }
         }
     }
 

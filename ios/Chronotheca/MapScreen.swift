@@ -321,6 +321,7 @@ struct MapScreen: View {
             return shell.say(store.closedReason)
         }
         shell.say(tab == .diary ? "Точка записана в дневник" : "Точка записана в план")
+        Feel.light()
         // Записали — назад к странице дня, на ту вкладку, где точка теперь
         // видна.
         shell.tab = tab

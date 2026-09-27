@@ -47,7 +47,8 @@ enum Reminders {
             let title = Geo.stripped(row.text)
             content.title = title.isEmpty ? "Дело без названия" : title
             content.body = row.time.map { "Дело на \($0)" } ?? "Напоминание из плана"
-            content.sound = .default
+            // Свой колокольчик вместо обычного звука iPhone (P267).
+            content.sound = UNNotificationSound(named: UNNotificationSoundName("bell.wav"))
             let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute],
                                                         from: when)
             let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
