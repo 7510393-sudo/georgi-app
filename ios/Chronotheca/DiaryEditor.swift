@@ -53,6 +53,9 @@ struct DiaryEditor: UIViewRepresentable {
     /// Касание по снимку в тексте — открыть его (P216). Пусто — снимки не
     /// открываются: так на соседних страницах.
     var onOpenPhoto: ((String) -> Void)?
+    /// Снимок из текста отпустили над полоской внизу — вернуть его туда
+    /// (P272). Пусто — возвращать некуда.
+    var onReturnPhoto: ((String) -> Void)?
     /// Касание по точке в тексте — открыть карту на ней (P213).
     var onOpenPoint: ((GeoPoint) -> Void)?
     /// Курсор переставлен: где он теперь, отступом в тексте записи. Туда
@@ -277,7 +280,9 @@ struct DiaryEditor: UIViewRepresentable {
     /// Размер снимка в тексте. Задан числом: картинка, пришедшая с диска
     /// позже текста, встаёт в уже отведённое место и ничего не сдвигает
     /// (P113).
-    static let photoSize = CGSize(width: 192, height: 128)
+    /// Снимок в тексте — того же размера, что превью в полоске внизу:
+    /// бросили в текст — он не вырос (P272).
+    static let photoSize = CGSize(width: PhotoStrip.side, height: PhotoStrip.side)
 
     /// Текст поля таким, каким он ляжет в файл: снимки — обратно строками
     /// `![](…)`, чужие знаки-заместители — вон (P161, P204).
@@ -567,16 +572,30 @@ struct DiaryEditor: UIViewRepresentable {
                 shadow.alpha = 0.85
                 shadow.layer.shadowOpacity = 0.3
                 shadow.layer.shadowRadius = 8
-                shadow.center = at
-                view.addSubview(shadow)
+                // Тень снимка — поверх всего окна: её можно донести и до
+                // полоски внизу, за край страницы (P272).
+                let host: UIView = view.window ?? view
+                shadow.center = g.location(in: host)
+                host.addSubview(shadow)
                 ghost = shadow
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             case .changed:
-                ghost?.center = at
+                ghost?.center = g.location(in: ghost?.superview ?? view)
             case .ended:
                 ghost?.removeFromSuperview()
                 ghost = nil
                 taken = nil
+                // Отпустили ниже страницы, над полоской превью — снимок
+                // возвращается туда, откуда его взяли (P272).
+                if let window = view.window, let page = page(over: view),
+                   let link = view.textStorage.attribute(DiaryEditor.photoKey, at: i,
+                                                         effectiveRange: nil) as? String,
+                   let back = parent.onReturnPhoto,
+                   g.location(in: window).y > page.convert(page.bounds, to: window).maxY - 8 {
+                    Feel.light()
+                    back(link)
+                    return
+                }
                 if let position = view.closestPosition(to: at) {
                     move(from: i, to: view.offset(from: view.beginningOfDocument, to: position),
                          in: view)
@@ -704,7 +723,7 @@ struct DiaryEditor: UIViewRepresentable {
                       let url = photo.url else { return }
                 photo.loaded = true
                 Task.detached(priority: .userInitiated) {
-                    guard let got = Photo.load(url, side: DiaryEditor.photoSize.width) else { return }
+                    guard let got = Photo.load(url, side: 160) else { return }
                     let framed = PhotoAttachment.frame(got)
                     await MainActor.run { [weak view] in
                         Photo.cache.setObject(framed, forKey: PhotoAttachment.key(url))
@@ -1034,7 +1053,7 @@ final class PhotoAttachment: NSTextAttachment {
     static let empty: UIImage = UIGraphicsImageRenderer(size: DiaryEditor.photoSize).image { _ in
         let box = CGRect(origin: .zero, size: DiaryEditor.photoSize)
         UIColor(Look.chrome).setFill()
-        UIBezierPath(roundedRect: box, cornerRadius: 8).fill()
+        UIBezierPath(roundedRect: box, cornerRadius: 6).fill()
     }
 
     /// Снимок, обрезанный по клетке и со скруглёнными углами.
@@ -1042,7 +1061,7 @@ final class PhotoAttachment: NSTextAttachment {
         let size = DiaryEditor.photoSize
         return UIGraphicsImageRenderer(size: size).image { _ in
             let box = CGRect(origin: .zero, size: size)
-            UIBezierPath(roundedRect: box, cornerRadius: 8).addClip()
+            UIBezierPath(roundedRect: box, cornerRadius: 6).addClip()
             let scale = max(size.width / image.size.width, size.height / image.size.height)
             let w = image.size.width * scale, h = image.size.height * scale
             image.draw(in: CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2,

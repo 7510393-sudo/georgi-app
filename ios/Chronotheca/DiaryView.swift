@@ -49,7 +49,12 @@ struct DiaryView: View {
             },
             onCaret: { store.diaryCaret = $0 },
             onEditing: { store.diaryTyping = $0 },
-            placeCaret: $store.caretRequest)
+            placeCaret: $store.caretRequest,
+            // Снимок, отпущенный над полоской, возвращается в неё (P272).
+            onReturnPhoto: { link in
+                store.returnToStrip(link)
+                shell.say("Снимок вернулся в полоску")
+            })
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.diaryText) { _, _ in
@@ -97,6 +102,7 @@ struct DiaryPage: View {
     var onCaret: ((Int) -> Void)?
     var onEditing: ((Bool) -> Void)?
     var placeCaret: Binding<Int?> = .constant(nil)
+    var onReturnPhoto: ((String) -> Void)?
 
     private enum Field: Hashable { case title }
     @FocusState private var focused: Field?
@@ -264,7 +270,8 @@ struct DiaryPage: View {
                     startEditing: $toText,
                     onFocus: { if onFocusText() { caretToEnd = true } },
                     grows: true, minHeight: 320, resolve: resolve,
-                    onOpenPhoto: onOpenInline, onOpenPoint: onOpenPoint, onCaret: onCaret,
+                    onOpenPhoto: onOpenInline, onReturnPhoto: onReturnPhoto,
+                    onOpenPoint: onOpenPoint, onCaret: onCaret,
                     moving: glowing && editable, onEditing: onEditing,
                     placeCaret: placeCaret)
             .padding(.top, 16)

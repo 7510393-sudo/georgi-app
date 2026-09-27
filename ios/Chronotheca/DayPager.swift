@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import PhotosUI
+import Photos
 import UniformTypeIdentifiers
 import CoreTransferable
 
@@ -525,10 +526,13 @@ struct AttachBar: View {
     @State private var picked: [PhotosPickerItem] = []
     @State private var recording = false
     @State private var browsing = false
+    @State private var gallery = false
 
     var body: some View {
         HStack(spacing: 0) {
-            item("photo", "фото", ready: true) { choosePhotos() }
+            // «Фото» открывает ряд последних снимков галереи над полоской
+            // (P273); повторное касание — прячет.
+            item("photo", "фото", ready: true) { toggleGallery() }
             item("waveform", "аудио", ready: true) { open { recording = true } }
             item("doc", "файлы", ready: true) { open { browsing = true } }
             // Кнопки «геоточка» больше нет (P264): место — с карты,
@@ -543,6 +547,20 @@ struct AttachBar: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Look.rule).frame(height: 1)
         }
+        // Ряд галереи лежит над полоской, поверх страницы: страница под
+        // ним не сдвигается (P113, P114).
+        .overlay(alignment: .top) {
+            if gallery {
+                GalleryRow(add: addFromGallery, more: {
+                    gallery = false
+                    choosePhotos()
+                })
+                .offset(y: -GalleryRow.height)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .onChange(of: shell.tab) { _, _ in gallery = false }
+        .onChange(of: store.date) { _, _ in gallery = false }
         // Системное окно галереи: приложению не нужно разрешение на всю
         // галерею — оно получает только те снимки, которые выбрал человек.
         // Снимки и видео вместе, без предела на число (P214).
@@ -613,6 +631,22 @@ struct AttachBar: View {
                     .accessibilityHint("Долгое нажатие — вписать, где вы")
             } else {
                 Button(action: act) { face }
+            }
+        }
+    }
+
+    private func toggleGallery() {
+        guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
+        withAnimation(.easeOut(duration: 0.2)) { gallery.toggle() }
+    }
+
+    /// Снимок из ряда галереи — в полоску этой вкладки, как из окна
+    /// галереи (P273).
+    private func addFromGallery(_ asset: PHAsset) {
+        let tab = shell.tab
+        GalleryRow.data(of: asset) { data in
+            guard let data, store.addPhoto(data, to: tab) else {
+                return shell.say("Снимок не удалось взять из галереи")
             }
         }
     }

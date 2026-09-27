@@ -470,7 +470,7 @@ struct PlanPhotoLine: View {
         .task(id: url) {
             guard image == nil, let url else { return }
             let got = await Task.detached(priority: .userInitiated) { () -> UIImage? in
-                guard let raw = Photo.load(url, side: DiaryEditor.photoSize.width) else { return nil }
+                guard let raw = Photo.load(url, side: 160) else { return nil }
                 return PhotoAttachment.frame(raw)
             }.value
             guard let got else { return }
