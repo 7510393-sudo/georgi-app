@@ -511,6 +511,10 @@ struct AttachBar: View {
 
     var overKeyboard = false
 
+    /// Сколько полоска занимает над клавиатурой, с запасом. Строка, в
+    /// которой пишут, должна вставать выше неё, а не прятаться (P269).
+    static let overKeyboardHeight: CGFloat = 58
+
     @EnvironmentObject private var shell: Shell
     @EnvironmentObject private var store: DayStore
 

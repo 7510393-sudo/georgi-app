@@ -747,7 +747,10 @@ struct DiaryEditor: UIViewRepresentable {
                   let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
                     as? CGRect
             else { return }
-            keyboardTop = window.convert(frame, from: nil).minY
+            // Над клавиатурой стоит полоска вложений: курсору надо встать
+            // выше неё, а не выше одной клавиатуры (P269).
+            let top = window.convert(frame, from: nil).minY
+            keyboardTop = top < window.bounds.maxY ? top - AttachBar.overKeyboardHeight : nil
             makeRoom(scroll: true)
         }
 
