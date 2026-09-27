@@ -343,23 +343,34 @@ struct PhotoViewer: View {
     @State private var image: UIImage?
     @State private var scale: CGFloat = 1
     @State private var asking = false
+    /// Насколько снимок стянут пальцем вниз (P270).
+    @State private var pulled: CGSize = .zero
+
+    /// Как далеко стянут: 0 — на месте, 1 — почти ушёл.
+    private var gone: CGFloat { min(1, max(0, pulled.height) / 420) }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            // Фон светлеет, пока снимок тянут вниз: под ним видна страница,
+            // как в «Фото» Apple.
+            Color.black.opacity(1 - gone).ignoresSafeArea()
             if let image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
-                    .scaleEffect(scale)
+                    .scaleEffect(scale * (1 - gone * 0.3))
+                    .offset(x: pulled.width * 0.6, y: max(0, pulled.height))
                     .gesture(MagnificationGesture()
                         .onChanged { scale = max(1, $0) }
                         .onEnded { _ in withAnimation(.easeOut(duration: 0.2)) { scale = 1 } })
+                    .simultaneousGesture(swipeDown)
             } else {
                 ProgressView().tint(.white)
             }
         }
-        .overlay(alignment: .top) { bar }
+        .overlay(alignment: .top) { bar.opacity(pulled == .zero ? 1 : 0) }
+        // Под снимком — страница: её видно, пока снимок стягивают.
+        .presentationBackground(.clear)
         .task {
             guard let url else { return }
             image = await Task.detached(priority: .userInitiated) {
@@ -372,6 +383,33 @@ struct PhotoViewer: View {
         } message: {
             Text("Файл останется в папке «Фотографии» — удалить его можно в «Файлах».")
         }
+    }
+
+    /// Свайп вниз убирает снимок, как в «Фото» Apple (P270): потянул
+    /// и отпустил — снимок уходит; не дотянул — возвращается на место.
+    /// Увеличенный снимок не стягивается: там палец двигает картинку.
+    private var swipeDown: some Gesture {
+        DragGesture(minimumDistance: 10)
+            .onChanged { v in
+                guard scale == 1, v.translation.height > 0 || pulled != .zero else { return }
+                pulled = v.translation
+            }
+            .onEnded { v in
+                guard scale == 1, pulled != .zero else { return }
+                if pulled.height > 110 || v.predictedEndTranslation.height > 280 {
+                    Feel.light()
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        pulled = CGSize(width: pulled.width, height: UIScreen.main.bounds.height)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        var still = Transaction()
+                        still.disablesAnimations = true
+                        withTransaction(still) { close() }
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { pulled = .zero }
+                }
+            }
     }
 
     private var bar: some View {
