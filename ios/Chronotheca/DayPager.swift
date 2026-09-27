@@ -182,6 +182,12 @@ struct DayPage: View {
                 .font(Look.sans(14))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                // Строка прижата влево, к стрелке: справа над вкладкой
+                // сидит облачко, и в середине строки оно накрывало год.
+                // Прижата на всех страницах, а не только с облачком, —
+                // иначе шапка прыгала бы при перелистывании (P114).
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 8)
         }
         // Шапка на 30% уже экрана: по бокам — уголки бумаги (P229).
         .padding(.horizontal, Corner.size + 4)
