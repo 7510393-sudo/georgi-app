@@ -41,7 +41,7 @@ struct RememberCloud: View {
                 Image("облачко-бумага")
                     .renderingMode(.template)
                     .resizable()
-                    .foregroundStyle(Look.sticker)
+                    .foregroundStyle(Look.cloudPaper)
                 Image("облачко-перо")
                     .renderingMode(.template)
                     .resizable()

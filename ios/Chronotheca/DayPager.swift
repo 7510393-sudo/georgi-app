@@ -74,7 +74,7 @@ struct DayPage: View {
             heading
             tabs
             content
-            AttachBar(live: live)
+            AttachBar(live: live, date: date)
         }
         .background(background)
         // Фактура страницы и вкладок отсчитывается от одной точки — клетка
@@ -529,6 +529,8 @@ struct AttachBar: View {
     /// Полоска открытой страницы: она исполняет просьбы кнопок над
     /// клавиатурой (P279).
     var live = false
+    /// День страницы: полоска — нижний край его листа, в его цвет (P297).
+    var date = DayStore.today()
 
     /// Сколько полоска занимает над клавиатурой, с запасом. Строка, в
     /// которой пишут, должна вставать выше неё, а не прятаться (P269).
@@ -562,9 +564,9 @@ struct AttachBar: View {
         // Полоска как можно тоньше: одни значки, без подписей (P289).
         .padding(.top, 5)
         .padding(.bottom, 4)
-        .background(Look.chrome)
+        .background(DayStrip(date: date))
         .overlay(alignment: .top) {
-            Rectangle().fill(Look.rule).frame(height: 1)
+            Rectangle().fill(Color.black.opacity(0.08)).frame(height: 1)
         }
         // Ряд галереи лежит над полоской, поверх страницы: страница под
         // ним не сдвигается (P113, P114).
@@ -658,7 +660,7 @@ struct AttachBar: View {
     private func item(_ icon: String, _ name: String, ready: Bool = false,
                       hold: (() -> Void)? = nil,
                       act: @escaping () -> Void) -> some View {
-        let face = BarFace(icon: icon, name: name, tint: ready ? Look.inkSoft : Look.inkFaint,
+        let face = BarFace(icon: icon, name: name, tint: ready ? Look.stripInk : Look.inkFaint,
                            compact: true)
         return Group {
             if let hold {

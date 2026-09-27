@@ -76,7 +76,10 @@ final class DayStore: ObservableObject {
     /// Через столько без правки дневник ставит новую отметку времени.
     static let stampGap: TimeInterval = 60 * 60
 
-    @Published var date: Date
+    @Published var date: Date {
+        // Полоска над клавиатурой — в цвет открытого дня (P297).
+        didSet { KeyboardBar.day.date = date }
+    }
     @Published var planRows: [PlanRow] = [] {
         didSet { notePlanChange(from: oldValue) }
     }

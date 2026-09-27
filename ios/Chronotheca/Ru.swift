@@ -152,6 +152,16 @@ enum Look {
     static let note        = Color(light: 0xE9F1F8, dark: 0x1A2430)
     static let noteEdge    = Color(light: 0xC7DBEC, dark: 0x2C3A48)
 
+    /// Крафт-картон нижней строки разделов (P297): обложка блокнота, одна
+    /// во все дни. Значки на нём — тёмно-коричневыми чернилами.
+    static let kraft     = Color(light: 0xCBB28C, dark: 0x3A3125)
+    static let kraftInk  = Color(light: 0x3A2818, dark: 0xE6D6BA)
+    static let kraftEdge = Color(light: 0x96805F, dark: 0x1E1912)
+    /// Чернила строки вложений: тёплые тёмные, а не серые (P297).
+    static let stripInk  = Color(light: 0x3A3530, dark: 0xD9D2C6)
+    /// Бумага облачка «…а помнишь?» — белая (P298).
+    static let cloudPaper = Color(light: 0xFFFFFF, dark: 0x2A2517)
+
     /// Засечный шрифт дневника. Literata в iOS нет, Georgia есть везде.
     /// Шрифт записи можно сменить в настройках (P274).
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {

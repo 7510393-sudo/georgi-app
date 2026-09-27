@@ -19,6 +19,14 @@ enum KeyboardBar {
 
     static let height: CGFloat = 36
 
+    /// Какой день открыт: полоска над клавиатурой — в его цвет, как и
+    /// полоска на странице (P297). Одна приставка на все поля, поэтому
+    /// день ей сообщают, а не передают.
+    final class Day: ObservableObject {
+        @Published var date = DayStore.today()
+    }
+    static let day = Day()
+
     private static var host: UIHostingController<KeyboardBarView>?
     private static var holder: UIInputView?
 
@@ -41,6 +49,8 @@ enum KeyboardBar {
 }
 
 struct KeyboardBarView: View {
+    @ObservedObject private var day = KeyboardBar.day
+
     var body: some View {
         HStack(spacing: 0) {
             key("photo", "фото") { KeyboardBar.ask(.photo) }
@@ -55,12 +65,12 @@ struct KeyboardBarView: View {
         .padding(.top, 4)
         .padding(.bottom, 3)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Look.chrome)
-        .overlay(alignment: .top) { Rectangle().fill(Look.rule).frame(height: 1) }
+        .background(DayStrip(date: day.date))
+        .overlay(alignment: .top) { Rectangle().fill(Color.black.opacity(0.08)).frame(height: 1) }
     }
 
     private func key(_ icon: String, _ name: String, act: @escaping () -> Void) -> some View {
-        Button(action: act) { BarFace(icon: icon, name: name, compact: true) }
+        Button(action: act) { BarFace(icon: icon, name: name, tint: Look.stripInk, compact: true) }
             .buttonStyle(.plain)
     }
 }

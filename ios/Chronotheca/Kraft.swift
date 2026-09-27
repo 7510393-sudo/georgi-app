@@ -1,0 +1,100 @@
+import SwiftUI
+import UIKit
+
+/// Крафт-картон нижней строки разделов (P297).
+///
+/// Строка — обложка блокнота: одна и та же во все дни, с волокнами
+/// картона и неровным, будто оторванным верхним краем. Рисованные значки
+/// на ней — как штампы тёмно-коричневыми чернилами.
+struct KraftPaper: View {
+    var body: some View {
+        ZStack {
+            Look.kraft
+            Image(uiImage: KraftPaper.fibre)
+                .resizable(resizingMode: .tile)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// Волокна картона: крапины и короткие волоски, светлые и тёмные.
+    /// Узор один и тот же при каждом запуске — снимки не должны
+    /// различаться от раза к разу (P114).
+    static let fibre: UIImage = {
+        let side: CGFloat = 180
+        var seed: UInt64 = 0xC4AF_7297
+        func next() -> CGFloat {
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return CGFloat(seed >> 33) / CGFloat(UInt64(1) << 31)
+        }
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { ctx in
+            for _ in 0..<900 {
+                let x = next() * side, y = next() * side
+                let r = 0.4 + next() * 0.9
+                let dark = next() < 0.55
+                (dark ? UIColor(red: 0.35, green: 0.24, blue: 0.12, alpha: 0.06 + next() * 0.06)
+                      : UIColor(white: 1, alpha: 0.10 + next() * 0.10)).setFill()
+                ctx.cgContext.fillEllipse(in: CGRect(x: x, y: y, width: r, height: r))
+            }
+            for _ in 0..<90 {
+                let x = next() * side, y = next() * side
+                let angle = (next() - 0.5) * 0.9
+                let length = 4 + next() * 10
+                let fibre = UIBezierPath()
+                fibre.move(to: CGPoint(x: x, y: y))
+                fibre.addQuadCurve(to: CGPoint(x: x + cos(angle) * length, y: y + sin(angle) * length),
+                                   controlPoint: CGPoint(x: x + cos(angle + 0.5) * length / 2,
+                                                         y: y + sin(angle + 0.5) * length / 2))
+                fibre.lineWidth = 0.5
+                (next() < 0.6 ? UIColor(red: 0.30, green: 0.20, blue: 0.10, alpha: 0.10)
+                              : UIColor(white: 1, alpha: 0.18)).setStroke()
+                fibre.stroke()
+            }
+        }
+    }()
+}
+
+/// Неровный верхний край — картон оторван, а не отрезан (P297).
+///
+/// Зубцы мелкие и неправильные, но всегда одни и те же: край не должен
+/// меняться от поворота или перерисовки (P113).
+struct TornEdge: Shape {
+    /// Глубина зубцов.
+    static let depth: CGFloat = 3.5
+
+    func path(in rect: CGRect) -> Path {
+        var seed: UInt64 = 0x70_2E_ED_6E
+        func next() -> CGFloat {
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return CGFloat(seed >> 33) / CGFloat(UInt64(1) << 31)
+        }
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        var x = rect.minX
+        p.addLine(to: CGPoint(x: x, y: rect.minY + next() * Self.depth))
+        while x < rect.maxX {
+            x += 2 + next() * 5
+            p.addLine(to: CGPoint(x: min(x, rect.maxX), y: rect.minY + next() * Self.depth))
+        }
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Строка вложений — нижний край листа этого дня: цвет страницы, на тон
+/// гуще, с той же бумажной фактурой (P297).
+struct DayStrip: View {
+    let date: Date
+
+    var body: some View {
+        ZStack {
+            Ru.tint(date)
+            Color.black.opacity(0.06)
+            Image(uiImage: PageTexture.grain)
+                .resizable(resizingMode: .tile)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}

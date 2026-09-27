@@ -182,7 +182,6 @@ struct RootView: View {
                     // Сменили размер или шрифт записи — страницы собираются
                     // заново: поля UIKit помнят свой шрифт (P274).
                     .id("\(textSize)|\(fontKey)")
-                Rectangle().fill(Look.rule).frame(height: 1)
                 tabbar
             }
             .background(Look.chrome.ignoresSafeArea())
@@ -467,7 +466,20 @@ struct RootView: View {
         // На 5% тоньше, чем было, при книжке на 10% крупнее (P212).
         .padding(.top, 7)
         .padding(.bottom, 2)
-        .background(Look.chrome)
+        // Крафт-картон с оторванным верхним краем, до самого низа экрана
+        // (P297). Край заходит на строку вложений на глубину зубцов.
+        .background(alignment: .top) {
+            ZStack(alignment: .top) {
+                KraftPaper()
+                    .clipShape(TornEdge())
+                TornEdge()
+                    .stroke(Look.kraftEdge.opacity(0.55), lineWidth: 0.8)
+                    .frame(height: TornEdge.depth + 1)
+                    .clipped()
+            }
+            .padding(.top, -TornEdge.depth)
+            .ignoresSafeArea(edges: .bottom)
+        }
     }
 
     private func scale(_ target: Shell.Screen) -> CGFloat {
@@ -521,11 +533,11 @@ struct RootView: View {
             // значок наружу и не меняет высоты полосы (P218).
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(on ? Look.accent.opacity(0.10) : .clear)
+                    .fill(on ? Color.black.opacity(0.08) : .clear)
                     .padding(.horizontal, -16)
                     .padding(.vertical, -3))
             .frame(maxWidth: .infinity)
-            .foregroundStyle(on ? Look.accent : Look.inkSoft)
+            .foregroundStyle(on ? Look.accent : Look.kraftInk)
         }
     }
 
