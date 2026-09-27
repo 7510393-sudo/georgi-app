@@ -179,8 +179,9 @@ struct PhotoStrip: View {
     /// Превью, которое сейчас несут, — по нему соседи расступаются.
     @State private var carrying: Int?
 
-    static let side: CGFloat = 54
-    private let gap: CGFloat = 8
+    /// На 10% крупнее прежних 54 и вплотную, без промежутков (P275).
+    static let side: CGFloat = 60
+    private let gap: CGFloat = 0
 
     var body: some View {
         GeometryReader { geo in
@@ -391,7 +392,10 @@ struct PhotoViewer: View {
     private var swipeDown: some Gesture {
         DragGesture(minimumDistance: 10)
             .onChanged { v in
-                guard scale == 1, v.translation.height > 0 || pulled != .zero else { return }
+                guard scale == 1 else { return }
+                // Вбок листают снимки — стягивается только движение вниз.
+                if pulled == .zero,
+                   v.translation.height <= abs(v.translation.width) { return }
                 pulled = v.translation
             }
             .onEnded { v in
@@ -478,5 +482,41 @@ struct PlanPhotoLine: View {
             image = got
         }
         .accessibilityLabel("Фотография")
+    }
+}
+
+/// Вложения полоски во весь экран — листаются вбок (P278). Каждое
+/// открывается своим просмотром: снимок, видео, голос, документ.
+struct StripViewer: View {
+    let count: Int
+    let url: (Int) -> URL?
+    var remove: ((Int) -> Void)?
+    let close: () -> Void
+
+    @State private var index: Int
+
+    init(count: Int, start: Int, url: @escaping (Int) -> URL?,
+         remove: ((Int) -> Void)?, close: @escaping () -> Void) {
+        self.count = count
+        self.url = url
+        self.remove = remove
+        self.close = close
+        _index = State(initialValue: start)
+    }
+
+    var body: some View {
+        TabView(selection: $index) {
+            ForEach(0..<count, id: \.self) { i in
+                AttachmentViewer(url: url(i),
+                                 onRemove: remove.map { r in { r(i) } },
+                                 onReturn: nil,
+                                 close: close)
+                    .tag(i)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .ignoresSafeArea()
+        .presentationBackground(.clear)
+        .onChange(of: index) { _, _ in Feel.tick() }
     }
 }

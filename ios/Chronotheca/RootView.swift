@@ -24,6 +24,8 @@ struct RootView: View {
     @AppStorage(Prefs.lock) private var lockOn = false
     @AppStorage(Prefs.hide) private var hideOn = false
     @AppStorage(Prefs.theme) private var theme = "system"
+    @AppStorage(Prefs.textSize) private var textSize = 0
+    @AppStorage(Prefs.font) private var fontKey = "georgia"
     @State private var locked = UserDefaults.standard.bool(forKey: Prefs.lock)
 
     private var scheme: ColorScheme? {
@@ -176,28 +178,13 @@ struct RootView: View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 0) {
                 canvas
+                    // Сменили размер или шрифт записи — страницы собираются
+                    // заново: поля UIKit помнят свой шрифт (P274).
+                    .id("\(textSize)|\(fontKey)")
                 Rectangle().fill(Look.rule).frame(height: 1)
                 tabbar
             }
             .background(Look.chrome.ignoresSafeArea())
-
-            // Пока пишут на странице дня, полоска вложений стоит прямо над
-            // клавиатурой (P253). Она всегда здесь, только не видна: иначе
-            // окно выбора снимков, открытое с неё, закрылось бы вместе с
-            // клавиатурой.
-            // Сколько поднять — меряется по месту: от низа этого слоя до
-            // верхнего края клавиатуры. Иначе между полоской и клавиатурой
-            // оставалась щель высотой с нижний край экрана.
-            GeometryReader { geo in
-                let shown = keyboard.height > 0 && shell.screen == .today
-                let lift = max(0, geo.frame(in: .global).maxY - keyboard.top)
-                AttachBar(overKeyboard: true)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .padding(.bottom, lift)
-                    .opacity(shown ? 1 : 0)
-                    .allowsHitTesting(shown)
-                    .accessibilityHidden(!shown)
-            }
 
             // Верхней строки больше нет: шестерёнка и три точки нарисованы
             // на уголках бумаги, торчащих сверху слева и справа, а имя дня
@@ -240,6 +227,18 @@ struct RootView: View {
         // из плана, и из дневника (P203).
         .fullScreenCover(item: $shell.openedPhoto) { opened in
             let links = store.links(opened.tab)
+            // Открыли из полоски — снимки листаются вбок, как в «Фото»:
+            // влево — следующий в полоске, вправо — прежний (P278).
+            if opened.url == nil, links.indices.contains(opened.index) {
+                StripViewer(count: links.count, start: opened.index,
+                            url: { store.photoURL(links[$0]) },
+                            remove: store.canEdit(opened.tab) ? { i in
+                                store.removePhoto(at: i, from: opened.tab)
+                                shell.openedPhoto = nil
+                                shell.say("Убрано со страницы. Сам файл остался в папке.")
+                            } : nil,
+                            close: { shell.openedPhoto = nil })
+            } else {
             AttachmentViewer(
                 url: opened.url ?? (links.indices.contains(opened.index)
                     ? store.photoURL(links[opened.index]) : nil),
@@ -254,10 +253,13 @@ struct RootView: View {
                     shell.openedPhoto = nil
                 } : nil,
                 close: { shell.openedPhoto = nil })
+            }
         }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {
+            // Просьбы кнопок над клавиатурой — открытой странице (P279).
+            KeyboardBar.ask = { [shell] ask in shell.keyboardAsk = ask }
             // Опись архива нужна не только календарю и поиску: без неё
             // облачко «…помнишь?» не знает, есть ли что вспомнить, и не
             // появляется никогда. Читаем папку сразу при запуске.

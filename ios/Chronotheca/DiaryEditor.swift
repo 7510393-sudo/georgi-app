@@ -79,6 +79,9 @@ struct DiaryEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let view = UITextView()
         view.delegate = context.coordinator
+        // Полоска вложений — приставкой к клавиатуре, только у записи
+        // дня (P279). Подробности дела живут в своём окне.
+        if grows { view.inputAccessoryView = KeyboardBar.view }
         // Превью из полоски бросают прямо в текст (решение P204).
         view.textDropDelegate = context.coordinator
         context.coordinator.view = view
@@ -206,7 +209,7 @@ struct DiaryEditor: UIViewRepresentable {
         // как это делает обычный текст на соседней странице. Без этого после
         // поворота страницы текст «мельчает»: рядом стояли два разных шрифта.
         let base = serif
-            ? (UIFont(name: "Georgia", size: size) ?? .systemFont(ofSize: size))
+            ? Prefs.serifUIFont(size)
             : UIFont.systemFont(ofSize: size)
         let font = UIFontMetrics(forTextStyle: .body).scaledFont(for: base)
         return [
@@ -766,10 +769,9 @@ struct DiaryEditor: UIViewRepresentable {
                   let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
                     as? CGRect
             else { return }
-            // Над клавиатурой стоит полоска вложений: курсору надо встать
-            // выше неё, а не выше одной клавиатуры (P269).
-            let top = window.convert(frame, from: nil).minY
-            keyboardTop = top < window.bounds.maxY ? top - AttachBar.overKeyboardHeight : nil
+            // Полоска вложений — часть клавиатуры (P279): верх клавиатуры
+            // уже её верх.
+            keyboardTop = window.convert(frame, from: nil).minY
             makeRoom(scroll: true)
         }
 

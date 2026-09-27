@@ -31,12 +31,13 @@ struct AskLine: UIViewRepresentable {
     /// Нажат «Ввод»: ввод переходит к следующему ответу или к записи.
     var onNext: () -> Void = {}
 
-    static let size: CGFloat = DiaryView.size
+    static var size: CGFloat { DiaryView.size }
     static let placeholder = "…"
 
     func makeUIView(context: Context) -> UITextView {
         let view = UITextView()
         view.delegate = context.coordinator
+        view.inputAccessoryView = KeyboardBar.view
         view.backgroundColor = .clear
         view.textContainerInset = .zero
         view.textContainer.lineFragmentPadding = 0
@@ -75,7 +76,7 @@ struct AskLine: UIViewRepresentable {
     /// Тот же засечный шрифт и та же подгонка под системный размер текста,
     /// что у записи ниже: строки «Как прошло?» и запись — одна тетрадь.
     static var font: UIFont {
-        let base = UIFont(name: "Georgia", size: size) ?? .systemFont(ofSize: size)
+        let base = Prefs.serifUIFont(size)
         return UIFontMetrics(forTextStyle: .body).scaledFont(for: base)
     }
 

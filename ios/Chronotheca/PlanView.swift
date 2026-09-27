@@ -213,6 +213,7 @@ struct PlanRowLine: View {
     /// же, что бы ни было внутри (решение P171).
     private var title: some View {
         PlanTitle(text: text ?? .constant(row.text),
+                  rowID: text == nil ? nil : row.id,
                   indent: Self.indent,
                   wrap: Self.wrap,
                   faded: faded,
@@ -312,6 +313,8 @@ struct PlanScaffold<Content: View>: View {
     /// кнопки, только погашенными.
     var undo: (() -> Void)?
     var redo: (() -> Void)?
+    /// Погода дня — слева в строке с «плюсом» (P277).
+    var weather: String?
 
     /// Строка, в которую сейчас пишут: её и надо держать на виду.
     var watching: UUID?
@@ -330,7 +333,8 @@ struct PlanScaffold<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PlanHead(isPast: isPast, dimmed: dimmed, add: add, undo: undo, redo: redo)
+            PlanHead(isPast: isPast, dimmed: dimmed, add: add, undo: undo, redo: redo,
+                     weather: weather)
             ScrollView {
                 ScrollViewReader { proxy in
                     LazyVStack(alignment: .leading, spacing: 0) {
@@ -376,9 +380,18 @@ struct PlanHead: View {
     var add: (() -> Void)?
     var undo: (() -> Void)?
     var redo: (() -> Void)?
+    var weather: String?
 
     var body: some View {
         HStack(spacing: 8) {
+            // Погода — слева, в пустом месте строки (P277).
+            if let weather {
+                Label(weather, systemImage: "cloud.sun")
+                    .font(Look.sans(12.5))
+                    .foregroundStyle(Look.inkFaint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
             if isPast {
                 Text("день закрыт")
                     .font(Look.mono(11))
@@ -451,6 +464,7 @@ struct PlanView: View {
                          add: add,
                          undo: store.planBack.isEmpty || !store.canEditPlan ? nil : { store.undoPlan() },
                          redo: store.planAhead.isEmpty || !store.canEditPlan ? nil : { store.redoPlan() },
+                         weather: store.weather,
                          watching: typingIn,
                          photos: store.planPhotos.map(store.photoURL),
                          glowing: store.editing(.plan),

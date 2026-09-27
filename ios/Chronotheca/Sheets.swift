@@ -236,6 +236,17 @@ struct SettingsSticker: View {
             StickerItem(title: "Тема", note: themeName, edge: Look.noteEdge) {
                 theme = theme == "system" ? "light" : theme == "light" ? "dark" : "system"
             }
+            // Размер и шрифт записей (P274).
+            StickerItem(title: "Размер текста", note: Prefs.textSteps[Prefs.textStep].name,
+                        edge: Look.noteEdge) {
+                textSize = textSize >= Prefs.textSteps.count - 2 ? -1 : textSize + 1
+            }
+            StickerItem(title: "Шрифт записи",
+                        note: Prefs.fonts.first { $0.key == fontKey }?.name ?? "Georgia",
+                        edge: Look.noteEdge) {
+                let i = Prefs.fonts.firstIndex { $0.key == fontKey } ?? 0
+                fontKey = Prefs.fonts[(i + 1) % Prefs.fonts.count].key
+            }
             StickerItem(title: "Шелест страниц", note: quiet ? "выключен" : "включён",
                         edge: Look.noteEdge) {
                 quiet.toggle()
@@ -297,6 +308,8 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.theme) private var theme = "system"
     @AppStorage(Prefs.navigator) private var navigator = "apple"
     @AppStorage(Prefs.quiet) private var quiet = false
+    @AppStorage(Prefs.textSize) private var textSize = 0
+    @AppStorage(Prefs.font) private var fontKey = "georgia"
 
     private var themeName: String {
         switch theme {

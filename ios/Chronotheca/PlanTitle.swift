@@ -21,6 +21,10 @@ struct PlanTitle: UIViewRepresentable {
 
     @Binding var text: String
 
+    /// Чьё это название: по нему точка с карты находит поле того дела,
+    /// где стоял курсор (P276).
+    var rowID: UUID?
+
     /// Отступ первой строки — ширина головы строки.
     var indent: CGFloat
     /// Отступ остальных строк — из-под времени, правее номера.
@@ -39,7 +43,8 @@ struct PlanTitle: UIViewRepresentable {
     var onNext: () -> Void = {}
 
     static let placeholder = "Без названия"
-    static let size: CGFloat = 15
+    /// На ступень крупнее прежних 15 и растёт с настройкой (P274).
+    static var size: CGFloat { 16 * Prefs.textScale }
     static let spacing: CGFloat = 3
 
     /// Насколько вторая строка названия отступает от первой сверх обычного.
@@ -51,12 +56,13 @@ struct PlanTitle: UIViewRepresentable {
 
     /// Где проходит строчка письма, считая от верха поля. По ней голова
     /// строки садится на первую строку названия (P171).
-    static let baseline: CGFloat = 14
+    static var baseline: CGFloat { UIFont.systemFont(ofSize: size).ascender.rounded() }
 
     func makeUIView(context: Context) -> UITextView {
         // Старая раскладка текста, а не новая: только в ней можно дать
         // отдельный зазор после первой строки (P186).
         let view = TitleView(usingTextLayoutManager: false)
+        view.inputAccessoryView = KeyboardBar.view
         view.delegate = context.coordinator
         view.layoutManager.delegate = context.coordinator
         view.backgroundColor = .clear
@@ -229,7 +235,7 @@ struct PlanTitle: UIViewRepresentable {
         /// Вписать кусок на место курсора, отделив пробелами, и поставить
         /// курсор за ним. Курсор помнится и когда клавиатуру уже убрали.
         func insert(_ point: GeoPoint) -> Bool {
-            guard parent.editable, let view, view.window != nil else { return false }
+            guard let view, view.window != nil else { return false }
             let ns = view.text as NSString
             var range = view.selectedRange
             if range.location == NSNotFound || NSMaxRange(range) > ns.length {

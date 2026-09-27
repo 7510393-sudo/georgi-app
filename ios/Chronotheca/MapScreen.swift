@@ -317,8 +317,16 @@ struct MapScreen: View {
     }
 
     private func write(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false) {
-        guard store.writeFromMap(point, to: tab, here: here) else {
-            return shell.say(store.closedReason)
+        // В плане — прямо в строку дела, где стоял курсор, на его место
+        // (P276). Поле того дела ещё на странице под картой.
+        if tab == .plan, store.canEditPlan, let row = store.leftRow,
+           let field = PlanTitle.last, field.parent.rowID == row, field.insert(point) {
+            if here { store.notePlace(point) }
+            store.save()
+        } else {
+            guard store.writeFromMap(point, to: tab, here: here) else {
+                return shell.say(store.closedReason)
+            }
         }
         shell.say(tab == .diary ? "Точка записана в дневник" : "Точка записана в план")
         Feel.light()

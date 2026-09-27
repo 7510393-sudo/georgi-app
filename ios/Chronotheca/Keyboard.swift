@@ -22,10 +22,9 @@ struct KeyboardHeight: ViewModifier {
                 let safe = UIApplication.shared.connectedScenes
                     .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.bottom }
                     .first ?? 0
-                let covered = max(0, screen - frame.origin.y - safe)
-                // Над клавиатурой ещё полоска вложений — её высота тоже
-                // закрыта (P269).
-                height = covered > 0 ? covered + AttachBar.overKeyboardHeight : 0
+                // Полоска вложений — часть клавиатуры (P279), её высота уже
+                // в размере клавиатуры.
+                height = max(0, screen - frame.origin.y - safe)
             }
             .onReceive(NotificationCenter.default.publisher(
                 for: UIResponder.keyboardWillHideNotification)) { _ in

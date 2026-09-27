@@ -12,6 +12,39 @@ enum Prefs {
     static let startTab = "prefs.startTab"      // "plan", "diary"
     static let navigator = "prefs.navigator"    // "apple", "google"
     static let quiet = "prefs.quiet"            // true — без звуков (P265)
+    static let textSize = "prefs.textSize"      // −1…2, ступени размера (P274)
+    static let font = "prefs.font"              // "georgia", "newyork", "system"
+
+    /// Ступени размера текста записей: мельче, обычный, крупнее, ещё крупнее.
+    static let textSteps: [(name: String, scale: CGFloat)] = [
+        ("мельче", 0.92), ("обычный", 1), ("крупнее", 1.1), ("ещё крупнее", 1.2),
+    ]
+
+    static var textStep: Int {
+        min(max(UserDefaults.standard.integer(forKey: textSize) + 1, 0), textSteps.count - 1)
+    }
+
+    static var textScale: CGFloat { textSteps[textStep].scale }
+
+    /// Шрифты записи дневника: названия для настроек.
+    static let fonts: [(key: String, name: String)] = [
+        ("georgia", "Georgia"), ("newyork", "New York"), ("system", "Без засечек"),
+    ]
+
+    static var fontKey: String { UserDefaults.standard.string(forKey: font) ?? "georgia" }
+
+    /// Шрифт записи для полей UIKit.
+    static func serifUIFont(_ size: CGFloat) -> UIFont {
+        switch fontKey {
+        case "newyork":
+            let plain = UIFont.systemFont(ofSize: size)
+            return plain.fontDescriptor.withDesign(.serif).map { UIFont(descriptor: $0, size: size) } ?? plain
+        case "system":
+            return .systemFont(ofSize: size)
+        default:
+            return UIFont(name: "Georgia", size: size) ?? .systemFont(ofSize: size)
+        }
+    }
 
     static var scheme: ColorScheme? {
         switch UserDefaults.standard.string(forKey: theme) {

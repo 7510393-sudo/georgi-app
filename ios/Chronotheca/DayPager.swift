@@ -74,7 +74,7 @@ struct DayPage: View {
             heading
             tabs
             content
-            AttachBar()
+            AttachBar(live: live)
         }
         .background(background)
         // Фактура страницы и вкладок отсчитывается от одной точки — клетка
@@ -520,6 +520,9 @@ struct WobblyTitle: View {
 struct AttachBar: View {
 
     var overKeyboard = false
+    /// Полоска открытой страницы: она исполняет просьбы кнопок над
+    /// клавиатурой (P279).
+    var live = false
 
     /// Сколько полоска занимает над клавиатурой, с запасом. Строка, в
     /// которой пишут, должна вставать выше неё, а не прятаться (P269).
@@ -566,6 +569,16 @@ struct AttachBar: View {
             }
         }
         .onChange(of: shell.tab) { _, _ in gallery = false }
+        .onChange(of: shell.keyboardAsk) { _, ask in
+            guard live, let ask else { return }
+            shell.keyboardAsk = nil
+            hideKeyboard()
+            switch ask {
+            case .photo: toggleGallery()
+            case .audio: open { recording = true }
+            case .files: open { browsing = true }
+            }
+        }
         .onChange(of: store.date) { _, _ in gallery = false }
         // Системное окно галереи: приложению не нужно разрешение на всю
         // галерею — оно получает только те снимки, которые выбрал человек.
@@ -758,6 +771,7 @@ struct SideDay: View {
     private var plan: some View {
         PlanPage(rows: rows, isPast: date < DayStore.today(),
                  bellColor: Ru.dayColor(date),
+                 weather: weather,
                  photos: planPhotos.map { vault.mediaURL($0, for: date) },
                  resolve: { [vault, date] in vault.mediaURL($0, for: date) })
     }
@@ -796,6 +810,7 @@ struct PlanPage: View {
     /// Цвет дня недели: колокольчик красится им и на соседних страницах,
     /// иначе он бледнеет на просвет и вспыхивает после поворота.
     var bellColor: Color = Look.inkFaint
+    var weather: String?
     var photos: [URL?] = []
     /// Где лежат снимки, поставленные между делами (P205).
     var resolve: ((String) -> URL?)?
@@ -803,7 +818,7 @@ struct PlanPage: View {
     private var tasks: [PlanRow] { rows.filter(\.isTask) }
 
     var body: some View {
-        PlanScaffold(isPast: isPast, dimmed: isPast, photos: photos) {
+        PlanScaffold(isPast: isPast, dimmed: isPast, weather: weather, photos: photos) {
             if tasks.isEmpty {
                 PlanEmpty(isPast: isPast)
             } else {

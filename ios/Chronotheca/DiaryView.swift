@@ -9,7 +9,8 @@ struct DiaryView: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
 
-    static let size: CGFloat = 15.5
+    /// На ступень крупнее прежних 15,5 и растёт с настройкой (P274).
+    static var size: CGFloat { 16.5 * Prefs.textScale }
     static let leading: CGFloat = size * 0.24
 
     var body: some View {

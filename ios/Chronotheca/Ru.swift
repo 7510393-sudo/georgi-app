@@ -153,8 +153,13 @@ enum Look {
     static let noteEdge    = Color(light: 0xC7DBEC, dark: 0x2C3A48)
 
     /// Засечный шрифт дневника. Literata в iOS нет, Georgia есть везде.
+    /// Шрифт записи можно сменить в настройках (P274).
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .custom("Georgia", size: size).weight(weight)
+        switch Prefs.fontKey {
+        case "newyork": return .system(size: size, weight: weight, design: .serif)
+        case "system":  return .system(size: size, weight: weight)
+        default:        return .custom("Georgia", size: size).weight(weight)
+        }
     }
 
     /// Моноширинный — для цифр: часы и номера должны стоять столбиком.

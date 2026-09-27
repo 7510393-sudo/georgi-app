@@ -22,7 +22,7 @@ struct GalleryRow: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: 0) {
                 Button(action: more) {
                     VStack(spacing: 3) {
                         Image(systemName: "photo.on.rectangle.angled")

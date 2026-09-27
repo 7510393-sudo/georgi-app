@@ -407,9 +407,9 @@ final class DayStore: ObservableObject {
     /// страницы дня — курсора нет.
     func noteLeaving(fromToday: Bool) {
         leftCaret = fromToday && diaryTyping ? diaryCaret : nil
-        // В плане курсора к этому времени нет: клавиатура убрана. Точка
-        // встаёт под последним делом, дальше её переносят (P241).
-        leftRow = nil
+        // В плане — дело, в котором стоял курсор последним: точка ляжет в
+        // его строку, на место курсора (P276). Не правили — в последнее.
+        leftRow = fromToday ? lastPlanRow : nil
     }
 
     /// Записать точку с карты — туда, где был курсор перед уходом на карту.
