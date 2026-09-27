@@ -293,10 +293,6 @@ struct RootView: View {
             if shell.drawer != nil { DetailsDrawer() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Шапка и нижние разделы лежат поверх страницы и прижимают её: обе
-        // бросают на неё тень. Так видно, что они сверху, а страница под
-        // ними — на любом экране (решение P192).
-        .overlay(alignment: .bottom) { Shade(down: false) }
         .clipped()
     }
 
@@ -688,20 +684,5 @@ struct CornerShape: Shape {
         }
         p.closeSubpath()
         return p
-    }
-}
-
-/// Тень, которую неподвижная полоса кладёт на страницу под собой.
-struct Shade: View {
-    /// Полоса сверху — тень идёт вниз; снизу — вверх.
-    let down: Bool
-
-    var body: some View {
-        LinearGradient(colors: [.black.opacity(0.13), .black.opacity(0)],
-                       startPoint: down ? .top : .bottom,
-                       endPoint: down ? .bottom : .top)
-            .frame(height: 12)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 }
