@@ -532,24 +532,18 @@ struct RootView: View {
     /// Разом они шли навстречу, и новая обгоняла уходящую (решение P202).
     private func follow(from old: Shell.Screen, to new: Shell.Screen) {
         let heavy = Animation.spring(response: 0.80, dampingFraction: 0.90)
-        // Толчок — в тот миг, когда плашка ударилась кромкой: опускаясь —
-        // о нижнюю строку, поднимаясь — о верхнюю. Не в начале хода
-        // (P267): так чувствуется вес.
+        // Толчок — в начале хода, вместе с нажатием (P268: пробовали в миг
+        // удара о строку — вернули на начало).
+        Feel.thud()
         guard old != .today, new != .today, shell.lowered != .today else {
-            withAnimation(heavy, completionCriteria: .logicallyComplete) {
-                shell.lowered = new
-            } completion: { Feel.thud() }
+            withAnimation(heavy) { shell.lowered = new }
             return
         }
-        withAnimation(.easeIn(duration: 0.34), completionCriteria: .logicallyComplete) {
-            shell.lowered = .today
-        } completion: { Feel.thud() }
+        withAnimation(.easeIn(duration: 0.34)) { shell.lowered = .today }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) { [shell] in
             // Пока уходила плашка, человек мог нажать ещё раз.
             guard shell.screen == new else { return }
-            withAnimation(heavy, completionCriteria: .logicallyComplete) {
-                shell.lowered = new
-            } completion: { Feel.thud() }
+            withAnimation(heavy) { shell.lowered = new }
         }
     }
 

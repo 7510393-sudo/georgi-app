@@ -46,9 +46,9 @@ enum Sounds {
 
 /// Толчки в руку (P263, P267): у каждого движения свой.
 enum Feel {
-    /// Плашка ударилась кромкой о неподвижную строку — вверху или внизу.
+    /// Экран тронулся — опускается или поднимается.
     static func thud() {
-        UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 0.75)
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.8)
     }
     /// Лёгкое касание: шаг назад, точка легла в текст.
     static func light() {
