@@ -97,6 +97,9 @@ jobs:
 
           xcrun simctl install "$UDID" \
             build/Build/Products/Debug-iphonesimulator/Chronotheca.app
+          # Погода просит место (P280): на снимках окна-вопроса быть не
+          # должно — место заранее запрещено, погода просто не берётся.
+          xcrun simctl privacy "$UDID" revoke location "$APP_ID" || true
 
           # 1. Первый запуск: приложение просит выбрать папку
           xcrun simctl launch "$UDID" "$APP_ID"
