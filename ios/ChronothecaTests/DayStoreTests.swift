@@ -210,18 +210,14 @@ extension DayStoreTests {
         v.forget()
     }
 
-    /// Первое «где я сейчас» становится местом дня; дальше место дня не
-    /// переставляется само, а точка с чужим местом его не трогает (P221).
-    func testТочкаГдеЯСтановитсяМестомДня() {
+    /// «Места дня» больше нет (P294): точка «где я» ложится в текст, а
+    /// строка «место:» в файле не заводится.
+    func testТочкаГдеЯНеЗаводитМестаДня() {
         let день = store(0)
         let дом = CLLocationCoordinate2D(latitude: 54.3211, longitude: -2.7456)
-        let чужое = CLLocationCoordinate2D(latitude: 59.9, longitude: 30.3)
-        день.writePoint(GeoPoint(title: "Петербург", at: чужое), to: .diary)
-        XCTAssertNil(день.place)
         день.writePoint(GeoPoint(title: "", at: дом), to: .diary, here: true)
-        XCTAssertEqual(день.place, "54.32110, -2.74560")
-        день.writePoint(GeoPoint(title: "", at: чужое), to: .diary, here: true)
-        XCTAssertEqual(день.place, "54.32110, -2.74560")
+        XCTAssertNil(день.place)
+        XCTAssertTrue(день.diaryText.contains("geo:54.32110,-2.74560"))
     }
 
     /// Точку в плане переставляют между делами; скрытые строки файла

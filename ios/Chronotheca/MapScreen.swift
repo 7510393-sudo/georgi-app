@@ -103,13 +103,9 @@ struct MapScreen: View {
         .onDisappear { shell.mapPoint = nil }
     }
 
-    private var days: [MapDay] {
-        let today = Vault.stamp(store.date)
-        return archive.days.values.compactMap { day in
-            day.place.map { MapDay(stamp: day.stamp, date: day.date, at: $0,
-                                   today: day.stamp == today) }
-        }
-    }
+    /// Точек дней на карте больше нет (P294): на карте — только свои
+    /// места человека.
+    private var days: [MapDay] { [] }
 
     // MARK: - Кнопки внизу
 
@@ -189,11 +185,7 @@ struct MapScreen: View {
             panel = .cloud
             focus = MapFocus(center: point.at, meters: 1500)
         } else {
-            // Сперва — где человек сейчас; не узнали — место дня (P281).
-            // Раньше было наоборот, и карта открывалась на точке дня, у
-            // которой не было подписи, — непонятно, что это за точка.
-            let fallback = store.placeCoordinate
-            if let fallback { focus = MapFocus(center: fallback, meters: 2000) }
+            // Где человек сейчас (P281, P294).
             Locator.shared.current { location in
                 guard let at = location?.coordinate else { return }
                 focus = MapFocus(center: at, meters: 2000)
