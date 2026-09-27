@@ -12,6 +12,7 @@ struct MenuSticker: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var vault: Vault
 
     /// Вид календаря — чтобы звать домой к месяцу или к году.
     @AppStorage("calendar.kind") private var calendarKind = CalendarView.Kind.month.rawValue
@@ -94,8 +95,25 @@ struct MenuSticker: View {
                 // Текстом — план и запись; вложения остаются в папке (P249).
                 Share.present([store.shareText()])
             }
-            soon("PDF дня")
-            soon("Удалить день — в корзину")
+            // PDF одного дня — та же книга, срок в один день (P296).
+            StickerItem(title: "PDF дня") {
+                close()
+                let date = store.date
+                let vault = vault
+                store.save()
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let url = PDFBook.make(.init(from: date, to: date), vault: vault)
+                    DispatchQueue.main.async {
+                        if let url { Share.present([url]) } else { shell.say("В этом дне пока пусто — PDF не из чего собрать.") }
+                    }
+                }
+            }
+            // Корзина (P295): день уезжает в папку «Корзина», его можно
+            // вернуть из настроек.
+            StickerItem(title: "Убрать день в корзину") {
+                close()
+                shell.trashAsk = true
+            }
         }
     }
 
@@ -191,6 +209,10 @@ struct SettingsSticker: View {
                 close()
                 if let link = vault.filesLink { openURL(link) }
             }
+            // Записи за срок одной книгой (P296).
+            StickerItem(title: "PDF за выбранный срок", note: "→", edge: Look.noteEdge) {
+                showingPDF = true
+            }
             // Три места вместо одного окна выбора (P223): своя папка на
             // телефоне — одним касанием; своя папка человека — через окно.
             StickerItem(title: "Писать в другое место", edge: Look.noteEdge) {
@@ -284,10 +306,9 @@ struct SettingsSticker: View {
             StickerItem(title: "Сжатие снимков", note: squeezeName, edge: Look.noteEdge) {
                 squeeze = squeeze == "original" ? "high" : squeeze == "high" ? "medium" : "original"
             }
-            // Корзина (P290): что убрано со страниц, лежит в папках записей;
-            // своей корзины для дней пока нет — так и сказано.
+            // Корзина дней (P295): вернуть или удалить навсегда.
             StickerItem(title: "Корзина", note: "→", edge: Look.noteEdge) {
-                shell.say("Убранное со страниц остаётся в папках записей. Удаление дней в корзину — следующим шагом.")
+                showingTrash = true
             }
 
             StickerSection(title: "Карта")
@@ -314,6 +335,15 @@ struct SettingsSticker: View {
           }
           // Листок — до нижней неподвижной строки (P291).
           .frame(height: Self.fullHeight)
+        }
+        .sheet(isPresented: $showingPDF) {
+            PDFSheet(vault: vault, archive: archive)
+        }
+        .sheet(isPresented: $showingTrash) {
+            TrashSheet(vault: vault) {
+                store.load()
+                archive.reload()
+            }
         }
         .confirmationDialog("Где хранить записи", isPresented: $choosingPlace,
                             titleVisibility: .visible) {
@@ -354,6 +384,8 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.calendarTint) private var calendarTint = "distance"
     @AppStorage(Prefs.sundayFirst) private var sundayFirst = false
     @AppStorage(Prefs.squeeze) private var squeeze = "original"
+    @State private var showingTrash = false
+    @State private var showingPDF = false
 
     private var calendarTintName: String {
         switch calendarTint {
@@ -435,9 +467,7 @@ struct SettingsSticker: View {
     private var missing: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Напоминание вечером: «запишите день»")
-            Text("Корзина удалённых дней")
             Text("Перенос из Day One и «Дневника» Apple")
-            Text("Всё в PDF за выбранный срок")
         }
         .font(Look.sans(12))
         .foregroundStyle(Look.inkFaint)

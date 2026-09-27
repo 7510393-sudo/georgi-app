@@ -132,6 +132,9 @@ final class Shell: ObservableObject {
     /// Поднимается кнопкой «Сегодня» внизу; выполняет её сама книга.
     @Published var goHome = false
 
+    /// Просьба убрать открытый день в корзину — спрашивает оболочка (P295).
+    @Published var trashAsk = false
+
     /// Кнопка над клавиатурой попросила открыть фото, голос или файлы —
     /// исполняет полоска открытой страницы (P279).
     @Published var keyboardAsk: KeyboardBar.Ask?

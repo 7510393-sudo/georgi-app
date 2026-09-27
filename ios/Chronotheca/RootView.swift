@@ -257,6 +257,22 @@ struct RootView: View {
             }
         }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
+        .confirmationDialog("Убрать этот день в корзину?", isPresented: $shell.trashAsk,
+                            titleVisibility: .visible) {
+            Button("Убрать в корзину", role: .destructive) {
+                store.save()
+                if Trash.put(store.date, in: vault) {
+                    store.load()
+                    archive.reload()
+                    store.syncUpcomingReminders()
+                    shell.say("День в корзине. Вернуть — Настройки → Корзина.")
+                } else {
+                    shell.say("В этом дне нечего убирать.")
+                }
+            }
+        } message: {
+            Text("План и запись дня переедут в папку «Корзина». Снимки и голос останутся на месте. Вернуть можно в настройках.")
+        }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {
             // Просьбы кнопок над клавиатурой — открытой странице (P279).
