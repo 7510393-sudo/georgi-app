@@ -261,6 +261,8 @@ struct AttachmentViewer: View {
     var onRemove: (() -> Void)?
     var onReturn: (() -> Void)?
     let close: () -> Void
+    /// Листнули снимок вбок: +1 — следующий, −1 — прежний (P278).
+    var onSwipe: ((Int) -> Void)?
 
     @State private var ready: URL?
     @State private var player: AVPlayer?
@@ -269,7 +271,8 @@ struct AttachmentViewer: View {
     var body: some View {
         switch url.map({ Diary.kind(of: $0.lastPathComponent) }) ?? .photo {
         case .photo:
-            PhotoViewer(url: url, onRemove: onRemove, onReturn: onReturn, close: close)
+            PhotoViewer(url: url, onRemove: onRemove, onReturn: onReturn, close: close,
+                        onSwipe: onSwipe)
         case .video:
             framed {
                 if let player { VideoPlayer(player: player) } else { ProgressView() }

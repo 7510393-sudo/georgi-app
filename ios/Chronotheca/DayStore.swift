@@ -239,6 +239,7 @@ final class DayStore: ObservableObject {
         prune()
         save()
         editingTabs = []
+        weatherAsked = false
         planBack = []
         planAhead = []
         diaryCaret = nil
@@ -501,6 +502,22 @@ final class DayStore: ObservableObject {
 
     /// Записать погоду там, где человек сейчас. Только в сегодняшний день:
     /// погода — это «как было, когда писал», а не справка о прошлом (P208).
+    /// Погода сегодняшнего дня — сама, без кнопки (P280). Её раньше
+    /// приносила «геоточка»; кнопки нет (P264) — и погода пропала. Место
+    /// нужно для погоды: iPhone один раз спросит разрешение; запретили —
+    /// погоды нет, и больше не спрашиваем.
+    func fetchWeatherIfNeeded() {
+        guard isToday, canEditDiary, weather == nil, !weatherAsked else { return }
+        let status = CLLocationManager().authorizationStatus
+        guard status != .denied, status != .restricted else { return }
+        weatherAsked = true
+        Locator.shared.current { [weak self] location in
+            guard let self, let location else { return }
+            self.noteWeather(at: location)
+        }
+    }
+    private var weatherAsked = false
+
     func noteWeather(at location: CLLocation) {
         guard isToday, canEditDiary else { return }
         let day = date

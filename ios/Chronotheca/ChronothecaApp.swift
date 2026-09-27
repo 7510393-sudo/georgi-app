@@ -44,6 +44,7 @@ struct ChronothecaApp: App {
                 store.comeBack()
                 archive.reload()
                 store.syncUpcomingReminders()
+                store.fetchWeatherIfNeeded()
             @unknown default:
                 break
             }

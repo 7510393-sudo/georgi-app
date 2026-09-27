@@ -186,9 +186,12 @@ struct MapScreen: View {
             selected = known ?? Place(name: point.title, coordinate: point.at)
             panel = .cloud
             focus = MapFocus(center: point.at, meters: 1500)
-        } else if let at = store.placeCoordinate {
-            focus = MapFocus(center: at, meters: 2000)
         } else {
+            // Сперва — где человек сейчас; не узнали — место дня (P281).
+            // Раньше было наоборот, и карта открывалась на точке дня, у
+            // которой не было подписи, — непонятно, что это за точка.
+            let fallback = store.placeCoordinate
+            if let fallback { focus = MapFocus(center: fallback, meters: 2000) }
             Locator.shared.current { location in
                 guard let at = location?.coordinate else { return }
                 focus = MapFocus(center: at, meters: 2000)
@@ -746,7 +749,12 @@ struct NativeMap: UIViewRepresentable {
                 return view
             case let mark as DayMark:
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "день")
-                view.image = DayMark.dot(today: mark.day.today)
+                // Точка дня подписана датой: иначе непонятно, что за точка
+                // (P281). Сама точка — ровно на месте, подпись под ней.
+                let picture = DayMark.dot(today: mark.day.today,
+                                          label: mark.day.today ? "сегодня" : Ru.shortDate(mark.day.date))
+                view.image = picture
+                view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - 8)
                 view.displayPriority = .defaultHigh
                 quick(view)
                 return view
@@ -861,14 +869,29 @@ final class DayMark: NSObject, MKAnnotation {
     var coordinate: CLLocationCoordinate2D { day.at }
     init(_ day: MapDay) { self.day = day }
 
-    static func dot(today: Bool) -> UIImage {
+    var title: String? { day.today ? "Сегодня" : Ru.shortDate(day.date) }
+
+    /// Точка дня и под ней — дата на светлой плашке.
+    static func dot(today: Bool, label: String) -> UIImage {
         let side: CGFloat = 16
-        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
-            let box = CGRect(x: 2, y: 2, width: side - 4, height: side - 4)
+        let font = UIFont.systemFont(ofSize: 10.5, weight: .medium)
+        let words: [NSAttributedString.Key: Any] = [.font: font,
+                                                     .foregroundColor: UIColor(Look.inkSoft)]
+        let text = (label as NSString).size(withAttributes: words)
+        let plate = CGSize(width: ceil(text.width) + 10, height: ceil(text.height) + 4)
+        let size = CGSize(width: max(side, plate.width), height: side + 2 + plate.height)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            let box = CGRect(x: (size.width - side) / 2 + 2, y: 2, width: side - 4, height: side - 4)
             UIColor.white.setFill()
             UIBezierPath(ovalIn: box).fill()
             UIColor(today ? Look.accent : Look.inkSoft).setFill()
             UIBezierPath(ovalIn: box.insetBy(dx: 2, dy: 2)).fill()
+            let back = CGRect(x: (size.width - plate.width) / 2, y: side + 2,
+                              width: plate.width, height: plate.height)
+            UIColor.white.withAlphaComponent(0.85).setFill()
+            UIBezierPath(roundedRect: back, cornerRadius: plate.height / 2).fill()
+            (label as NSString).draw(at: CGPoint(x: back.minX + 5, y: back.minY + 2),
+                                     withAttributes: words)
         }
     }
 }

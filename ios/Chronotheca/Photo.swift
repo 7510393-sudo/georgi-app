@@ -340,12 +340,18 @@ struct PhotoViewer: View {
     /// Вернуть снимок из текста в полоску внизу (P216).
     var onReturn: (() -> Void)?
     let close: () -> Void
+    /// Листнули вбок: +1 — следующий снимок, −1 — прежний (P278).
+    var onSwipe: ((Int) -> Void)?
 
     @State private var image: UIImage?
     @State private var scale: CGFloat = 1
     @State private var asking = false
     /// Насколько снимок стянут пальцем вниз (P270).
     @State private var pulled: CGSize = .zero
+    /// Насколько снимок сдвинут вбок, пока его листают (P278).
+    @State private var slid: CGFloat = 0
+    /// Куда пошёл палец: решается по первому движению.
+    @State private var sideways: Bool?
 
     /// Как далеко стянут: 0 — на месте, 1 — почти ушёл.
     private var gone: CGFloat { min(1, max(0, pulled.height) / 420) }
@@ -360,7 +366,7 @@ struct PhotoViewer: View {
                     .resizable()
                     .scaledToFit()
                     .scaleEffect(scale * (1 - gone * 0.3))
-                    .offset(x: pulled.width * 0.6, y: max(0, pulled.height))
+                    .offset(x: pulled.width * 0.6 + slid, y: max(0, pulled.height))
                     .gesture(MagnificationGesture()
                         .onChanged { scale = max(1, $0) }
                         .onEnded { _ in withAnimation(.easeOut(duration: 0.2)) { scale = 1 } })
@@ -393,13 +399,34 @@ struct PhotoViewer: View {
         DragGesture(minimumDistance: 10)
             .onChanged { v in
                 guard scale == 1 else { return }
-                // Вбок листают снимки — стягивается только движение вниз.
-                if pulled == .zero,
-                   v.translation.height <= abs(v.translation.width) { return }
-                pulled = v.translation
+                // Куда пошёл палец — решается один раз: вбок листают
+                // снимки, вниз — убирают (P278, P270). Одним жестом, чтобы
+                // один не перехватывал другой.
+                if sideways == nil {
+                    sideways = abs(v.translation.width) > abs(v.translation.height)
+                }
+                if sideways == true {
+                    guard onSwipe != nil else { return }
+                    slid = v.translation.width
+                } else if v.translation.height > 0 || pulled != .zero {
+                    pulled = v.translation
+                }
             }
             .onEnded { v in
-                guard scale == 1, pulled != .zero else { return }
+                defer { sideways = nil }
+                guard scale == 1 else { return }
+                if sideways == true, let onSwipe {
+                    let far = abs(slid) > 70 || abs(v.predictedEndTranslation.width) > 220
+                    if far {
+                        let step = slid < 0 ? 1 : -1
+                        slid = 0
+                        onSwipe(step)
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { slid = 0 }
+                    }
+                    return
+                }
+                guard pulled != .zero else { return }
                 if pulled.height > 110 || v.predictedEndTranslation.height > 280 {
                     Feel.light()
                     withAnimation(.easeOut(duration: 0.2)) {
@@ -485,8 +512,10 @@ struct PlanPhotoLine: View {
     }
 }
 
-/// Вложения полоски во весь экран — листаются вбок (P278). Каждое
-/// открывается своим просмотром: снимок, видео, голос, документ.
+/// Вложения полоски во весь экран — листаются вбок (P278): влево —
+/// следующее в полоске, вправо — прежнее. Жест один с «убрать вниз», в
+/// самом просмотре снимка: общий листатель перехватывал бы то одно, то
+/// другое. Видео, голос и документ вбок не листаются — там свои жесты.
 struct StripViewer: View {
     let count: Int
     let url: (Int) -> URL?
@@ -494,6 +523,7 @@ struct StripViewer: View {
     let close: () -> Void
 
     @State private var index: Int
+    @State private var forward = true
 
     init(count: Int, start: Int, url: @escaping (Int) -> URL?,
          remove: ((Int) -> Void)?, close: @escaping () -> Void) {
@@ -505,18 +535,25 @@ struct StripViewer: View {
     }
 
     var body: some View {
-        TabView(selection: $index) {
-            ForEach(0..<count, id: \.self) { i in
-                AttachmentViewer(url: url(i),
-                                 onRemove: remove.map { r in { r(i) } },
-                                 onReturn: nil,
-                                 close: close)
-                    .tag(i)
-            }
+        ZStack {
+            AttachmentViewer(url: url(index),
+                             onRemove: remove.map { r in { r(index) } },
+                             onReturn: nil,
+                             close: close,
+                             onSwipe: step)
+                .id(index)
+                .transition(.asymmetric(
+                    insertion: .move(edge: forward ? .trailing : .leading),
+                    removal: .move(edge: forward ? .leading : .trailing)))
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        .ignoresSafeArea()
         .presentationBackground(.clear)
-        .onChange(of: index) { _, _ in Feel.tick() }
+    }
+
+    private func step(_ by: Int) {
+        let next = index + by
+        guard (0..<count).contains(next) else { return Feel.light() }
+        forward = by > 0
+        Feel.tick()
+        withAnimation(.easeOut(duration: 0.22)) { index = next }
     }
 }
