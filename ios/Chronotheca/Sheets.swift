@@ -94,7 +94,7 @@ struct MenuSticker: View {
                 // Текстом — план и запись; вложения остаются в папке (P249).
                 Share.present([store.shareText()])
             }
-            soon("Печать / PDF дня")
+            soon("PDF дня")
             soon("Удалить день — в корзину")
         }
     }
@@ -223,10 +223,6 @@ struct SettingsSticker: View {
                     }
                 }
             }
-            StickerItem(title: "Прятать страницу при переключении приложений",
-                        note: hiding ? "да" : "нет", active: hiding, edge: Look.noteEdge) {
-                hiding.toggle()
-            }
 
             StickerSection(title: "День")
             StickerItem(title: "Новый день начинается в", note: "\(boundary):00",
@@ -345,7 +341,6 @@ struct SettingsSticker: View {
 
     @State private var undone = false
     @AppStorage(Prefs.lock) private var locked = false
-    @AppStorage(Prefs.hide) private var hiding = false
     @AppStorage(Prefs.boundary) private var boundary = 4
     @AppStorage(Prefs.startTab) private var startTab = "plan"
     @AppStorage(Prefs.theme) private var theme = "system"
@@ -439,13 +434,10 @@ struct SettingsSticker: View {
 
     private var missing: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Напоминания на телефон — о делах и вечером")
-            Text("Снимок с камеры")
-            Text("Размер текста; что показывать на странице")
-            Text("Первый день недели")
+            Text("Напоминание вечером: «запишите день»")
             Text("Корзина удалённых дней")
             Text("Перенос из Day One и «Дневника» Apple")
-            Text("Всё в PDF, печать")
+            Text("Всё в PDF за выбранный срок")
         }
         .font(Look.sans(12))
         .foregroundStyle(Look.inkFaint)

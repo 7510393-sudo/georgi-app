@@ -22,7 +22,6 @@ struct RootView: View {
     // Настройки (P249): замок, скрытие страницы, тема.
     @Environment(\.scenePhase) private var phase
     @AppStorage(Prefs.lock) private var lockOn = false
-    @AppStorage(Prefs.hide) private var hideOn = false
     @AppStorage(Prefs.theme) private var theme = "system"
     @AppStorage(Prefs.textSize) private var textSize = 0
     @AppStorage(Prefs.font) private var fontKey = "georgia"
@@ -95,7 +94,9 @@ struct RootView: View {
         .overlay {
             if lockOn && locked {
                 LockView(unlock: unlock)
-            } else if (hideOn || lockOn) && phase != .active {
+            // Пункта «прятать страницу» больше нет (P293): прячется только
+            // под замком — закрытые записи не видны и в списке приложений.
+            } else if lockOn && phase != .active {
                 Look.chrome.ignoresSafeArea()
             }
         }
