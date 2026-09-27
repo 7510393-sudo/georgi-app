@@ -416,7 +416,7 @@ final class DayStore: ObservableObject {
         let before = ns.substring(to: caret)
         let after = ns.substring(from: caret)
         let lead = before.isEmpty || before.last?.isWhitespace == true ? "" : " "
-        let tail = after.first?.isWhitespace == true ? "" : " "
+        let tail = after.isEmpty || after.first?.isWhitespace == true ? "" : " "
         let head = before + lead + line + tail
         return (head + after, (head as NSString).length)
     }
