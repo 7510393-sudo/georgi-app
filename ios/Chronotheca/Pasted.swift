@@ -37,7 +37,7 @@ enum Pasted {
         // Apple и Google: параметры ссылки.
         #"[?&](?:ll|q|query|sll|daddr|saddr|destination|coordinate|center)=\s*(-?\d{1,3}(?:\.\d+)?)\s*[,+\s]\s*\+?(-?\d{1,3}(?:\.\d+)?)"#,
         // Страница, куда привела короткая ссылка.
-        #""?latitude"?\s*[:=]\s*"?(-?\d{1,3}\.\d+)[^0-9-]{1,40}"?longitude"?\s*[:=]\s*"?(-?\d{1,3}\.\d+)"#,
+        #"\x22?latitude\x22?\s*[:=]\s*\x22?(-?\d{1,3}\.\d+)[^0-9-]{1,40}\x22?longitude\x22?\s*[:=]\s*\x22?(-?\d{1,3}\.\d+)"#,
     ]
 
     private static func fromLink(_ text: String) -> Found? {
@@ -68,7 +68,7 @@ enum Pasted {
     // MARK: - Полушария: N/S/E/W и С/Ю/В/З
 
     private static let part = try! NSRegularExpression(pattern:
-        #"(\d{1,3}(?:[.,]\d+)?)\s*°?\s*(?:(\d{1,2}(?:[.,]\d+)?)\s*['′’]\s*)?(?:(\d{1,2}(?:[.,]\d+)?)\s*(?:["″”]|'')\s*)?([NSEWСЮВЗ])(?![A-ZА-Я])"#)
+        #"(\d{1,3}(?:[.,]\d+)?)\s*°?\s*(?:(\d{1,2}(?:[.,]\d+)?)\s*['′’]\s*)?(?:(\d{1,2}(?:[.,]\d+)?)\s*(?:[\x22″”]|'')\s*)?([NSEWСЮВЗ])(?![A-ZА-Я])"#)
 
     private static func hemispheres(_ text: String) -> CLLocationCoordinate2D? {
         // По-русски Карты Apple пишут «51,50073° с. ш., 0,12462° з. д.».
