@@ -113,4 +113,25 @@ final class PlaceTests: XCTestCase {
         let поле = NSMutableAttributedString(string: "\u{FFFC}я", attributes: [DiaryEditor.lineKey: строка])
         XCTAssertEqual(DiaryEditor.plain(поле), строка + "я")
     }
+
+    /// Координаты, скопированные из Карт Google и Apple, в любом виде (P258).
+    func testКоординатыИзЧужихКарт() {
+        func check(_ text: String, _ lat: Double, _ lon: Double, line: UInt = #line) {
+            guard let f = Pasted.find(text) else { return XCTFail("не понято: \(text)", line: line) }
+            XCTAssertEqual(f.at.latitude, lat, accuracy: 0.0001, line: line)
+            XCTAssertEqual(f.at.longitude, lon, accuracy: 0.0001, line: line)
+        }
+        check("51.500729, -0.124625", 51.500729, -0.124625)
+        check("51.50073° N, 0.12462° W", 51.50073, -0.12462)
+        check("51,50073° с. ш., 0,12462° з. д.", 51.50073, -0.12462)
+        check("51°30'02.6\"N 0°07'28.7\"W", 51.50072, -0.12464)
+        check("geo:51.5,-0.12", 51.5, -0.12)
+        check("51,5007 -0,1246", 51.5007, -0.1246)
+        check("https://maps.apple.com/?ll=51.500729,-0.124625&q=Big%20Ben", 51.500729, -0.124625)
+        check("https://www.google.com/maps/place/Big+Ben/@51.5007292,-0.1246254,17z", 51.5007292, -0.1246254)
+        check("https://maps.google.com/?q=51.5007,-0.1246", 51.5007, -0.1246)
+        XCTAssertEqual(Pasted.find("https://maps.apple.com/?ll=51.5,-0.12&q=Big%20Ben")?.title, "Big Ben")
+        XCTAssertNil(Pasted.find("10 Downing St, London"))
+        XCTAssertNotNil(Pasted.shortLink(in: "Биг-Бен https://maps.app.goo.gl/abc123"))
+    }
 }

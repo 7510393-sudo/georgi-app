@@ -450,6 +450,12 @@ struct MapSearch: View {
     private func ownOnly() {
         nothing = false
         results = own(query)
+        // Вставили координаты или ссылку с ними — точка видна сразу (P258).
+        if let f = Pasted.find(query) {
+            results.insert(Found(title: f.title ?? Geo.text(f.at),
+                                 subtitle: f.title == nil ? "Координаты" : Geo.text(f.at),
+                                 at: f.at), at: 0)
+        }
     }
 
     private func own(_ text: String) -> [Found] {
@@ -463,8 +469,24 @@ struct MapSearch: View {
     private func search() {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        if let at = Geo.parse(text.replacingOccurrences(of: ";", with: ",")) {
-            return pick(Geo.text(at), at)
+        // Координаты в любом виде — Google, Apple, градусы с минутами,
+        // ссылка (P258).
+        if let f = Pasted.find(text) {
+            return pick(f.title ?? Geo.text(f.at), f.at)
+        }
+        // Короткую ссылку надо открыть, чтобы узнать, куда она ведёт.
+        if let link = Pasted.shortLink(in: text) {
+            results = []
+            looking = true
+            Pasted.resolve(link) { f in
+                looking = false
+                if let f {
+                    pick(f.title ?? Geo.text(f.at), f.at)
+                } else {
+                    nothing = true
+                }
+            }
+            return
         }
         let mine = own(text)
         results = mine
