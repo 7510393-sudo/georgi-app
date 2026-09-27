@@ -12,12 +12,12 @@ import UIKit
 /// страницы — она на своём месте в окне, ей их и показывать.
 enum KeyboardBar {
 
-    enum Ask: Equatable { case photo, audio, files }
+    enum Ask: Equatable { case photo, camera, audio, files }
 
     /// Кто исполняет просьбы — оболочка приложения.
     static var ask: (Ask) -> Void = { _ in }
 
-    static let height: CGFloat = 48
+    static let height: CGFloat = 36
 
     private static var host: UIHostingController<KeyboardBarView>?
     private static var holder: UIInputView?
@@ -44,6 +44,7 @@ struct KeyboardBarView: View {
     var body: some View {
         HStack(spacing: 0) {
             key("photo", "фото") { KeyboardBar.ask(.photo) }
+            key("camera", "камера") { KeyboardBar.ask(.camera) }
             key("waveform", "аудио") { KeyboardBar.ask(.audio) }
             key("doc", "файлы") { KeyboardBar.ask(.files) }
             key("keyboard.chevron.compact.down", "убрать") {
@@ -51,15 +52,15 @@ struct KeyboardBarView: View {
                                                 to: nil, from: nil, for: nil)
             }
         }
-        .padding(.top, 6)
-        .padding(.bottom, 5)
+        .padding(.top, 4)
+        .padding(.bottom, 3)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Look.chrome)
         .overlay(alignment: .top) { Rectangle().fill(Look.rule).frame(height: 1) }
     }
 
     private func key(_ icon: String, _ name: String, act: @escaping () -> Void) -> some View {
-        Button(action: act) { BarFace(icon: icon, name: name) }
+        Button(action: act) { BarFace(icon: icon, name: name, compact: true) }
             .buttonStyle(.plain)
     }
 }

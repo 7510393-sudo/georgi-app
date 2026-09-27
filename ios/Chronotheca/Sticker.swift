@@ -132,12 +132,12 @@ struct StickerItem: View {
         Button(action: act) {
             HStack(spacing: 10) {
                 Text(title)
-                    .font(Look.sans(14, weight: active ? .medium : .regular))
+                    .font(Look.sans(15, weight: active ? .medium : .regular))
                     .foregroundStyle(active ? Look.accent : Look.ink)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 Text(note)
-                    .font(Look.sans(11.5))
+                    .font(Look.sans(12.5))
                     .foregroundStyle(Look.inkFaint)
             }
             .padding(.horizontal, 14)

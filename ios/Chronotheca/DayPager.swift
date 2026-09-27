@@ -452,14 +452,20 @@ struct BarFace: View {
     let icon: String
     let name: String
     var tint: Color = Look.inkSoft
+    /// Только значок — для тонкой полоски вложений (P289).
+    var compact = false
 
     var body: some View {
         VStack(spacing: 3) {
-            Image(systemName: icon).font(.system(size: 17))
-            Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            Image(systemName: icon).font(.system(size: compact ? 18 : 17))
+                .frame(height: compact ? 26 : nil)
+            if !compact {
+                Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
         }
+        .accessibilityLabel(name)
         .frame(maxWidth: .infinity)
         .foregroundStyle(tint)
         .contentShape(Rectangle())
@@ -536,12 +542,15 @@ struct AttachBar: View {
     @State private var recording = false
     @State private var browsing = false
     @State private var gallery = false
+    @State private var shooting = false
 
     var body: some View {
         HStack(spacing: 0) {
             // «Фото» открывает ряд последних снимков галереи над полоской
             // (P273); повторное касание — прячет.
             item("photo", "фото", ready: true) { toggleGallery() }
+            // Камера — снимок прямо из приложения (P289).
+            item("camera", "камера", ready: true) { open { shooting = true } }
             item("waveform", "аудио", ready: true) { open { recording = true } }
             item("doc", "файлы", ready: true) { open { browsing = true } }
             // Кнопки «геоточка» больше нет (P264): место — с карты,
@@ -550,8 +559,9 @@ struct AttachBar: View {
                 item("keyboard.chevron.compact.down", "убрать", ready: true) { hideKeyboard() }
             }
         }
-        .padding(.top, overKeyboard ? 6 : 8)
-        .padding(.bottom, overKeyboard ? 5 : 7)
+        // Полоска как можно тоньше: одни значки, без подписей (P289).
+        .padding(.top, 5)
+        .padding(.bottom, 4)
         .background(Look.chrome)
         .overlay(alignment: .top) {
             Rectangle().fill(Look.rule).frame(height: 1)
@@ -575,6 +585,7 @@ struct AttachBar: View {
             hideKeyboard()
             switch ask {
             case .photo: toggleGallery()
+            case .camera: open { shooting = true }
             case .audio: open { recording = true }
             case .files: open { browsing = true }
             }
@@ -594,6 +605,18 @@ struct AttachBar: View {
         .sheet(isPresented: $recording) {
             Recorder(done: keepVoice) { recording = false }
                 .presentationDetents([.height(360)])
+        }
+        .fullScreenCover(isPresented: $shooting) {
+            CameraPicker { data in
+                shooting = false
+                guard let data else { return }
+                if store.addPhoto(data, to: shell.tab) {
+                    shell.say("Снимок положен в папку «Фотографии»")
+                } else {
+                    shell.say("Снимок не сохранился")
+                }
+            }
+            .ignoresSafeArea()
         }
         .sheet(isPresented: $browsing) {
             DocumentPicker(pick: keepFiles)
@@ -635,7 +658,8 @@ struct AttachBar: View {
     private func item(_ icon: String, _ name: String, ready: Bool = false,
                       hold: (() -> Void)? = nil,
                       act: @escaping () -> Void) -> some View {
-        let face = BarFace(icon: icon, name: name, tint: ready ? Look.inkSoft : Look.inkFaint)
+        let face = BarFace(icon: icon, name: name, tint: ready ? Look.inkSoft : Look.inkFaint,
+                           compact: true)
         return Group {
             if let hold {
                 // У кнопки два жеста: касание и долгое нажатие. Обычная

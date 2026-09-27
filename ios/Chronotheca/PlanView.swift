@@ -385,8 +385,8 @@ struct PlanHead: View {
     var body: some View {
         HStack(spacing: 8) {
             // Погода — слева, в пустом месте строки (P277).
-            if let weather {
-                Label(weather, systemImage: "cloud.sun")
+            if let weather, Prefs.weatherOn {
+                Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
                     .font(Look.sans(12.5))
                     .foregroundStyle(Look.inkFaint)
                     .lineLimit(1)

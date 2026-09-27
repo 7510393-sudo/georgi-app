@@ -146,13 +146,14 @@ struct DiaryPage: View {
                         .foregroundStyle(Look.inkFaint)
                         .padding(.bottom, 12)
                 }
-                if let weather {
-                    Label(weather, systemImage: "cloud.sun")
+                if let weather, Prefs.weatherOn {
+                    Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
                         .font(Look.sans(12.5))
                         .foregroundStyle(Look.inkFaint)
                         .padding(.bottom, 10)
                 }
-                if !asked.isEmpty { askBlock }
+                // «Как прошло?» можно выключить в настройках (P290).
+                if Prefs.askOn, !asked.isEmpty { askBlock }
                 titleField
                 textField
             }

@@ -32,6 +32,7 @@ targets:
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
         # Замок записей (P249).
+        INFOPLIST_KEY_NSCameraUsageDescription: "Чтобы снять фото прямо в запись дня. Снимок ложится в вашу папку «Фотографии»."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Чтобы показать последние снимки галереи прямо на странице дня. Снимок, который вы выберете, копируется в вашу папку «Фотографии»; остальные никуда не уходят."
         INFOPLIST_KEY_NSFaceIDUsageDescription: "Чтобы закрыть ваши записи замком: без вашего лица или кода их не откроет никто."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

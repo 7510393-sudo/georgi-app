@@ -148,10 +148,11 @@ struct SearchView: View {
                     // Год, месяц, число — в этом порядке: при поиске по архиву
                     // сначала выбирают время, а не день недели. День недели
                     // виден на самой записи, когда до неё дойдут.
+                    // Дата — насыщенным синим, видна сразу (P282).
                     Text(Search.stamp(day.date))
-                        .font(Look.mono(11.5))
+                        .font(Look.mono(11.5, weight: .medium))
                         .tracking(0.3)
-                        .foregroundStyle(Look.inkFaint)
+                        .foregroundStyle(Look.dateBlue)
 
                     if !day.title.isEmpty {
                         Text(day.title)
@@ -163,7 +164,7 @@ struct SearchView: View {
                         Text(day.preview)
                             .font(Look.serif(13.5))
                             .foregroundStyle(Look.inkSoft)
-                            .lineLimit(day.title.isEmpty ? 4 : 3)
+                            .lineLimit(day.title.isEmpty ? 5 : 4)
                             .multilineTextAlignment(.leading)
                     }
                 }
@@ -190,7 +191,8 @@ struct SearchView: View {
                                   label: (link as NSString).pathExtension.lowercased())
             }
         }
-        .frame(width: 52, height: 52)
+        // Превью высотой в пять строк записи (P282).
+        .frame(width: Search.previewSide, height: Search.previewSide)
         .padding(.top, 2)
     }
 
@@ -211,6 +213,10 @@ enum Search {
     /// «2026 сентябрь 22» — от крупного к мелкому, как ищут в архиве.
     static func stamp(_ date: Date) -> String {
         let c = Calendar.current.dateComponents([.day, .month, .year], from: date)
-        return "\(c.year ?? 2026)  \(Ru.monthNames[(c.month ?? 1) - 1])  \(c.day ?? 1)"
+        // Промежутки — в один пробел, вдвое уже прежних (P282).
+        return "\(c.year ?? 2026) \(Ru.monthNames[(c.month ?? 1) - 1]) \(c.day ?? 1)"
     }
+
+    /// Пять строк текста находки.
+    static let previewSide: CGFloat = 86
 }

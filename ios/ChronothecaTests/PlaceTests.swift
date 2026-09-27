@@ -130,6 +130,10 @@ final class PlaceTests: XCTestCase {
         check("https://maps.apple.com/?ll=51.500729,-0.124625&q=Big%20Ben", 51.500729, -0.124625)
         check("https://www.google.com/maps/place/Big+Ben/@51.5007292,-0.1246254,17z", 51.5007292, -0.1246254)
         check("https://maps.google.com/?q=51.5007,-0.1246", 51.5007, -0.1246)
+        // Google Карты (P292).
+        check("51.500729,+-0.124625", 51.500729, -0.124625)
+        check("\u{200E}51.500729, -0.124625\u{200E}", 51.500729, -0.124625)
+        check("https://www.google.com/maps/search/51.500729,+-0.124625?entry=tts", 51.500729, -0.124625)
         XCTAssertEqual(Pasted.find("https://maps.apple.com/?ll=51.5,-0.12&q=Big%20Ben")?.title, "Big Ben")
         XCTAssertNil(Pasted.find("10 Downing St, London"))
         XCTAssertNotNil(Pasted.shortLink(in: "Биг-Бен https://maps.app.goo.gl/abc123"))

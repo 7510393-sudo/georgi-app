@@ -20,7 +20,13 @@ enum Pasted {
     }
 
     static func find(_ raw: String) -> Found? {
-        let text = raw.removingPercentEncoding ?? raw
+        // Невидимые знаки направления и неразрывные пробелы, которые
+        // приносит буфер из чужих приложений, — прочь (P292).
+        let cleaned = raw.unicodeScalars.filter {
+            !["\u{200E}", "\u{200F}", "\u{202A}", "\u{202C}", "\u{2066}", "\u{2069}", "\u{FEFF}"]
+                .contains(String($0))
+        }.map(String.init).joined().replacingOccurrences(of: "\u{00A0}", with: " ")
+        let text = cleaned.removingPercentEncoding ?? cleaned
         if let found = fromLink(text) { return found }
         if let at = hemispheres(text) { return Found(title: nil, at: at) }
         if let at = plain(text) { return Found(title: nil, at: at) }
@@ -34,6 +40,9 @@ enum Pasted {
         #"!3d(-?\d{1,3}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)"#,
         // Google: середина карты.
         #"@(-?\d{1,3}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)"#,
+        // Google: «/maps/search/51.5,+-0.12», «/maps/place/…», «/maps/dir/…»
+        // — так ведёт кнопка «Поделиться» в Google Картах (P292).
+        #"/maps/(?:search|place|dir)/(?:[^/]*/)?\+?(-?\d{1,3}\.\d+)\s*,\s*\+?(-?\d{1,3}\.\d+)"#,
         // Apple и Google: параметры ссылки.
         #"[?&](?:ll|q|query|sll|daddr|saddr|destination|coordinate|center)=\s*(-?\d{1,3}(?:\.\d+)?)\s*[,+\s]\s*\+?(-?\d{1,3}(?:\.\d+)?)"#,
         // Страница, куда привела короткая ссылка.
@@ -99,7 +108,8 @@ enum Pasted {
             .trimmingCharacters(in: CharacterSet(charactersIn: "()[]"))
         if t.lowercased().hasPrefix("geo:") { t.removeFirst(4) }
         // «51.5, -0.12», «51.5;-0.12», «51.5 -0.12».
-        if let g = groups(#"^\s*(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$"#, in: t) {
+        // Google Карты копируют и с плюсом: «51.500729,+-0.124625» (P292).
+        if let g = groups(#"^\s*\+?(-?\d{1,3}(?:\.\d+)?)\s*[,;\s+]+\s*\+?(-?\d{1,3}(?:\.\d+)?)\s*$"#, in: t) {
             return coordinate(g[0], g[1])
         }
         // С запятой вместо точки: «51,5007 -0,1246», «51,5007; -0,1246».

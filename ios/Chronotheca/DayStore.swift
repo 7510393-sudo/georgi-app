@@ -408,9 +408,9 @@ final class DayStore: ObservableObject {
     /// страницы дня — курсора нет.
     func noteLeaving(fromToday: Bool) {
         leftCaret = fromToday && diaryTyping ? diaryCaret : nil
-        // В плане — дело, в котором стоял курсор последним: точка ляжет в
-        // его строку, на место курсора (P276). Не правили — в последнее.
-        leftRow = fromToday ? lastPlanRow : nil
+        // В плане — дело, в котором стоит курсор: точка ляжет в его строку,
+        // на место курсора (P276). Курсора нет — строкой ниже всех (P285).
+        leftRow = fromToday ? planTyping : nil
     }
 
     /// Записать точку с карты — туда, где был курсор перед уходом на карту.
@@ -432,12 +432,19 @@ final class DayStore: ObservableObject {
         case .plan:
             // Дело, за которым просили, могли уже удалить — тогда под последним.
             let asked = row.flatMap { index(of: $0) == nil ? nil : $0 }
-            if let anchor = asked ?? planRows.last(where: \.isTask)?.id, let i = index(of: anchor),
-               planRows[i].isTask {
-                // Прямо в название дела, в конец, — не отдельной строкой (P259).
+            if let anchor = asked, let i = index(of: anchor), planRows[i].isTask {
+                // Курсор стоял в деле — прямо в его название (P259, P276).
                 let title = planRows[i].text.trimmingCharacters(in: .whitespaces)
                 planRows[i].text = title + (title.isEmpty ? "" : " ") + line
-            } else if let anchor = asked ?? planRows.last(where: \.isTask)?.id, var i = index(of: anchor) {
+            } else if asked == nil {
+                // Курсора нет — своей строкой ниже последней записи плана;
+                // в нужное дело её переносят в режиме изменений (P285).
+                var end = planRows.count
+                while end > 0, planRows[end - 1].verbatim?.trimmingCharacters(in: .whitespaces) == "" {
+                    end -= 1
+                }
+                planRows.insert(.verbatim(line), at: end)
+            } else if let anchor = asked, var i = index(of: anchor) {
                 // Точки, уже стоящие за этим делом, остаются перед новой.
                 i += 1
                 while i < planRows.count, let v = planRows[i].verbatim, Geo.point(in: v) != nil { i += 1 }
@@ -507,7 +514,7 @@ final class DayStore: ObservableObject {
     /// нужно для погоды: iPhone один раз спросит разрешение; запретили —
     /// погоды нет, и больше не спрашиваем.
     func fetchWeatherIfNeeded() {
-        guard isToday, canEditDiary, weather == nil, !weatherAsked else { return }
+        guard Prefs.weatherOn, isToday, canEditDiary, weather == nil, !weatherAsked else { return }
         let status = CLLocationManager().authorizationStatus
         guard status != .denied, status != .restricted else { return }
         weatherAsked = true

@@ -168,12 +168,20 @@ struct MenuSticker: View {
 /// говорит, к чему бумажка относится — к дню или ко всему приложению.
 struct SettingsSticker: View {
 
+    /// Высота листка: от верха до нижних разделов, за вычетом шапки листка.
+    static var fullHeight: CGFloat {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
+        let insets = window?.safeAreaInsets ?? .zero
+        return max(300, UIScreen.main.bounds.height - insets.top - insets.bottom - 66 - 52)
+    }
+
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
 
     var body: some View {
         Sticker(side: .leading, title: "Настройки",
-                paper: Look.note, edge: Look.noteEdge, width: 300, close: close) {
+                paper: Look.note, edge: Look.noteEdge, width: 330, close: close) {
           // Длинная бумажка прокручивается: разделов стало много (P249).
           ScrollView {
            VStack(spacing: 0) {
@@ -231,6 +239,25 @@ struct SettingsSticker: View {
                         note: startTab == "diary" ? "дневнике" : "плане", edge: Look.noteEdge) {
                 startTab = startTab == "diary" ? "plan" : "diary"
             }
+            // P290.
+            StickerItem(title: "Неделя начинается с",
+                        note: sundayFirst ? "воскресенья" : "понедельника", edge: Look.noteEdge) {
+                sundayFirst.toggle()
+            }
+            StickerItem(title: "«Как прошло?» в дневнике", note: noAsk ? "нет" : "да",
+                        edge: Look.noteEdge) {
+                noAsk.toggle()
+            }
+            StickerItem(title: "Погода", note: noWeather ? "выключена" : "включена",
+                        edge: Look.noteEdge) {
+                noWeather.toggle()
+                if !noWeather { store.fetchWeatherIfNeeded() }
+            }
+            if !noWeather {
+                StickerItem(title: "Градусы", note: fahrenheit ? "°F" : "°C", edge: Look.noteEdge) {
+                    fahrenheit.toggle()
+                }
+            }
 
             StickerSection(title: "Вид")
             StickerItem(title: "Тема", note: themeName, edge: Look.noteEdge) {
@@ -247,9 +274,24 @@ struct SettingsSticker: View {
                 let i = Prefs.fonts.firstIndex { $0.key == fontKey } ?? 0
                 fontKey = Prefs.fonts[(i + 1) % Prefs.fonts.count].key
             }
+            StickerItem(title: "Цвет дней в календаре", note: calendarTintName,
+                        edge: Look.noteEdge) {
+                calendarTint = calendarTint == "distance" ? "weekday"
+                    : calendarTint == "weekday" ? "none" : "distance"
+            }
             StickerItem(title: "Шелест страниц", note: quiet ? "выключен" : "включён",
                         edge: Look.noteEdge) {
                 quiet.toggle()
+            }
+
+            StickerSection(title: "Вложения")
+            StickerItem(title: "Сжатие снимков", note: squeezeName, edge: Look.noteEdge) {
+                squeeze = squeeze == "original" ? "high" : squeeze == "high" ? "medium" : "original"
+            }
+            // Корзина (P290): что убрано со страниц, лежит в папках записей;
+            // своей корзины для дней пока нет — так и сказано.
+            StickerItem(title: "Корзина", note: "→", edge: Look.noteEdge) {
+                shell.say("Убранное со страниц остаётся в папках записей. Удаление дней в корзину — следующим шагом.")
             }
 
             StickerSection(title: "Карта")
@@ -274,7 +316,8 @@ struct SettingsSticker: View {
             version
            }
           }
-          .frame(maxHeight: 600)
+          // Листок — до нижней неподвижной строки (P291).
+          .frame(height: Self.fullHeight)
         }
         .confirmationDialog("Где хранить записи", isPresented: $choosingPlace,
                             titleVisibility: .visible) {
@@ -310,6 +353,28 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.quiet) private var quiet = false
     @AppStorage(Prefs.textSize) private var textSize = 0
     @AppStorage(Prefs.font) private var fontKey = "georgia"
+    @AppStorage(Prefs.noWeather) private var noWeather = false
+    @AppStorage(Prefs.fahrenheit) private var fahrenheit = false
+    @AppStorage(Prefs.noAsk) private var noAsk = false
+    @AppStorage(Prefs.calendarTint) private var calendarTint = "distance"
+    @AppStorage(Prefs.sundayFirst) private var sundayFirst = false
+    @AppStorage(Prefs.squeeze) private var squeeze = "original"
+
+    private var calendarTintName: String {
+        switch calendarTint {
+        case "weekday": return "по дням недели"
+        case "none":    return "без цвета"
+        default:        return "по удалённости"
+        }
+    }
+
+    private var squeezeName: String {
+        switch squeeze {
+        case "high":   return "небольшое"
+        case "medium": return "сильное"
+        default:       return "оригинал"
+        }
+    }
 
     private var themeName: String {
         switch theme {

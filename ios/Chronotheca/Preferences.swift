@@ -14,6 +14,38 @@ enum Prefs {
     static let quiet = "prefs.quiet"            // true — без звуков (P265)
     static let textSize = "prefs.textSize"      // −1…2, ступени размера (P274)
     static let font = "prefs.font"              // "georgia", "newyork", "system"
+    // P290: погода, градусы, «Как прошло?», цвет календаря, неделя, сжатие.
+    static let noWeather = "prefs.noWeather"    // true — погоды нет
+    static let fahrenheit = "prefs.fahrenheit"  // true — градусы Фаренгейта
+    static let noAsk = "prefs.noAsk"            // true — без «Как прошло?»
+    static let calendarTint = "prefs.calendarTint" // "distance", "weekday", "none"
+    static let sundayFirst = "prefs.sundayFirst"   // true — неделя с воскресенья
+    static let squeeze = "prefs.squeeze"        // "original", "high", "medium"
+
+    static var weatherOn: Bool { !UserDefaults.standard.bool(forKey: noWeather) }
+    static var askOn: Bool { !UserDefaults.standard.bool(forKey: noAsk) }
+    static var firstWeekday: Int { UserDefaults.standard.bool(forKey: sundayFirst) ? 1 : 2 }
+    static var squeezeKey: String { UserDefaults.standard.string(forKey: squeeze) ?? "original" }
+
+    /// Погода для показа: в файле она всегда в °C, показывается — как
+    /// выбрано.
+    static func weatherText(_ stored: String) -> String {
+        guard UserDefaults.standard.bool(forKey: fahrenheit) else { return stored }
+        let ns = stored as NSString
+        guard let re = try? NSRegularExpression(pattern: #"([+-]?\d+)°"#),
+              let m = re.firstMatch(in: stored, range: NSRange(location: 0, length: ns.length)),
+              let c = Int(ns.substring(with: m.range(at: 1)))
+        else { return stored }
+        let f = Int((Double(c) * 9 / 5 + 32).rounded())
+        return ns.replacingCharacters(in: m.range, with: "\(f)°F")
+    }
+
+    /// Календарь с выбранным первым днём недели.
+    static var calendar: Calendar {
+        var cal = Calendar.current
+        cal.firstWeekday = firstWeekday
+        return cal
+    }
 
     /// Ступени размера текста записей: мельче, обычный, крупнее, ещё крупнее.
     static let textSteps: [(name: String, scale: CGFloat)] = [
@@ -120,7 +152,7 @@ struct StickerSection: View {
 
     var body: some View {
         Text(title.uppercased())
-            .font(Look.sans(9.5, weight: .semibold))
+            .font(Look.sans(10.5, weight: .semibold))
             .tracking(0.7)
             .foregroundStyle(Look.inkFaint)
             .frame(maxWidth: .infinity, alignment: .leading)

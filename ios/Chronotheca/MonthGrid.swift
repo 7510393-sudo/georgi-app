@@ -12,7 +12,9 @@ enum MonthGrid {
     static func cells(of month: Date, calendar: Calendar = .current) -> [Date?] {
         let first = calendar.date(from: calendar.dateComponents([.year, .month], from: month))
                     ?? month
-        let lead = (calendar.component(.weekday, from: first) + 5) % 7
+        // Сколько пустых клеток до первого числа — от первого дня недели
+        // календаря (P290).
+        let lead = (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7
         let count = calendar.range(of: .day, in: .month, for: first)?.count ?? 30
 
         var cells: [Date?] = Array(repeating: nil, count: lead)

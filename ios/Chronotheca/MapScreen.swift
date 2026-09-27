@@ -61,15 +61,15 @@ struct MapScreen: View {
             }
             // Крестика больше нет: карта — раздел внизу, уходят с неё
             // другим разделом, как с календаря и поиска (P239).
-            if panel == nil {
-                // Поиск: слева сверху, под шестерёнкой (P251).
-                MapSearch(open: $searching, places: places,
-                          region: { seen.region }, pick: found)
-                    .padding(.leading, 12)
-                    .padding(.trailing, 64)
-                    .padding(.top, Corner.size + 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            // Поиск — в одной строке с шестерёнкой и тремя точками, между
+            // уголками (P283): плашки новой точки и облачка ложатся ниже и
+            // лупу не закрывают.
+            MapSearch(open: $searching, places: places,
+                      region: { seen.region }, pick: found)
+                .padding(.leading, Corner.size + 8)
+                .padding(.trailing, Corner.size + 8)
+                .padding(.top, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .animation(.easeOut(duration: 0.15), value: panel)
         .overlay(alignment: .bottom) { bar }
@@ -169,6 +169,8 @@ struct MapScreen: View {
             .background(Capsule()
                 .fill(.regularMaterial)
                 .shadow(color: .black.opacity(0.16), radius: 4, y: 2))
+            // Кромка — кнопки чётче на пёстрой карте (P283).
+            .overlay(Capsule().strokeBorder(Look.inkFaint.opacity(0.7), lineWidth: 1))
             .opacity(on ? 1 : 0.55)
             .padding(.horizontal, 4)
     }
@@ -269,8 +271,12 @@ struct MapScreen: View {
         hideKeyboard()
         withAnimation { panel = nil }
         var place = given
+        // Без названия точка в «Места» не сохраняется (P284): она нужна
+        // только для текста, где ляжет булавкой.
         if place.name.trimmingCharacters(in: .whitespaces).isEmpty {
             place.name = Geo.text(place.coordinate)
+            selected = place
+            return
         }
         guard let stored = Places.save(place, in: vault) else {
             selected = place

@@ -150,7 +150,7 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
                     leaf.alpha = forward ? 0.25 : 1
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + start) {
-                    Sounds.flip(volume: 0.35, rate: 0.9 + Float(order % 3) * 0.1)
+                    Sounds.flip(volume: 0.2, rate: 0.9 + Float(order % 3) * 0.1)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.5)
                 }
             }

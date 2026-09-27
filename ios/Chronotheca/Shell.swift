@@ -98,8 +98,8 @@ final class Shell: ObservableObject {
             withAnimation(.pull, completionCriteria: .logicallyComplete) {
                 if settings { self.settingsPull = nil } else { self.menuPull = nil }
             } completion: {
+                // Только толчок, без звука (P288).
                 Feel.paper()
-                Sounds.play("paper-tap", volume: 0.35)
             }
         }
     }

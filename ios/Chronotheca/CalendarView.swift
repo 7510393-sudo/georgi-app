@@ -23,7 +23,7 @@ struct CalendarView: View {
     @State private var plan: [Int] = []
     @State private var selected: String? = Vault.stamp(DayStore.today())
 
-    private let cal = Calendar.current
+    private var cal: Calendar { Prefs.calendar }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -83,12 +83,18 @@ struct CalendarView: View {
         VStack(spacing: 0) {
             nav(for: date)
             ScrollView {
-                VStack(spacing: 0) {
-                    switch kind {
-                    case .year:  yearGrid(of: date)
-                    case .month: monthGrid(of: date, current: current)
-                    case .list:  monthList(of: date)
+                ScrollViewReader { proxy in
+                    VStack(spacing: 0) {
+                        switch kind {
+                        case .year:  yearGrid(of: date)
+                        case .month: monthGrid(of: date, current: current)
+                        case .list:  monthList(of: date)
+                        }
                     }
+                    // Список открывается так, чтобы нужный день — открытый
+                    // или сегодняшний — стоял вверху экрана (P286).
+                    .onAppear { toTop(proxy, in: date, current: current) }
+                    .onChange(of: stored) { _, _ in toTop(proxy, in: date, current: current) }
                 }
             }
         }
@@ -259,7 +265,7 @@ struct CalendarView: View {
         return VStack(spacing: 0) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
                       spacing: 4) {
-                ForEach(Array(Ru.weekHeader.enumerated()), id: \.offset) { i, name in
+                ForEach(Array(header.enumerated()), id: \.offset) { i, name in
                     Text(name.uppercased())
                         .font(Look.sans(10, weight: .semibold))
                         .tracking(0.8)
@@ -301,7 +307,7 @@ struct CalendarView: View {
             .frame(height: 32)
             // Клетка — того же цвета, что страница этого дня: сегодня
             // абрикосовое, прошлое голубеет, будущее зеленеет (P245).
-            .background(Ru.tint(date), in: RoundedRectangle(cornerRadius: 8))
+            .background(tint(date), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(isSelected ? Look.accent : .clear, lineWidth: 1.5))
         }
@@ -322,8 +328,25 @@ struct CalendarView: View {
     }
 
     private func dateOfWeekday(_ i: Int) -> Date {
-        let monday = cal.date(from: DateComponents(year: 2026, month: 1, day: 5)) ?? Date()
-        return cal.date(byAdding: .day, value: i, to: monday) ?? monday
+        // 5 января 2026 — понедельник, 4-е — воскресенье.
+        let first = cal.date(from: DateComponents(year: 2026, month: 1,
+                                                  day: cal.firstWeekday == 1 ? 4 : 5)) ?? Date()
+        return cal.date(byAdding: .day, value: i, to: first) ?? first
+    }
+
+    /// Заголовок недели — с выбранного первого дня (P290).
+    private var header: [String] {
+        cal.firstWeekday == 1 ? ["вс"] + Array(Ru.weekHeader.dropLast()) : Ru.weekHeader
+    }
+
+    /// Цвет клетки дня — как выбрано в настройках (P290): по удалённости от
+    /// сегодня, по дню недели или без цвета.
+    private func tint(_ date: Date) -> Color {
+        switch UserDefaults.standard.string(forKey: Prefs.calendarTint) ?? "distance" {
+        case "weekday": return Ru.dayColor(date).opacity(0.14)
+        case "none":    return Look.planBg
+        default:        return Ru.tint(date)
+        }
     }
 
     @ViewBuilder private var dayList: some View {
@@ -369,6 +392,15 @@ struct CalendarView: View {
 
     // MARK: - Список
 
+    private func toTop(_ proxy: ScrollViewProxy, in month: Date, current: Bool) {
+        guard current, kind == .list else { return }
+        let target = [store.date, DayStore.today()].first {
+            cal.isDate($0, equalTo: month, toGranularity: .month)
+        }
+        guard let target else { return }
+        DispatchQueue.main.async { proxy.scrollTo(Vault.stamp(target), anchor: .top) }
+    }
+
     private func monthList(of date: Date) -> some View {
         let cells = MonthGrid.cells(of: date, calendar: cal).compactMap { $0 }
         let today = Vault.stamp(DayStore.today())
@@ -376,6 +408,7 @@ struct CalendarView: View {
         return LazyVStack(spacing: 0) {
             ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
                 row(day, today: today)
+                    .id(Vault.stamp(day))
                 weekRule(after: day)
             }
         }
@@ -436,7 +469,7 @@ struct CalendarView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 9)
             // Строка дня — цвета его страницы (P245); выбранная обведена.
-            .background(Ru.tint(date))
+            .background(tint(date))
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(open ? Look.accent.opacity(0.6) : .clear, lineWidth: 1.5))
@@ -452,7 +485,9 @@ struct CalendarView: View {
     /// нижний край рамки вокруг недели, и этот загиб её и замыкает (P143).
     @ViewBuilder private func weekRule(after date: Date) -> some View {
         let weekday = cal.component(.weekday, from: date)
-        if weekday == 1 {
+        // Неделя кончается днём перед первым днём недели (P290).
+        let last = cal.firstWeekday == 1 ? 7 : 1
+        if weekday == last {
             WeekEnd().stroke(Look.inkFaint, lineWidth: 2).frame(height: 2)
         } else if weekday == 6 {
             Rectangle().fill(Look.inkFaint).opacity(0.55).frame(height: 1)

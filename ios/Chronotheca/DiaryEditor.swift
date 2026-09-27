@@ -947,16 +947,22 @@ final class PointChip: NSTextAttachment {
     /// Название и координаты — на карте, куда ведёт касание.
     init(mini point: GeoPoint, glowing: Bool = false) {
         super.init(data: nil, ofType: nil)
-        let picture = PointChip.mark(glowing: glowing)
+        let picture = PointChip.mark(glowing: glowing, title: point.title)
         image = picture
         let pad: CGFloat = glowing ? 3 : 0
         bounds = CGRect(origin: CGPoint(x: 0, y: -3 - pad), size: picture.size)
         accessibilityLabel = "Точка на карте: " + point.label
     }
 
-    static func mark(glowing: Bool) -> UIImage {
+    /// Булавка; у точки с названием — и название рядом (P284).
+    static func mark(glowing: Bool, title: String = "") -> UIImage {
         let pad: CGFloat = glowing ? 3 : 0
-        let chip = CGSize(width: 20, height: 17)
+        let font = UIFont.systemFont(ofSize: 11.5, weight: .medium)
+        let words: [NSAttributedString.Key: Any] = [.font: font,
+                                                     .foregroundColor: UIColor(Look.inkSoft)]
+        let name = title.trimmingCharacters(in: .whitespaces)
+        let wide = name.isEmpty ? 0 : min(ceil((name as NSString).size(withAttributes: words).width), 180)
+        let chip = CGSize(width: name.isEmpty ? 20 : 20 + wide + 6, height: 17)
         let size = CGSize(width: chip.width + pad * 2, height: chip.height + pad * 2)
         let pin = UIImage(systemName: "mappin.and.ellipse",
                           withConfiguration: UIImage.SymbolConfiguration(pointSize: 10.5,
@@ -977,9 +983,16 @@ final class PointChip: NSTextAttachment {
             shape.stroke()
             if let pin {
                 let s = pin.size
-                pin.draw(in: CGRect(x: pad + (chip.width - s.width) / 2,
+                pin.draw(in: CGRect(x: pad + (20 - s.width) / 2,
                                     y: pad + (chip.height - s.height) / 2,
                                     width: s.width, height: s.height))
+            }
+            if !name.isEmpty {
+                (name as NSString).draw(
+                    with: CGRect(x: pad + 18, y: pad + (chip.height - font.lineHeight) / 2,
+                                 width: wide, height: font.lineHeight),
+                    options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+                    attributes: words, context: nil)
             }
         }
     }

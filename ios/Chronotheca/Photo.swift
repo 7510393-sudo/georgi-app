@@ -21,6 +21,13 @@ enum Photo {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               CGImageSourceGetCount(source) > 0
         else { return nil }
+        // Сжатие по настройке (P290): оригинал — как есть (A6); иначе
+        // снимок уменьшается по длинной стороне.
+        switch Prefs.squeezeKey {
+        case "high":   return shrunk(source, side: 2560, quality: 0.8) ?? data
+        case "medium": return shrunk(source, side: 1600, quality: 0.72) ?? data
+        default: break
+        }
         if (CGImageSourceGetType(source) as String?) == UTType.jpeg.identifier {
             return data
         }
@@ -30,6 +37,21 @@ enum Photo {
         else { return nil }
         let options = [kCGImageDestinationLossyCompressionQuality: 0.85] as CFDictionary
         CGImageDestinationAddImageFromSource(target, source, 0, options)
+        guard CGImageDestinationFinalize(target) else { return nil }
+        return out as Data
+    }
+
+    private static func shrunk(_ source: CGImageSource, side: CGFloat, quality: CGFloat) -> Data? {
+        let options = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                       kCGImageSourceCreateThumbnailWithTransform: true,
+                       kCGImageSourceThumbnailMaxPixelSize: side] as CFDictionary
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else { return nil }
+        let out = NSMutableData()
+        guard let target = CGImageDestinationCreateWithData(
+                out, UTType.jpeg.identifier as CFString, 1, nil)
+        else { return nil }
+        CGImageDestinationAddImage(target, image,
+                                   [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
         guard CGImageDestinationFinalize(target) else { return nil }
         return out as Data
     }

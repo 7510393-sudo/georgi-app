@@ -163,9 +163,12 @@ enum Look {
     }
 
     /// Моноширинный — для цифр: часы и номера должны стоять столбиком.
-    static func mono(_ size: CGFloat) -> Font {
-        .system(size: size, design: .monospaced)
+    static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .monospaced)
     }
+
+    /// Насыщенный синий дат в поиске (P282).
+    static let dateBlue = Color(light: 0x1D5BD8, dark: 0x6FA3FF)
 
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight)
