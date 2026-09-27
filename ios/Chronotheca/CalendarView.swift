@@ -231,7 +231,7 @@ struct CalendarView: View {
 
     private func miniMonth(year: Int, month: Int) -> some View {
         let first = cal.date(from: DateComponents(year: year, month: month, day: 1)) ?? Date()
-        let cells = MonthGrid.cells(of: first, calendar: cal)
+        let cells = MonthGrid.cells(of: first, calendar: cal, firstWeekday: cal.firstWeekday)
         let today = Vault.stamp(DayStore.today())
 
         return LazyVGrid(columns: Array(repeating: GridItem(.fixed(11), spacing: 2), count: 7),
@@ -259,7 +259,7 @@ struct CalendarView: View {
     /// Сетка на пятую часть плотнее прежней: место внизу нужнее списку дел,
     /// ради которого в календарь и заходят.
     private func monthGrid(of date: Date, current: Bool) -> some View {
-        let cells = MonthGrid.cells(of: date, calendar: cal)
+        let cells = MonthGrid.cells(of: date, calendar: cal, firstWeekday: cal.firstWeekday)
         let today = Vault.stamp(DayStore.today())
 
         return VStack(spacing: 0) {
@@ -402,7 +402,7 @@ struct CalendarView: View {
     }
 
     private func monthList(of date: Date) -> some View {
-        let cells = MonthGrid.cells(of: date, calendar: cal).compactMap { $0 }
+        let cells = MonthGrid.cells(of: date, calendar: cal, firstWeekday: cal.firstWeekday).compactMap { $0 }
         let today = Vault.stamp(DayStore.today())
 
         return LazyVStack(spacing: 0) {

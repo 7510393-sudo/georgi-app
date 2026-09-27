@@ -9,12 +9,16 @@ enum MonthGrid {
 
     /// Клетки месяца. `nil` — пустое место перед первым числом.
     /// Неделя начинается с понедельника, как в русском календаре.
-    static func cells(of month: Date, calendar: Calendar = .current) -> [Date?] {
+    /// `firstWeekday`: 2 — неделя с понедельника (как было всегда), 1 — с
+    /// воскресенья (P290). Задаётся явно, а не берётся из календаря: у
+    /// календаря телефона он зависит от страны.
+    static func cells(of month: Date, calendar: Calendar = .current,
+                      firstWeekday: Int = 2) -> [Date?] {
         let first = calendar.date(from: calendar.dateComponents([.year, .month], from: month))
                     ?? month
         // Сколько пустых клеток до первого числа — от первого дня недели
         // календаря (P290).
-        let lead = (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7
+        let lead = (calendar.component(.weekday, from: first) - firstWeekday + 7) % 7
         let count = calendar.range(of: .day, in: .month, for: first)?.count ?? 30
 
         var cells: [Date?] = Array(repeating: nil, count: lead)
