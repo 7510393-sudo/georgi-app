@@ -332,6 +332,15 @@ struct DayPage: View {
                 // Верх и бока вкладки обведены заметной чертой: видно, какая
                 // вкладка лежит поверх другой (P246).
                 .overlay(TabBorder(radius: 10).stroke(Look.inkFaint, lineWidth: 1))
+                // Режим изменений светится тем же синим, что и превью
+                // снимков (P203) — видно, какую вкладку сейчас правят
+                // (P317).
+                .overlay {
+                    if wobbling {
+                        TabBorder(radius: 10).stroke(Look.glow, lineWidth: 2)
+                    }
+                }
+                .shadow(color: wobbling ? Look.glow.opacity(0.8) : .clear, radius: 6)
                 // Закрытая вкладка — лист, лежащий глубже: чуть притенена, и
                 // край открытой страницы проходит по её низу (P250).
                 .overlay {

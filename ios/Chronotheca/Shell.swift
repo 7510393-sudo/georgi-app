@@ -90,6 +90,9 @@ final class Shell: ObservableObject {
     /// Вытянуть листок за уголок до конца: он стоит за краем экрана так,
     /// что наружу торчит только его угол, и съезжает вниз целиком (P237).
     func pullOut(settings: Bool) {
+        // Толчок — сразу по нажатию, не когда бумажка уже легла на место:
+        // рука должна почувствовать отклик в момент касания (P320).
+        Feel.paper()
         var still = Transaction()
         still.disablesAnimations = true
         withTransaction(still) {
@@ -97,12 +100,8 @@ final class Shell: ObservableObject {
             else { showingMenu = true; menuPull = menuPull ?? 1 }
         }
         DispatchQueue.main.async {
-            // Листок лёг — шлепок бумаги и мягкий толчок (P267).
             withAnimation(.pull, completionCriteria: .logicallyComplete) {
                 if settings { self.settingsPull = nil } else { self.menuPull = nil }
-            } completion: {
-                // Только толчок, без звука (P288).
-                Feel.paper()
             }
         }
     }

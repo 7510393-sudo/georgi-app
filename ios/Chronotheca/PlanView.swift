@@ -418,6 +418,19 @@ struct PlanHead: View {
     }
 
     private func step(_ icon: String, _ act: (() -> Void)?, _ name: String) -> some View {
+        StepButton(icon: icon, act: act, name: name, dimmed: dimmed)
+    }
+}
+
+/// Кружок «шаг назад» / «шаг вперёд» (P261). Тот же вид — и в дневнике,
+/// в том же месте, что и в плане (P312).
+struct StepButton: View {
+    let icon: String
+    let act: (() -> Void)?
+    let name: String
+    var dimmed = false
+
+    var body: some View {
         Image(systemName: icon)
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(Look.accent)

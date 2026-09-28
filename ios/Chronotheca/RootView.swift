@@ -307,6 +307,10 @@ struct RootView: View {
     private var corners: some View {
         HStack(alignment: .top) {
             Button {
+                // Открытая клавиатура и строка над ней не должны мешать
+                // листку настроек — убираются вниз, как при касании по
+                // точке на карте (P309).
+                hideKeyboard()
                 shell.pullOut(settings: true)
             } label: {
                 Corner(leading: true, paper: Look.note, edge: Look.noteEdge, icon: "gearshape",
@@ -322,6 +326,7 @@ struct RootView: View {
             Spacer(minLength: 0)
 
             Button {
+                hideKeyboard()
                 shell.pullOut(settings: false)
             } label: {
                 Corner(leading: false, paper: Look.sticker, edge: Look.stickerEdge, icon: "ellipsis",
@@ -344,7 +349,10 @@ struct RootView: View {
                 var still = Transaction()
                 still.disablesAnimations = true
                 withTransaction(still) {
-                    if !shell[keyPath: showing] { shell[keyPath: showing] = true }
+                    if !shell[keyPath: showing] {
+                        shell[keyPath: showing] = true
+                        hideKeyboard()
+                    }
                     shell[keyPath: amount] = max(0, 1 - max(0, drag.translation.height) / 420)
                 }
             }

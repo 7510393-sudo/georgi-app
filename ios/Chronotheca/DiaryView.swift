@@ -55,7 +55,9 @@ struct DiaryView: View {
             onReturnPhoto: { link in
                 store.returnToStrip(link)
                 shell.say("Снимок вернулся в полоску")
-            })
+            },
+            undo: store.diaryBack.isEmpty || !store.canEditDiary ? nil : { store.undoDiary() },
+            redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() })
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.diaryText) { _, _ in
@@ -104,6 +106,9 @@ struct DiaryPage: View {
     var onEditing: ((Bool) -> Void)?
     var placeCaret: Binding<Int?> = .constant(nil)
     var onReturnPhoto: ((String) -> Void)?
+    /// Шаг назад и вперёд (P261) — там же, где в плане (P312).
+    var undo: (() -> Void)?
+    var redo: (() -> Void)?
 
     private enum Field: Hashable { case title }
     @FocusState private var focused: Field?
@@ -124,6 +129,7 @@ struct DiaryPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            head
             page
             // Фотографии дневника — полоской внизу, над кнопками вложений,
             // как в Diarium; прокрутке страницы они не мешают (P203).
@@ -135,6 +141,19 @@ struct DiaryPage: View {
                     .background(Color.clear)
             }
         }
+    }
+
+    /// Шаг назад / вперёд — в том же месте, что и над списком дел в плане
+    /// (P312): строка не уезжает со страницей, что бы та ни листала.
+    private var head: some View {
+        HStack(spacing: 8) {
+            Spacer()
+            StepButton(icon: "arrow.uturn.backward", act: undo, name: "Шаг назад")
+            StepButton(icon: "arrow.uturn.forward", act: redo, name: "Шаг вперёд")
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 12)
+        .padding(.top, 6)
     }
 
     private var page: some View {
@@ -276,6 +295,8 @@ struct DiaryPage: View {
                     onOpenPoint: onOpenPoint, onCaret: onCaret,
                     moving: glowing && editable, onEditing: onEditing,
                     placeCaret: placeCaret)
-            .padding(.top, 16)
+            // Вдвое меньше, чем было: пробел между заголовком и записью не
+            // должен отнимать место у страницы (P311).
+            .padding(.top, 8)
     }
 }

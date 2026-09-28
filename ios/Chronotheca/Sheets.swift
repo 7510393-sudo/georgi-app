@@ -79,7 +79,8 @@ struct MenuSticker: View {
     private var dayMenu: some View {
         Sticker(side: .trailing, title: "Меню страницы", close: close) {
             // Режим — той вкладки, на которой человек стоит (P211).
-            StickerItem(title: "Режим изменений — " + shell.tab.rawValue.lowercased(),
+            // Название — «редактировать» вместо «режим изменений» (P318).
+            StickerItem(title: "Редактировать — " + shell.tab.rawValue.lowercased(),
                         note: store.editing(shell.tab) ? "включён" : "выключен",
                         active: store.editing(shell.tab)) {
                 store.setEditing(shell.tab, !store.editing(shell.tab))
@@ -89,7 +90,6 @@ struct MenuSticker: View {
                 close()
                 shell.showingFile = true
             }
-            soon("Перенести дело на другой день")
             StickerItem(title: "Поделиться днём") {
                 close()
                 // Текстом — план и запись; вложения остаются в папке (P249).
@@ -126,8 +126,6 @@ struct MenuSticker: View {
                 close()
                 shell.calendarHome = true
             }
-            soon("Показывать в клетках: дела / записи / фото")
-            soon("Поделиться месяцем, PDF")
         }
     }
 
@@ -154,15 +152,6 @@ struct MenuSticker: View {
                     shell.query = ""
                 }
             }
-        }
-    }
-
-    /// Строка того, что задумано, но ещё не сделано: видна, а касание
-    /// честно говорит, что её пока нет (P249).
-    private func soon(_ title: String) -> some View {
-        StickerItem(title: title, note: "скоро") {
-            close()
-            shell.say("«\(title)» ещё не сделано.")
         }
     }
 
@@ -212,7 +201,7 @@ struct SettingsSticker: View {
             }
             // Три места вместо одного окна выбора (P223): своя папка на
             // телефоне — одним касанием; своя папка человека — через окно.
-            StickerItem(title: "Писать в другое место", edge: Look.noteEdge) {
+            StickerItem(title: "Сохранять в другое место", edge: Look.noteEdge) {
                 choosingPlace = true
             }
             if let before = vault.previousFriendly {
@@ -364,6 +353,30 @@ struct SettingsSticker: View {
                  + "там записи переживут и приложение, и телефон. Записи, что уже есть, "
                  + "приложение предложит перенести.")
         }
+        .onAppear(perform: measureStorage)
+    }
+
+    @State private var storageBytes: Int64?
+
+    /// Сколько места занимает вся папка — не только записи, но и снимки,
+    /// голос, видео и документы. Считаем не на каждый штрих, а один раз,
+    /// пока листок открыт, и в стороне от главного потока — папка может
+    /// быть большой (P315).
+    private func measureStorage() {
+        guard let root = vault.root else { return }
+        DispatchQueue.global(qos: .utility).async {
+            var total: Int64 = 0
+            let keys: Set<URLResourceKey> = [.fileAllocatedSizeKey, .isDirectoryKey]
+            if let walker = FileManager.default.enumerator(
+                at: root, includingPropertiesForKeys: Array(keys)) {
+                for case let url as URL in walker {
+                    guard let values = try? url.resourceValues(forKeys: keys),
+                          values.isDirectory != true else { continue }
+                    total += Int64(values.fileAllocatedSize ?? 0)
+                }
+            }
+            DispatchQueue.main.async { storageBytes = total }
+        }
     }
 
     @State private var undone = false
@@ -413,12 +426,12 @@ struct SettingsSticker: View {
     @EnvironmentObject private var archive: Archive
     @Environment(\.openURL) private var openURL
 
-    /// Где лежат записи и сколько их — словами «Файлов», а полный путь
-    /// мелко под ним. Число файлов отвечает на главный вопрос «мои записи
-    /// на месте?», даже когда iCloud их ещё не отдал (решения P189, P190).
+    /// Сколько файлов и места занято, а путь — блёкло, справочно (P316:
+    /// переименовано из «Записи лежат здесь», раньше показывал только
+    /// путь и число файлов, без объёма).
     ///
     /// Строка целиком — кнопка: нажатие открывает ту же папку в «Файлах».
-    /// Раньше это была вторая, отдельная строка ниже — теперь одна (P305).
+    /// Раньше это было две строки — теперь одна (P305).
     private var place: some View {
         VStack(alignment: .leading, spacing: 3) {
             Button {
@@ -426,17 +439,19 @@ struct SettingsSticker: View {
                 if let link = vault.filesLink { openURL(link) }
             } label: {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("ЗАПИСИ ЛЕЖАТ ЗДЕСЬ")
+                    Text("ХРАНИЛИЩЕ ХРОНОТЕКИ")
                         .font(Look.sans(9))
                         .tracking(0.6)
                         .foregroundStyle(Look.inkFaint)
-                    Text(vault.friendlyPath)
+                    Text(count)
                         .font(Look.sans(14, weight: .medium))
                         .foregroundStyle(Look.ink)
-                        .lineLimit(3)
-                    Text(count)
+                    // Путь — справочный, не главный: блёклыми буквами
+                    // (P316).
+                    Text(vault.friendlyPath)
                         .font(Look.sans(11.5))
-                        .foregroundStyle(Look.inkSoft)
+                        .foregroundStyle(Look.inkFaint)
+                        .lineLimit(3)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -445,7 +460,7 @@ struct SettingsSticker: View {
             if let parent = vault.nestedIn {
                 Text("Похоже, это папка внутри архива, а не сам архив. Прежние "
                      + "записи, скорее всего, лежат уровнем выше — в «\(parent)». "
-                     + "Нажмите «Писать в другое место» и выберите саму «\(parent)»: "
+                     + "Нажмите «Сохранять в другое место» и выберите саму «\(parent)»: "
                      + "приложение узнает архив и предложит перенести туда то, "
                      + "что записано здесь.")
                     .font(Look.sans(11.5))
@@ -469,6 +484,10 @@ struct SettingsSticker: View {
 
     private var count: String {
         var out = "Файлов с записями: \(archive.files)"
+        if let storageBytes {
+            out += " · занято: " + ByteCountFormatter.string(fromByteCount: storageBytes,
+                                                              countStyle: .file)
+        }
         if archive.awayFiles > 0 {
             out += " · ещё в iCloud: \(archive.awayFiles)"
             out += archive.fetching ? ", скачиваются" : ""

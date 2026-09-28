@@ -7,8 +7,11 @@ import UIKit
 /// система переворачивает по одному листу и ждёт, пока он ляжет. Человеку
 /// оставалось смотреть, как они мелькают, и ждать, пока это кончится.
 ///
-/// Поворот один, длится как обычный, а то, что вернулись издалека, видно
-/// по толщине: с далёкого дня поднимается не лист, а пачка (P178).
+/// Поворот один (P178). Издалека дорогу показывает вихрь листов (P266) —
+/// весь, без настоящего поворота напоследок: тот шёл отдельным, заметно
+/// более медленным шагом уже после вихря, и дорога распадалась на два
+/// разных движения вместо одного (P314). Толщину пачки поэтому теперь
+/// не рисуем: число летящих листов и так видно.
 func wayHome(_ distance: Int) -> [Int] {
     distance == 0 ? [] : [distance]
 }
@@ -99,16 +102,36 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
         func obey(_ pages: UIPageViewController) {
             guard !busy, let step = parent.plan.wrappedValue.first, step != 0 else { return }
             busy = true
-            // Издалека — сперва вихрь листов, затем последний ложится
-            // настоящим поворотом (P266).
-            let extra = whirlLeaves(step) - 1
-            if extra > 0, let page = pages.viewControllers?.first?.view {
-                Coordinator.whirl(over: page, in: pages.view, leaves: extra,
+            let leaves = whirlLeaves(step)
+            // Издалека — весь путь одним потоком вихря, без выделенного
+            // последнего листа: раньше он один ложился отдельным, заметно
+            // более медленным поворотом уже после того, как вихрь кончился
+            // (P314).
+            if leaves > 1, let page = pages.viewControllers?.first?.view {
+                Coordinator.whirl(over: page, in: pages.view, leaves: leaves,
                                   forward: step > 0) { [weak self] in
-                    self?.turn(pages, step)
+                    self?.land(pages, step)
                 }
             } else {
                 turn(pages, step)
+            }
+        }
+
+        /// Вихрь долистал до места — книга встаёт на нужный день сразу, тем
+        /// же кадром, каким исчез последний летящий лист: ничего не
+        /// переворачивается отдельно (P314).
+        private func land(_ pages: UIPageViewController, _ step: Int) {
+            let host = make(step)
+            pages.setViewControllers([host], direction: step > 0 ? .forward : .reverse,
+                                     animated: false) { [weak self] done in
+                guard let self else { return }
+                self.busy = false
+                guard done else { self.parent.plan.wrappedValue = []; return }
+                host.offset = 0
+                self.parent.onTurn(step)
+                if !self.parent.plan.wrappedValue.isEmpty {
+                    self.parent.plan.wrappedValue.removeFirst()
+                }
             }
         }
 
@@ -150,7 +173,8 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
                     leaf.alpha = forward ? 0.25 : 1
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + start) {
-                    Sounds.flip(volume: 0.2, rate: 0.9 + Float(order % 3) * 0.1)
+                    // На 10% тише (P313).
+                    Sounds.flip(volume: 0.18, rate: 0.9 + Float(order % 3) * 0.1)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.5)
                 }
             }

@@ -128,7 +128,52 @@ final class DayStore: ObservableObject {
     }
 
     @Published var diaryTitle: String = ""
-    @Published var diaryText: String = ""
+    @Published var diaryText: String = "" {
+        didSet { noteDiaryChange(from: oldValue) }
+    }
+
+    // MARK: Шаг назад и вперёд в дневнике (P312)
+
+    /// То же самое, что шаг назад и вперёд в плане (P261), но для текста
+    /// записи. Только открытый день и пока он открыт.
+    @Published private(set) var diaryBack: [String] = []
+    @Published private(set) var diaryAhead: [String] = []
+    private var quietDiary = false
+    private var diaryTouched = Date.distantPast
+
+    /// Правка записи — в историю. Буквы, набранные без остановки, — один
+    /// шаг, а не по шагу на букву.
+    private func noteDiaryChange(from old: String) {
+        guard !quietDiary, old != diaryText else { return }
+        let now = Date()
+        if now.timeIntervalSince(diaryTouched) > 1.2 {
+            diaryBack.append(old)
+            if diaryBack.count > 60 { diaryBack.removeFirst() }
+            diaryAhead = []
+        }
+        diaryTouched = now
+    }
+
+    func undoDiary() {
+        guard canEditDiary, let back = diaryBack.popLast() else { return }
+        quietDiary = true
+        diaryAhead.append(diaryText)
+        diaryText = back
+        quietDiary = false
+        diaryTouched = .distantPast
+        save()
+    }
+
+    func redoDiary() {
+        guard canEditDiary, let ahead = diaryAhead.popLast() else { return }
+        quietDiary = true
+        diaryBack.append(diaryText)
+        diaryText = ahead
+        quietDiary = false
+        diaryTouched = .distantPast
+        save()
+    }
+
     @Published var answers: [String: String] = [:]
     /// Ссылки на фотографии дня, как они записаны в файле (P200).
     @Published var photos: [String] = []
@@ -245,6 +290,8 @@ final class DayStore: ObservableObject {
         weatherAsked = false
         planBack = []
         planAhead = []
+        diaryBack = []
+        diaryAhead = []
         diaryCaret = nil
         lastPlanRow = nil
         caretRequest = nil

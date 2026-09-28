@@ -82,7 +82,7 @@ enum Ru {
         Color(light: 0xF1F2F5, dark: 0x181B21),   // три дня назад и раньше
         Color(light: 0xE9ECF3, dark: 0x1A1F28),   // позавчера
         Color(light: 0xDFE5F1, dark: 0x1D2432),   // вчера
-        Color(light: 0xFFE2C9, dark: 0x33261B),   // сегодня
+        Color(light: 0xF8E2D0, dark: 0x30261E),   // сегодня — менее насыщенный (P321)
         Color(light: 0xE3EFDF, dark: 0x1B2A1D),   // завтра
         Color(light: 0xEBF2E7, dark: 0x1A231B),   // послезавтра
         Color(light: 0xF0F4ED, dark: 0x181E19),   // через три дня и дальше

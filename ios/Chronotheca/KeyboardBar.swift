@@ -34,6 +34,10 @@ enum KeyboardBar {
     static var view: UIView {
         if let holder { return holder }
         let made = UIHostingController(rootView: KeyboardBarView())
+        // Без этого приставка отступает от собственного нижнего края, как
+        // от клавиатуры под ней, — а клавиатура под ней и есть: остаётся
+        // пустая полоса между приставкой и настоящей клавиатурой (P310).
+        made.safeAreaRegions = []
         made.view.backgroundColor = .clear
         let box = UIInputView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width,
                                             height: height),
@@ -53,8 +57,11 @@ struct KeyboardBarView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            key("photo", "фото") { KeyboardBar.ask(.photo) }
+            // Тот же порядок, что и в полоске без клавиатуры: камера
+            // слева, дальше фото, аудио, файлы — у каждой кнопки своё
+            // место, оно не должно меняться (P310).
             key("camera", "камера") { KeyboardBar.ask(.camera) }
+            key("photo", "фото") { KeyboardBar.ask(.photo) }
             key("waveform", "аудио") { KeyboardBar.ask(.audio) }
             key("doc", "файлы") { KeyboardBar.ask(.files) }
             key("keyboard.chevron.compact.down", "убрать") {
