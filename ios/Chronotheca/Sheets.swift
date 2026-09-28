@@ -195,6 +195,7 @@ struct SettingsSticker: View {
            VStack(spacing: 0) {
             StickerSection(title: "Записи")
             place
+            safety
             // Записи за срок одной книгой (P296).
             StickerItem(title: "PDF за выбранный срок", note: "→", edge: Look.noteEdge) {
                 showingPDF = true
@@ -423,6 +424,7 @@ struct SettingsSticker: View {
         }
     }
     @State private var choosingPlace = false
+    @State private var showingSafety = false
     @EnvironmentObject private var store: DayStore
 
     @EnvironmentObject private var archive: Archive
@@ -484,6 +486,46 @@ struct SettingsSticker: View {
         .padding(.vertical, 10)
     }
 
+    /// «Данные в сохранности?» — сразу под строкой хранилища: да, если папка
+    /// не в самом приложении, и заметное «нет», если записи живут только
+    /// внутри «Хронотеки» и пропадут вместе с ней (P326).
+    private var safety: some View {
+        Button {
+            showingSafety = true
+        } label: {
+            HStack(spacing: 10) {
+                Text("Данные в сохранности?")
+                    .font(Look.sans(15))
+                    .foregroundStyle(Look.ink)
+                Spacer(minLength: 0)
+                if vault.onPhone {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.yellow)
+                        Text("НЕТ")
+                            .font(Look.sans(15, weight: .bold))
+                            .foregroundStyle(.red)
+                    }
+                } else {
+                    Text("да")
+                        .font(Look.sans(14))
+                        .foregroundStyle(Look.inkSoft)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .top) { Rectangle().fill(Look.noteEdge).frame(height: 1) }
+        .sheet(isPresented: $showingSafety) {
+            SafetySheet(onPhone: vault.onPhone) {
+                showingSafety = false
+                choosingPlace = true
+            }
+        }
+    }
+
     private var count: String {
         var out = "Файлов с записями: \(archive.files)"
         if let storageBytes {
@@ -529,6 +571,55 @@ struct SettingsSticker: View {
 
     private func close() {
         shell.tuckIn(settings: true)
+    }
+}
+
+/// «Данные в сохранности?» — коротко, что означает ответ, и что делать,
+/// если «нет» (P326).
+struct SafetySheet: View {
+    let onPhone: Bool
+    /// Закрыть и сразу открыть выбор папки — из «нет» ведёт прямо к делу.
+    let moveNow: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 18) {
+                Image(systemName: onPhone ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
+                    .font(.system(size: 40, weight: .light))
+                    .foregroundStyle(onPhone ? .red : Look.inkSoft)
+
+                Text(onPhone ? "Данные не защищены" : "Данные в сохранности")
+                    .font(.title2)
+
+                Text(onPhone
+                     ? "Записи лежат внутри самой «Хронотеки», на этом iPhone. "
+                       + "Удалите приложение — iPhone сотрёт их вместе с ним, без возврата."
+                     : "Записи лежат вне приложения, в вашей папке. Удалите «Хронотеку» — "
+                       + "они останутся на месте: в «Файлах», в облаке, на других устройствах.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                if onPhone {
+                    Button {
+                        moveNow()
+                    } label: {
+                        Text("Перенести архив и писать в другое место")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding(28)
+            .navigationTitle("Данные в сохранности?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Готово") { dismiss() } }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 
