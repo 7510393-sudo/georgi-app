@@ -34,6 +34,9 @@ struct MapScreen: View {
     /// Что сейчас видно на карте — поиск ищет рядом. Не состояние экрана:
     /// карта двигается часто, перерисовывать всё незачем.
     @State private var seen = Seen()
+    /// Насколько клавиатура закрывает низ карты — кнопки внизу поднимаются
+    /// над ней, когда открыта панель «Точка» с полем названия (P306).
+    @State private var keyboard: CGFloat = 0
 
     final class Seen { var region: MKCoordinateRegion? }
     /// Когда поставили последнюю точку долгим нажатием.
@@ -74,6 +77,11 @@ struct MapScreen: View {
         .animation(.easeOut(duration: 0.15), value: panel)
         .overlay(alignment: .bottom) { bar }
         .background(Look.chrome)
+        // Нижние разделы приложения клавиатура не поднимает нигде (P113) —
+        // значит, и кнопки карты сами должны подняться над ней, пока
+        // открыто поле названия новой точки, иначе до них не дотянуться
+        // (P306).
+        .keyboardHeight($keyboard)
         .confirmationDialog("Удалить точку?", isPresented: $asking, titleVisibility: .visible) {
             Button("Удалить точку", role: .destructive) { remove() }
             Button("Оставить точку", role: .cancel) { }
@@ -148,7 +156,10 @@ struct MapScreen: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 4)
-        .padding(.bottom, 6)
+        // Клавиатура сама не поднимает низ приложения (P113) — над ней
+        // кнопки поднимает этот отступ, иначе поле названия новой точки
+        // закрывает их совсем (P306).
+        .padding(.bottom, keyboard > 0 ? keyboard : 6)
     }
 
     /// Точка не выбрана — кнопка не пропадает, а бледнеет и объясняет, чего
