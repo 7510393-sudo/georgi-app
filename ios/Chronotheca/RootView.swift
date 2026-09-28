@@ -478,7 +478,9 @@ struct RootView: View {
             ZStack(alignment: .top) {
                 KraftPaper()
                     .clipShape(TornEdge())
-                TornEdge()
+                // Только зубцы, не вся закрытая фигура — иначе обводка
+                // прибавляла ещё и прямую черту понизу (P324).
+                TornEdgeLine()
                     .stroke(Look.kraftEdge.opacity(0.55), lineWidth: 0.8)
                     .frame(height: TornEdge.depth + 1)
                     .clipped()

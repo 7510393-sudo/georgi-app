@@ -62,22 +62,40 @@ struct TornEdge: Shape {
     /// Глубина зубцов.
     static let depth: CGFloat = 3.5
 
-    func path(in rect: CGRect) -> Path {
+    /// Сами зубцы — общие для заливки и обводки, чтобы обе совпадали
+    /// точь-в-точь (P324).
+    static func teeth(in rect: CGRect) -> [CGPoint] {
         var seed: UInt64 = 0x70_2E_ED_6E
         func next() -> CGFloat {
             seed = seed &* 6364136223846793005 &+ 1442695040888963407
             return CGFloat(seed >> 33) / CGFloat(UInt64(1) << 31)
         }
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        var points: [CGPoint] = [CGPoint(x: rect.minX, y: rect.minY + next() * depth)]
         var x = rect.minX
-        p.addLine(to: CGPoint(x: x, y: rect.minY + next() * Self.depth))
         while x < rect.maxX {
             x += 2 + next() * 5
-            p.addLine(to: CGPoint(x: min(x, rect.maxX), y: rect.minY + next() * Self.depth))
+            points.append(CGPoint(x: min(x, rect.maxX), y: rect.minY + next() * depth))
         }
+        return points
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        p.addLines(Self.teeth(in: rect))
         p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
         p.closeSubpath()
+        return p
+    }
+}
+
+/// Только сама рваная черта — без боков и низа. Обводка закрытой фигуры
+/// `TornEdge` рисовала ещё и прямую линию понизу: она дублировала
+/// неровный край серой чертой сразу под ним (P324).
+struct TornEdgeLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.addLines(TornEdge.teeth(in: rect))
         return p
     }
 }
