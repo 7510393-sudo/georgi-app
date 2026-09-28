@@ -1003,6 +1003,10 @@ struct PlaceCloud: View {
         }
         .padding(12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        // Та же кромка, что у кнопок внизу (P283) — плашка чётче на пёстрой
+        // карте (P307).
+        .overlay(RoundedRectangle(cornerRadius: 14)
+            .strokeBorder(Look.inkFaint.opacity(0.7), lineWidth: 1))
         .padding(.horizontal, 10)
         .padding(.top, Corner.size + 2)
     }
