@@ -328,10 +328,12 @@ struct PDFSheet: View {
                             .foregroundStyle(Look.inkSoft)
                     }
                 }
-                Section("Что включить") {
+                Section {
                     Toggle("Записи дневника", isOn: .constant(true)).disabled(true)
                     Toggle("Дела плана", isOn: $plan).disabled(result != nil)
                     Toggle("Фотографии", isOn: $photos).disabled(result != nil)
+                } header: {
+                    Text("Что включить")
                 } footer: {
                     // Дневник разбавляют серым не просто так — его нельзя
                     // отключить, он входит всегда; это стоит сказать, а не
