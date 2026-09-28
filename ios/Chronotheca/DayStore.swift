@@ -633,7 +633,13 @@ final class DayStore: ObservableObject {
         // ответы «Как прошло?» разбираются без догадок (P155).
         let diary = Diary(body: file.body, known: planRows.map(\.text))
         diaryTitle = file.value("заголовок") ?? ""
+        // Загрузка с диска — не правка человека: как и план строкой выше,
+        // в историю шага назад/вперёд не попадает (P327). Без этого первое
+        // открытие дня (пустая запись до чтения файла) само вставало в
+        // историю, и один шаг назад стирал всё написанное.
+        quietDiary = true
         diaryText = diary.text
+        quietDiary = false
         answers = diary.answers
         photos = diary.photos
         place = file.value("место")
