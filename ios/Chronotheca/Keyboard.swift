@@ -9,6 +9,11 @@ import UIKit
 struct KeyboardHeight: ViewModifier {
 
     @Binding var height: CGFloat
+    /// Отступ считать от нижнего края экрана, а не от границы безопасной
+    /// полосы. Нужно там, где поднимаемое стоит вплотную к физическому
+    /// низу (карта, P308) — не там, где оно и так стоит внутри отступов
+    /// экрана, и вычитать полосу дважды нельзя.
+    var toScreenEdge = false
 
     func body(content: Content) -> some View {
         content
@@ -19,7 +24,7 @@ struct KeyboardHeight: ViewModifier {
                 let screen = UIScreen.main.bounds.height
                 // Нижняя безопасная полоса телефона уже учтена отступами:
                 // не вычесть её — и остаётся пустое поле шириной в палец.
-                let safe = UIApplication.shared.connectedScenes
+                let safe = toScreenEdge ? 0 : UIApplication.shared.connectedScenes
                     .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.bottom }
                     .first ?? 0
                 // Полоска вложений — часть клавиатуры (P279), её высота уже
@@ -34,7 +39,7 @@ struct KeyboardHeight: ViewModifier {
 }
 
 extension View {
-    func keyboardHeight(_ height: Binding<CGFloat>) -> some View {
-        modifier(KeyboardHeight(height: height))
+    func keyboardHeight(_ height: Binding<CGFloat>, toScreenEdge: Bool = false) -> some View {
+        modifier(KeyboardHeight(height: height, toScreenEdge: toScreenEdge))
     }
 }
