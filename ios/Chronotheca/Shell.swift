@@ -100,7 +100,7 @@ final class Shell: ObservableObject {
             else { showingMenu = true; menuPull = menuPull ?? 1 }
         }
         DispatchQueue.main.async {
-            withAnimation(.pull, completionCriteria: .logicallyComplete) {
+            withAnimation(.pull) {
                 if settings { self.settingsPull = nil } else { self.menuPull = nil }
             }
         }
