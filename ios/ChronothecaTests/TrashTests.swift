@@ -1,8 +1,8 @@
 import XCTest
 @testable import Chronotheca
 
-/// Корзина дней (P295): день уезжает целиком и возвращается целиком; на
-/// занятое место не возвращается — чужое не затирается.
+/// Корзина дней (P295, P300): вкладку убирают по отдельности, возвращается
+/// день целиком; на занятое место не возвращается — чужое не затирается.
 final class TrashTests: XCTestCase {
 
     private var folder: URL!
@@ -35,7 +35,7 @@ final class TrashTests: XCTestCase {
         let day = DayStore.today()
         write("Туман над полем.", .diary, day)
         write("- [ ] Отвезти документы", .planner, day)
-        XCTAssertTrue(Trash.put(day, in: vault))
+        XCTAssertTrue(Trash.put(day, parts: Trash.allParts, in: vault))
         XCTAssertFalse(FileManager.default.fileExists(atPath: vault.file(.diary, for: day)!.path))
         let items = Trash.items(in: vault)
         XCTAssertEqual(items.count, 1)
@@ -49,12 +49,27 @@ final class TrashTests: XCTestCase {
     func testНаЗанятоеМестоНеВозвращается() {
         let day = DayStore.today()
         write("Старое.", .diary, day)
-        Trash.put(day, in: vault)
+        Trash.put(day, parts: Trash.allParts, in: vault)
         write("Новое.", .diary, day)
         let item = Trash.items(in: vault)[0]
         XCTAssertFalse(Trash.restore(item, in: vault))
         XCTAssertEqual(try? String(contentsOf: vault.file(.diary, for: day)!, encoding: .utf8), "Новое.")
         XCTAssertEqual(Trash.items(in: vault).count, 1)
+    }
+
+    /// Убирают только открытую вкладку — другая остаётся на месте (P300).
+    func testУбираетсяТолькоОднаВкладка() {
+        let day = DayStore.today()
+        write("Туман над полем.", .diary, day)
+        write("- [ ] Отвезти документы", .planner, day)
+        XCTAssertTrue(Trash.put(day, parts: [.diary], in: vault))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: vault.file(.diary, for: day)!.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: vault.file(.planner, for: day)!.path))
+        let items = Trash.items(in: vault)
+        XCTAssertEqual(items.count, 1)
+        XCTAssertTrue(Trash.restore(items[0], in: vault))
+        XCTAssertEqual(try? String(contentsOf: vault.file(.diary, for: day)!, encoding: .utf8),
+                       "Туман над полем.")
     }
 
     /// PDF (P296): обложка и по странице на день; пустые дни пропущены;

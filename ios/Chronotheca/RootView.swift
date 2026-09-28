@@ -256,21 +256,23 @@ struct RootView: View {
             }
         }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
-        .confirmationDialog("Убрать этот день в корзину?", isPresented: $shell.trashAsk,
-                            titleVisibility: .visible) {
+        .confirmationDialog("Убрать «" + shell.tab.rawValue.lowercased() + "» этого дня в корзину?",
+                            isPresented: $shell.trashAsk, titleVisibility: .visible) {
             Button("Убрать в корзину", role: .destructive) {
+                let tab = shell.tab
                 store.save()
-                if Trash.put(store.date, in: vault) {
+                if Trash.put(store.date, parts: [tab.vaultFolder], in: vault) {
                     store.load()
                     archive.reload()
                     store.syncUpcomingReminders()
-                    shell.say("День в корзине. Вернуть — Настройки → Корзина.")
+                    shell.say(tab.rawValue + " в корзине. Вернуть — Настройки → Корзина.")
                 } else {
-                    shell.say("В этом дне нечего убирать.")
+                    shell.say("Тут нечего убирать.")
                 }
             }
         } message: {
-            Text("План и запись дня переедут в папку «Корзина». Снимки и голос останутся на месте. Вернуть можно в настройках.")
+            Text((shell.tab == .diary ? "Запись" : "План") +
+                 " этого дня переедет в папку «Корзина». Снимки и голос останутся на месте. Вернуть можно в настройках.")
         }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {

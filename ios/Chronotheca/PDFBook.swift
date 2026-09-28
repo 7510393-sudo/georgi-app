@@ -306,6 +306,10 @@ struct PDFSheet: View {
     @State private var photos = true
     @State private var working = false
     @State private var nothing = false
+    /// Собранный файл: пока он не пуст, человек видит не кнопку «Собрать»,
+    /// а готовый результат — где файл лежит, и «Поделиться» ещё раз, если
+    /// системное окно не открылось само (решение P304).
+    @State private var result: URL?
 
     var body: some View {
         NavigationStack {
@@ -315,6 +319,7 @@ struct PDFSheet: View {
                         ForEach(Span.allCases) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.menu)
+                    .disabled(result != nil)
                     if span == .own {
                         DatePicker("С", selection: $from, displayedComponents: .date)
                         DatePicker("По", selection: $to, displayedComponents: .date)
@@ -325,27 +330,42 @@ struct PDFSheet: View {
                 }
                 Section("Что включить") {
                     Toggle("Записи дневника", isOn: .constant(true)).disabled(true)
-                    Toggle("Дела плана", isOn: $plan)
-                    Toggle("Фотографии", isOn: $photos)
-                }
-                Section {
-                    Button {
-                        build()
-                    } label: {
-                        HStack {
-                            Text(working ? "Собираю…" : "Собрать PDF")
-                            if working { Spacer(); ProgressView() }
-                        }
-                    }
-                    .disabled(working)
+                    Toggle("Дела плана", isOn: $plan).disabled(result != nil)
+                    Toggle("Фотографии", isOn: $photos).disabled(result != nil)
                 } footer: {
-                    Text("На обложке — срок и что внутри; каждый день с новой страницы. Файл ляжет в папку записей, в «PDF».")
+                    // Дневник разбавляют серым не просто так — его нельзя
+                    // отключить, он входит всегда; это стоит сказать, а не
+                    // оставлять непонятным (P304).
+                    Text("Записи дневника входят в книгу всегда; план и фотографии — по желанию.")
+                }
+                if let result {
+                    Section {
+                        Button("Поделиться") { Share.present([result]) }
+                    } footer: {
+                        Text("Готово: «\(result.lastPathComponent)» лежит в папке записей, в «PDF».")
+                    }
+                } else {
+                    Section {
+                        Button {
+                            build()
+                        } label: {
+                            HStack {
+                                Text(working ? "Собираю…" : "Собрать PDF")
+                                if working { Spacer(); ProgressView() }
+                            }
+                        }
+                        .disabled(working)
+                    } footer: {
+                        Text("На обложке — срок и что внутри; каждый день с новой страницы. Файл ляжет в папку записей, в «PDF».")
+                    }
                 }
             }
             .navigationTitle("PDF")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Отмена") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(result == nil ? "Отмена" : "Готово") { dismiss() }
+                }
             }
             .alert("За этот срок записей нет", isPresented: $nothing) {
                 Button("Понятно") { nothing = false }
@@ -386,8 +406,13 @@ struct PDFSheet: View {
                 working = false
                 guard let url else { nothing = true; return }
                 Feel.done()
-                dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { Share.present([url]) }
+                // Лист не закрываем: закрыть и тут же открыть поверх него
+                // системное окно «Поделиться» — гонка, из-за которой оно
+                // иногда не появлялось вовсе, а куда лёг файл, было не
+                // узнать (P304). Теперь лист остаётся, видно, где файл, и
+                // «Поделиться» можно нажать ещё раз.
+                result = url
+                Share.present([url])
             }
         }
     }

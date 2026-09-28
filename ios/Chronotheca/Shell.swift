@@ -14,6 +14,9 @@ final class Shell: ObservableObject {
         case plan = "План"
         case diary = "Дневник"
         var id: String { rawValue }
+
+        /// Чей это файл в папке записей — для корзины (P300).
+        var vaultFolder: Vault.Folder { self == .diary ? .diary : .planner }
     }
 
     @Published var screen: Screen = .today {

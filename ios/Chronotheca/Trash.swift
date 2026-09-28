@@ -2,11 +2,12 @@ import SwiftUI
 
 /// Корзина дней (P295).
 ///
-/// Убранный день не стирается: его файлы плана и дневника переезжают в
-/// папку «Корзина» внутри папки записей — `Корзина/ГГГГ-ММ-ДД/Дневник/…`.
-/// Их видно в «Файлах», их можно вернуть на место из настроек или удалить
-/// навсегда. Снимки, голос и документы дня остаются в своих папках: вернули
-/// день — ссылки на них снова работают.
+/// Убранный день не стирается: его файл переезжает в папку «Корзина»
+/// внутри папки записей — `Корзина/ГГГГ-ММ-ДД/Дневник/…`. Убирают вкладку,
+/// которая сейчас открыта, — план и дневник по отдельности, не весь день
+/// разом (P300). Их видно в «Файлах», их можно вернуть на место из настроек
+/// или удалить навсегда. Снимки, голос и документы дня остаются в своих
+/// папках: вернули день — ссылки на них снова работают.
 enum Trash {
 
     static let folderName = "Корзина"
@@ -20,16 +21,18 @@ enum Trash {
         var id: String { stamp }
     }
 
-    private static let parts: [Vault.Folder] = [.planner, .diary]
+    /// Обе стороны дня — для возврата, показа и удаления навсегда: там
+    /// берётся то, что нашлось, какую вкладку тогда ни убирали (P300).
+    static let allParts: [Vault.Folder] = [.planner, .diary]
 
     static func folder(_ vault: Vault) -> URL? {
         vault.root?.appendingPathComponent(folderName)
     }
 
-    /// Убрать день в корзину. Уже лежит там такой же день — новый ляжет
-    /// рядом под своим номером: ничего не затирается.
+    /// Убрать в корзину только эти стороны дня. Уже лежит там такой же
+    /// день — новый ляжет рядом под своим номером: ничего не затирается.
     @discardableResult
-    static func put(_ date: Date, in vault: Vault) -> Bool {
+    static func put(_ date: Date, parts: [Vault.Folder], in vault: Vault) -> Bool {
         guard let base = folder(vault) else { return false }
         let stamp = Vault.stamp(date)
         let fm = FileManager.default
@@ -68,7 +71,7 @@ enum Trash {
     static func restore(_ item: Item, in vault: Vault) -> Bool {
         let fm = FileManager.default
         var pairs: [(URL, URL)] = []
-        for part in parts {
+        for part in allParts {
             let from = item.url.appendingPathComponent(part.rawValue)
                 .appendingPathComponent(String(item.stamp.prefix(10)) + ".md")
             guard fm.fileExists(atPath: from.path) else { continue }

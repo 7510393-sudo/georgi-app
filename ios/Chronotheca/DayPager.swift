@@ -548,11 +548,12 @@ struct AttachBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            // Камера — снимок прямо из приложения (P289); первой кнопкой
+            // слева, она нужнее с ходу (P301).
+            item("camera", "камера", ready: true) { open { shooting = true } }
             // «Фото» открывает ряд последних снимков галереи над полоской
             // (P273); повторное касание — прячет.
             item("photo", "фото", ready: true) { toggleGallery() }
-            // Камера — снимок прямо из приложения (P289).
-            item("camera", "камера", ready: true) { open { shooting = true } }
             item("waveform", "аудио", ready: true) { open { recording = true } }
             item("doc", "файлы", ready: true) { open { browsing = true } }
             // Кнопки «геоточка» больше нет (P264): место — с карты,

@@ -108,9 +108,10 @@ struct MenuSticker: View {
                     }
                 }
             }
-            // Корзина (P295): день уезжает в папку «Корзина», его можно
-            // вернуть из настроек.
-            StickerItem(title: "Убрать день в корзину") {
+            // Корзина (P295, P300): убирается вкладка, которая открыта, —
+            // план и дневник по отдельности; уезжает в папку «Корзина»,
+            // её можно вернуть из настроек.
+            StickerItem(title: "Убрать «" + shell.tab.rawValue.lowercased() + "» в корзину") {
                 close()
                 shell.trashAsk = true
             }
@@ -205,10 +206,6 @@ struct SettingsSticker: View {
            VStack(spacing: 0) {
             StickerSection(title: "Записи")
             place
-            StickerItem(title: "Открыть папку в «Файлах»", edge: Look.noteEdge) {
-                close()
-                if let link = vault.filesLink { openURL(link) }
-            }
             // Записи за срок одной книгой (P296).
             StickerItem(title: "PDF за выбранный срок", note: "→", edge: Look.noteEdge) {
                 showingPDF = true
@@ -419,19 +416,32 @@ struct SettingsSticker: View {
     /// Где лежат записи и сколько их — словами «Файлов», а полный путь
     /// мелко под ним. Число файлов отвечает на главный вопрос «мои записи
     /// на месте?», даже когда iCloud их ещё не отдал (решения P189, P190).
+    ///
+    /// Строка целиком — кнопка: нажатие открывает ту же папку в «Файлах».
+    /// Раньше это была вторая, отдельная строка ниже — теперь одна (P305).
     private var place: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("ЗАПИСИ ЛЕЖАТ ЗДЕСЬ")
-                .font(Look.sans(9))
-                .tracking(0.6)
-                .foregroundStyle(Look.inkFaint)
-            Text(vault.friendlyPath)
-                .font(Look.sans(14, weight: .medium))
-                .foregroundStyle(Look.ink)
-                .lineLimit(3)
-            Text(count)
-                .font(Look.sans(11.5))
-                .foregroundStyle(Look.inkSoft)
+            Button {
+                close()
+                if let link = vault.filesLink { openURL(link) }
+            } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("ЗАПИСИ ЛЕЖАТ ЗДЕСЬ")
+                        .font(Look.sans(9))
+                        .tracking(0.6)
+                        .foregroundStyle(Look.inkFaint)
+                    Text(vault.friendlyPath)
+                        .font(Look.sans(14, weight: .medium))
+                        .foregroundStyle(Look.ink)
+                        .lineLimit(3)
+                    Text(count)
+                        .font(Look.sans(11.5))
+                        .foregroundStyle(Look.inkSoft)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             if let parent = vault.nestedIn {
                 Text("Похоже, это папка внутри архива, а не сам архив. Прежние "
                      + "записи, скорее всего, лежат уровнем выше — в «\(parent)». "
@@ -443,6 +453,8 @@ struct SettingsSticker: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
             }
+            // Точный путь — отдельно от кнопки: его выделяют и копируют,
+            // а не нажимают.
             Text(vault.displayPath)
                 .font(.system(size: 9.5, design: .monospaced))
                 .foregroundStyle(Look.inkFaint)

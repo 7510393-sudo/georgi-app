@@ -35,7 +35,16 @@ struct TimeWheel: UIViewRepresentable {
         if picker.minuteInterval != step { picker.minuteInterval = step }
         // Сравнение нужно: без него ролик дёргался бы обратно на каждом
         // обороте отрисовки, пока человек его крутит.
-        if picker.date != time { picker.setDate(time, animated: true) }
+        guard picker.date != time else { return }
+        picker.setDate(time, animated: false)
+        // Настоящее время ролику подставляет `.onAppear` снаружи — уже
+        // после того, как этот же ролик создался со своим «сейчас». Тем же
+        // проходом, пока у листа ещё нет раскладки, барабаны иногда не
+        // прокручиваются, хотя `date` уже верный: подстраховка — тем же
+        // кадром позже (P303).
+        DispatchQueue.main.async {
+            if picker.date != time { picker.setDate(time, animated: false) }
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(time: $time) }
