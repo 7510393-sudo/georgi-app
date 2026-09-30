@@ -237,7 +237,8 @@ struct DayPage: View {
         .onTapGesture {
             guard live else { return }
             hideKeyboard()
-            Sounds.flip()
+            // Вперёд — чуть выше тоном, назад — чуть ниже (P330).
+            Sounds.flip(rate: step > 0 ? 1.04 : 0.96)
             store.move(by: step)
         }
         .accessibilityLabel(lit ? neighbour(step) + ". Долгое нажатие — на сегодня"

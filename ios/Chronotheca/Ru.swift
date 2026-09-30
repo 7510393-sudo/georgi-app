@@ -56,36 +56,28 @@ enum Ru {
     /// Цвет названия дня недели.
     static func dayColor(_ date: Date) -> Color { dayColours[index(date)] }
 
-    /// Цвет страницы дня — по тому, далеко ли он от сегодня (P245).
+    /// Цвет страницы дня — по тому, прошлое это, сегодня или будущее
+    /// (P330; раньше было семь ступеней по удалённости, P245, — решили, что
+    /// путают и раздражают, оставили три).
     ///
-    /// Сегодня — тёплый абрикосовый, самый насыщенный. Прошлое остывает в
-    /// серо-голубой, будущее — в шалфейный зелёный; вчера и завтра — ярче,
-    /// позавчера и послезавтра — бледнее, дальше цвет не меняется. Так с
-    /// одного взгляда видно, в прошлом человек или в будущем и далеко ли
-    /// ушёл. Все цвета светлые: текст читается с контрастом не ниже 12 к 1.
+    /// Сегодня — тёплый абрикосовый. Прошлое — серо-голубое, будущее —
+    /// шалфейно-зелёное, оба одним и тем же тоном для любой дальности. Все
+    /// цвета светлые: текст читается с контрастом не ниже 12 к 1.
     static func tint(_ date: Date) -> Color {
         let cal = Calendar.current
         let n = cal.dateComponents([.day], from: DayStore.today(),
                                    to: cal.startOfDay(for: date)).day ?? 0
-        switch n {
-        case ...(-3): return timeTints[0]
-        case -2:      return timeTints[1]
-        case -1:      return timeTints[2]
-        case 0:       return timeTints[3]
-        case 1:       return timeTints[4]
-        case 2:       return timeTints[5]
-        default:      return timeTints[6]
-        }
+        if n < 0 { return timeTints[0] }
+        if n > 0 { return timeTints[2] }
+        return timeTints[1]
     }
 
     private static let timeTints: [Color] = [
-        Color(light: 0xF1F2F5, dark: 0x181B21),   // три дня назад и раньше
-        Color(light: 0xE9ECF3, dark: 0x1A1F28),   // позавчера
-        Color(light: 0xDFE5F1, dark: 0x1D2432),   // вчера
-        Color(light: 0xF8E2D0, dark: 0x30261E),   // сегодня — менее насыщенный (P321)
-        Color(light: 0xE3EFDF, dark: 0x1B2A1D),   // завтра
-        Color(light: 0xEBF2E7, dark: 0x1A231B),   // послезавтра
-        Color(light: 0xF0F4ED, dark: 0x181E19),   // через три дня и дальше
+        Color(light: 0xF1F2F5, dark: 0x181B21),   // прошлое, любое
+        // Бледнее на 15% (P330; было 0xF8E2D0/0x30261E, менее насыщенный
+        // цвет прежней шкалы, P321).
+        Color(light: 0xF9E6D7, dark: 0x2F2620),   // сегодня
+        Color(light: 0xF0F4ED, dark: 0x181E19),   // будущее, любое
     ]
 
     private static let dayColours: [Color] = [

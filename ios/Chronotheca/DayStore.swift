@@ -422,22 +422,7 @@ final class DayStore: ObservableObject {
 
     /// Пишет ли человек сейчас в дневник и в какое дело плана. Нужно, чтобы
     /// точка встала туда, где был курсор (P240).
-    var diaryTyping = false {
-        didSet {
-            guard diaryTyping != oldValue else { return }
-            if diaryTyping {
-                typedFrom = (diaryText as NSString).length
-            } else if let from = typedFrom {
-                // Дописали запись и убрали клавиатуру — тихий звон: всё
-                // легло в файл (P267). Только если написано больше пары слов.
-                if (diaryText as NSString).length - from >= 40 {
-                    Sounds.play("chime", volume: 0.25)
-                }
-                typedFrom = nil
-            }
-        }
-    }
-    private var typedFrom: Int?
+    var diaryTyping = false
     var planTyping: UUID? {
         didSet { if let planTyping { lastPlanRow = planTyping } }
     }

@@ -15,9 +15,11 @@ enum Sounds {
     static var on: Bool { !UserDefaults.standard.bool(forKey: Prefs.quiet) }
 
     /// Шелест перевёрнутой страницы. `rate` чуть меняет высоту: в вихре
-    /// листы шуршат не одинаково.
-    /// Мягкий и тихий: без резкого начала (P287); на 10% тише (P313).
-    static func flip(volume: Float = 0.25, rate: Float = 1) {
+    /// листы шуршат не одинаково, а вперёд и назад звучат чуть по-разному
+    /// тоном (P330).
+    /// Мягкий и тихий: без резкого начала (P287); тише на 10% (P313), ещё
+    /// тише (P330).
+    static func flip(volume: Float = 0.20, rate: Float = 1) {
         play("page-flip", volume: volume, rate: rate)
     }
 

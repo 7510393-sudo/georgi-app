@@ -851,7 +851,9 @@ enum PlaceLabel {
             let box = CGRect(x: mid - plate.width / 2, y: dot + 4, width: plate.width, height: plate.height)
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
                                     color: UIColor.black.withAlphaComponent(0.2).cgColor)
-            UIColor(Look.sticker).withAlphaComponent(0.96).setFill()
+            // Полупрозрачная: много названий рядом не должны закрывать карту
+            // совсем (P330, было — почти непрозрачная, P244).
+            UIColor(Look.sticker).withAlphaComponent(0.62).setFill()
             let plateShape = UIBezierPath(roundedRect: box, cornerRadius: 5)
             plateShape.fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)

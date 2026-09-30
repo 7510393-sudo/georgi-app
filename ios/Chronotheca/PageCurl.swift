@@ -173,8 +173,10 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
                     leaf.alpha = forward ? 0.25 : 1
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + start) {
-                    // На 10% тише (P313).
-                    Sounds.flip(volume: 0.18, rate: 0.9 + Float(order % 3) * 0.1)
+                    // Тише (P313, P330); вперёд — чуть выше тоном, назад —
+                    // чуть ниже (P330).
+                    let tone = 0.9 + Float(order % 3) * 0.1 + (forward ? 0.04 : -0.04)
+                    Sounds.flip(volume: 0.15, rate: tone)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.5)
                 }
             }
@@ -187,7 +189,8 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
 
         /// Настоящий поворот — последний лист дороги.
         private func turn(_ pages: UIPageViewController, _ step: Int) {
-            Sounds.flip()
+            // Вперёд — чуть выше тоном, назад — чуть ниже (P330).
+            Sounds.flip(rate: step > 0 ? 1.04 : 0.96)
             let forward = step > 0
             let host = make(step)
             // Лист, который пойдёт вперёд, получает торец: при повороте
@@ -282,10 +285,13 @@ struct PageCurl<Content: View>: UIViewControllerRepresentable {
             (vc as? Host).map { make($0.offset + 1) }
         }
 
-        /// Страницу потянули пальцем — шелест (P265).
+        /// Страницу потянули пальцем — шелест (P265). Вперёд — чуть выше
+        /// тоном, назад — чуть ниже (P330).
         func pageViewController(_ pages: UIPageViewController,
                                 willTransitionTo pending: [UIViewController]) {
-            Sounds.flip()
+            let from = (pages.viewControllers?.first as? Host)?.offset ?? 0
+            let to = (pending.first as? Host)?.offset ?? 0
+            Sounds.flip(rate: to > from ? 1.04 : 0.96)
         }
 
         func pageViewController(_ pages: UIPageViewController,
