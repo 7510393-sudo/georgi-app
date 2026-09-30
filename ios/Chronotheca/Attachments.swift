@@ -15,6 +15,9 @@ struct Recorder: View {
     /// того, кто позвал.
     let done: (URL) -> Void
     let cancel: () -> Void
+    /// Где по ширине стоит кнопка вызова диктофона в строке вложений —
+    /// доля от 0 до 1. Кнопка записи встаёт ровно над ней (P330).
+    var align: CGFloat = 0.5
 
     @State private var recorder: AVAudioRecorder?
     @State private var started: Date?
@@ -32,19 +35,23 @@ struct Recorder: View {
                     .foregroundStyle(started == nil ? Look.inkFaint : Look.ink)
             }
 
-            Button(action: toggle) {
-                ZStack {
-                    Circle().fill(Color.red.opacity(0.12)).frame(width: 96, height: 96)
-                    if started == nil {
-                        Circle().fill(Color.red).frame(width: 64, height: 64)
-                    } else {
-                        RoundedRectangle(cornerRadius: 6).fill(Color.red)
-                            .frame(width: 34, height: 34)
+            GeometryReader { geo in
+                Button(action: toggle) {
+                    ZStack {
+                        Circle().fill(Color.red.opacity(0.12)).frame(width: 96, height: 96)
+                        if started == nil {
+                            Circle().fill(Color.red).frame(width: 64, height: 64)
+                        } else {
+                            RoundedRectangle(cornerRadius: 6).fill(Color.red)
+                                .frame(width: 34, height: 34)
+                        }
                     }
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(started == nil ? "Начать запись" : "Закончить запись")
+                .position(x: geo.size.width * align, y: geo.size.height / 2)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(started == nil ? "Начать запись" : "Закончить запись")
+            .frame(height: 96)
 
             if denied {
                 Text("Приложению не разрешён микрофон. Разрешить можно в Настройках iPhone → Chronotheca.")

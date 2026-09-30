@@ -35,6 +35,11 @@ struct DayPages: View {
             shell.goHome = false
             plan = DayPages.wayHome(from: store.date)
         }
+        // Ушли со вкладки в режиме изменений — режим выключается сам, а не
+        // остаётся включённым за спиной (P330).
+        .onChange(of: shell.tab) { _, now in
+            for t in Shell.Tab.allCases where t != now { store.setEditing(t, false) }
+        }
     }
 
     /// Сколько дней до сегодняшнего и в какую сторону.
@@ -103,7 +108,12 @@ struct DayPage: View {
                 let width = geo.size.width * 0.50
                 let height = width / RememberCloud.ratio
                 let left = geo.size.width * 0.45
-                RememberCloud(date: date, width: width) { remembering = true }
+                RememberCloud(date: date, width: width) {
+                    // Облачко уходит сразу по нажатию, не по закрытию
+                    // открывшегося листка (P330).
+                    forget()
+                    remembering = true
+                }
                     .frame(width: width, height: height)
                     // Опускали на 2 мм (P224) — вышло лишнее, вернули (P227).
                     // Край вкладки на рисунке — на верхнем крае вкладки,
@@ -335,10 +345,11 @@ struct DayPage: View {
                 .overlay(TabBorder(radius: 10).stroke(Look.inkFaint, lineWidth: 1))
                 // Режим изменений светится тем же синим, что и превью
                 // снимков (P203) — видно, какую вкладку сейчас правят
-                // (P317).
+                // (P317). Толще — чтобы кромка была видна по всему верху
+                // вкладки, не только у корешка (P330).
                 .overlay {
                     if wobbling {
-                        TabBorder(radius: 10).stroke(Look.glow, lineWidth: 2)
+                        TabBorder(radius: 10).stroke(Look.glow, lineWidth: 3)
                     }
                 }
                 .shadow(color: wobbling ? Look.glow.opacity(0.8) : .clear, radius: 6)
@@ -555,6 +566,9 @@ struct AttachBar: View {
     @State private var browsing = false
     @State private var gallery = false
     @State private var shooting = false
+    /// Где по ширине была нажата кнопка «аудио» — кнопка записи в панели
+    /// встаёт ровно над ней (P330).
+    @State private var recordAlign: CGFloat = 0.5
 
     var body: some View {
         HStack(spacing: 0) {
@@ -564,7 +578,12 @@ struct AttachBar: View {
             // «Фото» открывает ряд последних снимков галереи над полоской
             // (P273); повторное касание — прячет.
             item("photo", "фото", ready: true) { toggleGallery() }
-            item("waveform", "аудио", ready: true) { open { recording = true } }
+            // Строка без клавиатуры — четыре кнопки, «аудио» третья: центр
+            // на 5/8 ширины (P330).
+            item("waveform", "аудио", ready: true) {
+                recordAlign = 0.625
+                open { recording = true }
+            }
             item("doc", "файлы", ready: true) { open { browsing = true } }
             // Кнопки «геоточка» больше нет (P264): место — с карты,
             // «Запомнить точку».
@@ -599,7 +618,11 @@ struct AttachBar: View {
             switch ask {
             case .photo: toggleGallery()
             case .camera: open { shooting = true }
-            case .audio: open { recording = true }
+            // Полоска над клавиатурой — пять кнопок, «аудио» третья: центр
+            // ровно посередине (P330).
+            case .audio:
+                recordAlign = 0.5
+                open { recording = true }
             case .files: open { browsing = true }
             }
         }
@@ -616,7 +639,7 @@ struct AttachBar: View {
             take(items)
         }
         .sheet(isPresented: $recording) {
-            Recorder(done: keepVoice) { recording = false }
+            Recorder(done: keepVoice, cancel: { recording = false }, align: recordAlign)
                 .presentationDetents([.height(360)])
         }
         .fullScreenCover(isPresented: $shooting) {
