@@ -963,19 +963,25 @@ struct PointPanel: View {
     private enum Field { case name, text }
     @FocusState private var focused: Field?
 
+    /// Шесть в ряд — те же по счёту, что помещались одной строкой
+    /// прежде (P338).
+    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 6)
+
     var body: some View {
         VStack(spacing: 8) {
             // Сверху значки, ниже название, ещё ниже запись (P238).
-            // Каким значком отметить точку (P234).
-            HStack(spacing: 0) {
+            // Каким значком отметить точку (P234). Значков набралось
+            // больше, чем в одну строку, — сетка в два ряда (P338).
+            LazyVGrid(columns: Self.iconColumns, spacing: 6) {
                 ForEach(Glyph.all.indices, id: \.self) { i in
                     let glyph = Glyph.all[i]
                     Button {
                         place.mark = glyph.name
                     } label: {
                         Group {
-                            // «Пираты» — эмодзи-флаг, не системный рисунок:
-                            // рисуется текстом, своих цветов не меняет (P336).
+                            // «Пираты» и «призраки» — эмодзи, не системный
+                            // рисунок: рисуются текстом, своих цветов не
+                            // меняют (P336).
                             if glyph.emoji {
                                 Text(glyph.symbol).font(.system(size: 15))
                             } else {

@@ -85,6 +85,11 @@ enum Glyph {
         ("плохое место", "hand.thumbsdown.fill", false),
         ("пираты", "🏴‍☠️", true),
         ("личное", "lock.fill", false),
+        ("опасность", "exclamationmark.triangle.fill", false),
+        ("вдохновение", "lightbulb.fill", false),
+        // Призраков в системном наборе нет, как и пиратского черепа (P336).
+        ("призраки", "👻", true),
+        ("везение", "sparkles", false),
     ]
 
     static let symbol: [String: String] = Dictionary(uniqueKeysWithValues: all.map { ($0.name, $0.symbol) })
