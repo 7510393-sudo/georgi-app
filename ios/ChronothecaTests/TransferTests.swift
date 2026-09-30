@@ -64,7 +64,7 @@ final class TransferTests: XCTestCase {
         запись(откуда, "2026-09-22", "текст")
         let список = Transfer.contents(of: откуда)
         XCTAssertEqual(список.count, 1)
-        XCTAssertFalse(список.contains { $0.contains("Служебное") },
+        XCTAssertFalse(список.contains { $0.contains(Vault.Folder.service.rawValue) },
                        "метка архива у новой папки своя")
     }
 
@@ -83,7 +83,7 @@ final class TransferTests: XCTestCase {
         XCTAssertEqual(Transfer.records(in: куда), 2)
         XCTAssertEqual(Transfer.records(in: откуда), 0,
                        "перенос — это перенос, а не копия")
-        XCTAssertEqual(текст(куда.appendingPathComponent("Дневник/2026/2026-09-22.md")),
+        XCTAssertEqual(текст(куда.appendingPathComponent("Diary/2026/2026-09-22.md")),
                        "сегодня")
     }
 
@@ -96,9 +96,9 @@ final class TransferTests: XCTestCase {
 
         XCTAssertEqual(отчёт.moved, 0)
         XCTAssertEqual(отчёт.kept, 1, "приложение не решает, какая запись важнее")
-        XCTAssertEqual(текст(куда.appendingPathComponent("Дневник/2026/2026-09-22.md")),
+        XCTAssertEqual(текст(куда.appendingPathComponent("Diary/2026/2026-09-22.md")),
                        "то, что записано здесь", "на месте — нетронутая запись")
-        XCTAssertEqual(текст(откуда.appendingPathComponent("Дневник/2026/2026-09-22.md")),
+        XCTAssertEqual(текст(откуда.appendingPathComponent("Diary/2026/2026-09-22.md")),
                        "то, что было записано раньше", "прежняя тоже цела")
     }
 
@@ -129,7 +129,7 @@ final class TransferTests: XCTestCase {
         Transfer.move(Transfer.contents(of: откуда), from: откуда, to: куда)
 
         for дата in ["2026-09-20", "2026-09-21", "2026-09-22"] {
-            let путь = "Дневник/2026/\(дата).md"
+            let путь = "Diary/2026/\(дата).md"
             let есть = fm.fileExists(atPath: куда.appendingPathComponent(путь).path)
                 || fm.fileExists(atPath: откуда.appendingPathComponent(путь).path)
             XCTAssertTrue(есть, "запись за \(дата) пропала")
@@ -161,6 +161,23 @@ final class TransferTests: XCTestCase {
 
         XCTAssertEqual(отчёт.moved, 2)
         XCTAssertTrue(fm.fileExists(atPath: куда
-            .appendingPathComponent("Фотографии/2026/снимок.jpg").path))
+            .appendingPathComponent("Photos/2026/снимок.jpg").path))
+    }
+
+    /// Прежний архив с русскими именами папок, новый — с английскими
+    /// (P353): записи ложатся в «Diary», а не в «Дневник» рядом с ним —
+    /// иначе их бы не было видно.
+    func testРусскиеПапкиЛожатсяВАнглийские() {
+        let прежний = fm.temporaryDirectory.appendingPathComponent("прежний-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: прежний) }
+        let день = прежний.appendingPathComponent("Дневник/2026/2026-09-22.md")
+        try? fm.createDirectory(at: день.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? Data("запись".utf8).write(to: день)
+
+        let отчёт = Transfer.move(Transfer.contents(of: прежний), from: прежний, to: куда)
+
+        XCTAssertEqual(отчёт.moved, 1)
+        XCTAssertEqual(текст(куда.appendingPathComponent("Diary/2026/2026-09-22.md")), "запись")
+        XCTAssertFalse(fm.fileExists(atPath: куда.appendingPathComponent("Дневник").path))
     }
 }

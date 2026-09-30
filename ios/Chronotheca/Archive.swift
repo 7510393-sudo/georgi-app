@@ -96,7 +96,7 @@ final class Archive: ObservableObject {
         var away: [URL] = []
 
         for folder in [Vault.Folder.planner, .diary] {
-            let base = root.appendingPathComponent(folder.rawValue)
+            let base = Vault.folder(folder, in: root)
             guard let years = try? FileManager.default.contentsOfDirectory(
                     at: base, includingPropertiesForKeys: nil) else { continue }
 
@@ -135,13 +135,13 @@ final class Archive: ObservableObject {
                         day.attachments += rows.compactMap { $0.verbatim.flatMap { Diary.picture(in: $0) } }
                     } else {
                         let diary = Diary(body: parsed.body)
-                        day.title = parsed.value("заголовок") ?? ""
+                        day.title = parsed.value("title") ?? ""
                         day.text = diary.text
                         day.answers = diary.answers
                         day.photos = diary.photos.count
                         day.attachments = diary.text.components(separatedBy: "\n")
                             .flatMap { Diary.links(in: $0) } + diary.photos + day.attachments
-                        day.place = parsed.value("место").flatMap(Geo.parse)
+                        day.place = parsed.value("place").flatMap(Geo.parse)
                     }
                     found[stamp] = day
                 }

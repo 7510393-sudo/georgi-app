@@ -680,7 +680,7 @@ struct AttachBar: View {
                 shooting = false
                 guard let data else { return }
                 if store.addPhoto(data, to: shell.tab) {
-                    shell.say("Снимок положен в папку «Фотографии»")
+                    shell.say("Снимок положен в папку «\(vault.name(.photos))»")
                 } else {
                     shell.say("Снимок не сохранился")
                 }
@@ -712,7 +712,7 @@ struct AttachBar: View {
               store.addAttachment(data, to: .audio, name: Vault.moment(store.date) + ".m4a",
                                   tab: shell.tab)
         else { return shell.say("Запись не сохранилась.") }
-        shell.say("Голос положен в папку «Аудио»")
+        shell.say("Голос положен в папку «\(vault.name(.audio))»")
     }
 
     /// Документы выбраны: копии — в «Документы» под своими именами (P209).
@@ -725,7 +725,7 @@ struct AttachBar: View {
             if store.addAttachment(data, to: .documents, name: url.lastPathComponent,
                                    tab: shell.tab) { kept += 1 }
         }
-        shell.say(kept == urls.count ? "Положено в папку «Документы»: \(kept)"
+        shell.say(kept == urls.count ? "Положено в папку «\(vault.name(.documents))»: \(kept)"
                                      : "Не удалось положить файлов: \(urls.count - kept)")
     }
 
@@ -835,8 +835,8 @@ struct AttachBar: View {
             }
             if added == items.count {
                 if added == 1 {
-                    shell.say(videos == 1 ? "Видео положено в папку «Видео»"
-                                          : "Фотография положена в папку «Фотографии»")
+                    shell.say(videos == 1 ? "Видео положено в папку «\(vault.name(.videos))»"
+                                          : "Фотография положена в папку «\(vault.name(.photos))»")
                 } else {
                     shell.say("Положено в папку: \(added)")
                 }
@@ -920,11 +920,11 @@ struct SideDay: View {
             Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body))
         let file = DayFile(text: vault.read(.diary, for: date))
         let diary = Diary(body: file.body)
-        title = file.value("заголовок") ?? ""
+        title = file.value("title") ?? ""
         text = diary.text
         answers = diary.answers
         photos = diary.photos
-        weather = file.value("погода")
+        weather = file.value("weather")
     }
 }
 

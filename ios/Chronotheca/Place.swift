@@ -9,8 +9,9 @@ import CoreLocation
 /// а координаты — любыми картами (решение P207).
 ///
 ///     ---
-///     название: Мой дом в Петербурге
-///     место: 59.93863, 30.31413
+///     name: Мой дом в Петербурге
+///     place: 59.93863, 30.31413
+///     icon: home
 ///     ---
 ///
 ///     Жил здесь с 2004 по 2011 год. Во дворе — липа.
@@ -40,20 +41,19 @@ struct Place: Identifiable, Equatable {
     /// Разобрать файл места. Без координат это не место — `nil`.
     init?(text: String, file: String) {
         let parsed = DayFile(text: text)
-        guard let where_ = parsed.value("место").flatMap(Geo.parse) else { return nil }
+        guard let where_ = parsed.value("place").flatMap(Geo.parse) else { return nil }
         let fallback = (file as NSString).deletingPathExtension
-        self.init(name: parsed.value("название") ?? fallback, coordinate: where_,
+        self.init(name: parsed.value("name") ?? fallback, coordinate: where_,
                   text: parsed.body, file: file)
-        mark = parsed.value("значок").flatMap { Glyph.symbol[$0] == nil ? nil : $0 }
-            ?? Glyph.standard
+        mark = parsed.value("icon").flatMap(Glyph.fromFile) ?? Glyph.standard
     }
 
     /// Файл места таким, каким он ляжет в папку.
     var fileText: String {
         var out = DayFile(body: text.trimmingCharacters(in: .whitespacesAndNewlines))
-        out.set("название", name)
-        out.set("место", Geo.text(coordinate))
-        out.set("значок", mark)
+        out.set("name", name)
+        out.set("place", Geo.text(coordinate))
+        out.set("icon", Glyph.fileWord(mark))
         return out.text
     }
 
@@ -104,6 +104,28 @@ enum Glyph {
     static let symbol: [String: String] = former.merging(all.map { ($0.name, $0.symbol) },
                                                          uniquingKeysWith: { _, new in new })
     private static let emojiNames: Set<String> = Set(all.filter(\.emoji).map(\.name))
+
+    /// Значок в файле — английским словом (P353): «личное» ложится как
+    /// `private`. На экране и в коде — по-прежнему русским.
+    private static let english: [String: String] = [
+        "точка": "point", "дом": "home", "сердце": "heart", "флаг": "flag",
+        "звезда": "star", "кафе": "cafe", "природа": "nature", "снимок": "photo",
+        "здоровье": "health", "человек": "person", "вокзал": "station",
+        "покупки": "shopping", "хорошее место": "good place",
+        "плохое место": "bad place", "пираты": "pirates", "личное": "private",
+        "опасность": "danger", "вдохновение": "inspiration", "призраки": "ghosts",
+        "везение": "luck",
+    ]
+    private static let russian: [String: String] =
+        Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
+
+    static func fileWord(_ name: String) -> String { english[name] ?? name }
+
+    /// Слово из файла — английское или прежнее русское. Незнакомое — `nil`.
+    static func fromFile(_ word: String) -> String? {
+        let name = russian[word] ?? word
+        return symbol[name] == nil ? nil : name
+    }
 
     static func image(_ name: String) -> String { symbol[name] ?? "circle.fill" }
     /// Значок для `name` — не системный рисунок, а буквенный символ:
@@ -221,7 +243,7 @@ extension Geo {
 enum Places {
 
     static func folder(_ vault: Vault) -> URL? {
-        vault.root?.appendingPathComponent(Vault.Folder.places.rawValue)
+        vault.folder(.places)
     }
 
     static func all(in vault: Vault) -> [Place] {

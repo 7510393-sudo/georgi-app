@@ -2,15 +2,15 @@ import SwiftUI
 
 /// Корзина дней (P295).
 ///
-/// Убранный день не стирается: его файл переезжает в папку «Корзина»
-/// внутри папки записей — `Корзина/ГГГГ-ММ-ДД/Дневник/…`. Убирают вкладку,
+/// Убранный день не стирается: его файл переезжает в папку «Trash»
+/// внутри папки записей — `Trash/ГГГГ-ММ-ДД/Diary/…` (до P353 — «Корзина»
+/// и «Дневник»; их приложение понимает по-прежнему). Убирают вкладку,
 /// которая сейчас открыта, — план и дневник по отдельности, не весь день
 /// разом (P300). Их видно в «Файлах», их можно вернуть на место из настроек
 /// или удалить навсегда. Снимки, голос и документы дня остаются в своих
 /// папках: вернули день — ссылки на них снова работают.
 enum Trash {
 
-    static let folderName = "Корзина"
 
     struct Item: Identifiable {
         let stamp: String
@@ -26,7 +26,7 @@ enum Trash {
     static let allParts: [Vault.Folder] = [.planner, .diary]
 
     static func folder(_ vault: Vault) -> URL? {
-        vault.root?.appendingPathComponent(folderName)
+        vault.root.map { Vault.trash(in: $0) }
     }
 
     /// Убрать в корзину только эти стороны дня. Уже лежит там такой же
@@ -72,7 +72,7 @@ enum Trash {
         let fm = FileManager.default
         var pairs: [(URL, URL)] = []
         for part in allParts {
-            let from = item.url.appendingPathComponent(part.rawValue)
+            let from = Vault.folder(part, in: item.url)
                 .appendingPathComponent(String(item.stamp.prefix(10)) + ".md")
             guard fm.fileExists(atPath: from.path) else { continue }
             guard let to = vault.file(part, for: item.date) else { return false }
@@ -101,7 +101,7 @@ enum Trash {
 
     private static func preview(_ day: URL, stamp: String) -> String {
         for part in [Vault.Folder.diary, .planner] {
-            let file = day.appendingPathComponent(part.rawValue).appendingPathComponent(stamp + ".md")
+            let file = Vault.folder(part, in: day).appendingPathComponent(stamp + ".md")
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let body = DayFile(text: text).body
             let words = body.components(separatedBy: .newlines)

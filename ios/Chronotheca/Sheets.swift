@@ -186,6 +186,8 @@ struct SettingsSticker: View {
 
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var store: DayStore
+    @State private var askingRename = false
 
     var body: some View {
         Sticker(side: .leading, title: "Настройки",
@@ -196,6 +198,26 @@ struct SettingsSticker: View {
             StickerSection(title: "Записи")
             place
             safety
+            // Папки с прежними, русскими, именами — перевести (P353).
+            if vault.hasRussianNames {
+                StickerItem(title: "Имена папок — по-английски", note: "→", edge: Look.noteEdge) {
+                    askingRename = true
+                }
+                .confirmationDialog("Перевести имена папок?", isPresented: $askingRename,
+                                    titleVisibility: .visible) {
+                    Button("Перевести") {
+                        store.save()
+                        close()
+                        vault.translateNames()
+                    }
+                    Button("Не сейчас", role: .cancel) { }
+                } message: {
+                    Text("«Дневник» станет «Diary», «Фотографии» — «Photos» и так далее; "
+                         + "ссылки на снимки в записях поправятся следом. Файлы не копируются "
+                         + "и не пересоздаются — меняются только имена. Если перевод оборвётся, "
+                         + "ничего не пропадёт: приложение понимает оба имени.")
+                }
+            }
             // Записи за срок одной книгой (P296).
             StickerItem(title: "PDF за выбранный срок", note: "→", edge: Look.noteEdge) {
                 showingPDF = true

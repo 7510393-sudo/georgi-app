@@ -92,11 +92,11 @@ enum PDFBook {
         let diary = Diary(body: file.body, known: rows.map(\.text))
         return Day(date: date,
                    tasks: rows.filter(\.isTask),
-                   title: file.value("заголовок") ?? "",
+                   title: file.value("title") ?? "",
                    text: diary.text,
                    answers: diary.answers,
                    strip: diary.photos + planPhotos,
-                   weather: file.value("погода"))
+                   weather: file.value("weather"))
     }
 
     // MARK: - Обложка

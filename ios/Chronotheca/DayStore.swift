@@ -625,7 +625,7 @@ final class DayStore: ObservableObject {
         // План читается первым, поэтому названия дел уже известны — по ним
         // ответы «Как прошло?» разбираются без догадок (P155).
         let diary = Diary(body: file.body, known: planRows.map(\.text))
-        diaryTitle = file.value("заголовок") ?? ""
+        diaryTitle = file.value("title") ?? ""
         // Загрузка с диска — не правка человека: как и план строкой выше,
         // в историю шага назад/вперёд не попадает (P327). Без этого первое
         // открытие дня (пустая запись до чтения файла) само вставало в
@@ -635,9 +635,9 @@ final class DayStore: ObservableObject {
         quietDiary = false
         answers = diary.answers
         photos = diary.photos
-        place = file.value("место")
-        weather = file.value("погода")
-        lastEdit = file.value("правлено").flatMap(DayStore.moment(from:))
+        place = file.value("place")
+        weather = file.value("weather")
+        lastEdit = file.value("edited").flatMap(DayStore.moment(from:))
 
         seen = [.planner: plan.text, .diary: diaryFile.text]
         mine = [.planner: planFile().text, .diary: diaryFileNow().text]
@@ -726,7 +726,7 @@ final class DayStore: ObservableObject {
     /// План дня таким, каким он ляжет в файл.
     private func planFile() -> DayFile {
         var plan = DayFile(body: Plan.body(from: planRows, photos: planPhotos))
-        plan.set("дата", Vault.stamp(date))
+        plan.set("date", Vault.stamp(date))
         return plan
     }
 
@@ -735,11 +735,11 @@ final class DayStore: ObservableObject {
         let order = tasks.map(\.text)
         var diary = DayFile(body: Diary(answers: answers, text: diaryText,
                                      photos: photos).body(order: order))
-        diary.set("дата", Vault.stamp(date))
-        if !diaryTitle.isEmpty { diary.set("заголовок", diaryTitle) }
-        if let place { diary.set("место", place) }
-        if let weather { diary.set("погода", weather) }
-        if let lastEdit { diary.set("правлено", DayStore.moment(lastEdit)) }
+        diary.set("date", Vault.stamp(date))
+        if !diaryTitle.isEmpty { diary.set("title", diaryTitle) }
+        if let place { diary.set("place", place) }
+        if let weather { diary.set("weather", weather) }
+        if let lastEdit { diary.set("edited", DayStore.moment(lastEdit)) }
         return diary
     }
 

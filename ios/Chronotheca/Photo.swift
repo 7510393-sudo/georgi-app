@@ -410,7 +410,9 @@ struct PhotoViewer: View {
                             titleVisibility: .visible) {
             Button("Убрать из записи", role: .destructive) { onRemove?() }
         } message: {
-            Text("Файл останется в папке «Фотографии» — удалить его можно в «Файлах».")
+            // Имя папки — как её видно в «Файлах»: «Photos» или прежнее
+            // «Фотографии» (P353).
+            Text("Файл останется в папке «\(url?.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent ?? "Photos")» — удалить его можно в «Файлах».")
         }
     }
 

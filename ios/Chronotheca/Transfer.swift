@@ -52,13 +52,19 @@ enum Transfer {
     ///
     /// «Служебное» не трогаем: метка архива и записка «что это за папка» у
     /// новой папки свои, и подменять их чужими незачем.
+    ///
+    /// Пути — с именами папок, как они лежат в прежнем архиве; русские и
+    /// английские смотрятся обе (P353). На новом месте каждая ложится под
+    /// тем именем, какое у этой папки там (`destination`).
     static func contents(of root: URL) -> [String] {
         let fm = FileManager.default
         let head = root.standardizedFileURL.path
         var out: [String] = []
 
-        for folder in Vault.Folder.allCases where folder != .service {
-            let base = root.appendingPathComponent(folder.rawValue)
+        let names = Vault.Folder.allCases.filter { $0 != .service }
+            .flatMap { [$0.rawValue, $0.russian] }
+        for name in names {
+            let base = root.appendingPathComponent(name)
             guard let walk = fm.enumerator(at: base,
                                            includingPropertiesForKeys: [.isDirectoryKey],
                                            options: [.skipsHiddenFiles]) else { continue }
@@ -90,7 +96,7 @@ enum Transfer {
             defer { step(i + 1) }
 
             let src = from.appendingPathComponent(rel)
-            let dst = to.appendingPathComponent(rel)
+            let dst = destination(rel, in: to)
             guard fm.fileExists(atPath: src.path) else { continue }
 
             if fm.fileExists(atPath: dst.path) {
@@ -125,6 +131,18 @@ enum Transfer {
                       fromPath: from.path.removingPercentEncoding ?? from.path)
     }
 
+    /// Куда ляжет файл в новом архиве: папка — под тем именем, какое у неё
+    /// там, русским или английским (P353). Иначе «Дневник» из прежнего
+    /// архива лёг бы рядом с «Diary» нового, и записей бы не было видно.
+    static func destination(_ rel: String, in root: URL) -> URL {
+        var parts = rel.components(separatedBy: "/")
+        guard parts.count > 1, let folder = Vault.Folder.named(parts[0]) else {
+            return root.appendingPathComponent(rel)
+        }
+        parts.removeFirst()
+        return Vault.folder(folder, in: root).appendingPathComponent(parts.joined(separator: "/"))
+    }
+
     /// Один ли это файл. Для записей сверяем побайтно: размер совпадает и у
     /// разных дней, а спутать два разных дня — худшее, что тут может быть.
     private static func same(_ a: URL, _ b: URL) -> Bool {
@@ -147,12 +165,13 @@ enum Transfer {
 struct MovingView: View {
 
     let progress: Transfer.Progress
+    var title = "Переношу записи"
 
     var body: some View {
         ZStack {
             Look.chrome.opacity(0.97).ignoresSafeArea()
             VStack(spacing: 16) {
-                Text("Переношу записи")
+                Text(title)
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(Look.ink)
 

@@ -11,8 +11,8 @@ struct MetaLine: Equatable {
 /// Файл состоит из необязательной шапки между двумя чертами и текста под ней:
 ///
 ///     ---
-///     дата: 2026-09-16
-///     заголовок: Первый день осени
+///     date: 2026-09-16
+///     title: Первый день осени
 ///     ---
 ///
 ///     08:15 Проснулся раньше будильника.
@@ -63,15 +63,29 @@ struct DayFile: Equatable {
         return out
     }
 
+    /// Прежние, русские, ключи шапки — и какими они стали (P353). Читаются
+    /// оба; пишется английский: ключ, который приложение задаёт само,
+    /// переводится при первой же правке дня.
+    static let english: [String: String] = [
+        "дата": "date", "заголовок": "title", "погода": "weather",
+        "место": "place", "правлено": "edited", "название": "name",
+        "значок": "icon",
+    ]
+
+    static func canon(_ key: String) -> String { english[key] ?? key }
+
     func value(_ key: String) -> String? {
-        meta.first { $0.key == key }?.value
+        let k = DayFile.canon(key)
+        return meta.first { DayFile.canon($0.key) == k }?.value
     }
 
     mutating func set(_ key: String, _ value: String) {
-        if let i = meta.firstIndex(where: { $0.key == key }) {
+        let k = DayFile.canon(key)
+        if let i = meta.firstIndex(where: { DayFile.canon($0.key) == k }) {
+            meta[i].key = k
             meta[i].value = value
         } else {
-            meta.append(MetaLine(key: key, value: value))
+            meta.append(MetaLine(key: k, value: value))
         }
     }
 }

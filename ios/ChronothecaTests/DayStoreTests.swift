@@ -123,8 +123,8 @@ extension DayStoreTests {
         день.save()
 
         let на_диске = день.onDisk()
-        XCTAssertTrue(на_диске.contains("заголовок: Туман"))
-        XCTAssertTrue(на_диске.contains("## Как прошло?"))
+        XCTAssertTrue(на_диске.contains("title: Туман"))
+        XCTAssertTrue(на_диске.contains(Diary.heading))
         XCTAssertTrue(на_диске.contains("- Позвонить в поликлинику: так и не собрался"))
 
         день.move(by: 1)

@@ -11,8 +11,8 @@ final class PlaceTests: XCTestCase {
                         coordinate: CLLocationCoordinate2D(latitude: 59.93863, longitude: 30.31413),
                         text: "Жил здесь с 2004 по 2011 год.")
         let файл = дом.fileText
-        XCTAssertTrue(файл.contains("название: Мой дом в Петербурге"))
-        XCTAssertTrue(файл.contains("место: 59.93863, 30.31413"))
+        XCTAssertTrue(файл.contains("name: Мой дом в Петербурге"))
+        XCTAssertTrue(файл.contains("place: 59.93863, 30.31413"))
         let обратно = Place(text: файл, file: "Мой дом в Петербурге.md")
         XCTAssertEqual(обратно?.name, "Мой дом в Петербурге")
         XCTAssertEqual(обратно?.text, "Жил здесь с 2004 по 2011 год.")
@@ -75,10 +75,14 @@ final class PlaceTests: XCTestCase {
         var дача = Place(name: "Дача", coordinate: CLLocationCoordinate2D(latitude: 55, longitude: 37))
         дача.mark = "личное"
         let файл = дача.fileText
-        XCTAssertTrue(файл.contains("значок: личное"))
+        XCTAssertTrue(файл.contains("icon: private"))
         XCTAssertEqual(Place(text: файл, file: "Дача.md")?.mark, "личное")
-        let чужое = файл.replacingOccurrences(of: "значок: личное", with: "значок: ракета")
+        let чужое = файл.replacingOccurrences(of: "icon: private", with: "icon: ракета")
         XCTAssertEqual(Place(text: чужое, file: "Дача.md")?.mark, Glyph.standard)
+        // Файл, записанный до P353, — русскими словами — читается так же.
+        let прежний = "---\nназвание: Дача\nместо: 55, 37\nзначок: личное\n---\n"
+        XCTAssertEqual(Place(text: прежний, file: "Дача.md")?.mark, "личное")
+        XCTAssertEqual(Place(text: прежний, file: "Дача.md")?.name, "Дача")
     }
 
     /// Курсор после вписанной точки встаёт за ней: в поле точка — один

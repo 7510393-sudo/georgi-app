@@ -62,6 +62,24 @@ struct RootView: View {
         return out
     }
 
+    private static func renameText(_ r: Rename.Report) -> String {
+        var out = "Папок переименовано: \(r.folders). Записей поправлено: \(r.files)."
+        if !r.stuck.isEmpty {
+            out += "\n\nОстались под прежним именем: " + r.stuck.joined(separator: ", ")
+            out += ". Они работают как раньше; перевод можно запустить ещё раз."
+        }
+        if r.skipped > 0 {
+            out += "\n\nНе поправлено записей: \(r.skipped) — они ещё в iCloud или "
+            out += "изменились в другом месте. Снимки в них видны и так; "
+            out += "перевод можно запустить ещё раз позже."
+        }
+        if r.kept > 0 {
+            out += "\n\nФайлов с одинаковыми именами, но разных: \(r.kept). "
+            out += "Они остались в папках с прежними именами — ничего не затёрто."
+        }
+        return out
+    }
+
     private static func reportText(_ r: Transfer.Report) -> String {
         var out = "Перенесено файлов: \(r.moved)."
         if r.kept > 0 {
@@ -146,6 +164,18 @@ struct RootView: View {
         } message: { r in
             Text(Self.reportText(r))
         }
+        .alert("Имена папок переведены",
+               isPresented: Binding(get: { vault.renamed != nil },
+                                    set: { if !$0 { vault.renamed = nil } }),
+               presenting: vault.renamed) { _ in
+            Button("Понятно") {
+                vault.renamed = nil
+                store.load()
+                archive.reload()
+            }
+        } message: { r in
+            Text(Self.renameText(r))
+        }
         .alert("Папка переехала",
                isPresented: Binding(get: { vault.moved != nil },
                                     set: { if !$0 { vault.moved = nil } })) {
@@ -206,6 +236,10 @@ struct RootView: View {
             // происходит и сколько осталось.
             if let m = vault.moving {
                 MovingView(progress: m)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            if let m = vault.renaming {
+                MovingView(progress: m, title: "Перевожу имена папок")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
@@ -272,7 +306,7 @@ struct RootView: View {
             }
         } message: {
             Text((shell.tab == .diary ? "Запись" : "План") +
-                 " этого дня переедет в папку «Корзина». Снимки и голос останутся на месте. Вернуть можно в настройках.")
+                 " этого дня переедет в папку «\(vault.root.map { Vault.trash(in: $0).lastPathComponent } ?? Vault.trashName)». Снимки и голос останутся на месте. Вернуть можно в настройках.")
         }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {

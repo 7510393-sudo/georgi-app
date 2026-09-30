@@ -101,7 +101,7 @@ struct MapScreen: View {
             Button("Оставить точку", role: .cancel) { }
         } message: {
             Text(selected?.file == nil ? "Булавка уйдёт с карты."
-                 : "Файл этой точки будет удалён из папки «Места».")
+                 : "Файл этой точки будет удалён из папки «\(vault.name(.places))».")
         }
         .confirmationDialog("Куда записать точку?", isPresented: $choosingTab,
                             titleVisibility: .visible) {
