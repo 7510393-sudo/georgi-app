@@ -592,6 +592,7 @@ struct AttachBar: View {
 
     @EnvironmentObject private var shell: Shell
     @EnvironmentObject private var store: DayStore
+    @EnvironmentObject private var vault: Vault
 
     @State private var choosing = false
     @State private var picked: [PhotosPickerItem] = []
@@ -634,7 +635,7 @@ struct AttachBar: View {
         // ним не сдвигается (P113, P114).
         .overlay(alignment: .top) {
             if live && shell.gallery {
-                GalleryRow(day: date, add: addFromGallery, more: {
+                GalleryRow(day: date, add: { addFromGallery($0, day: date) }, more: {
                     shell.gallery = false
                     choosePhotos()
                 })
@@ -687,7 +688,10 @@ struct AttachBar: View {
             .ignoresSafeArea()
         }
         .sheet(isPresented: $browsing) {
-            DocumentPicker(pick: keepFiles)
+            // Записи на этом iPhone лежат внутри приложения — оттуда
+            // документ не берут; тогда окно откроется, где его оставили.
+            DocumentPicker(start: vault.onPhone ? nil : vault.root?.deletingLastPathComponent(),
+                           pick: keepFiles)
         }
     }
 
@@ -753,13 +757,43 @@ struct AttachBar: View {
         withAnimation(.easeOut(duration: 0.2)) { shell.gallery.toggle() }
     }
 
-    /// Снимок из ряда галереи — в полоску этой вкладки, как из окна
-    /// галереи (P273).
-    private func addFromGallery(_ asset: PHAsset) {
+    /// Отмеченное в ряду галереи — в полоску этой вкладки, как из окна
+    /// галереи (P273, P350). Ряд убрали, перелистнув на другой день, —
+    /// в чужой день ничего не ложится, об этом говорится.
+    private func addFromGallery(_ assets: [PHAsset], day: Date) {
         let tab = shell.tab
-        GalleryRow.data(of: asset) { data in
-            guard let data, store.addPhoto(data, to: tab) else {
-                return shell.say("Снимок не удалось взять из галереи")
+        guard Calendar.current.isDate(store.date, inSameDayAs: day), store.canEdit(tab) else {
+            return shell.say("Отмеченное в галерее не добавлено: открыт другой день")
+        }
+        var left = assets.count
+        var failed = 0
+        let finish: () -> Void = {
+            left -= 1
+            guard left == 0 else { return }
+            if failed > 0 {
+                shell.say("Не удалось взять из галереи: \(failed)")
+            } else if assets.count > 1 {
+                shell.say("Положено в папку: \(assets.count)")
+            }
+        }
+        for asset in assets {
+            if asset.mediaType == .video {
+                GalleryRow.movie(of: asset) { url in
+                    defer { finish() }
+                    guard let url else { failed += 1; return }
+                    defer { try? FileManager.default.removeItem(at: url) }
+                    guard let data = try? Data(contentsOf: url, options: .mappedIfSafe),
+                          store.addAttachment(data, to: .videos,
+                                              name: Vault.moment(store.date) + "."
+                                                  + (url.pathExtension.isEmpty ? "mov" : url.pathExtension.lowercased()),
+                                              tab: tab)
+                    else { failed += 1; return }
+                }
+            } else {
+                GalleryRow.data(of: asset) { data in
+                    defer { finish() }
+                    guard let data, store.addPhoto(data, to: tab) else { failed += 1; return }
+                }
             }
         }
     }

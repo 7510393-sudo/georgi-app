@@ -268,7 +268,7 @@ final class DayStore: ObservableObject {
             }.joined(separator: "\n")
         }
         let lines = diaryText.components(separatedBy: "\n").compactMap { line -> String? in
-            if Diary.picture(in: line) != nil { return nil }
+            if !Diary.links(in: line).isEmpty { return nil }
             if let point = Geo.point(in: line) { return "📍 " + point.label }
             return line
         }
@@ -527,8 +527,16 @@ final class DayStore: ObservableObject {
     func returnToStrip(_ link: String) {
         guard canEditDiary else { return }
         var lines = diaryText.components(separatedBy: "\n")
-        guard let i = lines.firstIndex(where: { Diary.picture(in: $0) == link }) else { return }
-        lines.remove(at: i)
+        guard let i = lines.firstIndex(where: { Diary.links(in: $0).contains(link) }) else { return }
+        // Снимок из ряда (P348) уходит из ряда, остальные остаются строкой.
+        let row = Diary.pictures(in: lines[i])
+        if row.count > 1, let piece = row.first(where: { $0.link == link }) {
+            lines[i] = (lines[i] as NSString).replacingCharacters(in: piece.range, with: "")
+                .replacingOccurrences(of: "  ", with: " ")
+                .trimmingCharacters(in: .whitespaces)
+        } else {
+            lines.remove(at: i)
+        }
         diaryText = lines.joined(separator: "\n")
             .replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
         photos.append(link)

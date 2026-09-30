@@ -2,11 +2,12 @@ import SwiftUI
 import Photos
 import UIKit
 
-/// Снимки галереи, сделанные в этот день, — рядом над полоской вложений,
-/// как в Diarium (P273, P344). Касание открывает снимок во весь экран:
-/// «Добавить» справа кладёт его в день, «Отменить» слева — назад к ряду
-/// (P344). Первая плитка «Все фото» открывает обычное окно галереи — там
-/// же видео, поиск и снимки других дней.
+/// Снимки и видео галереи, сделанные в этот день, — рядом над полоской
+/// вложений, как в Diarium (P273, P344). Касание ставит или снимает
+/// галочку; ряд убирается любым касанием мимо — и отмеченное ложится в
+/// день, ничего не отмечено — просто убирается (P350). Долгое нажатие
+/// открывает снимок во весь экран — рассмотреть. Первая плитка «Все фото»
+/// открывает обычное окно галереи — там поиск и снимки других дней.
 ///
 /// Разрешение смотреть галерею спрашивается, когда ряд открыли впервые.
 /// Не дали — ряд говорит, где разрешить, а «Все фото» работает и без
@@ -16,15 +17,15 @@ struct GalleryRow: View {
     /// День страницы: в ряду — снимки, сделанные в этот день, по той же
     /// границе суток, что и у самого приложения.
     var day: Date = DayStore.today()
-    let add: (PHAsset) -> Void
+    /// Отмеченное — в день. Зовётся один раз, когда ряд убирают.
+    let add: ([PHAsset]) -> Void
     let more: () -> Void
 
     @State private var assets: [PHAsset] = []
     @State private var loaded = false
     @State private var status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-    /// Снимки, уже положенные в этот раз, — отмечены галочкой, чтобы не
-    /// положить дважды.
-    @State private var taken: Set<String> = []
+    /// Отмеченные галочкой — по порядку касаний: так они и лягут.
+    @State private var taken: [String] = []
     /// Снимок, открытый во весь экран.
     @State private var looking: Looked?
 
@@ -64,6 +65,15 @@ struct GalleryRow: View {
                 }
                 ForEach(assets, id: \.localIdentifier) { asset in
                     GalleryThumb(asset: asset)
+                        .overlay(alignment: .bottomLeading) {
+                            if asset.mediaType == .video {
+                                Image(systemName: "video.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.white)
+                                    .shadow(radius: 2)
+                                    .padding(4)
+                            }
+                        }
                         .overlay(alignment: .topTrailing) {
                             if taken.contains(asset.localIdentifier) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -72,8 +82,13 @@ struct GalleryRow: View {
                                     .padding(3)
                             }
                         }
-                        .onTapGesture { looking = Looked(asset: asset) }
-                        .accessibilityLabel("Снимок из галереи")
+                        .onTapGesture { mark(asset) }
+                        .onLongPressGesture(minimumDuration: 0.4) {
+                            Feel.light()
+                            looking = Looked(asset: asset)
+                        }
+                        .accessibilityLabel(asset.mediaType == .video ? "Видео из галереи"
+                                                                      : "Снимок из галереи")
                         .accessibilityAddTraits(.isButton)
                 }
             }
@@ -84,16 +99,33 @@ struct GalleryRow: View {
         .background(Look.chrome)
         .overlay(alignment: .top) { Rectangle().fill(Look.rule).frame(height: 1) }
         .task { await load() }
+        // Ряд убрали — касанием мимо, разделом, уголком, «все фото»:
+        // отмеченное ложится в день (P350).
+        .onDisappear {
+            // Снимок во весь экран закрывает ряд, но ряд не убран.
+            guard looking == nil else { return }
+            let chosen = taken.compactMap { id in assets.first { $0.localIdentifier == id } }
+            taken = []
+            if !chosen.isEmpty { add(chosen) }
+        }
         .fullScreenCover(item: $looking) { looked in
             GalleryPreview(asset: looked.asset,
                            already: taken.contains(looked.id),
                            cancel: { looking = nil },
                            add: {
-                               taken.insert(looked.id)
+                               if !taken.contains(looked.id) { taken.append(looked.id) }
                                Feel.light()
-                               add(looked.asset)
                                looking = nil
                            })
+        }
+    }
+
+    private func mark(_ asset: PHAsset) {
+        Feel.light()
+        if let i = taken.firstIndex(of: asset.localIdentifier) {
+            taken.remove(at: i)
+        } else {
+            taken.append(asset.localIdentifier)
         }
     }
 
@@ -109,15 +141,34 @@ struct GalleryRow: View {
                              to: cal.startOfDay(for: day)) ?? day
         let end = cal.date(byAdding: .day, value: 1, to: start) ?? start
         let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@",
-                                        start as NSDate, end as NSDate)
+        options.predicate = NSPredicate(
+            format: "(mediaType == %d OR mediaType == %d) AND creationDate >= %@ AND creationDate < %@",
+            PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue,
+            start as NSDate, end as NSDate)
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         options.fetchLimit = 120
-        let found = PHAsset.fetchAssets(with: .image, options: options)
+        let found = PHAsset.fetchAssets(with: options)
         var list: [PHAsset] = []
         found.enumerateObjects { asset, _, _ in list.append(asset) }
         assets = list
         loaded = true
+    }
+
+    /// Видео целиком, файлом во временной папке: ролик может весить
+    /// гигабайт, в память его не берём. Из iCloud докачивается (P350).
+    static func movie(of asset: PHAsset, done: @escaping (URL?) -> Void) {
+        let resources = PHAssetResource.assetResources(for: asset)
+        guard let resource = resources.first(where: { $0.type == .fullSizeVideo })
+                ?? resources.first(where: { $0.type == .video })
+        else { return done(nil) }
+        let ext = (resource.originalFilename as NSString).pathExtension
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + "." + (ext.isEmpty ? "mov" : ext))
+        let options = PHAssetResourceRequestOptions()
+        options.isNetworkAccessAllowed = true
+        PHAssetResourceManager.default().writeData(for: resource, toFile: url, options: options) { error in
+            DispatchQueue.main.async { done(error == nil ? url : nil) }
+        }
     }
 
     /// Снимок целиком — чтобы положить его в папку как есть (A6: только
@@ -165,8 +216,8 @@ struct GalleryThumb: View {
 }
 
 /// Снимок из ряда галереи во весь экран: рассмотреть, прежде чем класть в
-/// день (P344). Внизу слева — «Отменить», справа — «Добавить»: палец
-/// сам решает, без галочек.
+/// день (P344). Внизу слева — «Отменить», справа — «Добавить»: он ставит
+/// галочку, как касание в ряду (P350). Видео — первым кадром.
 struct GalleryPreview: View {
     let asset: PHAsset
     /// Снимок уже положен в этот раз — второй раз не кладётся.
@@ -199,7 +250,7 @@ struct GalleryPreview: View {
                 }
                 Spacer()
                 Button(action: add) {
-                    Text(already ? "Уже добавлен" : "Добавить")
+                    Text(already ? "Уже отмечен" : "Добавить")
                         .font(Look.sans(17, weight: .semibold))
                         .padding(.horizontal, 22)
                         .padding(.vertical, 12)

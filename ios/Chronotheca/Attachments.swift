@@ -204,13 +204,21 @@ struct AudioPlayerView: View {
 
 /// Системное окно выбора файлов. Файл копируется: приложению не нужен
 /// доступ к чужой папке — только к самому документу, и только в эту минуту.
+///
+/// Само окно помнит, где его закрыли в прошлый раз, — и открывалось в
+/// «Хронотеке», куда человек заходил, выбирая место для записей. Открыть
+/// сразу «Обзор» iOS не даёт; ближе всего — папка, в которой лежит
+/// «Хронотека»: оттуда до «Обзора» одно касание «назад» (P351).
 struct DocumentPicker: UIViewControllerRepresentable {
 
+    /// С какой папки начать; `nil` — где окно закрыли в прошлый раз.
+    var start: URL? = nil
     let pick: ([URL]) -> Void
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
         picker.allowsMultipleSelection = true
+        picker.directoryURL = start
         picker.delegate = context.coordinator
         return picker
     }

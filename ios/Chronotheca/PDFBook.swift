@@ -138,8 +138,8 @@ enum PDFBook {
     }
 
     private static func photoLines(_ text: String) -> [String] {
-        text.components(separatedBy: .newlines).compactMap { line in
-            Diary.picture(in: line).flatMap { Diary.kind(of: $0) == .photo ? $0 : nil }
+        text.components(separatedBy: .newlines).flatMap { line in
+            Diary.links(in: line).filter { Diary.kind(of: $0) == .photo }
         }
     }
 
@@ -198,7 +198,11 @@ enum PDFBook {
         if !day.title.isEmpty { add(day.title, serif(16).withWeight(.semibold), after: 8) }
 
         for line in day.text.components(separatedBy: .newlines) {
-            if let link = Diary.picture(in: line) {
+            // Одно вложение строкой или ряд снимков (P348) — каждый по
+            // очереди.
+            let links = Diary.links(in: line)
+            if !links.isEmpty {
+                for link in links {
                 switch Diary.kind(of: link) {
                 case .photo:
                     if o.photos, let picture = image(link, width: body.width) {
@@ -211,6 +215,7 @@ enum PDFBook {
                 case .audio: add("[голосовая запись]", .systemFont(ofSize: 10), soft)
                 case .file:  add("[документ: " + (link as NSString).lastPathComponent + "]",
                                  .systemFont(ofSize: 10), soft)
+                }
                 }
                 continue
             }

@@ -51,7 +51,7 @@ final class Archive: ObservableObject {
         var preview: String {
             text.split(separator: "\n", omittingEmptySubsequences: false)
                 .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty && Diary.picture(in: $0) == nil && Geo.point(in: $0) == nil }
+                .filter { !$0.isEmpty && Diary.links(in: $0).isEmpty && Geo.point(in: $0) == nil }
                 .joined(separator: "\n")
         }
 
@@ -140,7 +140,7 @@ final class Archive: ObservableObject {
                         day.answers = diary.answers
                         day.photos = diary.photos.count
                         day.attachments = diary.text.components(separatedBy: "\n")
-                            .compactMap { Diary.picture(in: $0) } + diary.photos + day.attachments
+                            .flatMap { Diary.links(in: $0) } + diary.photos + day.attachments
                         day.place = parsed.value("место").flatMap(Geo.parse)
                     }
                     found[stamp] = day

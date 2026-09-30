@@ -293,9 +293,9 @@ struct DiaryEditor: UIViewRepresentable {
     /// Размер снимка в тексте. Задан числом: картинка, пришедшая с диска
     /// позже текста, встаёт в уже отведённое место и ничего не сдвигает
     /// (P113).
-    /// Снимок в тексте — того же размера, что превью в полоске внизу:
-    /// бросили в текст — он не вырос (P272).
-    static let photoSize = CGSize(width: PhotoStrip.side, height: PhotoStrip.side)
+    /// Снимок в тексте — того же размера, что превью в поиске: в записи его
+    /// разглядывают, а не только узнают (P348; прежде — как в полоске, P272).
+    static let photoSize = CGSize(width: Search.previewSide, height: Search.previewSide)
 
     /// Текст поля таким, каким он ляжет в файл: снимки — обратно строками
     /// `![](…)`, чужие знаки-заместители — вон (P161, P204).
@@ -371,8 +371,16 @@ struct DiaryEditor: UIViewRepresentable {
             let line = ns.lineRange(for: NSRange(location: start, length: 0))
             let content = ns.substring(with: line).trimmingCharacters(in: .newlines)
             let range = NSRange(location: line.location, length: (content as NSString).length)
+            let row = Diary.pictures(in: content)
             if let link = Diary.picture(in: content), Diary.kind(of: link) == .photo {
                 found.append((range, link, nil))
+            } else if row.count > 1 {
+                // Несколько снимков в одной строке — рядом, через пробел
+                // (P348). Каждый — своей картинкой, пробел остаётся.
+                for piece in row where Diary.kind(of: piece.link) == .photo {
+                    found.append((NSRange(location: line.location + piece.range.location,
+                                          length: piece.range.length), piece.link, nil))
+                }
             } else if let point = Geo.point(in: content) {
                 found.append((range, content, point))
             } else if content.contains("geo:") {
@@ -401,12 +409,33 @@ struct DiaryEditor: UIViewRepresentable {
         }
     }
 
+    /// Снимок из полоски бросили на строку, где уже стоят снимки, — он
+    /// встаёт рядом с ними в ту же строку, а не новой строкой под ними
+    /// (P348). `was` — запись до броска; `nil` — ставить рядом не с чем.
+    static func besideDropped(_ now: String, was: String) -> String? {
+        let old = was.components(separatedBy: "\n")
+        var new = now.components(separatedBy: "\n")
+        guard new.count == old.count + 1 else { return nil }
+        var k = 0
+        while k < old.count, new[k] == old[k] { k += 1 }
+        guard k > 0, k < new.count,
+              let one = Diary.picture(in: new[k]), Diary.kind(of: one) == .photo
+        else { return nil }
+        let row = Diary.links(in: new[k - 1])
+        guard !row.isEmpty, row.allSatisfy({ Diary.kind(of: $0) == .photo }) else { return nil }
+        new[k - 1] = new[k - 1].trimmingCharacters(in: .whitespaces) + " "
+            + new[k].trimmingCharacters(in: .whitespaces)
+        new.remove(at: k)
+        return new.joined(separator: "\n")
+    }
+
     /// Есть ли в поле строка-ссылка, ещё не ставшая картинкой: её только
     /// что бросили в текст или вписали руками.
     static func hasLoosePicture(_ text: String) -> Bool {
         guard text.contains("![") || text.contains("geo:") else { return false }
         return text.components(separatedBy: "\n").contains {
             (Diary.picture(in: $0).map { Diary.kind(of: $0) == .photo } ?? false)
+                || Diary.pictures(in: $0).contains { Diary.kind(of: $0.link) == .photo }
                 || Geo.point(in: $0) != nil
                 // Посреди строки — когда точка дописана: за ней пробел или
                 // она в скобках с названием. Иначе кнопочкой стали бы
@@ -569,9 +598,27 @@ struct DiaryEditor: UIViewRepresentable {
             return nil
         }
 
+        /// Взятое идёт над пальцем, а не под ним: иначе палец закрывает его
+        /// целиком и тащить приходится вслепую (P349). Ложится оно тоже туда,
+        /// где видно, — над пальцем.
+        private static let lift: CGFloat = 64
+
+        /// Палец со взятым снимком ниже страницы — над полоской превью:
+        /// отпустить здесь значит вернуть снимок вниз (P272, P349).
+        private func overStrip(_ g: UIGestureRecognizer, in view: UITextView) -> Bool {
+            guard let window = view.window, let page = page(over: view),
+                  view.textStorage.attribute(DiaryEditor.photoKey, at: taken ?? 0,
+                                             effectiveRange: nil) != nil
+            else { return false }
+            // Считается сам палец, а не поднятая над ним картинка: её край
+            // уже над полоской, когда палец ещё на странице.
+            return g.location(in: window).y > page.convert(page.bounds, to: window).maxY - 24
+        }
+
         @objc func carried(_ g: UILongPressGestureRecognizer) {
             guard let view, let i = taken else { return }
-            let at = g.location(in: view)
+            let finger = g.location(in: view)
+            let at = CGPoint(x: finger.x, y: finger.y - Self.lift)
             switch g.state {
             case .began:
                 // Прочие жесты поля — лупа, выделение — отпускают палец.
@@ -582,31 +629,39 @@ struct DiaryEditor: UIViewRepresentable {
                 let picture = (view.textStorage.attribute(.attachment, at: i, effectiveRange: nil)
                                as? NSTextAttachment)?.image
                 let shadow = UIImageView(image: picture)
-                shadow.alpha = 0.85
+                shadow.alpha = 0.9
                 shadow.layer.shadowOpacity = 0.3
                 shadow.layer.shadowRadius = 8
+                // Точка — маленькая кнопочка: над пальцем она крупнее, чтобы
+                // её было видно (P349).
+                let small = (picture?.size.height ?? 0) < 40
+                shadow.transform = CGAffineTransform(scaleX: small ? 1.8 : 1.1, y: small ? 1.8 : 1.1)
                 // Тень снимка — поверх всего окна: её можно донести и до
                 // полоски внизу, за край страницы (P272).
                 let host: UIView = view.window ?? view
-                shadow.center = g.location(in: host)
+                let spot = g.location(in: host)
+                shadow.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
                 host.addSubview(shadow)
                 ghost = shadow
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             case .changed:
-                ghost?.center = g.location(in: ghost?.superview ?? view)
+                let spot = g.location(in: ghost?.superview ?? view)
+                ghost?.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
+                // Над полоской снимок бледнеет — видно, что отпустить здесь
+                // значит вернуть его вниз.
+                ghost?.alpha = overStrip(g, in: view) ? 0.5 : 0.9
             case .ended:
+                let back = overStrip(g, in: view)
                 ghost?.removeFromSuperview()
                 ghost = nil
                 taken = nil
                 // Отпустили ниже страницы, над полоской превью — снимок
                 // возвращается туда, откуда его взяли (P272).
-                if let window = view.window, let page = page(over: view),
-                   let link = view.textStorage.attribute(DiaryEditor.photoKey, at: i,
-                                                         effectiveRange: nil) as? String,
-                   let back = parent.onReturnPhoto,
-                   g.location(in: window).y > page.convert(page.bounds, to: window).maxY - 8 {
+                if back, let link = view.textStorage.attribute(DiaryEditor.photoKey, at: i,
+                                                               effectiveRange: nil) as? String,
+                   let giveBack = parent.onReturnPhoto {
                     Feel.light()
-                    back(link)
+                    giveBack(link)
                     return
                 }
                 if let position = view.closestPosition(to: at) {
@@ -670,11 +725,18 @@ struct DiaryEditor: UIViewRepresentable {
             guard j != i, j != i + 1 else { return }
             var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
             var target = plainLength(j)
-            // Строка уходит вместе со своим переводом строки.
-            if cut.location + cut.length < text.length,
-               text.character(at: cut.location + cut.length) == 10 {
+            let after = NSMaxRange(cut) < text.length ? text.character(at: NSMaxRange(cut)) : 10
+            let before = cut.location > 0 ? text.character(at: cut.location - 1) : 10
+            // Снимок из ряда (P348) уходит со своим пробелом, ряд остаётся
+            // строкой; одинокий снимок — со своим переводом строки.
+            if before == 32 {
+                cut.location -= 1
                 cut.length += 1
-            } else if cut.location > 0, text.character(at: cut.location - 1) == 10 {
+            } else if after == 32 {
+                cut.length += 1
+            } else if NSMaxRange(cut) < text.length, after == 10 {
+                cut.length += 1
+            } else if cut.location > 0, before == 10 {
                 cut.location -= 1
                 cut.length += 1
             }
@@ -685,8 +747,16 @@ struct DiaryEditor: UIViewRepresentable {
             }
             let rest = text.replacingCharacters(in: cut, with: "") as NSString
             target = min(target, rest.length)
+            // Отпустили над строкой, где уже стоят снимки, — встаёт рядом с
+            // ними, в ту же строку, а не новой строкой под ними (P348).
+            let above = target > 0
+                ? rest.substring(with: rest.lineRange(for: NSRange(location: target - 1, length: 0)))
+                    .trimmingCharacters(in: .newlines)
+                : ""
+            let beside = !Diary.links(in: above).isEmpty
+                && Diary.links(in: above).allSatisfy { Diary.kind(of: $0) == .photo }
             let result = rest.replacingCharacters(in: NSRange(location: target, length: 0),
-                                                  with: (target == 0 ? "" : "\n") + piece
+                                                  with: (target == 0 ? "" : (beside ? " " : "\n")) + piece
                                                       + (target == 0 && rest.length > 0 ? "\n" : ""))
             view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
                                                      stamped: parent.stamped, resolve: resolve,
@@ -736,7 +806,7 @@ struct DiaryEditor: UIViewRepresentable {
                       let url = photo.url else { return }
                 photo.loaded = true
                 Task.detached(priority: .userInitiated) {
-                    guard let got = Photo.load(url, side: 160) else { return }
+                    guard let got = Photo.load(url, side: 280) else { return }
                     let framed = PhotoAttachment.frame(got)
                     await MainActor.run { [weak view] in
                         Photo.cache.setObject(framed, forKey: PhotoAttachment.key(url))
@@ -854,10 +924,27 @@ struct DiaryEditor: UIViewRepresentable {
             return nil
         }
 
+        /// Текст записи перед броском снимка из полоски — по нему видно,
+        /// куда снимок лёг (P348).
+        private var dropBefore: String?
+
+        func textDroppableView(_ droppable: UIView & UITextDroppable,
+                               willPerformDrop drop: UITextDropRequest) {
+            dropBefore = parent.text
+        }
+
         func textViewDidChange(_ view: UITextView) {
-            let now = DiaryEditor.plain(view.attributedText)
+            var now = DiaryEditor.plain(view.attributedText)
+            var merged = false
+            if let was = dropBefore {
+                dropBefore = nil
+                if let beside = DiaryEditor.besideDropped(now, was: was) {
+                    now = beside
+                    merged = true
+                }
+            }
             parent.text = now
-            if resolve != nil, DiaryEditor.hasLoosePicture(view.text) {
+            if resolve != nil, merged || DiaryEditor.hasLoosePicture(view.text) {
                 // Строку-ссылку только что бросили или вписали — рисуем её
                 // картинкой. Курсор остаётся примерно там, где был.
                 let at = view.selectedRange.location

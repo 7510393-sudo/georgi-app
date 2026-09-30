@@ -82,6 +82,38 @@ struct Diary: Equatable {
     private static let pictureLine = try! NSRegularExpression(
         pattern: #"^\s*(!?)\[[^\]]*\]\((.+)\)\s*$"#)
 
+    /// Один снимок где угодно в строке: `![](путь)` или `![](<путь с пробелом>)`.
+    private static let onePicture = try! NSRegularExpression(
+        pattern: #"!\[[^\]]*\]\((<[^>]*>|[^)\s]+)\)"#)
+
+    /// Снимки, стоящие в строке рядом — `![](a) ![](b)`, — если в строке
+    /// нет ничего, кроме них и пробелов (P348). Пусто — строка не такая.
+    /// Строку с одним снимком разбирает и `picture(in:)`; эта — для ряда.
+    static func pictures(in line: String) -> [(range: NSRange, link: String)] {
+        let ns = line as NSString
+        guard line.contains("![") else { return [] }
+        var found: [(range: NSRange, link: String)] = []
+        for m in onePicture.matches(in: line, range: NSRange(location: 0, length: ns.length)) {
+            var link = ns.substring(with: m.range(at: 1))
+            if link.hasPrefix("<"), link.hasSuffix(">") {
+                link = String(link.dropFirst().dropLast())
+            }
+            guard !link.contains("://"), !link.hasPrefix("geo:") else { return [] }
+            found.append((range: m.range, link: link))
+        }
+        guard !found.isEmpty else { return [] }
+        let rest = NSMutableString(string: line)
+        for piece in found.reversed() { rest.replaceCharacters(in: piece.range, with: "") }
+        guard (rest as String).trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        return found
+    }
+
+    /// Все вложения строки: одно — как прежде, или ряд снимков (P348).
+    static func links(in line: String) -> [String] {
+        if let one = picture(in: line) { return [one] }
+        return pictures(in: line).map(\.link)
+    }
+
     /// Ссылка на вложение, если строка — только она и ничего больше:
     /// `![](снимок.jpg)` или `[голос](голос.m4a)`.
     ///
@@ -97,8 +129,11 @@ struct Diary: Equatable {
             link = String(link.dropFirst().dropLast())
         }
         // Точка на карте `[Дом](geo:…)` — тоже не вложение: у неё нет
-        // файла, она остаётся в тексте кнопкой (P213).
-        guard !link.contains("://"), !link.hasPrefix("geo:") else { return nil }
+        // файла, она остаётся в тексте кнопкой (P213). Несколько снимков
+        // в одной строке — не один снимок со странным именем, а ряд
+        // (`pictures(in:)`, P348).
+        guard !link.contains("://"), !link.hasPrefix("geo:"), !link.contains("](")
+        else { return nil }
         return link
     }
 

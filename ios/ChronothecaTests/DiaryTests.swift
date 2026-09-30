@@ -233,4 +233,27 @@ final class DiaryTests: XCTestCase {
         XCTAssertTrue(d.photos.isEmpty)
         XCTAssertTrue(d.text.contains("https://example.com/a"))
     }
+
+    // P348: снимки рядом в одной строке.
+    func testРядСнимковВОднойСтроке() {
+        let row = "![](../../Фотографии/2026/a.jpg) ![](<../../Фотографии/2026/b c.jpg>)"
+        XCTAssertNil(Diary.picture(in: row))
+        XCTAssertEqual(Diary.links(in: row),
+                       ["../../Фотографии/2026/a.jpg", "../../Фотографии/2026/b c.jpg"])
+        XCTAssertTrue(Diary.links(in: "Смотри ![](a.jpg) вот").isEmpty)
+        XCTAssertEqual(Diary.links(in: "![](a.jpg)"), ["a.jpg"])
+        // Ряд в конце записи — часть текста, а не полоска: его поставили сами.
+        let d = Diary(body: "Текст\n" + row)
+        XCTAssertTrue(d.photos.isEmpty)
+        XCTAssertTrue(d.text.contains(row))
+    }
+
+    func testСнимокИзПолоскиВстаётРядом() {
+        let was = "Утро\n![](a.jpg)\nВечер"
+        let now = "Утро\n![](a.jpg)\n![](b.jpg)\nВечер"
+        XCTAssertEqual(DiaryEditor.besideDropped(now, was: was),
+                       "Утро\n![](a.jpg) ![](b.jpg)\nВечер")
+        // Под текстом — своей строкой, как прежде.
+        XCTAssertNil(DiaryEditor.besideDropped("Утро\n![](b.jpg)\n![](a.jpg)\nВечер", was: was))
+    }
 }

@@ -169,7 +169,7 @@ struct PhotoThumb: View {
             got = await Photo.poster(url, side: 160)
         } else {
             got = await Task.detached(priority: .userInitiated) {
-                Photo.load(url, side: 160)
+                Photo.load(url, side: 280)
             }.value
         }
         guard let got else { return }
@@ -523,7 +523,7 @@ struct PlanPhotoLine: View {
         .task(id: url) {
             guard image == nil, let url else { return }
             let got = await Task.detached(priority: .userInitiated) { () -> UIImage? in
-                guard let raw = Photo.load(url, side: 160) else { return nil }
+                guard let raw = Photo.load(url, side: 280) else { return nil }
                 return PhotoAttachment.frame(raw)
             }.value
             guard let got else { return }
