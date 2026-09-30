@@ -461,11 +461,17 @@ struct MapSearch: View {
             ForEach(results.prefix(8)) { found in
                 Button { choose(found) } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: found.mark.map(Glyph.image) ?? "mappin")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(found.mark == nil ? Look.inkSoft : .white)
-                            .frame(width: 24, height: 24)
-                            .background(found.mark == nil ? Color.clear : Look.inkSoft, in: Circle())
+                        Group {
+                            if let mark = found.mark, Glyph.isEmoji(mark) {
+                                Text(Glyph.image(mark)).font(.system(size: 13))
+                            } else {
+                                Image(systemName: found.mark.map(Glyph.image) ?? "mappin")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(found.mark == nil ? Look.inkSoft : .white)
+                            }
+                        }
+                        .frame(width: 24, height: 24)
+                        .background(found.mark == nil ? Color.clear : Look.inkSoft, in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
                             Text(found.title).font(Look.sans(14.5)).foregroundStyle(Look.ink)
                                 .lineLimit(1)
@@ -572,10 +578,16 @@ struct PlacesList: View {
             List(shown) { place in
                 Button { pick(place) } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: Glyph.image(place.mark))
-                            .foregroundStyle(.white)
-                            .frame(width: 26, height: 26)
-                            .background(Look.inkSoft, in: Circle())
+                        Group {
+                            if Glyph.isEmoji(place.mark) {
+                                Text(Glyph.image(place.mark)).font(.system(size: 14))
+                            } else {
+                                Image(systemName: Glyph.image(place.mark))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .frame(width: 26, height: 26)
+                        .background(Look.inkSoft, in: Circle())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(place.name).font(Look.sans(15)).foregroundStyle(Look.ink)
                             if !place.text.isEmpty {
@@ -763,7 +775,8 @@ struct NativeMap: UIViewRepresentable {
                 // светлой плашке — его не спутать с подписями самой карты
                 // (P234).
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "место")
-                let picture = PlaceLabel.draw(mark.place.name, symbol: Glyph.image(mark.place.mark))
+                let picture = PlaceLabel.draw(mark.place.name, symbol: Glyph.image(mark.place.mark),
+                                              emoji: Glyph.isEmoji(mark.place.mark))
                 view.image = picture
                 view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
                 view.displayPriority = .required
@@ -840,7 +853,7 @@ final class PlaceMark: NSObject, MKAnnotation {
 enum PlaceLabel {
     static let dot: CGFloat = 24
 
-    static func draw(_ name: String, symbol: String) -> UIImage {
+    static func draw(_ name: String, symbol: String, emoji: Bool = false) -> UIImage {
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
         let text = (name as NSString)
@@ -859,7 +872,15 @@ enum PlaceLabel {
             let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1, dy: 1))
             ring.lineWidth = 1.5
             ring.stroke()
-            if let glyph = UIImage(systemName: symbol,
+            // «Пираты» — эмодзи-флаг, не системный рисунок: рисуется
+            // текстом на месте значка, своих цветов не меняет (P336).
+            if emoji {
+                let mark = symbol as NSString
+                let markAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 13)]
+                let markSize = mark.size(withAttributes: markAttrs)
+                mark.draw(at: CGPoint(x: circle.midX - markSize.width / 2,
+                                      y: circle.midY - markSize.height / 2), withAttributes: markAttrs)
+            } else if let glyph = UIImage(systemName: symbol,
                                    withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))?
                 .withTintColor(.white, renderingMode: .alwaysOriginal) {
                 let g = glyph.size
@@ -952,12 +973,20 @@ struct PointPanel: View {
                     Button {
                         place.mark = glyph.name
                     } label: {
-                        Image(systemName: glyph.symbol)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(place.mark == glyph.name ? .white : Look.inkSoft)
-                            .frame(width: 32, height: 32)
-                            .background(place.mark == glyph.name ? Look.inkSoft : Look.planBg.opacity(0.85),
-                                        in: Circle())
+                        Group {
+                            // «Пираты» — эмодзи-флаг, не системный рисунок:
+                            // рисуется текстом, своих цветов не меняет (P336).
+                            if glyph.emoji {
+                                Text(glyph.symbol).font(.system(size: 15))
+                            } else {
+                                Image(systemName: glyph.symbol)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(place.mark == glyph.name ? .white : Look.inkSoft)
+                            }
+                        }
+                        .frame(width: 32, height: 32)
+                        .background(place.mark == glyph.name ? Look.inkSoft : Look.planBg.opacity(0.85),
+                                    in: Circle())
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)

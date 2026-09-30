@@ -73,22 +73,27 @@ enum Glyph {
     static let standard = "точка"
 
     /// По порядку — так они стоят в панели выбора (P335, список автора).
-    static let all: [(name: String, symbol: String)] = [
-        ("здоровье", "cross.case.fill"),
-        ("человек", "person.fill"),
-        ("вокзал", "tram.fill"),
-        ("покупки", "bag.fill"),
-        ("хорошее место", "hand.thumbsup.fill"),
-        ("плохое место", "hand.thumbsdown.fill"),
-        // Значка пиратов в системном наборе нет — ближе всего по смыслу
-        // парусник.
-        ("пираты", "sailboat.fill"),
-        ("личное", "lock.fill"),
+    /// `emoji` — «значок» на деле не имя системного рисунка, а буквально
+    /// символ юникода: рисованного черепа со скрещенными костями в system
+    /// symbols нет, а флаг с черепом — эмодзи «🏴‍☠️» (P336).
+    static let all: [(name: String, symbol: String, emoji: Bool)] = [
+        ("здоровье", "cross.case.fill", false),
+        ("человек", "person.fill", false),
+        ("вокзал", "tram.fill", false),
+        ("покупки", "bag.fill", false),
+        ("хорошее место", "hand.thumbsup.fill", false),
+        ("плохое место", "hand.thumbsdown.fill", false),
+        ("пираты", "🏴‍☠️", true),
+        ("личное", "lock.fill", false),
     ]
 
     static let symbol: [String: String] = Dictionary(uniqueKeysWithValues: all.map { ($0.name, $0.symbol) })
+    private static let emojiNames: Set<String> = Set(all.filter(\.emoji).map(\.name))
 
     static func image(_ name: String) -> String { symbol[name] ?? "circle.fill" }
+    /// Значок для `name` — не системный рисунок, а буквенный символ:
+    /// рисовать нужно текстом, не `Image(systemName:)`.
+    static func isEmoji(_ name: String) -> Bool { emojiNames.contains(name) }
 }
 
 /// Координаты словами — так, как они лежат в файлах.
