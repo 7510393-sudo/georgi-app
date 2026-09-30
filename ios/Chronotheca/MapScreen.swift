@@ -215,6 +215,11 @@ struct MapScreen: View {
         focus = MapFocus(center: at, meters: 1200)
         if let own = places.first(where: { near($0.coordinate, at) }) {
             choose(own)
+        } else if title.isEmpty {
+            // Координаты без названия — предложить назвать сразу, тем же
+            // способом, что и после долгого нажатия (P330).
+            selected = Place(name: "", coordinate: at)
+            withAnimation { panel = .naming }
         } else {
             selected = Place(name: title, coordinate: at)
             panel = nil
@@ -381,6 +386,17 @@ struct MapSearch: View {
         let at: CLLocationCoordinate2D
         /// Значок, если это своё место.
         var mark: String?
+        /// Настоящее ли это название, а не координаты, подставленные вместо
+        /// него, — по нему решаем, предлагать ли сразу назвать точку (P330).
+        var named = true
+    }
+
+    /// Отдать находку наружу и очистить строку — иначе следующая вставленная
+    /// координата оказывается поверх старого текста (P330).
+    private func choose(_ found: Found) {
+        query = ""
+        results = []
+        pick(found.named ? found.title : "", found.at)
     }
 
     var body: some View {
@@ -443,7 +459,7 @@ struct MapSearch: View {
                     .font(Look.sans(13)).foregroundStyle(Look.inkSoft).padding(12)
             }
             ForEach(results.prefix(8)) { found in
-                Button { pick(found.title, found.at) } label: {
+                Button { choose(found) } label: {
                     HStack(spacing: 10) {
                         Image(systemName: found.mark.map(Glyph.image) ?? "mappin")
                             .font(.system(size: 12, weight: .semibold))
@@ -478,7 +494,7 @@ struct MapSearch: View {
         if let f = Pasted.find(query) {
             results.insert(Found(title: f.title ?? Geo.text(f.at),
                                  subtitle: f.title == nil ? "Координаты" : Geo.text(f.at),
-                                 at: f.at), at: 0)
+                                 at: f.at, named: f.title != nil), at: 0)
         }
     }
 
@@ -496,7 +512,8 @@ struct MapSearch: View {
         // Координаты в любом виде — Google, Apple, градусы с минутами,
         // ссылка (P258).
         if let f = Pasted.find(text) {
-            return pick(f.title ?? Geo.text(f.at), f.at)
+            return choose(Found(title: f.title ?? Geo.text(f.at),
+                                subtitle: "", at: f.at, named: f.title != nil))
         }
         // Короткую ссылку надо открыть, чтобы узнать, куда она ведёт.
         if let link = Pasted.shortLink(in: text) {
@@ -505,7 +522,8 @@ struct MapSearch: View {
             Pasted.resolve(link) { f in
                 looking = false
                 if let f {
-                    pick(f.title ?? Geo.text(f.at), f.at)
+                    choose(Found(title: f.title ?? Geo.text(f.at),
+                                subtitle: "", at: f.at, named: f.title != nil))
                 } else {
                     nothing = true
                 }
