@@ -82,7 +82,11 @@ struct TornEdge: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
         p.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-        p.addLines(Self.teeth(in: rect))
+        // По одной точке, не addLines: у неё своя, отдельная от уже
+        // начатого пути точка старта — «улица без начала» получала левый
+        // низ сама по себе, а зубцы съезжали в свой кусок, и закрытие пути
+        // тянуло между ними одну косую черту через всю строку (P328).
+        for point in Self.teeth(in: rect) { p.addLine(to: point) }
         p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
         p.closeSubpath()
         return p
@@ -95,7 +99,11 @@ struct TornEdge: Shape {
 struct TornEdgeLine: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        p.addLines(TornEdge.teeth(in: rect))
+        let teeth = TornEdge.teeth(in: rect)
+        if let first = teeth.first {
+            p.move(to: first)
+            for point in teeth.dropFirst() { p.addLine(to: point) }
+        }
         return p
     }
 }
