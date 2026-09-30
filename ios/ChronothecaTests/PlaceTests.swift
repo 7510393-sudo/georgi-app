@@ -73,11 +73,11 @@ final class PlaceTests: XCTestCase {
     /// слово — обычная точка (P234).
     func testЗначокМестаВФайле() {
         var дача = Place(name: "Дача", coordinate: CLLocationCoordinate2D(latitude: 55, longitude: 37))
-        дача.mark = "дом"
+        дача.mark = "личное"
         let файл = дача.fileText
-        XCTAssertTrue(файл.contains("значок: дом"))
-        XCTAssertEqual(Place(text: файл, file: "Дача.md")?.mark, "дом")
-        let чужое = файл.replacingOccurrences(of: "значок: дом", with: "значок: ракета")
+        XCTAssertTrue(файл.contains("значок: личное"))
+        XCTAssertEqual(Place(text: файл, file: "Дача.md")?.mark, "личное")
+        let чужое = файл.replacingOccurrences(of: "значок: личное", with: "значок: ракета")
         XCTAssertEqual(Place(text: чужое, file: "Дача.md")?.mark, Glyph.standard)
     }
 
