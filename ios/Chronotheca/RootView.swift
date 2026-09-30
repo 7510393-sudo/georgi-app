@@ -62,6 +62,13 @@ struct RootView: View {
         return out
     }
 
+    /// Имя корзины, как его видно в «Файлах»: «Trash» или прежнее
+    /// «Корзина» (P353).
+    private var trashFolder: String {
+        guard let root = vault.root else { return Vault.trashName }
+        return Vault.trash(in: root).lastPathComponent
+    }
+
     private static func renameText(_ r: Rename.Report) -> String {
         var out = "Папок переименовано: \(r.folders). Записей поправлено: \(r.files)."
         if !r.stuck.isEmpty {
@@ -306,7 +313,7 @@ struct RootView: View {
             }
         } message: {
             Text((shell.tab == .diary ? "Запись" : "План") +
-                 " этого дня переедет в папку «\(vault.root.map { Vault.trash(in: $0).lastPathComponent } ?? Vault.trashName)». Снимки и голос останутся на месте. Вернуть можно в настройках.")
+                 " этого дня переедет в папку «\(trashFolder)». Снимки и голос останутся на месте. Вернуть можно в настройках.")
         }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {
