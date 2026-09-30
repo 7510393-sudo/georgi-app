@@ -72,16 +72,18 @@ struct Place: Identifiable, Equatable {
 enum Glyph {
     static let standard = "точка"
 
-    /// По порядку — так они стоят в панели выбора.
+    /// По порядку — так они стоят в панели выбора (P335, список автора).
     static let all: [(name: String, symbol: String)] = [
-        ("точка", "circle.fill"),
-        ("дом", "house.fill"),
-        ("сердце", "heart.fill"),
-        ("флаг", "flag.fill"),
-        ("звезда", "star.fill"),
-        ("кафе", "cup.and.saucer.fill"),
-        ("природа", "leaf.fill"),
-        ("снимок", "camera.fill"),
+        ("здоровье", "cross.case.fill"),
+        ("человек", "person.fill"),
+        ("вокзал", "tram.fill"),
+        ("покупки", "bag.fill"),
+        ("хорошее место", "hand.thumbsup.fill"),
+        ("плохое место", "hand.thumbsdown.fill"),
+        // Значка пиратов в системном наборе нет — ближе всего по смыслу
+        // парусник.
+        ("пираты", "sailboat.fill"),
+        ("личное", "lock.fill"),
     ]
 
     static let symbol: [String: String] = Dictionary(uniqueKeysWithValues: all.map { ($0.name, $0.symbol) })
