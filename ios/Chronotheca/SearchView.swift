@@ -23,12 +23,6 @@ struct SearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("Поиск")
-                .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(Look.ink)
-                .frame(maxWidth: .infinity)
-                .padding(.top, DayPage.airAbove)
-                .padding(.bottom, 10)
             field
             if archive.newestFirst.isEmpty {
                 message("Пока нечего искать.",
@@ -43,6 +37,9 @@ struct SearchView: View {
         .keyboardHeight($keyboard)
     }
 
+    /// Строка поиска стоит вместо заголовка «Поиск» — между уголками
+    /// шестерёнки и трёх точек, лупа слева на том же месте, что и на
+    /// карте (P334).
     private var field: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
@@ -56,10 +53,13 @@ struct SearchView: View {
                     .accessibilityLabel("Очистить")
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background(Look.chrome, in: RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal, 14)
+        // Тот же отступ от уголков, что у строки поиска на карте.
+        .padding(.leading, Corner.size + 8)
+        .padding(.trailing, Corner.size + 8)
+        .padding(.top, 8)
         .padding(.bottom, 10)
     }
 

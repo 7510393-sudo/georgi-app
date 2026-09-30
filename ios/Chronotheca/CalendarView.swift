@@ -27,11 +27,10 @@ struct CalendarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("Календарь")
-                .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(Look.ink)
-                .frame(maxWidth: .infinity)
-                .padding(.top, DayPage.airAbove)
+            // Заголовок «Календарь» заменён на название месяца/года и
+            // стрелки — тем же местом, что строка поиска на карте и на
+            // экране «Поиск» (P334).
+            nav(for: shown)
 
             HStack(spacing: 6) {
                 ForEach(Kind.allCases) { k in
@@ -76,12 +75,12 @@ struct CalendarView: View {
 
     /// Страница календаря целиком: название, сетка и список дел под ней.
     ///
-    /// Название едет вместе со страницей — оно к ней и относится. А список
-    /// дел показывается только на той странице, на которой человек стоит:
-    /// на соседнем месяце дела сегодняшнего дня — чужие.
+    /// Название и стрелки теперь в неподвижной верхней строке (P334), не
+    /// на самой странице. Список дел показывается только на той странице,
+    /// на которой человек стоит: на соседнем месяце дела сегодняшнего
+    /// дня — чужие.
     private func page(at date: Date, current: Bool) -> some View {
         VStack(spacing: 0) {
-            nav(for: date)
             ScrollView {
                 ScrollViewReader { proxy in
                     VStack(spacing: 0) {
@@ -159,8 +158,11 @@ struct CalendarView: View {
             arrow("›", lit: toward > 0, label: kind == .year ? "Следующий год"
                                                             : "Следующий месяц")
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 2)
+        // Отступ от уголков шестерёнки и точек — тот же, что у строки
+        // поиска на карте и на экране «Поиск» (P334).
+        .padding(.leading, Corner.size + 8)
+        .padding(.trailing, Corner.size + 8)
+        .padding(.top, DayPage.airAbove)
         .padding(.bottom, 8)
     }
 

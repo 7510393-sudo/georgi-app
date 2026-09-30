@@ -77,8 +77,22 @@ struct DayPage: View {
             // его низ. Оттого и видно, что это бумажка, подсунутая под
             // страницу, а не часть страницы (P140).
             heading
-            tabs
-            content
+            VStack(spacing: 0) {
+                tabs
+                content
+            }
+            // Режим изменений светится тем же синим, что и превью снимков
+            // (P203) — по всему краю правящейся вкладки И страницы под
+            // ней, а не только у корешка вкладки: линия одна и та же что
+            // под открытой, что под закрытой соседней вкладкой, потому что
+            // страница всегда одна на обе (P330, P334 — уточнение автора).
+            .overlay {
+                if live, store.editing(shell.tab) {
+                    TabBorder(radius: 10)
+                        .stroke(Look.glow, lineWidth: 3)
+                        .shadow(color: Look.glow.opacity(0.8), radius: 6)
+                }
+            }
             AttachBar(live: live, date: date)
         }
         .background(background)
@@ -142,7 +156,9 @@ struct DayPage: View {
     /// второй раз к той же записи нечестно, человек уже откликнулся (P136).
     /// Уходит не мигом, а угасая: резкое исчезновение читается как сбой.
     private func forget() {
-        withAnimation(.easeOut(duration: 0.35)) {
+        // Не гаснет резко, а тает в воздухе — полторы секунды (P334; было
+        // 0.35, автор просил дольше и мягче).
+        withAnimation(.easeOut(duration: 1.5)) {
             read = Remembered.adding(Vault.stamp(date), to: read)
         }
     }
@@ -343,16 +359,8 @@ struct DayPage: View {
                 // Верх и бока вкладки обведены заметной чертой: видно, какая
                 // вкладка лежит поверх другой (P246).
                 .overlay(TabBorder(radius: 10).stroke(Look.inkFaint, lineWidth: 1))
-                // Режим изменений светится тем же синим, что и превью
-                // снимков (P203) — видно, какую вкладку сейчас правят
-                // (P317). Толще — чтобы кромка была видна по всему верху
-                // вкладки, не только у корешка (P330).
-                .overlay {
-                    if wobbling {
-                        TabBorder(radius: 10).stroke(Look.glow, lineWidth: 3)
-                    }
-                }
-                .shadow(color: wobbling ? Look.glow.opacity(0.8) : .clear, radius: 6)
+                // Синее свечение режима изменений теперь по всей странице,
+                // а не только по этой кнопке (см. `body`, P334).
                 // Закрытая вкладка — лист, лежащий глубже: чуть притенена, и
                 // край открытой страницы проходит по её низу (P250).
                 .overlay {

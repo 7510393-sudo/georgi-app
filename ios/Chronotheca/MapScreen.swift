@@ -964,20 +964,26 @@ struct PointPanel: View {
                     .accessibilityLabel("Значок: " + glyph.name)
                 }
             }
+            // Полупрозрачные, с тонкой кромкой для очертаний — карту под
+            // ними немного видно, но поле всё равно читается (P334).
             TextField(Geo.text(place.coordinate), text: $place.name)
                 .focused($focused, equals: .name)
                 .submitLabel(.next)
                 .onSubmit { focused = .text }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+                .background(Look.planBg.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Look.inkFaint.opacity(0.6), lineWidth: 1))
             // Не выше шести строк; длиннее — прокручивается внутри.
             TextField("Что здесь было", text: $place.text, axis: .vertical)
                 .focused($focused, equals: .text)
                 .lineLimit(1...6)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 8))
+                .background(Look.planBg.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Look.inkFaint.opacity(0.6), lineWidth: 1))
             HStack {
                 Button("Отмена", action: cancel)
                 Spacer()
