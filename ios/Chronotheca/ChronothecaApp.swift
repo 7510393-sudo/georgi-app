@@ -8,6 +8,13 @@ struct ChronothecaApp: App {
     @StateObject private var archive: Archive
     @StateObject private var shell = Shell()
     @Environment(\.scenePhase) private var phase
+    /// Когда приложение ушло в фон — по этому решается, была ли пауза.
+    @State private var leftAt: Date?
+
+    /// После скольких минут в фоне приложение открывается заново, на
+    /// «Сегодня» (P346). Короче — нельзя: человек сбегал в Карты Google за
+    /// координатами и вернулся вставить их — его место должно остаться.
+    private static let pause: TimeInterval = 5 * 60
 
     init() {
         // Граница суток из настроек — до того, как откроется «сегодня».
@@ -35,8 +42,11 @@ struct ChronothecaApp: App {
             // Уходя с экрана — записать сразу. Запись идёт через полсекунды
             // после последней буквы, и смахнутое приложение этих полсекунд
             // может не дождаться: последние слова пропадали (решение P184).
-            case .inactive, .background:
+            case .inactive:
                 store.save()
+            case .background:
+                store.save()
+                leftAt = Date()
             // Вернувшись — сверить день с диском: пока приложение стояло,
             // запись могли поправить на Mac или на другом устройстве, и
             // старая копия не должна лечь поверх новой (P183).
@@ -45,6 +55,11 @@ struct ChronothecaApp: App {
                 archive.reload()
                 store.syncUpcomingReminders()
                 store.fetchWeatherIfNeeded()
+                // Долгая пауза — открыть заново, как после запуска (P346).
+                if let leftAt, Date().timeIntervalSince(leftAt) > Self.pause {
+                    shell.startOver(store)
+                }
+                leftAt = nil
             @unknown default:
                 break
             }

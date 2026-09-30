@@ -141,6 +141,38 @@ final class Shell: ObservableObject {
     /// исполняет полоска открытой страницы (P279).
     @Published var keyboardAsk: KeyboardBar.Ask?
 
+    /// Открыт ли ряд снимков галереи над полоской вложений. Лежит здесь, а
+    /// не в самой полоске: касание в любом другом месте — по странице, по
+    /// разделам внизу, по уголкам — сперва закрывает ряд и больше ничего
+    /// не делает (P344).
+    @Published var gallery = false
+
+    /// Сколько раз приложение открывали заново — при запуске и после долгой
+    /// паузы. Меняется — план встаёт на самый верх, дневник прокручивается
+    /// к концу записи с пустыми строками под ней (P346).
+    @Published var freshStart = 0
+
+    /// Вернулись после долгой паузы: всё открытое поверх убирается, на
+    /// экране «Сегодня», вкладка — та, что выбрана в настройках (P346).
+    func startOver(_ store: DayStore) {
+        drawer = nil
+        gallery = false
+        roller = nil
+        openedPhoto = nil
+        var still = Transaction()
+        still.disablesAnimations = true
+        withTransaction(still) {
+            showingMenu = false
+            menuPull = nil
+            showingSettings = false
+            settingsPull = nil
+            screen = .today
+        }
+        tab = UserDefaults.standard.string(forKey: Prefs.startTab) == "diary" ? .diary : .plan
+        if !store.isToday { store.go(to: DayStore.today()) }
+        freshStart += 1
+    }
+
     /// Просьба календарю вернуться к нынешнему месяцу или году, перелистнув
     /// страницы. Поднимается из меню календаря; выполняет сам календарь.
     @Published var calendarHome = false

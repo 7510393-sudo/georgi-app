@@ -285,6 +285,9 @@ struct RootView: View {
             // С какой вкладки открывать — из настроек (P249).
             if UserDefaults.standard.string(forKey: Prefs.startTab) == "diary" { shell.tab = .diary }
             shell.openRequestedScreen(store)
+            // Первое открытие: план — сверху, дневник — к концу записи с
+            // пустыми строками под ней (P346).
+            shell.freshStart += 1
         }
     }
 
@@ -307,6 +310,7 @@ struct RootView: View {
     private var corners: some View {
         HStack(alignment: .top) {
             Button {
+                if closeDrawer() { return }
                 // Открытая клавиатура и строка над ней не должны мешать
                 // листку настроек — убираются вниз, как при касании по
                 // точке на карте (P309).
@@ -326,6 +330,7 @@ struct RootView: View {
             Spacer(minLength: 0)
 
             Button {
+                if closeDrawer() { return }
                 hideKeyboard()
                 shell.pullOut(settings: false)
             } label: {
@@ -502,6 +507,9 @@ struct RootView: View {
                          system: Bool = false) -> some View {
         let on = shell.screen == target
         return Button {
+            // Открыта шторка «Подробности» — первое касание только убирает
+            // её, второе уже открывает раздел (P342).
+            if closeDrawer() { return }
             store.prune()
             store.save()
             // Второе касание по открытому разделу поднимает его и
@@ -547,6 +555,22 @@ struct RootView: View {
             .frame(maxWidth: .infinity)
             .foregroundStyle(on ? Look.accent : Look.kraftInk)
         }
+    }
+
+    /// Убрать шторку «Подробности» или ряд снимков галереи, если открыты.
+    /// Касание мимо них — по разделам внизу или по уголкам — сперва
+    /// закрывает их, как и касание по странице (P342, P344). `true` —
+    /// что-то убрали, больше ничего делать не надо.
+    private func closeDrawer() -> Bool {
+        if shell.gallery {
+            withAnimation(.easeOut(duration: 0.2)) { shell.gallery = false }
+            return true
+        }
+        guard shell.drawer != nil else { return false }
+        hideKeyboard()
+        store.save()
+        withAnimation(.easeOut(duration: 0.26)) { shell.drawer = nil }
+        return true
     }
 
     /// Открыть раздел: плашка надвигается на книгу, книга остаётся на месте.

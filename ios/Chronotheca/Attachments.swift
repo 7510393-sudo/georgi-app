@@ -34,6 +34,13 @@ struct Recorder: View {
                     .font(Look.mono(34))
                     .foregroundStyle(started == nil ? Look.inkFaint : Look.ink)
             }
+            if started != nil {
+                Text("Пишет и при погасшем экране. Квадрат — закончить и сохранить.")
+                    .font(Look.sans(12.5))
+                    .foregroundStyle(Look.inkSoft)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
 
             GeometryReader { geo in
                 Button(action: toggle) {
@@ -64,6 +71,8 @@ struct Recorder: View {
             Button("Отмена") {
                 recorder?.stop()
                 recorder?.deleteRecording()
+                recorder = nil
+                started = nil
                 cancel()
             }
             .font(Look.sans(15))
@@ -71,6 +80,18 @@ struct Recorder: View {
         .padding(.top, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Look.chrome)
+        // Пока идёт запись, панель не закрывается ни касанием мимо, ни
+        // смахиванием вниз — только квадратом или «Отменой» (P343).
+        .interactiveDismissDisabled(started != nil)
+        // Если панель всё же закрылась посреди записи — записанное не
+        // выбрасывается, а ложится в «Аудио», как по квадрату (P343).
+        .onDisappear {
+            guard let recorder, started != nil else { return }
+            recorder.stop()
+            try? AVAudioSession.sharedInstance().setActive(false)
+            started = nil
+            done(recorder.url)
+        }
     }
 
     static func clock(_ seconds: TimeInterval) -> String {

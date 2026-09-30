@@ -77,20 +77,26 @@ struct DayPage: View {
             // его низ. Оттого и видно, что это бумажка, подсунутая под
             // страницу, а не часть страницы (P140).
             heading
+                .overlay { galleryCatcher }
             VStack(spacing: 0) {
                 tabs
                 content
             }
+            .overlay { galleryCatcher }
             // Режим изменений светится тем же синим, что и превью снимков
-            // (P203) — по всему краю правящейся вкладки И страницы под
-            // ней, а не только у корешка вкладки: линия одна и та же что
-            // под открытой, что под закрытой соседней вкладкой, потому что
-            // страница всегда одна на обе (P330, P334 — уточнение автора).
-            .overlay {
-                if live, store.editing(shell.tab) {
-                    TabBorder(radius: 10)
-                        .stroke(Look.glow, lineWidth: 3)
-                        .shadow(color: Look.glow.opacity(0.8), radius: 6)
+            // (P203). Линия обводит правящуюся вкладку и её страницу одной
+            // фигурой, как папку: вверх по корешку вкладки, поверх неё, вниз
+            // — и дальше по верхнему краю страницы под закрытой соседней
+            // вкладкой, отсекая её. Так видно, что правится только эта
+            // вкладка (P341, уточнение автора к P334).
+            .overlayPreferenceValue(OpenTabKey.self) { anchor in
+                GeometryReader { geo in
+                    if live, store.editing(shell.tab), let anchor {
+                        FolderOutline(tab: geo[anchor], radius: 10, inset: 1.5)
+                            .stroke(Look.glow, style: StrokeStyle(lineWidth: 3, lineJoin: .round))
+                            .shadow(color: Look.glow.opacity(0.8), radius: 6)
+                            .allowsHitTesting(false)
+                    }
                 }
             }
             AttachBar(live: live, date: date)
@@ -103,6 +109,19 @@ struct DayPage: View {
             if let (day, ago) = archive.remembered(for: date) {
                 RememberSheet(day: day, ago: ago, open: $remembering)
             }
+        }
+    }
+
+    /// Пока открыт ряд снимков галереи, касание по странице только
+    /// закрывает его — курсор не ставится, клавиатура не поднимается;
+    /// второе касание уже делает своё (P344).
+    @ViewBuilder private var galleryCatcher: some View {
+        if live && shell.gallery {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) { shell.gallery = false }
+                }
         }
     }
 
@@ -335,6 +354,9 @@ struct DayPage: View {
         let on = shell.tab == which
         let page = Ru.tint(date)
         let wobbling = live && store.editing(which)
+        // Правится открытая вкладка — закрытая уходит в тень заметнее:
+        // на первом плане только то, что правят (P341).
+        let behind = live && !on && store.editing(shell.tab)
         return Button {
             guard live else { return }
             // Качающиеся буквы открытой вкладки — выход из режима
@@ -347,9 +369,10 @@ struct DayPage: View {
             store.save()
             shell.tab = which
         } label: {
+            // Качающиеся буквы — того же синего, что и рамка (P341).
             WobblyTitle(text: which.rawValue.uppercased(), wobbling: wobbling,
                         font: Look.sans(13, weight: on || wobbling ? .semibold : .regular),
-                        color: wobbling ? Look.accent : (on ? Look.ink : Look.inkFaint))
+                        color: wobbling ? Look.glow : (on ? Look.ink : Look.inkFaint))
                 .frame(maxWidth: .infinity)
                 .padding(.top, 10)
                 .padding(.bottom, 11)
@@ -359,14 +382,14 @@ struct DayPage: View {
                 // Верх и бока вкладки обведены заметной чертой: видно, какая
                 // вкладка лежит поверх другой (P246).
                 .overlay(TabBorder(radius: 10).stroke(Look.inkFaint, lineWidth: 1))
-                // Синее свечение режима изменений теперь по всей странице,
-                // а не только по этой кнопке (см. `body`, P334).
+                // Синее свечение режима изменений — одной фигурой по вкладке
+                // и странице (см. `body`, P341).
                 // Закрытая вкладка — лист, лежащий глубже: чуть притенена, и
                 // край открытой страницы проходит по её низу (P250).
                 .overlay {
                     if !on {
                         UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10)
-                            .fill(Color.black.opacity(0.045))
+                            .fill(Color.black.opacity(behind ? 0.13 : 0.045))
                             .allowsHitTesting(false)
                     }
                 }
@@ -376,6 +399,8 @@ struct DayPage: View {
         }
         .offset(y: on ? 1 : 0)
         .zIndex(on ? 1 : 0)
+        // Где стоит открытая вкладка — по ней рисуется рамка правки (P341).
+        .anchorPreference(key: OpenTabKey.self, value: .bounds) { on ? $0 : nil }
     }
 
     // MARK: - Содержимое
@@ -572,7 +597,6 @@ struct AttachBar: View {
     @State private var picked: [PhotosPickerItem] = []
     @State private var recording = false
     @State private var browsing = false
-    @State private var gallery = false
     @State private var shooting = false
     /// Где по ширине была нажата кнопка «аудио» — кнопка записи в панели
     /// встаёт ровно над ней (P330).
@@ -609,16 +633,16 @@ struct AttachBar: View {
         // Ряд галереи лежит над полоской, поверх страницы: страница под
         // ним не сдвигается (P113, P114).
         .overlay(alignment: .top) {
-            if gallery {
-                GalleryRow(add: addFromGallery, more: {
-                    gallery = false
+            if live && shell.gallery {
+                GalleryRow(day: date, add: addFromGallery, more: {
+                    shell.gallery = false
                     choosePhotos()
                 })
                 .offset(y: -GalleryRow.height)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .onChange(of: shell.tab) { _, _ in gallery = false }
+        .onChange(of: shell.tab) { _, _ in if live { shell.gallery = false } }
         .onChange(of: shell.keyboardAsk) { _, ask in
             guard live, let ask else { return }
             shell.keyboardAsk = nil
@@ -634,7 +658,7 @@ struct AttachBar: View {
             case .files: open { browsing = true }
             }
         }
-        .onChange(of: store.date) { _, _ in gallery = false }
+        .onChange(of: store.date) { _, _ in if live { shell.gallery = false } }
         // Системное окно галереи: приложению не нужно разрешение на всю
         // галерею — оно получает только те снимки, которые выбрал человек.
         // Снимки и видео вместе, без предела на число (P214).
@@ -648,7 +672,7 @@ struct AttachBar: View {
         }
         .sheet(isPresented: $recording) {
             Recorder(done: keepVoice, cancel: { recording = false }, align: recordAlign)
-                .presentationDetents([.height(360)])
+                .presentationDetents([.height(400)])
         }
         .fullScreenCover(isPresented: $shooting) {
             CameraPicker { data in
@@ -671,6 +695,8 @@ struct AttachBar: View {
     /// (P203). В закрытый день — нельзя, и об этом говорится.
     private func open(_ show: () -> Void) {
         guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
+        // Камера, голос или файлы — ряд снимков больше не нужен (P344).
+        if shell.gallery { shell.gallery = false }
         show()
     }
 
@@ -724,7 +750,7 @@ struct AttachBar: View {
 
     private func toggleGallery() {
         guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
-        withAnimation(.easeOut(duration: 0.2)) { gallery.toggle() }
+        withAnimation(.easeOut(duration: 0.2)) { shell.gallery.toggle() }
     }
 
     /// Снимок из ряда галереи — в полоску этой вкладки, как из окна
@@ -920,6 +946,50 @@ private struct ElbowGap: Shape {
         var p = Path()
         p.addRect(CGRect(x: start, y: rect.minY, width: max(0, from - start), height: rect.height))
         p.addRect(CGRect(x: to, y: rect.minY, width: max(0, end - to), height: rect.height))
+        return p
+    }
+}
+
+/// Где стоит открытая вкладка — её рамка на странице передаётся наверх,
+/// к рамке режима изменений (P341).
+private struct OpenTabKey: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? = nil
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
+    }
+}
+
+/// Контур папки: страница с выступающей над ней вкладкой (P341).
+///
+/// Снизу вверх по левому краю страницы, по её верхнему краю до вкладки,
+/// вокруг вкладки — вверх, поверху со скруглениями, вниз — и дальше по
+/// верхнему краю страницы до правого края и вниз. Закрытая соседняя
+/// вкладка остаётся за линией, над страницей. Низ не обводится: страница
+/// продолжается в строку вложений.
+struct FolderOutline: Shape {
+    let tab: CGRect
+    let radius: CGFloat
+    /// Отступ от краёв, чтобы линию не срезал край экрана.
+    var inset: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        let left = rect.minX + inset, right = rect.maxX - inset
+        let seam = tab.maxY
+        let tabLeft = max(left, tab.minX), tabRight = min(right, tab.maxX)
+        let top = tab.minY + inset
+        var p = Path()
+        p.move(to: CGPoint(x: left, y: rect.maxY))
+        p.addLine(to: CGPoint(x: left, y: seam))
+        p.addLine(to: CGPoint(x: tabLeft, y: seam))
+        p.addLine(to: CGPoint(x: tabLeft, y: top + radius))
+        p.addArc(center: CGPoint(x: tabLeft + radius, y: top + radius), radius: radius,
+                 startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        p.addLine(to: CGPoint(x: tabRight - radius, y: top))
+        p.addArc(center: CGPoint(x: tabRight - radius, y: top + radius), radius: radius,
+                 startAngle: .degrees(270), endAngle: .degrees(0), clockwise: false)
+        p.addLine(to: CGPoint(x: tabRight, y: seam))
+        p.addLine(to: CGPoint(x: right, y: seam))
+        p.addLine(to: CGPoint(x: right, y: rect.maxY))
         return p
     }
 }

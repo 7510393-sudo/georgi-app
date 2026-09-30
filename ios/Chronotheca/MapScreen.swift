@@ -37,6 +37,11 @@ struct MapScreen: View {
     /// Насколько клавиатура закрывает низ карты — кнопки внизу поднимаются
     /// над ней, когда открыта панель «Точка» с полем названия (P306).
     @State private var keyboard: CGFloat = 0
+    /// Сколько от низа карты до низа экрана — там нижняя строка разделов.
+    /// Клавиатура закрывает и её, так что кнопки поднимаются не на всю
+    /// высоту клавиатуры, а только на то, что она закрывает у самой карты
+    /// (P340).
+    @State private var belowMap: CGFloat = 0
 
     final class Seen { var region: MKCoordinateRegion? }
     /// Когда поставили последнюю точку долгим нажатием.
@@ -77,13 +82,19 @@ struct MapScreen: View {
         .animation(.easeOut(duration: 0.15), value: panel)
         .overlay(alignment: .bottom) { bar }
         .background(Look.chrome)
+        .background(GeometryReader { geo in
+            let bottom = geo.frame(in: .global).maxY
+            Color.clear
+                .onAppear { belowMap = max(0, UIScreen.main.bounds.height - bottom) }
+                .onChange(of: bottom) { _, now in
+                    belowMap = max(0, UIScreen.main.bounds.height - now)
+                }
+        })
         // Нижние разделы приложения клавиатура не поднимает нигде (P113) —
         // значит, и кнопки карты сами должны подняться над ней, пока
-        // открыто поле названия новой точки, иначе до них не дотянуться
-        // (P306). Кнопки стоят вплотную к физическому низу экрана, а не
-        // внутри отступа безопасной полосы, как строка набора в дневнике
-        // и плане, — потому и высота нужна до самого края, без вычета
-        // полосы (P308).
+        // открыто поле названия новой точки (P306). Высота клавиатуры
+        // считается до самого края экрана (P308), а низ карты стоит выше
+        // края — на нижней строке разделов; её высота вычитается (P340).
         .keyboardHeight($keyboard, toScreenEdge: true)
         .confirmationDialog("Удалить точку?", isPresented: $asking, titleVisibility: .visible) {
             Button("Удалить точку", role: .destructive) { remove() }
@@ -160,9 +171,8 @@ struct MapScreen: View {
         .buttonStyle(.plain)
         .padding(.horizontal, 4)
         // Клавиатура сама не поднимает низ приложения (P113) — над ней
-        // кнопки поднимает этот отступ, иначе поле названия новой точки
-        // закрывает их совсем (P306).
-        .padding(.bottom, keyboard > 0 ? keyboard : 6)
+        // кнопки поднимает этот отступ, вплотную к её верху (P306, P340).
+        .padding(.bottom, keyboard > 0 ? max(6, keyboard - belowMap + 6) : 6)
     }
 
     /// Точка не выбрана — кнопка не пропадает, а бледнеет и объясняет, чего
@@ -282,10 +292,15 @@ struct MapScreen: View {
         hideKeyboard()
         withAnimation { panel = nil }
         var place = given
-        // Без названия точка в «Места» не сохраняется (P284): она нужна
-        // только для текста, где ляжет булавкой.
-        if place.name.trimmingCharacters(in: .whitespaces).isEmpty {
-            place.name = Geo.text(place.coordinate)
+        let unnamed = place.name.trimmingCharacters(in: .whitespaces).isEmpty
+        if unnamed { place.name = Geo.text(place.coordinate) }
+        // Совсем пустая новая точка — без названия, без записи и без своего
+        // значка — в «Места» не сохраняется (P284): она нужна только для
+        // текста, где ляжет булавкой. Выбран значок или что-то написано —
+        // это уже своё место, оно сохраняется (P340).
+        let bare = place.file == nil && unnamed && place.mark == Glyph.standard
+            && place.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if bare {
             selected = place
             return
         }
@@ -962,6 +977,7 @@ struct PointPanel: View {
 
     private enum Field { case name, text }
     @FocusState private var focused: Field?
+    @State private var copied = false
 
     /// Шесть в ряд — те же по счёту, что помещались одной строкой
     /// прежде (P338).
@@ -999,15 +1015,15 @@ struct PointPanel: View {
                     .accessibilityLabel("Значок: " + glyph.name)
                 }
             }
-            // Полупрозрачные, с тонкой кромкой для очертаний — карту под
-            // ними немного видно, но поле всё равно читается (P334).
+            // Поля — плотные, чтобы текст читался; прозрачна сама плашка
+            // вокруг них (P340).
             TextField(Geo.text(place.coordinate), text: $place.name)
                 .focused($focused, equals: .name)
                 .submitLabel(.next)
                 .onSubmit { focused = .text }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(Look.planBg.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+                .background(Look.planBg, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Look.inkFaint.opacity(0.6), lineWidth: 1))
             // Не выше шести строк; длиннее — прокручивается внутри.
@@ -1016,12 +1032,29 @@ struct PointPanel: View {
                 .lineLimit(1...6)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(Look.planBg.opacity(0.4), in: RoundedRectangle(cornerRadius: 8))
+                .background(Look.planBg, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Look.inkFaint.opacity(0.6), lineWidth: 1))
             HStack {
                 Button("Отмена", action: cancel)
-                Spacer()
+                Spacer(minLength: 6)
+                // Координаты точки — касание кладёт их в буфер обмена
+                // (P340).
+                Button {
+                    PlaceActions.copy(place.coordinate)
+                    Feel.light()
+                    copied = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+                } label: {
+                    Text(copied ? "скопировано" : Geo.text(place.coordinate))
+                        .font(Look.mono(12))
+                        .foregroundStyle(Look.inkSoft)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Скопировать координаты")
+                Spacer(minLength: 6)
                 Button("Готово") { done(place) }.fontWeight(.semibold)
             }
             .font(Look.sans(15))
@@ -1029,7 +1062,11 @@ struct PointPanel: View {
         }
         .font(Look.sans(15))
         .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        // Плашка полупрозрачная — сквозь неё видно карту, — с тонкой
+        // кромкой, чтобы очертания были чёткими (P340).
+        .background(Look.chrome.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14)
+            .strokeBorder(Look.inkSoft.opacity(0.6), lineWidth: 1))
         .padding(.horizontal, 10)
         .padding(.top, Corner.size + 2)
         .onAppear {

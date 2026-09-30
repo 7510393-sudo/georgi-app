@@ -46,6 +46,10 @@ struct DiaryEditor: UIViewRepresentable {
     /// там, где поле меряется по тексту.
     var minHeight: CGFloat = 0
 
+    /// Пустое место под текстом внутри самого поля: касание туда ставит
+    /// курсор в конец записи — открыл, коснулся, пишешь (P346).
+    var room: CGFloat = 0
+
     /// Где лежит снимок, на который ссылается строка `![](…)`. Задано —
     /// значит поле рисует такие строки картинками (решение P204).
     var resolve: ((String) -> URL?)?
@@ -199,7 +203,8 @@ struct DiaryEditor: UIViewRepresentable {
         guard grows, let width = proposal.width, width > 0 else { return nil }
         let занято = uiView.sizeThatFits(CGSize(width: width,
                                                 height: .greatestFiniteMagnitude))
-        return CGSize(width: width, height: max(minHeight, занято.height.rounded(.up)))
+        return CGSize(width: width,
+                      height: max(minHeight, занято.height.rounded(.up) + room))
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }

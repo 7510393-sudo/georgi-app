@@ -326,10 +326,15 @@ struct PlanScaffold<Content: View>: View {
     /// Что несёт палец, взяв превью из полоски (P205).
     var drag: ((Int) -> String)?
     var onMovePhoto: ((Int, Int) -> Void)?
+    /// Приложение вернулось после паузы — список снова с самого верха
+    /// (P346). Меняется — прокрутить вверх; у соседних страниц не меняется.
+    var home = 0
 
     @ViewBuilder let content: () -> Content
 
     @State private var keyboard: CGFloat = 0
+
+    private static var top: String { "план-верх" }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -338,6 +343,7 @@ struct PlanScaffold<Content: View>: View {
             ScrollView {
                 ScrollViewReader { proxy in
                     LazyVStack(alignment: .leading, spacing: 0) {
+                        Color.clear.frame(height: 0).id(Self.top)
                         content()
                     }
                     // Место под клавиатуру. Без него строка, в которую
@@ -346,6 +352,7 @@ struct PlanScaffold<Content: View>: View {
                     .padding(.bottom, keyboard)
                     .onChange(of: watching) { _, id in show(id, proxy) }
                     .onChange(of: keyboard) { _, _ in show(watching, proxy) }
+                    .onChange(of: home) { _, _ in proxy.scrollTo(Self.top, anchor: .top) }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -485,7 +492,8 @@ struct PlanView: View {
                          // Снимки плана к делам не носят — только
                          // переставляют вдоль полоски (P210).
                          onMovePhoto: store.editing(.plan) && store.canEditPlan
-                             ? { store.movePhoto(from: $0, to: $1, in: .plan) } : nil) {
+                             ? { store.movePhoto(from: $0, to: $1, in: .plan) } : nil,
+                         home: shell.freshStart) {
                 if store.tasks.isEmpty {
                     PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
                 } else {
@@ -795,8 +803,8 @@ private struct Carry: ViewModifier {
     }
 }
 
-/// Точка в плане — та же кнопочка, что в дневнике: название и координаты
-/// бледным цветом; касание открывает карту на ней (P213). В режиме
+/// Точка в плане — та же кнопочка, что в дневнике: булавка и название, без
+/// координат (P345); касание открывает карту на ней (P213). В режиме
 /// изменений — со светящейся рамкой (P241).
 struct PlanPointLine: View {
     let point: GeoPoint
@@ -829,7 +837,9 @@ struct PointChipView: View {
     let point: GeoPoint
 
     var body: some View {
-        let picture = PointChip.draw(point.label)
+        // Как в тексте дневника: булавка, у точки с названием — и название,
+        // без координат; координаты — на карте, куда ведёт касание (P345).
+        let picture = PointChip.mark(glowing: false, title: point.title)
         Image(uiImage: picture)
             .frame(width: picture.size.width, height: picture.size.height)
     }

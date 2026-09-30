@@ -92,7 +92,17 @@ enum Glyph {
         ("везение", "sparkles", false),
     ]
 
-    static let symbol: [String: String] = Dictionary(uniqueKeysWithValues: all.map { ($0.name, $0.symbol) })
+    /// Прежние значки (P234): в панели выбора их больше нет, но места,
+    /// которые ими уже отмечены, рисуются по-прежнему и при сохранении
+    /// значок в файле не теряют (P340).
+    private static let former: [String: String] = [
+        "точка": "circle.fill", "дом": "house.fill", "сердце": "heart.fill",
+        "флаг": "flag.fill", "звезда": "star.fill", "кафе": "cup.and.saucer.fill",
+        "природа": "leaf.fill", "снимок": "camera.fill",
+    ]
+
+    static let symbol: [String: String] = former.merging(all.map { ($0.name, $0.symbol) },
+                                                         uniquingKeysWith: { _, new in new })
     private static let emojiNames: Set<String> = Set(all.filter(\.emoji).map(\.name))
 
     static func image(_ name: String) -> String { symbol[name] ?? "circle.fill" }

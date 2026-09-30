@@ -57,7 +57,8 @@ struct DiaryView: View {
                 shell.say("Снимок вернулся в полоску")
             },
             undo: store.diaryBack.isEmpty || !store.canEditDiary ? nil : { store.undoDiary() },
-            redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() })
+            redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() },
+            home: shell.freshStart)
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.diaryText) { _, _ in
@@ -109,6 +110,14 @@ struct DiaryPage: View {
     /// Шаг назад и вперёд (P261) — там же, где в плане (P312).
     var undo: (() -> Void)?
     var redo: (() -> Void)?
+    /// Приложение открыли заново или вернулись после паузы — запись
+    /// прокручивается к концу, под ней пять пустых строк: коснулся — и
+    /// пишешь (P346). У соседних страниц не меняется.
+    var home = 0
+
+    /// Для какого открытия запись уже прокручена к концу.
+    private static var homed = -1
+    private static var end: String { "дневник-конец" }
 
     private enum Field: Hashable { case title }
     @FocusState private var focused: Field?
@@ -158,6 +167,7 @@ struct DiaryPage: View {
 
     private var page: some View {
         ScrollView {
+          ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 0) {
                 if inCloud {
                     Text("Запись этого дня ещё загружается из iCloud. Как только придёт, она появится здесь.")
@@ -175,16 +185,28 @@ struct DiaryPage: View {
                 if Prefs.askOn, !asked.isEmpty { askBlock }
                 titleField
                 textField
+                Color.clear.frame(height: 1).id(Self.end)
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
             // Место под клавиатуру: без него страницу некуда поднять, и
             // последние строки записи остаются под ней (решение P175).
             .padding(.bottom, 20 + keyboard)
+            .onAppear { goHome(proxy) }
+            .onChange(of: home) { _, _ in goHome(proxy) }
+          }
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color.clear)
         .keyboardHeight($keyboard)
+    }
+
+    /// Прокрутить к концу записи — один раз на каждое открытие
+    /// приложения (P346). Соседние страницы (`home == 0`) не трогаются.
+    private func goHome(_ proxy: ScrollViewProxy) {
+        guard home > 0, home != Self.homed else { return }
+        Self.homed = home
+        DispatchQueue.main.async { proxy.scrollTo(Self.end, anchor: .bottom) }
     }
 
     private var asked: [PlanRow] {
@@ -290,7 +312,9 @@ struct DiaryPage: View {
                     editable: editable, caretToEnd: $caretToEnd,
                     startEditing: $toText,
                     onFocus: { if onFocusText() { caretToEnd = true } },
-                    grows: true, minHeight: 320, resolve: resolve,
+                    // Под записью всегда пять пустых строк — место, куда
+                    // коснуться, чтобы продолжить (P346).
+                    grows: true, minHeight: 320, room: size * 1.5 * 5, resolve: resolve,
                     onOpenPhoto: onOpenInline, onReturnPhoto: onReturnPhoto,
                     onOpenPoint: onOpenPoint, onCaret: onCaret,
                     moving: glowing && editable, onEditing: onEditing,
