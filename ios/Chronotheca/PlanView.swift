@@ -545,7 +545,10 @@ struct PlanView: View {
                                   shell.showPoint($0)
                               },
                               onMove: store.editing(.plan) && store.canEditPlan
-                                  ? { store.moveLine(id, by: $0) } : nil)
+                                  ? { store.moveLine(id, by: $0) } : nil,
+                              onDelete: store.editing(.plan) && store.canEditPlan
+                                  ? { withAnimation(.easeOut(duration: 0.2)) { store.delete(id) } }
+                                  : nil)
             }
         }
         stat
@@ -755,18 +758,40 @@ struct PlanExtraLine: View {
     /// делу; она встаёт на столько строк, на сколько её протащили (P226,
     /// P241). Пока режим включён, точка светится, как превью снимков.
     var onMove: ((Int) -> Void)?
+    /// Режим изменений: крестик справа, как у дела, — строка уходит из
+    /// плана (P352). Сам снимок остаётся в папке, запомненное место — на
+    /// карте: из плана уходит только ссылка на них.
+    var onDelete: (() -> Void)?
 
     @State private var dragged: CGFloat = 0
 
     var body: some View {
         if let link = Diary.picture(in: line), Diary.kind(of: link) == .photo {
             PlanPhotoLine(url: resolve?(link)) { open?(resolve?(link)) }
+                .overlay(alignment: .trailing) { cross }
                 .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove))
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         } else if let point = Geo.point(in: line) {
             PlanPointLine(point: point, open: openPoint, glowing: onMove != nil)
+                .overlay(alignment: .trailing) { cross }
                 .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove))
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
+        }
+    }
+
+    /// Тот же крестик, что у дела в режиме изменений (P158).
+    @ViewBuilder private var cross: some View {
+        if let onDelete {
+            Button(action: onDelete) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17))
+                    .foregroundStyle(Look.inkFaint)
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 10)
+            .accessibilityLabel("Убрать из плана")
         }
     }
 }

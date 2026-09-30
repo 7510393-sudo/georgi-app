@@ -110,6 +110,11 @@ struct MapScreen: View {
             Button("Отмена", role: .cancel) { }
         }
         .onAppear(perform: begin)
+        // Карта ещё не ушла с экрана, а человек уже коснулся точки в
+        // тексте, — плашка открывается и тогда.
+        .onChange(of: shell.mapFocus) { _, point in
+            if let point { show(point) }
+        }
         // Из меню карты: все места разом и список мест (P249).
         .onChange(of: shell.mapShowAll) { _, _ in showAll() }
         .sheet(isPresented: $shell.mapList) {
@@ -203,11 +208,7 @@ struct MapScreen: View {
         places = Places.all(in: vault)
         archive.reload()
         if let point = shell.mapFocus {
-            shell.mapFocus = nil
-            let known = places.first { near($0.coordinate, point.at) }
-            selected = known ?? Place(name: point.title, coordinate: point.at)
-            panel = .cloud
-            focus = MapFocus(center: point.at, meters: 1500)
+            show(point)
         } else {
             // Где человек сейчас (P281, P294).
             Locator.shared.current { location in
@@ -215,6 +216,16 @@ struct MapScreen: View {
                 focus = MapFocus(center: at, meters: 2000)
             }
         }
+    }
+
+    /// Точка из плана или дневника: карта на ней, и сразу плашка — название,
+    /// что там было, координаты (P213, P352).
+    private func show(_ point: GeoPoint) {
+        shell.mapFocus = nil
+        let known = places.first { near($0.coordinate, point.at) }
+        selected = known ?? Place(name: point.title, coordinate: point.at)
+        panel = .cloud
+        focus = MapFocus(center: point.at, meters: 1500)
     }
 
     /// Нашли в поиске: своё место — его облачко; чужое место или
@@ -1082,17 +1093,26 @@ struct PlaceCloud: View {
     let place: Place
     let edit: () -> Void
 
+    @State private var copied = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text(place.name.isEmpty ? Geo.text(place.coordinate) : place.name)
-                    .font(Look.serif(17, weight: .semibold))
-                    .foregroundStyle(Look.ink)
-                    .lineLimit(2)
+                if place.name.isEmpty {
+                    coordinates
+                } else {
+                    Text(place.name)
+                        .font(Look.serif(17, weight: .semibold))
+                        .foregroundStyle(Look.ink)
+                        .lineLimit(2)
+                }
                 Spacer()
                 Button(place.file == nil ? "Назвать" : "Изменить", action: edit)
                     .font(Look.sans(14))
             }
+            // Координаты видны всегда: в плане и дневнике их нет, они здесь
+            // (P352). Касание копирует; их же можно выделить пальцем.
+            if !place.name.isEmpty { coordinates }
             if !place.text.isEmpty {
                 // Не выше шести строк; длиннее — прокручивается пальцем.
                 ViewThatFits(in: .vertical) {
@@ -1110,6 +1130,30 @@ struct PlaceCloud: View {
             .strokeBorder(Look.inkFaint.opacity(0.7), lineWidth: 1))
         .padding(.horizontal, 10)
         .padding(.top, Corner.size + 2)
+    }
+
+    private var coordinates: some View {
+        Button {
+            PlaceActions.copy(place.coordinate)
+            Feel.light()
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+        } label: {
+            HStack(spacing: 5) {
+                Text(Geo.text(place.coordinate))
+                    .font(Look.sans(14).monospacedDigit())
+                    .foregroundStyle(Look.inkSoft)
+                    .textSelection(.enabled)
+                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Look.accent)
+                if copied {
+                    Text("скопировано").font(Look.sans(12)).foregroundStyle(Look.accent)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Координаты " + Geo.text(place.coordinate) + ", скопировать")
     }
 
     private var words: some View {

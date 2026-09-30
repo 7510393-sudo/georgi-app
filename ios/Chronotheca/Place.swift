@@ -150,6 +150,12 @@ struct GeoPoint {
     var label: String { title.isEmpty ? Geo.text(at) : title + " · " + Geo.text(at) }
 }
 
+extension GeoPoint: Equatable {
+    static func == (a: GeoPoint, b: GeoPoint) -> Bool {
+        a.title == b.title && a.at.latitude == b.at.latitude && a.at.longitude == b.at.longitude
+    }
+}
+
 extension Geo {
 
     private static let titled = try! NSRegularExpression(
