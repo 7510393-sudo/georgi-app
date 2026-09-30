@@ -50,7 +50,7 @@ struct RememberCloud: View {
             .frame(width: width, height: height)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Помнишь? Запись того же числа год назад")
+        .accessibilityLabel(T("Помнишь? Запись того же числа год назад", "Remember? The entry from this day a year ago"))
     }
 }
 
@@ -116,7 +116,7 @@ struct RememberSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Закрыть") { open = false }
+                    Button(T("Закрыть", "Close")) { open = false }
                 }
             }
         }
@@ -162,11 +162,11 @@ enum Ago {
 
     var title: String {
         switch self {
-        case .years(1): return "ГОД НАЗАД"
-        case .years(let n) where n < 5: return "\(n) ГОДА НАЗАД"
-        case .years(let n): return "\(n) ЛЕТ НАЗАД"
-        case .month: return "МЕСЯЦ НАЗАД"
-        case .week: return "НЕДЕЛЮ НАЗАД"
+        case .years(1): return T("ГОД НАЗАД", "A YEAR AGO")
+        case .years(let n) where n < 5: return T("\(n) ГОДА НАЗАД", "\(n) YEARS AGO")
+        case .years(let n): return T("\(n) ЛЕТ НАЗАД", "\(n) YEARS AGO")
+        case .month: return T("МЕСЯЦ НАЗАД", "A MONTH AGO")
+        case .week: return T("НЕДЕЛЮ НАЗАД", "A WEEK AGO")
         }
     }
 }

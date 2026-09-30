@@ -9,6 +9,15 @@ struct CalendarView: View {
     enum Kind: String, CaseIterable, Identifiable {
         case year = "Год", month = "Месяц", list = "Список"
         var id: String { rawValue }
+        /// Название на языке приложения; `rawValue` хранится в настройках
+        /// и не меняется (P355).
+        var title: String {
+            switch self {
+            case .year: return T("Год", "Year")
+            case .month: return T("Месяц", "Month")
+            case .list: return T("Список", "List")
+            }
+        }
     }
 
     @EnvironmentObject private var store: DayStore
@@ -35,7 +44,7 @@ struct CalendarView: View {
             HStack(spacing: 6) {
                 ForEach(Kind.allCases) { k in
                     Button { choose(k) } label: {
-                        Text(k.rawValue)
+                        Text(k.title)
                             .font(Look.sans(13))
                             .foregroundStyle(kind == k ? Look.planBg : Look.inkSoft)
                             .frame(maxWidth: .infinity)
@@ -124,17 +133,19 @@ struct CalendarView: View {
         // кнопка не сработала.
         guard steps != 0 else {
             if asked {
-                shell.say(kind == .year ? "Это и есть нынешний год" : "Это и есть нынешний месяц")
+                shell.say(kind == .year ? T("Это и есть нынешний год", "This is the current year")
+                                        : T("Это и есть нынешний месяц", "This is the current month"))
             }
             return
         }
         plan = wayHome(steps)
-        shell.say(kind == .year ? "Вернулись на этот год" : "Вернулись на этот месяц")
+        shell.say(kind == .year ? T("Вернулись на этот год", "Back to this year")
+                                : T("Вернулись на этот месяц", "Back to this month"))
     }
 
     private func homeHint(_ k: Kind) -> String {
-        k == .year ? "Нажмите ещё раз, чтобы вернуться на этот год"
-                   : "Нажмите ещё раз, чтобы вернуться на этот месяц"
+        k == .year ? T("Нажмите ещё раз, чтобы вернуться на этот год", "Tap again to go back to this year")
+                   : T("Нажмите ещё раз, чтобы вернуться на этот месяц", "Tap again to go back to this month")
     }
 
     private func step(_ offset: Int) -> Date { shift(shown, by: offset) }
@@ -147,16 +158,16 @@ struct CalendarView: View {
     private func nav(for date: Date) -> some View {
         let toward = towardToday(from: date)
         return HStack {
-            arrow("‹", lit: toward < 0, label: kind == .year ? "Предыдущий год"
-                                                            : "Предыдущий месяц")
+            arrow("‹", lit: toward < 0, label: kind == .year ? T("Предыдущий год", "Previous year")
+                                                            : T("Предыдущий месяц", "Previous month"))
             Spacer()
             Text(kind == .year ? String(cal.component(.year, from: date))
                                : Ru.monthTitle(date))
                 .font(Look.sans(16, weight: .semibold))
                 .foregroundStyle(Look.ink)
             Spacer()
-            arrow("›", lit: toward > 0, label: kind == .year ? "Следующий год"
-                                                            : "Следующий месяц")
+            arrow("›", lit: toward > 0, label: kind == .year ? T("Следующий год", "Next year")
+                                                            : T("Следующий месяц", "Next month"))
         }
         // Отступ от уголков шестерёнки и точек — тот же, что у строки
         // поиска на карте и на экране «Поиск» (P334).
@@ -189,7 +200,7 @@ struct CalendarView: View {
                 shown = shift(shown, by: step)
                 selected = nil
             }
-            .accessibilityLabel(lit ? label + ". Долгое нажатие — к сегодняшнему дню"
+            .accessibilityLabel(lit ? label + T(". Долгое нажатие — к сегодняшнему дню", ". Long press for today")
                                     : label)
     }
 
@@ -339,7 +350,7 @@ struct CalendarView: View {
 
     /// Заголовок недели — с выбранного первого дня (P290).
     private var header: [String] {
-        cal.firstWeekday == 1 ? ["вс"] + Array(Ru.weekHeader.dropLast()) : Ru.weekHeader
+        cal.firstWeekday == 1 ? [Ru.weekHeader.last ?? ""] + Array(Ru.weekHeader.dropLast()) : Ru.weekHeader
     }
 
     /// Цвет клетки дня — как выбрано в настройках (P290): по удалённости от
@@ -360,13 +371,13 @@ struct CalendarView: View {
                         .font(Look.sans(13, weight: .medium))
                         .foregroundStyle(Look.ink)
                     Spacer()
-                    Button("Открыть день →") { open(date) }
+                    Button(T("Открыть день →", "Open day →")) { open(date) }
                         .font(Look.sans(13))
                         .foregroundStyle(Look.accent)
                 }
                 let tasks = archive.tasks(stamp)
                 if tasks.isEmpty {
-                    Text("Дел на этот день нет.")
+                    Text(T("Дел на этот день нет.", "No tasks on this day."))
                         .font(Look.sans(13))
                         .foregroundStyle(Look.inkFaint)
                 } else {
@@ -386,7 +397,7 @@ struct CalendarView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
         } else {
-            Text("Нажмите дату, чтобы увидеть дела этого дня.")
+            Text(T("Нажмите дату, чтобы увидеть дела этого дня.", "Tap a date to see its tasks."))
                 .font(Look.sans(13))
                 .foregroundStyle(Look.inkFaint)
                 .padding(.horizontal, 20)
@@ -438,7 +449,7 @@ struct CalendarView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     if tasks.isEmpty {
-                        Text(open ? "Дел нет. Нажмите ещё раз, чтобы открыть день →" : "—")
+                        Text(open ? T("Дел нет. Нажмите ещё раз, чтобы открыть день →", "No tasks. Tap again to open the day →") : "—")
                             .font(Look.sans(13))
                             .foregroundStyle(Look.inkFaint)
                     } else {
@@ -456,12 +467,12 @@ struct CalendarView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         if !open && tasks.count > 3 {
-                            Text("ещё \(tasks.count - 3)")
+                            Text(T("ещё \(tasks.count - 3)", "\(tasks.count - 3) more"))
                                 .font(Look.sans(11))
                                 .foregroundStyle(Look.inkFaint)
                         }
                         if open {
-                            Text("Нажмите ещё раз, чтобы открыть день →")
+                            Text(T("Нажмите ещё раз, чтобы открыть день →", "Tap again to open the day →"))
                                 .font(Look.sans(11))
                                 .foregroundStyle(Look.inkFaint)
                         }

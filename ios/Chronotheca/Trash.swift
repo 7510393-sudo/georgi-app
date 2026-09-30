@@ -109,7 +109,7 @@ enum Trash {
                 .first { !$0.isEmpty && !$0.hasPrefix("#") && !$0.hasPrefix("![") }
             if let words { return String(words.prefix(80)) }
         }
-        return "Пустой день"
+        return T("Пустой день", "Empty day")
     }
 
     private static func move(_ from: URL, to: URL) -> Bool {
@@ -141,7 +141,8 @@ struct TrashSheet: View {
         NavigationStack {
             List {
                 if items.isEmpty {
-                    Text("Корзина пуста. День убирают в корзину из меню страницы — три точки.")
+                    Text(T("Корзина пуста. День убирают в корзину из меню страницы — три точки.",
+                           "The trash is empty. A day goes to the trash from the page menu — the three dots."))
                         .font(Look.sans(14))
                         .foregroundStyle(Look.inkSoft)
                 }
@@ -154,16 +155,17 @@ struct TrashSheet: View {
                             .foregroundStyle(Look.inkSoft)
                             .lineLimit(2)
                         HStack(spacing: 18) {
-                            Button("Вернуть") {
+                            Button(T("Вернуть", "Restore")) {
                                 if Trash.restore(item, in: vault) {
                                     Feel.done()
                                     reload()
                                     changed()
                                 } else {
-                                    note = "На место этого дня уже есть новая запись. Файл остался в корзине — перенесите нужное руками в «Файлах»."
+                                    note = T("На место этого дня уже есть новая запись. Файл остался в корзине — перенесите нужное руками в «Файлах».",
+                                         "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files.")
                                 }
                             }
-                            Button("Удалить навсегда", role: .destructive) { doomed = item }
+                            Button(T("Удалить навсегда", "Delete forever"), role: .destructive) { doomed = item }
                         }
                         .buttonStyle(.borderless)
                         .font(Look.sans(14))
@@ -171,23 +173,24 @@ struct TrashSheet: View {
                     .padding(.vertical, 4)
                 }
             }
-            .navigationTitle("Корзина")
+            .navigationTitle(T("Корзина", "Trash"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("Готово") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(T("Готово", "Done")) { dismiss() } }
             }
-            .confirmationDialog("Удалить день навсегда?", isPresented: Binding(
+            .confirmationDialog(T("Удалить день навсегда?", "Delete the day forever?"), isPresented: Binding(
                 get: { doomed != nil }, set: { if !$0 { doomed = nil } }), titleVisibility: .visible) {
-                Button("Удалить навсегда", role: .destructive) {
+                Button(T("Удалить навсегда", "Delete forever"), role: .destructive) {
                     if let doomed { Trash.purge(doomed) }
                     doomed = nil
                     reload()
                 }
             } message: {
-                Text("Файлы плана и дневника этого дня будут стёрты. Снимки и голос дня останутся в своих папках.")
+                Text(T("Файлы плана и дневника этого дня будут стёрты. Снимки и голос дня останутся в своих папках.",
+                   "The plan and diary files of this day will be erased. Its photos and voice notes stay in their folders."))
             }
-            .alert("Не вернулось", isPresented: Binding(get: { note != nil }, set: { if !$0 { note = nil } })) {
-                Button("Понятно") { note = nil }
+            .alert(T("Не вернулось", "Not restored"), isPresented: Binding(get: { note != nil }, set: { if !$0 { note = nil } })) {
+                Button(T("Понятно", "OK")) { note = nil }
             } message: {
                 Text(note ?? "")
             }

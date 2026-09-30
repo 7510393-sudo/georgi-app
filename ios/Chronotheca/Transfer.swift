@@ -165,7 +165,7 @@ enum Transfer {
 struct MovingView: View {
 
     let progress: Transfer.Progress
-    var title = "Переношу записи"
+    var title = T("Переношу записи", "Moving your entries")
 
     var body: some View {
         ZStack {
@@ -179,11 +179,12 @@ struct MovingView: View {
                              total: Double(max(progress.total, 1)))
                     .frame(width: 220)
 
-                Text("\(progress.done) из \(progress.total)")
+                Text(T("\(progress.done) из \(progress.total)", "\(progress.done) of \(progress.total)"))
                     .font(Look.mono(13))
                     .foregroundStyle(Look.inkSoft)
 
-                Text("Не закрывайте приложение. Если перенос всё же\nоборвётся, ничего не пропадёт: его можно продолжить.")
+                Text(T("Не закрывайте приложение. Если перенос всё же\nоборвётся, ничего не пропадёт: его можно продолжить.",
+                        "Please keep the app open. If it is interrupted,\nnothing is lost: you can continue it."))
                     .font(Look.sans(12.5))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Look.inkFaint)

@@ -42,7 +42,7 @@ struct PlanTitle: UIViewRepresentable {
     /// Нажат «Ввод»: ввод переходит к делу ниже.
     var onNext: () -> Void = {}
 
-    static let placeholder = "Без названия"
+    static var placeholder: String { T("Без названия", "Untitled") }
     /// На ступень крупнее прежних 15 и растёт с настройкой (P274).
     static var size: CGFloat { 16 * Prefs.textScale }
     static let spacing: CGFloat = 3

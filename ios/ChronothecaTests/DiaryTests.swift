@@ -113,11 +113,15 @@ final class DiaryTests: XCTestCase {
     }
 
     func testНапоминаниеЖивётВСтрокеДела() {
-        let rows = Plan.rows(from: "- [ ] 09:00 Отвезти документы (напомнить 08:30)")
+        let rows = Plan.rows(from: "- [ ] 09:00 Отвезти документы (remind 08:30)")
         XCTAssertEqual(rows.first?.text, "Отвезти документы")
         XCTAssertEqual(rows.first?.bell, "08:30")
         XCTAssertEqual(Plan.body(from: rows),
-                       "- [ ] 09:00 Отвезти документы (напомнить 08:30)")
+                       "- [ ] 09:00 Отвезти документы (remind 08:30)")
+        // Записанное до P355 — по-русски — читается так же.
+        let прежние = Plan.rows(from: "- [ ] 09:00 Отвезти документы (напомнить 08:30)")
+        XCTAssertEqual(прежние.first?.text, "Отвезти документы")
+        XCTAssertEqual(прежние.first?.bell, "08:30")
     }
 
     // MARK: - Фотографии (P200)

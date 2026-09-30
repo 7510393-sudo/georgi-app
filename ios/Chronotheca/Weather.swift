@@ -34,35 +34,38 @@ enum WeatherNote {
         // включено право WeatherKit, но не включена служба WeatherKit —
         // это две разные галочки на двух вкладках.
         if ns.domain.contains("JWTAuthenticator") {
-            return "Apple не пускает приложение к погоде. На developer.apple.com → "
+            return T("Apple не пускает приложение к погоде. На developer.apple.com → "
                 + "Identifiers → com.kobiashvili.diary должна стоять галочка WeatherKit "
-                + "и на вкладке Capabilities, и на вкладке App Services. " + code
+                + "и на вкладке Capabilities, и на вкладке App Services. ",
+                "Apple does not let the app get the weather. On developer.apple.com → "
+                + "Identifiers → com.kobiashvili.diary, WeatherKit must be ticked on both "
+                + "the Capabilities and the App Services tabs. ") + code
         }
         return ns.localizedDescription + " " + code
     }
 
-    /// Состояние неба по-русски: система отвечает на языке телефона, а
-    /// запись должна читаться одинаково на любом.
+    /// Состояние неба на языке приложения (P355): система отвечает на
+    /// языке телефона, а запись пишется на языке дневника.
     static func words(_ c: WeatherCondition) -> String {
         switch c {
-        case .clear: return "ясно"
-        case .mostlyClear: return "почти ясно"
-        case .partlyCloudy: return "переменная облачность"
-        case .mostlyCloudy, .cloudy: return "облачно"
-        case .foggy: return "туман"
-        case .haze, .smoky: return "дымка"
-        case .drizzle: return "морось"
-        case .rain, .sunShowers: return "дождь"
-        case .heavyRain: return "ливень"
-        case .snow, .flurries, .sunFlurries: return "снег"
-        case .heavySnow, .blizzard, .blowingSnow: return "метель"
-        case .sleet, .freezingRain, .freezingDrizzle, .wintryMix: return "мокрый снег"
-        case .hail: return "град"
+        case .clear: return T("ясно", "clear")
+        case .mostlyClear: return T("почти ясно", "mostly clear")
+        case .partlyCloudy: return T("переменная облачность", "partly cloudy")
+        case .mostlyCloudy, .cloudy: return T("облачно", "cloudy")
+        case .foggy: return T("туман", "fog")
+        case .haze, .smoky: return T("дымка", "haze")
+        case .drizzle: return T("морось", "drizzle")
+        case .rain, .sunShowers: return T("дождь", "rain")
+        case .heavyRain: return T("ливень", "heavy rain")
+        case .snow, .flurries, .sunFlurries: return T("снег", "snow")
+        case .heavySnow, .blizzard, .blowingSnow: return T("метель", "blizzard")
+        case .sleet, .freezingRain, .freezingDrizzle, .wintryMix: return T("мокрый снег", "sleet")
+        case .hail: return T("град", "hail")
         case .thunderstorms, .isolatedThunderstorms, .scatteredThunderstorms,
-             .strongStorms: return "гроза"
-        case .windy, .breezy: return "ветрено"
-        case .hot: return "жара"
-        case .frigid: return "мороз"
+             .strongStorms: return T("гроза", "thunderstorm")
+        case .windy, .breezy: return T("ветрено", "windy")
+        case .hot: return T("жара", "hot")
+        case .frigid: return T("мороз", "frigid")
         default: return c.description.lowercased()
         }
     }

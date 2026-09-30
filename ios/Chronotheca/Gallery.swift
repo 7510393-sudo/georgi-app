@@ -43,7 +43,7 @@ struct GalleryRow: View {
                     VStack(spacing: 3) {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.system(size: 17))
-                        Text("все фото").font(Look.sans(9.5))
+                        Text(T("все фото", "all photos")).font(Look.sans(9.5))
                     }
                     .foregroundStyle(Look.accent)
                     .frame(width: PhotoStrip.side, height: PhotoStrip.side)
@@ -52,12 +52,14 @@ struct GalleryRow: View {
                 }
                 .buttonStyle(.plain)
                 if status == .denied || status == .restricted {
-                    Text("Галерея закрыта для приложения: Настройки iPhone → Хронотека → Фото")
+                    Text(T("Галерея закрыта для приложения: Настройки iPhone → Хронотека → Фото",
+                           "The app has no access to Photos: iPhone Settings → Chronotheca → Photos"))
                         .font(Look.sans(12))
                         .foregroundStyle(Look.inkSoft)
                         .frame(width: 230, alignment: .leading)
                 } else if loaded && assets.isEmpty {
-                    Text("За этот день снимков в галерее нет. Другие — в «все фото».")
+                    Text(T("За этот день снимков в галерее нет. Другие — в «все фото».",
+                           "No photos from this day. Others are in “all photos”."))
                         .font(Look.sans(12))
                         .foregroundStyle(Look.inkSoft)
                         .frame(width: 230, alignment: .leading)
@@ -87,8 +89,8 @@ struct GalleryRow: View {
                             Feel.light()
                             looking = Looked(asset: asset)
                         }
-                        .accessibilityLabel(asset.mediaType == .video ? "Видео из галереи"
-                                                                      : "Снимок из галереи")
+                        .accessibilityLabel(asset.mediaType == .video ? T("Видео из галереи", "Video from Photos")
+                                                                      : T("Снимок из галереи", "Photo from Photos"))
                         .accessibilityAddTraits(.isButton)
                 }
             }
@@ -242,7 +244,7 @@ struct GalleryPreview: View {
         .safeAreaInset(edge: .bottom) {
             HStack {
                 Button(action: cancel) {
-                    Text("Отменить")
+                    Text(T("Отменить", "Cancel"))
                         .font(Look.sans(17))
                         .padding(.horizontal, 22)
                         .padding(.vertical, 12)
@@ -250,7 +252,7 @@ struct GalleryPreview: View {
                 }
                 Spacer()
                 Button(action: add) {
-                    Text(already ? "Уже отмечен" : "Добавить")
+                    Text(already ? T("Уже отмечен", "Selected") : T("Добавить", "Add"))
                         .font(Look.sans(17, weight: .semibold))
                         .padding(.horizontal, 22)
                         .padding(.vertical, 12)

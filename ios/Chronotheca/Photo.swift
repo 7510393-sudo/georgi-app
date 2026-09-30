@@ -237,10 +237,10 @@ struct PhotoStrip: View {
         case .video:
             PhotoThumb(url: photos[i], video: true)
         case .audio:
-            FileTile(icon: "waveform", label: "голос")
+            FileTile(icon: "waveform", label: T("голос", "voice"))
         case .file:
             FileTile(icon: "doc.text",
-                     label: photos[i].map { $0.pathExtension.lowercased() } ?? "файл")
+                     label: photos[i].map { $0.pathExtension.lowercased() } ?? T("файл", "file"))
         }
     }
 
@@ -264,9 +264,9 @@ struct PhotoStrip: View {
                 start: { carrying = i }))
             .onDrop(of: glowing && onMove != nil ? [UTType.plainText, Carried.strip] : [],
                     delegate: StripDrop(index: i, carrying: $carrying, move: onMove))
-            .accessibilityLabel(kind(i) == .photo ? "Фотография \(i + 1)"
-                                : kind(i) == .video ? "Видео"
-                                : kind(i) == .audio ? "Голосовая запись" : "Файл")
+            .accessibilityLabel(kind(i) == .photo ? T("Фотография \(i + 1)", "Photo \(i + 1)")
+                                : kind(i) == .video ? T("Видео", "Video")
+                                : kind(i) == .audio ? T("Голосовая запись", "Voice note") : T("Файл", "File"))
     }
 
     private func more(_ n: Int, from i: Int) -> some View {
@@ -278,7 +278,7 @@ struct PhotoStrip: View {
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
-            .accessibilityLabel("Ещё фотографий: \(n)")
+            .accessibilityLabel(T("Ещё фотографий: \(n)", "More photos: \(n)"))
     }
 }
 
@@ -406,14 +406,21 @@ struct PhotoViewer: View {
                 Photo.load(url, side: 1400)
             }.value
         }
-        .confirmationDialog("Убрать фотографию из записи?", isPresented: $asking,
-                            titleVisibility: .visible) {
-            Button("Убрать из записи", role: .destructive) { onRemove?() }
+        .confirmationDialog(T("Убрать фотографию из записи?", "Remove the photo from the entry?"),
+                            isPresented: $asking, titleVisibility: .visible) {
+            Button(T("Убрать из записи", "Remove from entry"), role: .destructive) { onRemove?() }
         } message: {
-            // Имя папки — как её видно в «Файлах»: «Photos» или прежнее
-            // «Фотографии» (P353).
-            Text("Файл останется в папке «\(url?.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent ?? "Photos")» — удалить его можно в «Файлах».")
+            Text(stays)
         }
+    }
+
+    /// Имя папки — как её видно в «Файлах»: «Photos» или прежнее
+    /// «Фотографии» (P353).
+    private var stays: String {
+        let folder = url?.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
+            ?? "Photos"
+        return T("Файл останется в папке «" + folder + "» — удалить его можно в «Файлах».",
+                 "The file stays in the “" + folder + "” folder — you can delete it in Files.")
     }
 
     /// Свайп вниз убирает снимок, как в «Фото» Apple (P270): потянул
@@ -469,7 +476,7 @@ struct PhotoViewer: View {
 
     private var bar: some View {
         HStack {
-            Button("Готово", action: close)
+            Button(T("Готово", "Done"), action: close)
                 .fontWeight(.semibold)
             Spacer()
             if let url {
@@ -477,16 +484,16 @@ struct PhotoViewer: View {
             }
             if let onReturn {
                 Button(action: onReturn) {
-                    Label("В полоску", systemImage: "arrow.down.to.line")
+                    Label(T("В полоску", "To the strip"), systemImage: "arrow.down.to.line")
                         .font(.system(size: 15))
                 }
                 .padding(.leading, 18)
-                .accessibilityLabel("Вернуть в полоску внизу страницы")
+                .accessibilityLabel(T("Вернуть в полоску внизу страницы", "Move back to the strip at the bottom"))
             }
             if onRemove != nil {
                 Button { asking = true } label: { Image(systemName: "trash") }
                     .padding(.leading, 18)
-                    .accessibilityLabel("Убрать из записи")
+                    .accessibilityLabel(T("Убрать из записи", "Remove from entry"))
             }
         }
         .foregroundStyle(.white)
@@ -532,7 +539,7 @@ struct PlanPhotoLine: View {
             Photo.cache.setObject(got, forKey: PhotoAttachment.key(url))
             image = got
         }
-        .accessibilityLabel("Фотография")
+        .accessibilityLabel(T("Фотография", "Photo"))
     }
 }
 

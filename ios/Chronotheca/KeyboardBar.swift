@@ -60,11 +60,11 @@ struct KeyboardBarView: View {
             // Тот же порядок, что и в полоске без клавиатуры: камера
             // слева, дальше фото, аудио, файлы — у каждой кнопки своё
             // место, оно не должно меняться (P310).
-            key("camera", "камера") { KeyboardBar.ask(.camera) }
-            key("photo", "фото") { KeyboardBar.ask(.photo) }
-            key("waveform", "аудио") { KeyboardBar.ask(.audio) }
-            key("doc", "файлы") { KeyboardBar.ask(.files) }
-            key("keyboard.chevron.compact.down", "убрать") {
+            key("camera", T("камера", "camera")) { KeyboardBar.ask(.camera) }
+            key("photo", T("фото", "photo")) { KeyboardBar.ask(.photo) }
+            key("waveform", T("аудио", "audio")) { KeyboardBar.ask(.audio) }
+            key("doc", T("файлы", "files")) { KeyboardBar.ask(.files) }
+            key("keyboard.chevron.compact.down", T("убрать", "hide")) {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                                 to: nil, from: nil, for: nil)
             }

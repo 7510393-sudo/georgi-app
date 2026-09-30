@@ -205,7 +205,8 @@ struct PlanRowLine: View {
         }
         .buttonStyle(.plain)
         .allowsHitTesting(onBell != nil)
-        .accessibilityLabel(row.bell.map { "Напомнить в \($0)" } ?? "Напоминание не назначено")
+        .accessibilityLabel(row.bell.map { T("Напомнить в \($0)", "Remind at \($0)") }
+                                ?? T("Напоминание не назначено", "No reminder"))
     }
 
     /// Название — одно и то же поле и на открытой странице, и на соседних:
@@ -236,7 +237,7 @@ struct PlanRowLine: View {
                     .frame(width: 34, height: 34)
                     .contentShape(Rectangle())
             }
-            .accessibilityLabel("Удалить")
+            .accessibilityLabel(T("Удалить", "Delete"))
         }
         .font(.system(size: 17))
         .buttonStyle(.plain)
@@ -262,7 +263,7 @@ struct PlanRowLine: View {
         .buttonStyle(.plain)
         .allowsHitTesting(onDetails != nil)
         .opacity(editMode ? 0.25 : 1)
-        .accessibilityLabel("Подробности")
+        .accessibilityLabel(T("Подробности", "Details"))
     }
 }
 
@@ -400,15 +401,15 @@ struct PlanHead: View {
                     .minimumScaleFactor(0.8)
             }
             if isPast {
-                Text("день закрыт")
+                Text(T("день закрыт", "day closed"))
                     .font(Look.mono(11))
                     .tracking(0.45)
                     .foregroundStyle(Look.inkFaint)
             }
             Spacer()
             // Шаг назад и шаг вперёд — слева от «плюса» (P261).
-            step("arrow.uturn.backward", undo, "Шаг назад")
-            step("arrow.uturn.forward", redo, "Шаг вперёд")
+            step("arrow.uturn.backward", undo, T("Шаг назад", "Undo"))
+            step("arrow.uturn.forward", redo, T("Шаг вперёд", "Redo"))
             Text("+")
                 .font(.system(size: 21))
                 .foregroundStyle(Look.accent)
@@ -416,7 +417,7 @@ struct PlanHead: View {
                 .overlay(Circle().strokeBorder(Look.rule))
                 .opacity(dimmed ? 0.3 : 1)
                 .onTapGesture { add?() }
-                .accessibilityLabel("Новое дело")
+                .accessibilityLabel(T("Новое дело", "New task"))
         }
         .padding(.leading, 14)
         .padding(.trailing, 12)
@@ -655,7 +656,8 @@ struct PlanView: View {
 
     private func toggle(_ row: Binding<PlanRow>) {
         guard store.canEditPlan else {
-            return shell.say("День закрыт. Отметить задним числом — через режим изменений.")
+            return shell.say(T("День закрыт. Отметить задним числом — через режим изменений.",
+                                 "This day is closed. To tick it off afterwards, use Edit mode."))
         }
         row.wrappedValue.done.toggle()
         // Сделано — довольный толчок; снято — лёгкий (P267).
@@ -711,11 +713,11 @@ struct PlanEmpty: View {
     var body: some View {
         VStack(spacing: 4) {
             if inCloud {
-                Text("План этого дня ещё загружается из iCloud.")
-                Text("Как только придёт, он появится здесь.")
+                Text(T("План этого дня ещё загружается из iCloud.", "This plan is still downloading from iCloud."))
+                Text(T("Как только придёт, он появится здесь.", "It will appear here as soon as it arrives."))
             } else {
-                Text("На этот день ничего не запланировано.")
-                if !isPast { Text("Нажмите «+», чтобы вписать дело.") }
+                Text(T("На этот день ничего не запланировано.", "Nothing planned for this day."))
+                if !isPast { Text(T("Нажмите «+», чтобы вписать дело.", "Tap “+” to add a task.")) }
             }
         }
         .font(Look.sans(14))
@@ -734,7 +736,7 @@ struct PlanStat: View {
     let done: Int
 
     var body: some View {
-        Text("Запланировано \(planned) · сделано \(done)")
+        Text(T("Запланировано \(planned) · сделано \(done)", "Planned \(planned) · done \(done)"))
             .font(Look.mono(11.5))
             .tracking(0.35)
             .foregroundStyle(Look.inkFaint)
@@ -791,7 +793,7 @@ struct PlanExtraLine: View {
             }
             .buttonStyle(.plain)
             .padding(.trailing, 10)
-            .accessibilityLabel("Убрать из плана")
+            .accessibilityLabel(T("Убрать из плана", "Remove from plan"))
         }
     }
 }
@@ -821,7 +823,7 @@ private struct Carry: ViewModifier {
                         dragged = 0
                         if steps != 0 { move?(steps) }
                     })
-                .accessibilityHint("Долгое нажатие — перетащить к другому делу")
+                .accessibilityHint(T("Долгое нажатие — перетащить к другому делу", "Long press to drag next to another task"))
         } else {
             content
         }
@@ -848,7 +850,7 @@ struct PlanPointLine: View {
                 .contentShape(Capsule())
                 .onTapGesture { open?(point) }
                 .accessibilityAddTraits(.isButton)
-                .accessibilityLabel("Точка на карте: " + point.label)
+                .accessibilityLabel(T("Точка на карте: ", "Place on the map: ") + point.label)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
@@ -880,11 +882,13 @@ struct EditBanner: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(tab == .plan ? "Режим изменений: правка текста, порядок, удаление."
-                              : "Режим изменений: снимки можно брать и переносить.")
+            Text(tab == .plan ? T("Режим изменений: правка текста, порядок, удаление.",
+                                  "Edit mode: change text, reorder, delete.")
+                              : T("Режим изменений: снимки можно брать и переносить.",
+                                    "Edit mode: photos can be picked up and moved."))
                 .font(Look.sans(12.5))
             Spacer(minLength: 0)
-            Button("Выйти") {
+            Button(T("Выйти", "Done")) {
                 withAnimation(.easeOut(duration: 0.2)) { store.setEditing(tab, false) }
             }
             .font(Look.sans(12.5, weight: .semibold))

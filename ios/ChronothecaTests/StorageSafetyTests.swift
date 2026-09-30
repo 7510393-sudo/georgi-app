@@ -57,7 +57,9 @@ final class StorageSafetyTests: XCTestCase {
     private func asides(near url: URL) -> [URL] {
         let all = (try? fm.contentsOfDirectory(at: url.deletingLastPathComponent(),
                                                includingPropertiesForKeys: nil)) ?? []
-        return all.filter { $0.lastPathComponent.contains("вторая версия") }
+        return all.filter {
+            $0.lastPathComponent.contains("вторая версия") || $0.lastPathComponent.contains("second version")
+        }
     }
 
     // MARK: - Беда 1: файл ещё в iCloud (P182)

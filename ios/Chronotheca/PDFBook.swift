@@ -60,7 +60,7 @@ enum PDFBook {
 
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = [kCGPDFContextTitle as String: title(o),
-                               kCGPDFContextCreator as String: "Хронотека"]
+                               kCGPDFContextCreator as String: T("Хронотека", "Chronotheca")]
         let data = UIGraphicsPDFRenderer(bounds: page, format: format).pdfData { ctx in
             cover(o, days: days, ctx: ctx)
             for day in days {
@@ -70,7 +70,7 @@ enum PDFBook {
 
         let dir = root.appendingPathComponent("PDF")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let name = "Хронотека " + Vault.stamp(min(o.from, o.to)) + " — " + Vault.stamp(max(o.from, o.to))
+        let name = T("Хронотека ", "Chronotheca ") + Vault.stamp(min(o.from, o.to)) + " — " + Vault.stamp(max(o.from, o.to))
         var url = dir.appendingPathComponent(name + ".pdf")
         var n = 2
         while FileManager.default.fileExists(atPath: url.path) {
@@ -82,7 +82,7 @@ enum PDFBook {
     }
 
     private static func title(_ o: Options) -> String {
-        "Хронотека: " + Ru.longDate(min(o.from, o.to)) + " — " + Ru.longDate(max(o.from, o.to))
+        T("Хронотека: ", "Chronotheca: ") + Ru.longDate(min(o.from, o.to)) + " — " + Ru.longDate(max(o.from, o.to))
     }
 
     private static func read(_ date: Date, vault: Vault) -> Day {
@@ -118,22 +118,22 @@ enum PDFBook {
         }
         let serif = { (size: CGFloat) in UIFont(name: "Georgia", size: size) ?? .systemFont(ofSize: size) }
         var y: CGFloat = 250
-        y = centered("Хронотека", serif(40), ink, y: y) + 14
-        y = centered(o.plan ? "Дневник и план" : "Дневник", serif(20), soft, y: y) + 46
-        y = centered("с " + Ru.longDate(min(o.from, o.to)), serif(22), ink, y: y) + 6
-        y = centered("по " + Ru.longDate(max(o.from, o.to)), serif(22), ink, y: y) + 40
+        y = centered(T("Хронотека", "Chronotheca"), serif(40), ink, y: y) + 14
+        y = centered(o.plan ? T("Дневник и план", "Diary and plan") : T("Дневник", "Diary"), serif(20), soft, y: y) + 46
+        y = centered(T("с ", "from ") + Ru.longDate(min(o.from, o.to)), serif(22), ink, y: y) + 6
+        y = centered(T("по ", "to ") + Ru.longDate(max(o.from, o.to)), serif(22), ink, y: y) + 40
         var photos = 0
         for day in days {
             photos += day.strip.filter { Diary.kind(of: $0) == .photo }.count + photoLines(day.text).count
         }
-        var inside = "Дней с записями: \(days.count)"
-        if o.photos { inside += " · снимков: \(photos)" }
+        var inside = T("Дней с записями: \(days.count)", "Days with entries: \(days.count)")
+        if o.photos { inside += T(" · снимков: \(photos)", " · photos: \(photos)") }
         y = centered(inside, .systemFont(ofSize: 13), soft, y: y) + 6
-        var what = ["записи дневника"]
-        if o.plan { what.append("дела плана") }
-        if o.photos { what.append("фотографии") }
-        y = centered("Внутри: " + what.joined(separator: ", "), .systemFont(ofSize: 13), soft, y: y)
-        _ = centered("Собрано " + Ru.longDate(Date()), .systemFont(ofSize: 11), soft,
+        var what = [T("записи дневника", "diary entries")]
+        if o.plan { what.append(T("дела плана", "plan tasks")) }
+        if o.photos { what.append(T("фотографии", "photos")) }
+        y = centered(T("Внутри: ", "Inside: ") + what.joined(separator: ", "), .systemFont(ofSize: 13), soft, y: y)
+        _ = centered(T("Собрано ", "Made on ") + Ru.longDate(Date()), .systemFont(ofSize: 11), soft,
                      y: page.height - margin - 20)
     }
 
@@ -177,7 +177,7 @@ enum PDFBook {
         }
 
         if o.plan, !day.tasks.isEmpty {
-            add("ПЛАН", .systemFont(ofSize: 10, weight: .semibold), soft, after: 4)
+            add(T("ПЛАН", "PLAN"), .systemFont(ofSize: 10, weight: .semibold), soft, after: 4)
             for task in day.tasks {
                 let mark = task.done ? "☑" : "☐"
                 let time = task.time.map { $0 + "  " } ?? ""
@@ -188,7 +188,7 @@ enum PDFBook {
 
         let asked = day.answers.filter { !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
         if !asked.isEmpty {
-            add("КАК ПРОШЛО?", .systemFont(ofSize: 10, weight: .semibold), soft, after: 4)
+            add(T("КАК ПРОШЛО?", "HOW DID IT GO?"), .systemFont(ofSize: 10, weight: .semibold), soft, after: 4)
             for task in day.tasks where asked[task.text] != nil {
                 add(Geo.stripped(task.text) + ": " + (asked[task.text] ?? ""), serif(12.5), after: 3)
             }
@@ -209,11 +209,11 @@ enum PDFBook {
                         out.append(picture)
                         add("", .systemFont(ofSize: 6), after: 8)
                     } else if o.photos {
-                        add("[снимок: " + link + "]", .systemFont(ofSize: 10), soft)
+                        add(T("[снимок: ", "[photo: ") + link + "]", .systemFont(ofSize: 10), soft)
                     }
-                case .video: add("[видео]", .systemFont(ofSize: 10), soft)
-                case .audio: add("[голосовая запись]", .systemFont(ofSize: 10), soft)
-                case .file:  add("[документ: " + (link as NSString).lastPathComponent + "]",
+                case .video: add(T("[видео]", "[video]"), .systemFont(ofSize: 10), soft)
+                case .audio: add(T("[голосовая запись]", "[voice note]"), .systemFont(ofSize: 10), soft)
+                case .file:  add(T("[документ: ", "[document: ") + (link as NSString).lastPathComponent + "]",
                                  .systemFont(ofSize: 10), soft)
                 }
                 }
@@ -301,6 +301,15 @@ struct PDFSheet: View {
     enum Span: String, CaseIterable, Identifiable {
         case month = "Этот месяц", last = "Прошлый месяц", year = "Этот год", all = "Всё", own = "Свой срок"
         var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .month: return T("Этот месяц", "This month")
+            case .last: return T("Прошлый месяц", "Last month")
+            case .year: return T("Этот год", "This year")
+            case .all: return T("Всё", "Everything")
+            case .own: return T("Свой срок", "Custom")
+            }
+        }
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -319,37 +328,37 @@ struct PDFSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Срок") {
-                    Picker("Срок", selection: $span) {
-                        ForEach(Span.allCases) { Text($0.rawValue).tag($0) }
+                Section(T("Срок", "Period")) {
+                    Picker(T("Срок", "Period"), selection: $span) {
+                        ForEach(Span.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.menu)
                     .disabled(result != nil)
                     if span == .own {
-                        DatePicker("С", selection: $from, displayedComponents: .date)
-                        DatePicker("По", selection: $to, displayedComponents: .date)
+                        DatePicker(T("С", "From"), selection: $from, displayedComponents: .date)
+                        DatePicker(T("По", "To"), selection: $to, displayedComponents: .date)
                     } else {
                         Text(Ru.longDate(range.0) + " — " + Ru.longDate(range.1))
                             .foregroundStyle(Look.inkSoft)
                     }
                 }
                 Section {
-                    Toggle("Записи дневника", isOn: .constant(true)).disabled(true)
-                    Toggle("Дела плана", isOn: $plan).disabled(result != nil)
-                    Toggle("Фотографии", isOn: $photos).disabled(result != nil)
+                    Toggle(T("Записи дневника", "Diary entries"), isOn: .constant(true)).disabled(true)
+                    Toggle(T("Дела плана", "Plan tasks"), isOn: $plan).disabled(result != nil)
+                    Toggle(T("Фотографии", "Photos"), isOn: $photos).disabled(result != nil)
                 } header: {
-                    Text("Что включить")
+                    Text(T("Что включить", "What to include"))
                 } footer: {
                     // Дневник разбавляют серым не просто так — его нельзя
                     // отключить, он входит всегда; это стоит сказать, а не
                     // оставлять непонятным (P304).
-                    Text("Записи дневника входят в книгу всегда; план и фотографии — по желанию.")
+                    Text(T("Записи дневника входят в книгу всегда; план и фотографии — по желанию.", "Diary entries are always in the book; the plan and photos are up to you."))
                 }
                 if let result {
                     Section {
-                        Button("Поделиться") { Share.present([result]) }
+                        Button(T("Поделиться", "Share")) { Share.present([result]) }
                     } footer: {
-                        Text("Готово: «\(result.lastPathComponent)» лежит в папке записей, в «PDF».")
+                        Text(T("Готово: «\(result.lastPathComponent)» лежит в папке записей, в «PDF».", "Done: “\(result.lastPathComponent)” is in your entries folder, in “PDF”."))
                     }
                 } else {
                     Section {
@@ -357,13 +366,13 @@ struct PDFSheet: View {
                             build()
                         } label: {
                             HStack {
-                                Text(working ? "Собираю…" : "Собрать PDF")
+                                Text(working ? T("Собираю…", "Making…") : T("Собрать PDF", "Make PDF"))
                                 if working { Spacer(); ProgressView() }
                             }
                         }
                         .disabled(working)
                     } footer: {
-                        Text("На обложке — срок и что внутри; каждый день с новой страницы. Файл ляжет в папку записей, в «PDF».")
+                        Text(T("На обложке — срок и что внутри; каждый день с новой страницы. Файл ляжет в папку записей, в «PDF».", "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”."))
                     }
                 }
             }
@@ -371,11 +380,11 @@ struct PDFSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(result == nil ? "Отмена" : "Готово") { dismiss() }
+                    Button(result == nil ? T("Отмена", "Cancel") : T("Готово", "Done")) { dismiss() }
                 }
             }
-            .alert("За этот срок записей нет", isPresented: $nothing) {
-                Button("Понятно") { nothing = false }
+            .alert(T("За этот срок записей нет", "No entries in this period"), isPresented: $nothing) {
+                Button(T("Понятно", "OK")) { nothing = false }
             }
         }
     }

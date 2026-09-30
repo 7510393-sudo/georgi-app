@@ -276,7 +276,7 @@ struct DayPage: View {
             guard live, lit else { return }
             hideKeyboard()
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            shell.say("Вернулись на сегодня")
+            shell.say(T("Вернулись на сегодня", "Back to today"))
             shell.goHome = true
         } onPressingChanged: { _ in }
         .onTapGesture {
@@ -286,7 +286,7 @@ struct DayPage: View {
             Sounds.flip(rate: step > 0 ? 1.04 : 0.96)
             store.move(by: step)
         }
-        .accessibilityLabel(lit ? neighbour(step) + ". Долгое нажатие — на сегодня"
+        .accessibilityLabel(lit ? neighbour(step) + T(". Долгое нажатие — на сегодня", ". Long press for today")
                                 : neighbour(step))
     }
 
@@ -305,12 +305,12 @@ struct DayPage: View {
         guard let day = cal.date(byAdding: .day, value: step, to: date) else { return "" }
         let n = cal.dateComponents([.day], from: DayStore.today(), to: day).day ?? 0
         switch n {
-        case -2: return "позавчера"
-        case -1: return "вчера"
-        case  0: return "сегодня"
-        case  1: return "завтра"
-        case  2: return "послезавтра"
-        default: return step < 0 ? "прошлое" : "будущее"
+        case -2: return T("позавчера", "two days ago")
+        case -1: return T("вчера", "yesterday")
+        case  0: return T("сегодня", "today")
+        case  1: return T("завтра", "tomorrow")
+        case  2: return T("послезавтра", "in two days")
+        default: return step < 0 ? T("прошлое", "the past") : T("будущее", "the future")
         }
     }
 
@@ -321,11 +321,11 @@ struct DayPage: View {
     static func title(for date: Date) -> String {
         let n = Calendar.current.dateComponents([.day], from: DayStore.today(), to: date).day ?? 0
         switch n {
-        case -2: return "Позавчера"
-        case -1: return "Вчера"
-        case  0: return "Сегодня"
-        case  1: return "Завтра"
-        case  2: return "Послезавтра"
+        case -2: return T("Позавчера", "Two days ago")
+        case -1: return T("Вчера", "Yesterday")
+        case  0: return T("Сегодня", "Today")
+        case  1: return T("Завтра", "Tomorrow")
+        case  2: return T("Послезавтра", "In two days")
         default: return Ru.weekday(date).capitalized
         }
     }
@@ -551,7 +551,7 @@ struct WobblyTitle: View {
                 }
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(text.capitalized + ". Режим изменений, нажмите, чтобы выйти")
+            .accessibilityLabel(text.capitalized + T(". Режим изменений, нажмите, чтобы выйти", ". Edit mode, tap to leave"))
         } else {
             Text(text)
                 .font(font)
@@ -607,21 +607,21 @@ struct AttachBar: View {
         HStack(spacing: 0) {
             // Камера — снимок прямо из приложения (P289); первой кнопкой
             // слева, она нужнее с ходу (P301).
-            item("camera", "камера", ready: true) { open { shooting = true } }
+            item("camera", T("камера", "camera"), ready: true) { open { shooting = true } }
             // «Фото» открывает ряд последних снимков галереи над полоской
             // (P273); повторное касание — прячет.
-            item("photo", "фото", ready: true) { toggleGallery() }
+            item("photo", T("фото", "photo"), ready: true) { toggleGallery() }
             // Строка без клавиатуры — четыре кнопки, «аудио» третья: центр
             // на 5/8 ширины (P330).
-            item("waveform", "аудио", ready: true) {
+            item("waveform", T("аудио", "audio"), ready: true) {
                 recordAlign = 0.625
                 open { recording = true }
             }
-            item("doc", "файлы", ready: true) { open { browsing = true } }
+            item("doc", T("файлы", "files"), ready: true) { open { browsing = true } }
             // Кнопки «геоточка» больше нет (P264): место — с карты,
             // «Запомнить точку».
             if overKeyboard {
-                item("keyboard.chevron.compact.down", "убрать", ready: true) { hideKeyboard() }
+                item("keyboard.chevron.compact.down", T("убрать", "hide"), ready: true) { hideKeyboard() }
             }
         }
         // Полоска как можно тоньше: одни значки, без подписей (P289).
@@ -680,9 +680,9 @@ struct AttachBar: View {
                 shooting = false
                 guard let data else { return }
                 if store.addPhoto(data, to: shell.tab) {
-                    shell.say("Снимок положен в папку «\(vault.name(.photos))»")
+                    shell.say(T("Снимок положен в папку «", "Photo saved to the “") + vault.name(.photos) + T("»", "” folder"))
                 } else {
-                    shell.say("Снимок не сохранился")
+                    shell.say(T("Снимок не сохранился", "The photo was not saved"))
                 }
             }
             .ignoresSafeArea()
@@ -711,8 +711,8 @@ struct AttachBar: View {
         guard let data = try? Data(contentsOf: url), !data.isEmpty,
               store.addAttachment(data, to: .audio, name: Vault.moment(store.date) + ".m4a",
                                   tab: shell.tab)
-        else { return shell.say("Запись не сохранилась.") }
-        shell.say("Голос положен в папку «\(vault.name(.audio))»")
+        else { return shell.say(T("Запись не сохранилась.", "The recording was not saved.")) }
+        shell.say(T("Голос положен в папку «", "Voice note saved to the “") + vault.name(.audio) + T("»", "” folder"))
     }
 
     /// Документы выбраны: копии — в «Документы» под своими именами (P209).
@@ -725,8 +725,9 @@ struct AttachBar: View {
             if store.addAttachment(data, to: .documents, name: url.lastPathComponent,
                                    tab: shell.tab) { kept += 1 }
         }
-        shell.say(kept == urls.count ? "Положено в папку «\(vault.name(.documents))»: \(kept)"
-                                     : "Не удалось положить файлов: \(urls.count - kept)")
+        shell.say(kept == urls.count ? T("Положено в папку «", "Saved to the “") + vault.name(.documents)
+                                        + T("»: \(kept)", "” folder: \(kept)")
+                                     : T("Не удалось положить файлов: \(urls.count - kept)", "Files not saved: \(urls.count - kept)"))
     }
 
     private func item(_ icon: String, _ name: String, ready: Bool = false,
@@ -745,7 +746,7 @@ struct AttachBar: View {
                         hold()
                     }
                     .accessibilityAddTraits(.isButton)
-                    .accessibilityHint("Долгое нажатие — вписать, где вы")
+                    .accessibilityHint(T("Долгое нажатие — вписать, где вы", "Long press to note where you are"))
             } else {
                 Button(action: act) { face }
             }
@@ -763,7 +764,8 @@ struct AttachBar: View {
     private func addFromGallery(_ assets: [PHAsset], day: Date) {
         let tab = shell.tab
         guard Calendar.current.isDate(store.date, inSameDayAs: day), store.canEdit(tab) else {
-            return shell.say("Отмеченное в галерее не добавлено: открыт другой день")
+            return shell.say(T("Отмеченное в галерее не добавлено: открыт другой день",
+                                 "The selected photos were not added: another day is open"))
         }
         var left = assets.count
         var failed = 0
@@ -771,9 +773,9 @@ struct AttachBar: View {
             left -= 1
             guard left == 0 else { return }
             if failed > 0 {
-                shell.say("Не удалось взять из галереи: \(failed)")
+                shell.say(T("Не удалось взять из галереи: \(failed)", "Could not take from Photos: \(failed)"))
             } else if assets.count > 1 {
-                shell.say("Положено в папку: \(assets.count)")
+                shell.say(T("Положено в папку: \(assets.count)", "Saved to the folder: \(assets.count)"))
             }
         }
         for asset in assets {
@@ -812,7 +814,7 @@ struct AttachBar: View {
             let tab = shell.tab
             var added = 0
             var videos = 0
-            if items.count > 3 { shell.say("Кладу в папку: \(items.count)…") }
+            if items.count > 3 { shell.say(T("Кладу в папку: \(items.count)…", "Saving to the folder: \(items.count)…")) }
             for item in items {
                 if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
                     // Видео — в «Видео», как есть, без пережатия (P214).
@@ -835,13 +837,13 @@ struct AttachBar: View {
             }
             if added == items.count {
                 if added == 1 {
-                    shell.say(videos == 1 ? "Видео положено в папку «\(vault.name(.videos))»"
-                                          : "Фотография положена в папку «\(vault.name(.photos))»")
+                    shell.say(videos == 1 ? T("Видео положено в папку «", "Video saved to the “") + vault.name(.videos) + T("»", "” folder")
+                                          : T("Фотография положена в папку «", "Photo saved to the “") + vault.name(.photos) + T("»", "” folder"))
                 } else {
-                    shell.say("Положено в папку: \(added)")
+                    shell.say(T("Положено в папку: \(added)", "Saved to the folder: \(added)"))
                 }
             } else {
-                shell.say("Не удалось положить: \(items.count - added)")
+                shell.say(T("Не удалось положить: \(items.count - added)", "Not saved: \(items.count - added)"))
             }
         }
     }

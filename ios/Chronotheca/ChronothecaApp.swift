@@ -6,6 +6,8 @@ struct ChronothecaApp: App {
     @StateObject private var vault: Vault
     @StateObject private var store: DayStore
     @StateObject private var archive: Archive
+    /// Язык приложения (P355). По умолчанию английский.
+    @AppStorage(Lang.key) private var language = "en"
     @StateObject private var shell = Shell()
     @Environment(\.scenePhase) private var phase
     /// Когда приложение ушло в фон — по этому решается, была ли пауза.
@@ -31,7 +33,9 @@ struct ChronothecaApp: App {
 
     var body: some Scene {
         WindowGroup {
+            // Сменили язык — всё рисуется заново, на новом (P355).
             RootView()
+                .id(language)
                 .environmentObject(vault)
                 .environmentObject(store)
                 .environmentObject(archive)

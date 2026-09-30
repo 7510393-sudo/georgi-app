@@ -96,18 +96,19 @@ struct MapScreen: View {
         // считается до самого края экрана (P308), а низ карты стоит выше
         // края — на нижней строке разделов; её высота вычитается (P340).
         .keyboardHeight($keyboard, toScreenEdge: true)
-        .confirmationDialog("Удалить точку?", isPresented: $asking, titleVisibility: .visible) {
-            Button("Удалить точку", role: .destructive) { remove() }
-            Button("Оставить точку", role: .cancel) { }
+        .confirmationDialog(T("Удалить точку?", "Delete the place?"), isPresented: $asking, titleVisibility: .visible) {
+            Button(T("Удалить точку", "Delete place"), role: .destructive) { remove() }
+            Button(T("Оставить точку", "Keep place"), role: .cancel) { }
         } message: {
-            Text(selected?.file == nil ? "Булавка уйдёт с карты."
-                 : "Файл этой точки будет удалён из папки «\(vault.name(.places))».")
+            Text(selected?.file == nil ? T("Булавка уйдёт с карты.", "The pin will leave the map.")
+                 : T("Файл этой точки будет удалён из папки «", "The file of this place will be deleted from the “")
+                   + vault.name(.places) + T("».", "” folder."))
         }
-        .confirmationDialog("Куда записать точку?", isPresented: $choosingTab,
+        .confirmationDialog(T("Куда записать точку?", "Where to note the place?"), isPresented: $choosingTab,
                             titleVisibility: .visible) {
-            Button("В план") { remember(to: .plan) }
-            Button("В дневник") { remember(to: .diary) }
-            Button("Отмена", role: .cancel) { }
+            Button(T("В план", "To the plan")) { remember(to: .plan) }
+            Button(T("В дневник", "To the diary")) { remember(to: .diary) }
+            Button(T("Отмена", "Cancel"), role: .cancel) { }
         }
         .onAppear(perform: begin)
         // Карта ещё не ушла с экрана, а человек уже коснулся точки в
@@ -148,30 +149,30 @@ struct MapScreen: View {
                 guard point else { return hint() }
                 asking = true
             } label: {
-                oval(MapFace(icon: "trash", name: "удалить", tint: Look.inkSoft), on: point)
+                oval(MapFace(icon: "trash", name: T("удалить", "delete"), tint: Look.inkSoft), on: point)
             }
             Button {
                 guard let selected else { return hint() }
                 MapActions.copy(selected)
-                shell.say("Скопировано: " + Geo.text(selected.coordinate))
+                shell.say(T("Скопировано: ", "Copied: ") + Geo.text(selected.coordinate))
             } label: {
-                oval(MapFace(icon: "doc.on.doc", name: "скопировать", tint: Look.inkSoft), on: point)
+                oval(MapFace(icon: "doc.on.doc", name: T("скопировать", "copy"), tint: Look.inkSoft), on: point)
             }
             Button {
                 guard let selected else { return hint() }
                 MapActions.navigate(selected)
             } label: {
-                oval(MapFace(icon: "arrow.triangle.turn.up.right.diamond", name: "в навигатор",
+                oval(MapFace(icon: "arrow.triangle.turn.up.right.diamond", name: T("в навигатор", "directions"),
                              tint: Look.accent), on: point)
             }
             Button(action: remember) {
                 if locating {
                     oval(ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity), on: true)
                 } else {
-                    oval(MapFace(icon: "pin.fill", name: "запомнить точку", tint: Look.accent), on: true)
+                    oval(MapFace(icon: "pin.fill", name: T("запомнить точку", "save place"), tint: Look.accent), on: true)
                 }
             }
-            .accessibilityHint(point ? "Запишет выбранную точку" : "Запишет, где вы сейчас")
+            .accessibilityHint(point ? T("Запишет выбранную точку", "Saves the chosen place") : T("Запишет, где вы сейчас", "Saves where you are now"))
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 4)
@@ -183,7 +184,8 @@ struct MapScreen: View {
     /// Точка не выбрана — кнопка не пропадает, а бледнеет и объясняет, чего
     /// ей не хватает (P235).
     private func hint() {
-        shell.say("Сначала выберите точку: долгое нажатие на карту или касание по своему месту.")
+        shell.say(T("Сначала выберите точку: долгое нажатие на карту или касание по своему месту.",
+                    "First choose a place: long press on the map or tap one of your places."))
     }
 
     /// Овал под кнопкой. Неактивная — бледнее, но видна целиком (P235).
@@ -249,7 +251,7 @@ struct MapScreen: View {
 
     /// Отдалить карту так, чтобы все свои места были видны разом.
     private func showAll() {
-        guard !places.isEmpty else { return shell.say("Своих мест на карте пока нет.") }
+        guard !places.isEmpty else { return shell.say(T("Своих мест на карте пока нет.", "You have no places on the map yet.")) }
         let lats = places.map(\.latitude), lons = places.map(\.longitude)
         guard let s = lats.min(), let n = lats.max(), let w = lons.min(), let e = lons.max() else { return }
         let center = CLLocationCoordinate2D(latitude: (s + n) / 2, longitude: (w + e) / 2)
@@ -317,7 +319,7 @@ struct MapScreen: View {
         }
         guard let stored = Places.save(place, in: vault) else {
             selected = place
-            return shell.say("Место не записалось. Проверьте папку в настройках.")
+            return shell.say(T("Место не записалось. Проверьте папку в настройках.", "The place was not saved. Check the folder in Settings."))
         }
         places.removeAll { $0.id == place.id || ($0.file != nil && $0.file == place.file) }
         places.append(stored)
@@ -355,7 +357,8 @@ struct MapScreen: View {
         Locator.shared.current { location in
             locating = false
             guard let at = location?.coordinate else {
-                return shell.say("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.")
+                return shell.say(T("Не удалось узнать, где вы. Проверьте, разрешено ли приложению место.",
+                                 "Could not find where you are. Check that the app may use Location."))
             }
             write(GeoPoint(title: "", at: at), to: tab, here: true)
             if let location { store.noteWeather(at: location) }
@@ -374,7 +377,8 @@ struct MapScreen: View {
                 return shell.say(store.closedReason)
             }
         }
-        shell.say(tab == .diary ? "Точка записана в дневник" : "Точка записана в план")
+        shell.say(tab == .diary ? T("Точка записана в дневник", "Place noted in the diary")
+                                 : T("Точка записана в план", "Place noted in the plan"))
         Feel.light()
         // Записали — назад к странице дня, на ту вкладку, где точка теперь
         // видна.
@@ -445,14 +449,14 @@ struct MapSearch: View {
                 .background(.ultraThinMaterial, in: Circle())
                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
         }
-        .accessibilityLabel("Поиск на карте")
+        .accessibilityLabel(T("Поиск на карте", "Search the map"))
     }
 
     private var field: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(Look.inkSoft)
-            TextField("Место, адрес или координаты", text: $query)
+            TextField(T("Место, адрес или координаты", "Place, address or coordinates"), text: $query)
                 .focused($typing)
                 .submitLabel(.search)
                 .autocorrectionDisabled()
@@ -466,7 +470,7 @@ struct MapSearch: View {
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(Look.inkFaint)
             }
-            .accessibilityLabel("Закрыть поиск")
+            .accessibilityLabel(T("Закрыть поиск", "Close search"))
         }
         .font(Look.sans(15))
         .padding(.horizontal, 14)
@@ -479,9 +483,10 @@ struct MapSearch: View {
     private var list: some View {
         VStack(alignment: .leading, spacing: 0) {
             if looking && results.isEmpty {
-                Text("Ищу…").font(Look.sans(13)).foregroundStyle(Look.inkSoft).padding(12)
+                Text(T("Ищу…", "Searching…")).font(Look.sans(13)).foregroundStyle(Look.inkSoft).padding(12)
             } else if nothing {
-                Text("Ничего не нашлось. Попробуйте иначе или вставьте координаты.")
+                Text(T("Ничего не нашлось. Попробуйте иначе или вставьте координаты.",
+                       "Nothing found. Try other words or paste coordinates."))
                     .font(Look.sans(13)).foregroundStyle(Look.inkSoft).padding(12)
             }
             ForEach(results.prefix(8)) { found in
@@ -525,7 +530,7 @@ struct MapSearch: View {
         // Вставили координаты или ссылку с ними — точка видна сразу (P258).
         if let f = Pasted.find(query) {
             results.insert(Found(title: f.title ?? Geo.text(f.at),
-                                 subtitle: f.title == nil ? "Координаты" : Geo.text(f.at),
+                                 subtitle: f.title == nil ? T("Координаты", "Coordinates") : Geo.text(f.at),
                                  at: f.at, named: f.title != nil), at: 0)
         }
     }
@@ -534,7 +539,7 @@ struct MapSearch: View {
         let needle = text.trimmingCharacters(in: .whitespaces).lowercased()
         guard !needle.isEmpty else { return [] }
         return places.filter { $0.name.lowercased().contains(needle) || $0.text.lowercased().contains(needle) }
-            .map { Found(title: $0.name, subtitle: "Моё место", at: $0.coordinate, mark: $0.mark) }
+            .map { Found(title: $0.name, subtitle: T("Моё место", "My place"), at: $0.coordinate, mark: $0.mark) }
     }
 
     /// «Найти»: координаты — сразу туда; иначе свои места и места рядом.
@@ -626,18 +631,19 @@ struct PlacesList: View {
             }
             .overlay {
                 if places.isEmpty {
-                    Text("Своих мест пока нет. Долгое нажатие на карту — новое место.")
+                    Text(T("Своих мест пока нет. Долгое нажатие на карту — новое место.",
+                       "No places yet. A long press on the map makes a new one."))
                         .font(Look.sans(14))
                         .foregroundStyle(Look.inkSoft)
                         .multilineTextAlignment(.center)
                         .padding(32)
                 }
             }
-            .searchable(text: $query, prompt: "Название или запись")
-            .navigationTitle("Мои места")
+            .searchable(text: $query, prompt: T("Название или запись", "Name or note"))
+            .navigationTitle(T("Мои места", "My places"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("Готово") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(T("Готово", "Done")) { dismiss() } }
             }
         }
     }
@@ -821,7 +827,7 @@ struct NativeMap: UIViewRepresentable {
                 // Точка дня подписана датой: иначе непонятно, что за точка
                 // (P281). Сама точка — ровно на месте, подпись под ней.
                 let picture = DayMark.dot(today: mark.day.today,
-                                          label: mark.day.today ? "сегодня" : Ru.shortDate(mark.day.date))
+                                          label: mark.day.today ? T("сегодня", "today") : Ru.shortDate(mark.day.date))
                 view.image = picture
                 view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - 8)
                 view.displayPriority = .defaultHigh
@@ -938,7 +944,7 @@ enum PlaceLabel {
 final class DraftMark: NSObject, MKAnnotation {
     let place: Place
     var coordinate: CLLocationCoordinate2D { place.coordinate }
-    var title: String? { place.name.isEmpty ? "Точка" : place.name }
+    var title: String? { place.name.isEmpty ? T("Точка", "Place") : place.name }
     init(_ place: Place) { self.place = place }
 }
 
@@ -948,7 +954,7 @@ final class DayMark: NSObject, MKAnnotation {
     var coordinate: CLLocationCoordinate2D { day.at }
     init(_ day: MapDay) { self.day = day }
 
-    var title: String? { day.today ? "Сегодня" : Ru.shortDate(day.date) }
+    var title: String? { day.today ? T("Сегодня", "Today") : Ru.shortDate(day.date) }
 
     /// Точка дня и под ней — дата на светлой плашке.
     static func dot(today: Bool, label: String) -> UIImage {
@@ -1023,7 +1029,7 @@ struct PointPanel: View {
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)
-                    .accessibilityLabel("Значок: " + glyph.name)
+                    .accessibilityLabel(T("Значок: ", "Icon: ") + Glyph.shown(glyph.name))
                 }
             }
             // Поля — плотные, чтобы текст читался; прозрачна сама плашка
@@ -1038,7 +1044,7 @@ struct PointPanel: View {
                 .overlay(RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Look.inkFaint.opacity(0.6), lineWidth: 1))
             // Не выше шести строк; длиннее — прокручивается внутри.
-            TextField("Что здесь было", text: $place.text, axis: .vertical)
+            TextField(T("Что здесь было", "What happened here"), text: $place.text, axis: .vertical)
                 .focused($focused, equals: .text)
                 .lineLimit(1...6)
                 .padding(.horizontal, 10)
@@ -1047,7 +1053,7 @@ struct PointPanel: View {
                 .overlay(RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Look.inkFaint.opacity(0.6), lineWidth: 1))
             HStack {
-                Button("Отмена", action: cancel)
+                Button(T("Отмена", "Cancel"), action: cancel)
                 Spacer(minLength: 6)
                 // Координаты точки — касание кладёт их в буфер обмена
                 // (P340).
@@ -1057,16 +1063,16 @@ struct PointPanel: View {
                     copied = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
                 } label: {
-                    Text(copied ? "скопировано" : Geo.text(place.coordinate))
+                    Text(copied ? T("скопировано", "copied") : Geo.text(place.coordinate))
                         .font(Look.mono(12))
                         .foregroundStyle(Look.inkSoft)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Скопировать координаты")
+                .accessibilityLabel(T("Скопировать координаты", "Copy coordinates"))
                 Spacer(minLength: 6)
-                Button("Готово") { done(place) }.fontWeight(.semibold)
+                Button(T("Готово", "Done")) { done(place) }.fontWeight(.semibold)
             }
             .font(Look.sans(15))
             .padding(.horizontal, 4)
@@ -1107,7 +1113,7 @@ struct PlaceCloud: View {
                         .lineLimit(2)
                 }
                 Spacer()
-                Button(place.file == nil ? "Назвать" : "Изменить", action: edit)
+                Button(place.file == nil ? T("Назвать", "Name it") : T("Изменить", "Edit"), action: edit)
                     .font(Look.sans(14))
             }
             // Координаты видны всегда: в плане и дневнике их нет, они здесь
@@ -1148,12 +1154,12 @@ struct PlaceCloud: View {
                     .font(.system(size: 12))
                     .foregroundStyle(Look.accent)
                 if copied {
-                    Text("скопировано").font(Look.sans(12)).foregroundStyle(Look.accent)
+                    Text(T("скопировано", "copied")).font(Look.sans(12)).foregroundStyle(Look.accent)
                 }
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Координаты " + Geo.text(place.coordinate) + ", скопировать")
+        .accessibilityLabel(T("Координаты ", "Coordinates ") + Geo.text(place.coordinate) + T(", скопировать", ", copy"))
     }
 
     private var words: some View {
@@ -1210,7 +1216,7 @@ enum MapActions {
         link?.queryItems = [
             URLQueryItem(name: "ll", value: String(format: "%.5f,%.5f",
                                                   point.at.latitude, point.at.longitude)),
-            URLQueryItem(name: "q", value: point.title.isEmpty ? "Точка" : point.title),
+            URLQueryItem(name: "q", value: point.title.isEmpty ? T("Точка", "Place") : point.title),
         ]
         var items: [Any] = [words]
         if let url = link?.url { items.append(url) }

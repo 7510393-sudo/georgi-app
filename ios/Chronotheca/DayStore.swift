@@ -51,21 +51,23 @@ final class DayStore: ObservableObject {
     /// Почему в этот день писать нельзя.
     var closedReason: String {
         if !away.isEmpty {
-            return "Запись ещё загружается из iCloud. Как только придёт — её можно будет править."
+            return T("Запись ещё загружается из iCloud. Как только придёт — её можно будет править.",
+                     "This entry is still downloading from iCloud. You can edit it once it arrives.")
         }
-        return isPast ? "День закрыт. Изменения — через режим изменений."
-                      : "Этот день ещё не наступил."
+        return isPast ? T("День закрыт. Изменения — через режим изменений.",
+                          "This day is closed. Changes go through Edit mode.")
+                      : T("Этот день ещё не наступил.", "This day has not come yet.")
     }
 
     /// Заголовок дня: ближние дни зовутся по имени, дальние — днём недели.
     var title: String {
         let n = Calendar.current.dateComponents([.day], from: DayStore.today(), to: date).day ?? 0
         switch n {
-        case -2: return "Позавчера"
-        case -1: return "Вчера"
-        case  0: return "Сегодня"
-        case  1: return "Завтра"
-        case  2: return "Послезавтра"
+        case -2: return T("Позавчера", "Two days ago")
+        case -1: return T("Вчера", "Yesterday")
+        case  0: return T("Сегодня", "Today")
+        case  1: return T("Завтра", "Tomorrow")
+        case  2: return T("Послезавтра", "In two days")
         default: return Ru.weekday(date).capitalized
         }
     }
@@ -263,7 +265,7 @@ final class DayStore: ObservableObject {
         var out = Ru.weekday(date).capitalized + ", " + Ru.longDate(date)
         let plan = tasks.filter { !$0.text.isEmpty }
         if !plan.isEmpty {
-            out += "\n\nПлан:\n" + plan.map { row in
+            out += T("\n\nПлан:\n", "\n\nPlan:\n") + plan.map { row in
                 (row.done ? "✓ " : "• ") + (row.time.map { $0 + " " } ?? "") + row.text
             }.joined(separator: "\n")
         }
@@ -274,7 +276,7 @@ final class DayStore: ObservableObject {
         }
         let text = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
         if !diaryTitle.isEmpty || !text.isEmpty {
-            out += "\n\nДневник"
+            out += T("\n\nДневник", "\n\nDiary")
             if !diaryTitle.isEmpty { out += " — " + diaryTitle }
             out += ":\n" + text
         }
@@ -556,16 +558,19 @@ final class DayStore: ObservableObject {
         guard Prefs.weatherOn, isToday, canEditDiary, weather == nil, !weatherAsked else { return }
         let status = CLLocationManager().authorizationStatus
         guard status != .denied, status != .restricted else {
-            weatherTrouble = "Приложению не разрешено знать, где вы, — а погода нужна для "
-                + "места. Настройки iPhone → Хронотека → Геопозиция → «При использовании»."
+            weatherTrouble = T("Приложению не разрешено знать, где вы, — а погода нужна для "
+                + "места. Настройки iPhone → Хронотека → Геопозиция → «При использовании».",
+                "The app may not know where you are, and weather needs a place. "
+                + "iPhone Settings → Chronotheca → Location → “While Using the App”.")
             return
         }
         weatherAsked = true
         Locator.shared.current { [weak self] location in
             guard let self else { return }
             guard let location else {
-                self.weatherTrouble = "iPhone не сказал, где вы сейчас. Попробую снова, "
-                    + "когда вернётесь в приложение."
+                self.weatherTrouble = T("iPhone не сказал, где вы сейчас. Попробую снова, "
+                    + "когда вернётесь в приложение.",
+                    "The iPhone did not say where you are. I will try again when you come back.")
                 self.weatherAsked = false
                 return
             }

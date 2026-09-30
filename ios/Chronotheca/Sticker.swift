@@ -96,7 +96,7 @@ struct Sticker<Content: View>: View {
                 .frame(width: 44, height: 38)
         }
         .padding(.top, 12)
-        .accessibilityLabel("Закрыть")
+        .accessibilityLabel(T("Закрыть", "Close"))
     }
 }
 

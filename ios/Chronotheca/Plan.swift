@@ -104,7 +104,8 @@ enum Plan {
         }
 
         var bell: String?
-        if let range = rest.range(of: #"\s*\(напомнить (\d{2}:\d{2})\)$"#,
+        // «(remind 08:30)»; до P355 — «(напомнить 08:30)», читается и так.
+        if let range = rest.range(of: #"\s*\((?:remind|напомнить) (\d{2}:\d{2})\)$"#,
                                   options: .regularExpression) {
             let inside = String(rest[range])
             if let t = inside.range(of: #"\d{2}:\d{2}"#, options: .regularExpression),
@@ -168,7 +169,7 @@ enum Plan {
             out += row.done ? "- [x] " : "- [ ] "
             if let time = row.time { out += time + " " }
             out += row.text
-            if let bell = row.bell { out += " (напомнить \(bell))" }
+            if let bell = row.bell { out += " (remind \(bell))" }
             out += "\n"
             for detail in row.details {
                 out += indent + detail + "\n"

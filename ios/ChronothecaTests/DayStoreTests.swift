@@ -42,7 +42,7 @@ final class DayStoreTests: XCTestCase {
         let вчера = store(-1)
         XCTAssertTrue(вчера.isPast)
         XCTAssertFalse(вчера.canEditPlan)
-        XCTAssertTrue(вчера.closedReason.contains("День закрыт"))
+        XCTAssertTrue(вчера.closedReason.contains(T("День закрыт", "day is closed")))
     }
 
     func testПланБудущегоДняОткрыт() {
@@ -61,15 +61,15 @@ final class DayStoreTests: XCTestCase {
     func testДневникБудущегоДняЗакрыт() {
         let завтра = store(1)
         XCTAssertFalse(завтра.canEditDiary)
-        XCTAssertTrue(завтра.closedReason.contains("не наступил"))
+        XCTAssertTrue(завтра.closedReason.contains(T("не наступил", "not come yet")))
     }
 
     func testЗаголовкиБлижнихДней() {
-        XCTAssertEqual(store(0).title, "Сегодня")
-        XCTAssertEqual(store(-1).title, "Вчера")
-        XCTAssertEqual(store(-2).title, "Позавчера")
-        XCTAssertEqual(store(1).title, "Завтра")
-        XCTAssertEqual(store(2).title, "Послезавтра")
+        XCTAssertEqual(store(0).title, T("Сегодня", "Today"))
+        XCTAssertEqual(store(-1).title, T("Вчера", "Yesterday"))
+        XCTAssertEqual(store(-2).title, T("Позавчера", "Two days ago"))
+        XCTAssertEqual(store(1).title, T("Завтра", "Tomorrow"))
+        XCTAssertEqual(store(2).title, T("Послезавтра", "In two days"))
     }
 
     func testПустойДеньНеОставляетФайлов() {

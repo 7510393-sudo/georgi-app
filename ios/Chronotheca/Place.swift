@@ -63,7 +63,7 @@ struct Place: Identifiable, Equatable {
         let bad = CharacterSet(charactersIn: "/\\:?*\"<>|")
         let clean = name.components(separatedBy: bad).joined(separator: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return (clean.isEmpty ? "Место" : clean) + ".md"
+        return (clean.isEmpty ? T("Место", "Place") : clean) + ".md"
     }
 }
 
@@ -120,6 +120,9 @@ enum Glyph {
         Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
 
     static func fileWord(_ name: String) -> String { english[name] ?? name }
+
+    /// Название значка на экране — на языке приложения (P355).
+    static func shown(_ name: String) -> String { Lang.isRussian ? name : fileWord(name) }
 
     /// Слово из файла — английское или прежнее русское. Незнакомое — `nil`.
     static func fromFile(_ word: String) -> String? {

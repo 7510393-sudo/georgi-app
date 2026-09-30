@@ -48,9 +48,10 @@ enum Prefs {
     }
 
     /// Ступени размера текста записей: мельче, обычный, крупнее, ещё крупнее.
-    static let textSteps: [(name: String, scale: CGFloat)] = [
-        ("мельче", 0.92), ("обычный", 1), ("крупнее", 1.1), ("ещё крупнее", 1.2),
-    ]
+    static var textSteps: [(name: String, scale: CGFloat)] {
+        [(T("мельче", "smaller"), 0.92), (T("обычный", "normal"), 1),
+         (T("крупнее", "larger"), 1.1), (T("ещё крупнее", "largest"), 1.2)]
+    }
 
     static var textStep: Int {
         min(max(UserDefaults.standard.integer(forKey: textSize) + 1, 0), textSteps.count - 1)
@@ -59,9 +60,9 @@ enum Prefs {
     static var textScale: CGFloat { textSteps[textStep].scale }
 
     /// Шрифты записи дневника: названия для настроек.
-    static let fonts: [(key: String, name: String)] = [
-        ("georgia", "Georgia"), ("newyork", "New York"), ("system", "Без засечек"),
-    ]
+    static var fonts: [(key: String, name: String)] {
+        [("georgia", "Georgia"), ("newyork", "New York"), ("system", T("Без засечек", "Sans serif"))]
+    }
 
     static var fontKey: String { UserDefaults.standard.string(forKey: font) ?? "georgia" }
 
@@ -103,11 +104,11 @@ struct LockView: View {
             Image(systemName: "lock.fill")
                 .font(.system(size: 34))
                 .foregroundStyle(Look.inkSoft)
-            Text("Записи закрыты")
+            Text(T("Записи закрыты", "Entries are locked"))
                 .font(Look.serif(20, weight: .semibold))
                 .foregroundStyle(Look.ink)
             Button(action: unlock) {
-                Text("Открыть")
+                Text(T("Открыть", "Unlock"))
                     .font(Look.sans(16, weight: .semibold))
                     .padding(.horizontal, 28)
                     .padding(.vertical, 10)

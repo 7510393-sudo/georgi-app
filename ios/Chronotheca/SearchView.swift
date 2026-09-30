@@ -25,10 +25,13 @@ struct SearchView: View {
         VStack(spacing: 0) {
             field
             if archive.newestFirst.isEmpty {
-                message("Пока нечего искать.",
-                        "Напишите первую запись — и она найдётся здесь.")
+                message(T("Пока нечего искать.", "Nothing to search yet."),
+                        T("Напишите первую запись — и она найдётся здесь.",
+                          "Write your first entry, and it will turn up here."))
             } else if found.isEmpty {
-                message("Ничего не нашлось.", "По запросу «\(query)» \(whereNot)записей нет.")
+                message(T("Ничего не нашлось.", "Nothing found."),
+                        T("По запросу «\(query)» \(whereNot)записей нет.",
+                          "No entries \(whereNot)match “\(query)”."))
             } else {
                 list
             }
@@ -50,7 +53,7 @@ struct SearchView: View {
             if !query.isEmpty {
                 Button { shell.query = "" } label: { Image(systemName: "xmark.circle.fill") }
                     .foregroundStyle(Look.inkFaint)
-                    .accessibilityLabel("Очистить")
+                    .accessibilityLabel(T("Очистить", "Clear"))
             }
         }
         .padding(.horizontal, 14)
@@ -68,17 +71,17 @@ struct SearchView: View {
     /// пропала.
     private var prompt: String {
         switch shell.scope {
-        case .all:   return "Поиск по словам"
-        case .diary: return "Поиск в дневнике"
-        case .plan:  return "Поиск в плане"
+        case .all:   return T("Поиск по словам", "Search")
+        case .diary: return T("Поиск в дневнике", "Search the diary")
+        case .plan:  return T("Поиск в плане", "Search the plan")
         }
     }
 
     private var whereNot: String {
         switch shell.scope {
         case .all:   return ""
-        case .diary: return "в дневнике "
-        case .plan:  return "в плане "
+        case .diary: return T("в дневнике ", "in the diary ")
+        case .plan:  return T("в плане ", "in the plan ")
         }
     }
 
@@ -186,7 +189,7 @@ struct SearchView: View {
             switch Diary.kind(of: link) {
             case .photo: PhotoThumb(url: url)
             case .video: PhotoThumb(url: url, video: true)
-            case .audio: FileTile(icon: "waveform", label: "голос")
+            case .audio: FileTile(icon: "waveform", label: T("голос", "voice"))
             case .file:  FileTile(icon: "doc.text",
                                   label: (link as NSString).pathExtension.lowercased())
             }

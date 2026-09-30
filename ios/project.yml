@@ -28,17 +28,19 @@ targets:
         # спрашивает про шифрование у каждой сборки и держит её до ответа.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_CFBundleDisplayName: Chronotheca
+        # Вопросы о разрешениях задаёт сама iOS — на языке телефона, а не
+        # приложения. Здесь английские; русские — в ru.lproj/InfoPlist.strings (P355).
         # Микрофон — только когда человек нажал «аудио» (P209).
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Чтобы записать голосовую заметку в ваш дневник. Запись ложится файлом в вашу папку «Аудио»."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "To record a voice note for your diary. The recording is saved as a file in your Audio folder."
         # Место спрашивается только по нажатию на геоточку (P207).
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Чтобы записать погоду дня и отметить на вашей карте, где вы сейчас. Место записывается только в ваши файлы; для погоды оно передаётся Погоде Apple."
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "To note the day’s weather and mark where you are on your map. The place is written only to your files; for the weather it is sent to Apple Weather."
         # Своя папка приложения видна в «Файлах»: «На iPhone › Chronotheca» (P223).
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
         # Замок записей (P249).
-        INFOPLIST_KEY_NSCameraUsageDescription: "Чтобы снять фото прямо в запись дня. Снимок ложится в вашу папку «Фотографии»."
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Чтобы показать последние снимки галереи прямо на странице дня. Снимок, который вы выберете, копируется в вашу папку «Фотографии»; остальные никуда не уходят."
-        INFOPLIST_KEY_NSFaceIDUsageDescription: "Чтобы закрыть ваши записи замком: без вашего лица или кода их не откроет никто."
+        INFOPLIST_KEY_NSCameraUsageDescription: "To take a photo straight into the day’s entry. The photo is saved in your Photos folder."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "To show the day’s photos right on the page. The photo you choose is copied to your Photos folder; the rest go nowhere."
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "To lock your entries: without your face or passcode no one can open them."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         TARGETED_DEVICE_FAMILY: "1"

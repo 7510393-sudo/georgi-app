@@ -1048,7 +1048,7 @@ final class PointChip: NSTextAttachment {
         image = picture
         let pad: CGFloat = glowing ? 3 : 0
         bounds = CGRect(origin: CGPoint(x: 0, y: -3 - pad), size: picture.size)
-        accessibilityLabel = "Точка на карте: " + point.label
+        accessibilityLabel = T("Точка на карте: ", "Place on the map: ") + point.label
     }
 
     /// Булавка; у точки с названием — и название рядом (P284).

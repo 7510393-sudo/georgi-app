@@ -54,7 +54,7 @@ struct DiaryView: View {
             // Снимок, отпущенный над полоской, возвращается в неё (P272).
             onReturnPhoto: { link in
                 store.returnToStrip(link)
-                shell.say("Снимок вернулся в полоску")
+                shell.say(T("Снимок вернулся в полоску", "Photo moved back to the strip"))
             },
             undo: store.diaryBack.isEmpty || !store.canEditDiary ? nil : { store.undoDiary() },
             redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() },
@@ -157,8 +157,8 @@ struct DiaryPage: View {
     private var head: some View {
         HStack(spacing: 8) {
             Spacer()
-            StepButton(icon: "arrow.uturn.backward", act: undo, name: "Шаг назад")
-            StepButton(icon: "arrow.uturn.forward", act: redo, name: "Шаг вперёд")
+            StepButton(icon: "arrow.uturn.backward", act: undo, name: T("Шаг назад", "Undo"))
+            StepButton(icon: "arrow.uturn.forward", act: redo, name: T("Шаг вперёд", "Redo"))
         }
         .padding(.leading, 14)
         .padding(.trailing, 12)
@@ -170,7 +170,8 @@ struct DiaryPage: View {
           ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 0) {
                 if inCloud {
-                    Text("Запись этого дня ещё загружается из iCloud. Как только придёт, она появится здесь.")
+                    Text(T("Запись этого дня ещё загружается из iCloud. Как только придёт, она появится здесь.",
+                   "This day is still downloading from iCloud. It will appear here as soon as it arrives."))
                         .font(Look.serif(size - 1))
                         .foregroundStyle(Look.inkFaint)
                         .padding(.bottom, 12)
@@ -220,7 +221,7 @@ struct DiaryPage: View {
     /// с начала следующей — во всю ширину, как в тетради (решение P185).
     private var askBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Как прошло?")
+            Text(T("Как прошло?", "How did it go?"))
                 .font(Look.serif(size))
                 .foregroundStyle(Look.inkFaint)
                 .frame(height: size * 1.6, alignment: .leading)
@@ -268,7 +269,7 @@ struct DiaryPage: View {
         VStack(spacing: 0) {
             ZStack(alignment: .leading) {
                 if title.isEmpty {
-                    Text("Заголовок дня")
+                    Text(T("Заголовок дня", "Title of the day"))
                         .font(Look.serif(16.5))
                         .foregroundStyle(Look.inkFaint)
                         .allowsHitTesting(false)

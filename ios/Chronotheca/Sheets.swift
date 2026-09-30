@@ -29,47 +29,47 @@ struct MenuSticker: View {
     /// Меню карты: строки повторяют кнопки полоски — для тех, кто ищет
     /// действие в меню, а не внизу (P219).
     private var mapMenu: some View {
-        Sticker(side: .trailing, title: "Меню карты", close: close) {
-            StickerItem(title: "Открыть в навигаторе",
-                        note: shell.mapPoint == nil ? "выберите точку" : "→") {
+        Sticker(side: .trailing, title: T("Меню карты", "Map menu"), close: close) {
+            StickerItem(title: T("Открыть в навигаторе", "Open in navigation"),
+                        note: shell.mapPoint == nil ? T("выберите точку", "choose a place") : "→") {
                 close()
                 guard let point = shell.mapPoint else {
-                    return shell.say("Сначала выберите точку долгим нажатием на карту.")
+                    return shell.say(T("Сначала выберите точку долгим нажатием на карту.", "First choose a place with a long press on the map."))
                 }
                 MapActions.navigate(point)
             }
-            StickerItem(title: "Скопировать координаты",
-                        note: shell.mapPoint == nil ? "выберите точку" : "→") {
+            StickerItem(title: T("Скопировать координаты", "Copy coordinates"),
+                        note: shell.mapPoint == nil ? T("выберите точку", "choose a place") : "→") {
                 close()
                 guard let point = shell.mapPoint else {
-                    return shell.say("Сначала выберите точку долгим нажатием на карту.")
+                    return shell.say(T("Сначала выберите точку долгим нажатием на карту.", "First choose a place with a long press on the map."))
                 }
                 MapActions.copy(point)
-                shell.say("Скопировано: " + Geo.text(point.at))
+                shell.say(T("Скопировано: ", "Copied: ") + Geo.text(point.at))
             }
-            StickerItem(title: "Поделиться точкой",
-                        note: shell.mapPoint == nil ? "выберите точку" : "→") {
+            StickerItem(title: T("Поделиться точкой", "Share place"),
+                        note: shell.mapPoint == nil ? T("выберите точку", "choose a place") : "→") {
                 close()
                 guard let point = shell.mapPoint else {
-                    return shell.say("Сначала выберите точку долгим нажатием на карту.")
+                    return shell.say(T("Сначала выберите точку долгим нажатием на карту.", "First choose a place with a long press on the map."))
                 }
                 MapActions.share(point)
             }
-            StickerItem(title: "Схема / спутник",
-                        note: shell.mapSatellite ? "спутник" : "схема",
+            StickerItem(title: T("Схема / спутник", "Map / satellite"),
+                        note: shell.mapSatellite ? T("спутник", "satellite") : T("схема", "map"),
                         active: shell.mapSatellite) {
                 shell.mapSatellite.toggle()
                 close()
             }
-            StickerItem(title: "Показать все мои места") {
+            StickerItem(title: T("Показать все мои места", "Show all my places")) {
                 close()
                 shell.mapShowAll += 1
             }
-            StickerItem(title: "Все места списком") {
+            StickerItem(title: T("Все места списком", "All places as a list")) {
                 close()
                 shell.mapList = true
             }
-            StickerItem(title: "Вернуться к странице дня") {
+            StickerItem(title: T("Вернуться к странице дня", "Back to the day page")) {
                 close()
                 shell.screen = .today
             }
@@ -77,26 +77,26 @@ struct MenuSticker: View {
     }
 
     private var dayMenu: some View {
-        Sticker(side: .trailing, title: "Меню страницы", close: close) {
+        Sticker(side: .trailing, title: T("Меню страницы", "Page menu"), close: close) {
             // Режим — той вкладки, на которой человек стоит (P211).
             // Название — «редактировать» вместо «режим изменений» (P318).
-            StickerItem(title: "Редактировать — " + shell.tab.rawValue.lowercased(),
-                        note: store.editing(shell.tab) ? "включён" : "выключен",
+            StickerItem(title: T("Редактировать — ", "Edit — ") + shell.tab.title.lowercased(),
+                        note: store.editing(shell.tab) ? T("включён", "on") : T("выключен", "off"),
                         active: store.editing(shell.tab)) {
                 store.setEditing(shell.tab, !store.editing(shell.tab))
                 close()
             }
-            StickerItem(title: "Показать файл этого дня") {
+            StickerItem(title: T("Показать файл этого дня", "Show this day’s file")) {
                 close()
                 shell.showingFile = true
             }
-            StickerItem(title: "Поделиться днём") {
+            StickerItem(title: T("Поделиться днём", "Share the day")) {
                 close()
                 // Текстом — план и запись; вложения остаются в папке (P249).
                 Share.present([store.shareText()])
             }
             // PDF одного дня — та же книга, срок в один день (P296).
-            StickerItem(title: "PDF дня") {
+            StickerItem(title: T("PDF дня", "PDF of the day")) {
                 close()
                 let date = store.date
                 let vault = vault
@@ -104,14 +104,14 @@ struct MenuSticker: View {
                 DispatchQueue.global(qos: .userInitiated).async {
                     let url = PDFBook.make(.init(from: date, to: date), vault: vault)
                     DispatchQueue.main.async {
-                        if let url { Share.present([url]) } else { shell.say("В этом дне пока пусто — PDF не из чего собрать.") }
+                        if let url { Share.present([url]) } else { shell.say(T("В этом дне пока пусто — PDF не из чего собрать.", "This day is still empty — nothing to make a PDF from.")) }
                     }
                 }
             }
             // Корзина (P295, P300): убирается вкладка, которая открыта, —
             // план и дневник по отдельности; уезжает в папку «Корзина»,
             // её можно вернуть из настроек.
-            StickerItem(title: "Убрать «" + shell.tab.rawValue.lowercased() + "» в корзину") {
+            StickerItem(title: T("Убрать «", "Move “") + shell.tab.title.lowercased() + T("» в корзину", "” to the trash")) {
                 close()
                 shell.trashAsk = true
             }
@@ -120,9 +120,9 @@ struct MenuSticker: View {
 
     private var calendarMenu: some View {
         let year = calendarKind == CalendarView.Kind.year.rawValue
-        return Sticker(side: .trailing, title: "Меню календаря", close: close) {
-            StickerItem(title: year ? "Вернуться к этому году"
-                                    : "Вернуться к этому месяцу") {
+        return Sticker(side: .trailing, title: T("Меню календаря", "Calendar menu"), close: close) {
+            StickerItem(title: year ? T("Вернуться к этому году", "Back to this year")
+                                    : T("Вернуться к этому месяцу", "Back to this month")) {
                 close()
                 shell.calendarHome = true
             }
@@ -132,22 +132,22 @@ struct MenuSticker: View {
     /// Где искать. Выбранное отмечено, а не спрятано: все три строки стоят
     /// всегда, чтобы рука находила их на одном месте.
     private var searchMenu: some View {
-        Sticker(side: .trailing, title: "Меню поиска", close: close) {
-            scopeItem("Искать везде", .all)
-            scopeItem("Только в дневнике", .diary)
-            scopeItem("Только в плане", .plan)
+        Sticker(side: .trailing, title: T("Меню поиска", "Search menu"), close: close) {
+            scopeItem(T("Искать везде", "Search everywhere"), .all)
+            scopeItem(T("Только в дневнике", "Only in the diary"), .diary)
+            scopeItem(T("Только в плане", "Only in the plan"), .plan)
             // Что искать — только дни, где есть это (P249).
             ForEach(Shell.Find.allCases, id: \.self) { kind in
-                StickerItem(title: kind == .all ? "Искать всё" : "Только: " + kind.rawValue.lowercased(),
+                StickerItem(title: kind == .all ? T("Искать всё", "Find everything") : T("Только: ", "Only: ") + kind.title.lowercased(),
                             note: shell.find == kind ? "✓" : "", active: shell.find == kind) {
                     shell.find = kind
                     close()
                 }
             }
-            StickerItem(title: "Очистить поиск") {
+            StickerItem(title: T("Очистить поиск", "Clear search")) {
                 close()
                 if shell.query.isEmpty {
-                    shell.say("Строка поиска и так пуста.")
+                    shell.say(T("Строка поиска и так пуста.", "The search field is already empty."))
                 } else {
                     shell.query = ""
                 }
@@ -189,47 +189,53 @@ struct SettingsSticker: View {
     @State private var askingRename = false
 
     var body: some View {
-        Sticker(side: .leading, title: "Настройки",
+        Sticker(side: .leading, title: T("Настройки", "Settings"),
                 paper: Look.note, edge: Look.noteEdge, width: 330, close: close) {
           // Длинная бумажка прокручивается: разделов стало много (P249).
           ScrollView {
            VStack(spacing: 0) {
-            StickerSection(title: "Записи")
+            // Язык — первым: на незнакомом языке остальное не прочитать
+            // (P355). Подпись на обоих языках, чтобы её нашли с любого.
+            StickerSection(title: "Language · Язык")
+            StickerItem(title: T("Язык приложения", "App language"), note: Lang.name, edge: Look.noteEdge) {
+                Lang.toggle()
+            }
+            StickerSection(title: T("Записи", "Entries"))
             place
             safety
             // Папки с прежними, русскими, именами — перевести (P353).
             if vault.hasRussianNames {
-                StickerItem(title: "Имена папок — по-английски", note: "→", edge: Look.noteEdge) {
+                StickerItem(title: T("Имена папок — по-английски", "Rename folders to English"), note: "→", edge: Look.noteEdge) {
                     askingRename = true
                 }
-                .confirmationDialog("Перевести имена папок?", isPresented: $askingRename,
+                .confirmationDialog(T("Перевести имена папок?", "Rename the folders to English?"), isPresented: $askingRename,
                                     titleVisibility: .visible) {
-                    Button("Перевести") {
+                    Button(T("Перевести", "Rename")) {
                         store.save()
                         close()
                         vault.translateNames()
                     }
-                    Button("Не сейчас", role: .cancel) { }
+                    Button(T("Не сейчас", "Not now"), role: .cancel) { }
                 } message: {
-                    Text("«Дневник» станет «Diary», «Фотографии» — «Photos» и так далее; "
-                         + "ссылки на снимки в записях поправятся следом. Файлы не копируются "
-                         + "и не пересоздаются — меняются только имена. Если перевод оборвётся, "
-                         + "ничего не пропадёт: приложение понимает оба имени.")
+                    Text(T("«Дневник» станет «Diary», «Фотографии» — «Photos» и так далее; ", "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; ")
+                         + T("ссылки на снимки в записях поправятся следом. Файлы не копируются ", "photo links in your entries are updated after that. Files are not copied ")
+                         + T("и не пересоздаются — меняются только имена. Если перевод оборвётся, ", "or recreated — only the names change. If it is interrupted, ")
+                         + T("ничего не пропадёт: приложение понимает оба имени.", "nothing is lost: the app understands both names."))
                 }
             }
             // Записи за срок одной книгой (P296).
-            StickerItem(title: "PDF за выбранный срок", note: "→", edge: Look.noteEdge) {
+            StickerItem(title: T("PDF за выбранный срок", "PDF for a period"), note: "→", edge: Look.noteEdge) {
                 showingPDF = true
             }
             // Три места вместо одного окна выбора (P223): своя папка на
             // телефоне — одним касанием; своя папка человека — через окно.
             // Название говорит прямо: жмут — и весь архив переезжает, а не
             // только то, что будет написано дальше (P325).
-            StickerItem(title: "Перенести архив и писать в другое место", edge: Look.noteEdge) {
+            StickerItem(title: T("Перенести архив и писать в другое место", "Move the archive and write elsewhere"), edge: Look.noteEdge) {
                 choosingPlace = true
             }
             if let before = vault.previousFriendly {
-                StickerItem(title: "Вернуться к прежней папке", edge: Look.noteEdge) {
+                StickerItem(title: T("Вернуться к прежней папке", "Back to the previous folder"), edge: Look.noteEdge) {
                     close()
                     vault.goBack()
                 }
@@ -243,40 +249,40 @@ struct SettingsSticker: View {
                     .padding(.bottom, 9)
             }
 
-            StickerSection(title: "Защита")
-            StickerItem(title: "Замок: Face ID или код", note: locked ? "включён" : "выключен",
+            StickerSection(title: T("Защита", "Privacy"))
+            StickerItem(title: T("Замок: Face ID или код", "Lock: Face ID or passcode"), note: locked ? T("включён", "on") : T("выключен", "off"),
                         active: locked, edge: Look.noteEdge) {
                 // Включить замок можно, только доказав, что телефон свой:
                 // иначе можно запереться и не открыть (P249).
-                LockView.check(reason: locked ? "Снять замок с записей"
-                                              : "Закрыть записи замком") { ok in
+                LockView.check(reason: locked ? T("Снять замок с записей", "Unlock your entries")
+                                              : T("Закрыть записи замком", "Lock your entries")) { ok in
                     if ok { locked.toggle() } else {
-                        shell.say("Телефон не подтвердил владельца — замок не изменён.")
+                        shell.say(T("Телефон не подтвердил владельца — замок не изменён.", "The phone did not confirm the owner — the lock was not changed."))
                     }
                 }
             }
 
-            StickerSection(title: "День")
-            StickerItem(title: "Новый день начинается в", note: "\(boundary):00",
+            StickerSection(title: T("День", "Day"))
+            StickerItem(title: T("Новый день начинается в", "A new day starts at"), note: "\(boundary):00",
                         edge: Look.noteEdge) {
                 boundary = (boundary + 1) % 7
                 Prefs.applyBoundary()
                 store.go(to: DayStore.today())
             }
-            StickerItem(title: "Открывать приложение на",
-                        note: startTab == "diary" ? "дневнике" : "плане", edge: Look.noteEdge) {
+            StickerItem(title: T("Открывать приложение на", "Open the app on"),
+                        note: startTab == "diary" ? T("дневнике", "diary") : T("плане", "plan"), edge: Look.noteEdge) {
                 startTab = startTab == "diary" ? "plan" : "diary"
             }
             // P290.
-            StickerItem(title: "Неделя начинается с",
-                        note: sundayFirst ? "воскресенья" : "понедельника", edge: Look.noteEdge) {
+            StickerItem(title: T("Неделя начинается с", "Week starts on"),
+                        note: sundayFirst ? T("воскресенья", "Sunday") : T("понедельника", "Monday"), edge: Look.noteEdge) {
                 sundayFirst.toggle()
             }
-            StickerItem(title: "«Как прошло?» в дневнике", note: noAsk ? "нет" : "да",
+            StickerItem(title: T("«Как прошло?» в дневнике", "“How did it go?” in the diary"), note: noAsk ? T("нет", "no") : T("да", "yes"),
                         edge: Look.noteEdge) {
                 noAsk.toggle()
             }
-            StickerItem(title: "Погода", note: noWeather ? "выключена" : "включена",
+            StickerItem(title: T("Погода", "Weather"), note: noWeather ? T("выключена", "off") : T("включена", "on"),
                         edge: Look.noteEdge) {
                 noWeather.toggle()
                 if !noWeather { store.fetchWeatherIfNeeded() }
@@ -293,61 +299,61 @@ struct SettingsSticker: View {
                     .padding(.bottom, 8)
             }
             if !noWeather {
-                StickerItem(title: "Градусы", note: fahrenheit ? "°F" : "°C", edge: Look.noteEdge) {
+                StickerItem(title: T("Градусы", "Degrees"), note: fahrenheit ? "°F" : "°C", edge: Look.noteEdge) {
                     fahrenheit.toggle()
                 }
             }
 
-            StickerSection(title: "Вид")
-            StickerItem(title: "Тема", note: themeName, edge: Look.noteEdge) {
+            StickerSection(title: T("Вид", "Appearance"))
+            StickerItem(title: T("Тема", "Theme"), note: themeName, edge: Look.noteEdge) {
                 theme = theme == "system" ? "light" : theme == "light" ? "dark" : "system"
             }
             // Размер и шрифт записей (P274).
-            StickerItem(title: "Размер текста", note: Prefs.textSteps[Prefs.textStep].name,
+            StickerItem(title: T("Размер текста", "Text size"), note: Prefs.textSteps[Prefs.textStep].name,
                         edge: Look.noteEdge) {
                 textSize = textSize >= Prefs.textSteps.count - 2 ? -1 : textSize + 1
             }
-            StickerItem(title: "Шрифт записи",
+            StickerItem(title: T("Шрифт записи", "Entry font"),
                         note: Prefs.fonts.first { $0.key == fontKey }?.name ?? "Georgia",
                         edge: Look.noteEdge) {
                 let i = Prefs.fonts.firstIndex { $0.key == fontKey } ?? 0
                 fontKey = Prefs.fonts[(i + 1) % Prefs.fonts.count].key
             }
-            StickerItem(title: "Цвет дней в календаре", note: calendarTintName,
+            StickerItem(title: T("Цвет дней в календаре", "Day colours in the calendar"), note: calendarTintName,
                         edge: Look.noteEdge) {
                 calendarTint = calendarTint == "distance" ? "weekday"
                     : calendarTint == "weekday" ? "none" : "distance"
             }
-            StickerItem(title: "Шелест страниц", note: quiet ? "выключен" : "включён",
+            StickerItem(title: T("Шелест страниц", "Page rustle"), note: quiet ? T("выключен", "off") : T("включён", "on"),
                         edge: Look.noteEdge) {
                 quiet.toggle()
             }
 
-            StickerSection(title: "Вложения")
-            StickerItem(title: "Сжатие снимков", note: squeezeName, edge: Look.noteEdge) {
+            StickerSection(title: T("Вложения", "Attachments"))
+            StickerItem(title: T("Сжатие снимков", "Photo compression"), note: squeezeName, edge: Look.noteEdge) {
                 squeeze = squeeze == "original" ? "high" : squeeze == "high" ? "medium" : "original"
             }
             // Корзина дней (P295): вернуть или удалить навсегда.
-            StickerItem(title: "Корзина", note: "→", edge: Look.noteEdge) {
+            StickerItem(title: T("Корзина", "Trash"), note: "→", edge: Look.noteEdge) {
                 showingTrash = true
             }
 
-            StickerSection(title: "Карта")
-            StickerItem(title: "«В навигатор» открывает",
-                        note: navigator == "google" ? "Google Карты" : "Карты Apple",
+            StickerSection(title: T("Карта", "Map"))
+            StickerItem(title: T("«В навигатор» открывает", "“Directions” opens"),
+                        note: navigator == "google" ? T("Google Карты", "Google Maps") : T("Карты Apple", "Apple Maps"),
                         edge: Look.noteEdge) {
                 navigator = navigator == "google" ? "apple" : "google"
             }
 
-            StickerSection(title: "О приложении")
-            StickerItem(title: "Чего ещё нет", note: undone ? "▾" : "▸",
+            StickerSection(title: T("О приложении", "About"))
+            StickerItem(title: T("Чего ещё нет", "Not there yet"), note: undone ? "▾" : "▸",
                         edge: Look.noteEdge) {
                 undone.toggle()
             }
             if undone { missing }
             // Погода в записях — от Погоды Apple; её условия положено
             // показывать там, где приложение показывает погоду (P208).
-            StickerItem(title: "Погода — Погода Apple", note: "условия",
+            StickerItem(title: T("Погода — Погода Apple", "Weather — Apple Weather"), note: T("условия", "terms"),
                         edge: Look.noteEdge) {
                 openURL(WeatherNote.legal)
             }
@@ -366,10 +372,10 @@ struct SettingsSticker: View {
                 archive.reload()
             }
         }
-        .confirmationDialog("Где хранить записи", isPresented: $choosingPlace,
+        .confirmationDialog(T("Где хранить записи", "Where to keep entries"), isPresented: $choosingPlace,
                             titleVisibility: .visible) {
             if !vault.onPhone {
-                Button("На этом iPhone") {
+                Button(T("На этом iPhone", "On this iPhone")) {
                     close()
                     vault.usePhone()
                     store.load()
@@ -377,16 +383,16 @@ struct SettingsSticker: View {
                     shell.screen = .today
                 }
             }
-            Button("В свою папку — iCloud Drive и другие…") {
+            Button(T("В свою папку — iCloud Drive и другие…", "In my own folder — iCloud Drive and others…")) {
                 close()
                 shell.picking = true
             }
-            Button("Отмена", role: .cancel) { }
+            Button(T("Отмена", "Cancel"), role: .cancel) { }
         } message: {
-            Text("На iPhone — папка «Chronotheca» в «Файлах» → «На iPhone». Удалите приложение — "
-                 + "iPhone удалит и её, поэтому для надёжности лучше своя папка в iCloud Drive: "
-                 + "там записи переживут и приложение, и телефон. Записи, что уже есть, "
-                 + "приложение предложит перенести.")
+            Text(T("На iPhone — папка «Chronotheca» в «Файлах» → «На iPhone». Удалите приложение — ", "On iPhone — the “Chronotheca” folder in Files → On My iPhone. Delete the app, and ")
+                 + T("iPhone удалит и её, поэтому для надёжности лучше своя папка в iCloud Drive: ", "the iPhone deletes it too, so your own folder in iCloud Drive is safer: ")
+                 + T("там записи переживут и приложение, и телефон. Записи, что уже есть, ", "there, entries outlive both the app and the phone. Entries you already have, ")
+                 + T("приложение предложит перенести.", "the app will offer to move."))
         }
         .onAppear(perform: measureStorage)
     }
@@ -434,25 +440,25 @@ struct SettingsSticker: View {
 
     private var calendarTintName: String {
         switch calendarTint {
-        case "weekday": return "по дням недели"
-        case "none":    return "без цвета"
-        default:        return "по удалённости"
+        case "weekday": return T("по дням недели", "by weekday")
+        case "none":    return T("без цвета", "no colour")
+        default:        return T("по удалённости", "by distance")
         }
     }
 
     private var squeezeName: String {
         switch squeeze {
-        case "high":   return "небольшое"
-        case "medium": return "сильное"
-        default:       return "оригинал"
+        case "high":   return T("небольшое", "light")
+        case "medium": return T("сильное", "strong")
+        default:       return T("оригинал", "original")
         }
     }
 
     private var themeName: String {
         switch theme {
-        case "light": return "светлая"
-        case "dark":  return "тёмная"
-        default:      return "как в iPhone"
+        case "light": return T("светлая", "light")
+        case "dark":  return T("тёмная", "dark")
+        default:      return T("как в iPhone", "as on iPhone")
         }
     }
     @State private var choosingPlace = false
@@ -475,7 +481,7 @@ struct SettingsSticker: View {
                 if let link = vault.filesLink { openURL(link) }
             } label: {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("ХРАНИЛИЩЕ ХРОНОТЕКИ")
+                    Text(T("ХРАНИЛИЩЕ ХРОНОТЕКИ", "CHRONOTHECA STORAGE"))
                         .font(Look.sans(9))
                         .tracking(0.6)
                         .foregroundStyle(Look.inkFaint)
@@ -494,11 +500,11 @@ struct SettingsSticker: View {
             }
             .buttonStyle(.plain)
             if let parent = vault.nestedIn {
-                Text("Похоже, это папка внутри архива, а не сам архив. Прежние "
-                     + "записи, скорее всего, лежат уровнем выше — в «\(parent)». "
-                     + "Нажмите «Перенести архив и писать в другое место» и выберите саму «\(parent)»: "
-                     + "приложение узнает архив и предложит перенести туда то, "
-                     + "что записано здесь.")
+                Text(T("Похоже, это папка внутри архива, а не сам архив. Прежние ", "This looks like a folder inside the archive, not the archive itself. Earlier ")
+                     + T("записи, скорее всего, лежат уровнем выше — в «\(parent)». ", "entries are most likely one level up — in “\(parent)”. ")
+                     + T("Нажмите «Перенести архив и писать в другое место» и выберите саму «\(parent)»: ", "Tap “Move the archive and write elsewhere” and choose “\(parent)” itself: ")
+                     + T("приложение узнает архив и предложит перенести туда то, ", "the app will recognise the archive and offer to move there ")
+                     + T("что записано здесь.", "what was written here."))
                     .font(Look.sans(11.5))
                     .foregroundStyle(Color.red.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
@@ -526,7 +532,7 @@ struct SettingsSticker: View {
             showingSafety = true
         } label: {
             HStack(spacing: 10) {
-                Text("Данные в сохранности?")
+                Text(T("Данные в сохранности?", "Is my data safe?"))
                     .font(Look.sans(15))
                     .foregroundStyle(Look.ink)
                 Spacer(minLength: 0)
@@ -534,12 +540,12 @@ struct SettingsSticker: View {
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.yellow)
-                        Text("НЕТ")
+                        Text(T("НЕТ", "NO"))
                             .font(Look.sans(15, weight: .bold))
                             .foregroundStyle(.red)
                     }
                 } else {
-                    Text("да")
+                    Text(T("да", "yes"))
                         .font(Look.sans(14))
                         .foregroundStyle(Look.inkSoft)
                 }
@@ -559,22 +565,22 @@ struct SettingsSticker: View {
     }
 
     private var count: String {
-        var out = "Файлов с записями: \(archive.files)"
+        var out = T("Файлов с записями: \(archive.files)", "Entry files: \(archive.files)")
         if let storageBytes {
-            out += " · занято: " + ByteCountFormatter.string(fromByteCount: storageBytes,
+            out += T(" · занято: ", " · size: ") + ByteCountFormatter.string(fromByteCount: storageBytes,
                                                               countStyle: .file)
         }
         if archive.awayFiles > 0 {
-            out += " · ещё в iCloud: \(archive.awayFiles)"
-            out += archive.fetching ? ", скачиваются" : ""
+            out += T(" · ещё в iCloud: \(archive.awayFiles)", " · still in iCloud: \(archive.awayFiles)")
+            out += archive.fetching ? T(", скачиваются", ", downloading") : ""
         }
         return out
     }
 
     private var missing: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Напоминание вечером: «запишите день»")
-            Text("Перенос из Day One и «Дневника» Apple")
+            Text(T("Напоминание вечером: «запишите день»", "Evening reminder: “write down your day”"))
+            Text(T("Перенос из Day One и «Дневника» Apple", "Import from Day One and Apple Journal"))
         }
         .font(Look.sans(12))
         .foregroundStyle(Look.inkFaint)
@@ -585,7 +591,7 @@ struct SettingsSticker: View {
 
     private var version: some View {
         HStack {
-            Text("Версия")
+            Text(T("Версия", "Version"))
                 .font(Look.sans(12))
                 .foregroundStyle(Look.inkFaint)
             Spacer()
@@ -622,14 +628,14 @@ struct SafetySheet: View {
                     .font(.system(size: 40, weight: .light))
                     .foregroundStyle(onPhone ? .red : Look.inkSoft)
 
-                Text(onPhone ? "Данные не защищены" : "Данные в сохранности")
+                Text(onPhone ? T("Данные не защищены", "Your data is not protected") : T("Данные в сохранности", "Your data is safe"))
                     .font(.title2)
 
                 Text(onPhone
-                     ? "Записи лежат внутри самой «Хронотеки», на этом iPhone. "
-                       + "Удалите приложение — iPhone сотрёт их вместе с ним, без возврата."
-                     : "Записи лежат вне приложения, в вашей папке. Удалите «Хронотеку» — "
-                       + "они останутся на месте: в «Файлах», в облаке, на других устройствах.")
+                     ? T("Записи лежат внутри самой «Хронотеки», на этом iPhone. ", "Your entries are inside Chronotheca itself, on this iPhone. ")
+                       + T("Удалите приложение — iPhone сотрёт их вместе с ним, без возврата.", "Delete the app, and the iPhone erases them with it, for good.")
+                     : T("Записи лежат вне приложения, в вашей папке. Удалите «Хронотеку» — ", "Your entries are outside the app, in your own folder. Delete Chronotheca, and ")
+                       + T("они останутся на месте: в «Файлах», в облаке, на других устройствах.", "they stay where they are: in Files, in the cloud, on other devices."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -638,17 +644,17 @@ struct SafetySheet: View {
                     Button {
                         moveNow()
                     } label: {
-                        Text("Перенести архив и писать в другое место")
+                        Text(T("Перенести архив и писать в другое место", "Move the archive and write elsewhere"))
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                 }
             }
             .padding(28)
-            .navigationTitle("Данные в сохранности?")
+            .navigationTitle(T("Данные в сохранности?", "Is my data safe?"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("Готово") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(T("Готово", "Done")) { dismiss() } }
             }
         }
         .presentationDetents([.medium])
@@ -675,10 +681,12 @@ enum Build {
 /// без часа, и это нормальное состояние дела.
 struct RollerSheet: View {
 
-    private static let aboutBell = """
-        Напоминания ещё не приходят — время записывается в файл, \
-        но телефон о нём пока не сообщает.
-        """
+    private static var aboutBell: String {
+        T("Напоминания ещё не приходят — время записывается в файл, "
+          + "но телефон о нём пока не сообщает.",
+          "Reminders do not arrive yet — the time is written to the file, "
+          + "but the phone does not announce it yet.")
+    }
 
     let roller: Shell.Roller
 
@@ -705,17 +713,17 @@ struct RollerSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(.top, 6)
-            .navigationTitle(isBell ? "Напоминание" : "Время дела")
+            .navigationTitle(isBell ? T("Напоминание", "Reminder") : T("Время дела", "Task time"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // «Отмена» не просто закрывает, а снимает назначенное: дело
                 // остаётся без часа, напоминание — снятым. Иначе отказаться
                 // от времени было бы нечем (решения P49, P150).
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Отмена") { apply(nil) }
+                    Button(T("Отмена", "Cancel")) { apply(nil) }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Готово") { apply(Clock.text(picked)) }
+                    Button(T("Готово", "Done")) { apply(Clock.text(picked)) }
                         .fontWeight(.semibold)
                 }
             }
@@ -751,9 +759,9 @@ struct RollerSheet: View {
     /// не должно молча назначать напоминание.
     private var presets: some View {
         HStack(spacing: 8) {
-            preset("за 10 минут", eventTime?.addingTimeInterval(-600))
-            preset("за 1 час", eventTime?.addingTimeInterval(-3600))
-            preset("в 9 утра", Clock.at(9))
+            preset(T("за 10 минут", "10 minutes before"), eventTime?.addingTimeInterval(-600))
+            preset(T("за 1 час", "1 hour before"), eventTime?.addingTimeInterval(-3600))
+            preset(T("в 9 утра", "at 9 am"), Clock.at(9))
         }
     }
 
@@ -819,7 +827,7 @@ struct RollerSheet: View {
             let shell = shell
             Reminders.ask { ok in
                 if !ok {
-                    shell.say("Напоминания выключены: Настройки iPhone → Хронотека → Уведомления")
+                    shell.say(T("Напоминания выключены: Настройки iPhone → Хронотека → Уведомления", "Reminders are off: iPhone Settings → Chronotheca → Notifications"))
                 }
             }
         }
@@ -941,7 +949,7 @@ struct DetailsDrawer: View {
 
     private var head: some View {
         HStack(alignment: .top, spacing: 8) {
-            Text("ПОДРОБНОСТИ")
+            Text(T("ПОДРОБНОСТИ", "DETAILS"))
                 .font(Look.sans(12, weight: .medium))
                 .tracking(1.2)
                 .foregroundStyle(Look.inkFaint)
@@ -962,11 +970,11 @@ struct DetailsDrawer: View {
                 .frame(width: 28, height: 28)
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
         }
-        .accessibilityLabel("Закрыть")
+        .accessibilityLabel(T("Закрыть", "Close"))
     }
 
     @ViewBuilder private func body(at i: Int) -> some View {
-        Text(store.planRows[i].text.isEmpty ? "Без названия" : store.planRows[i].text)
+        Text(store.planRows[i].text.isEmpty ? T("Без названия", "Untitled") : store.planRows[i].text)
             .font(Look.sans(14.5))
             .foregroundStyle(Look.ink)
             .lineSpacing(2)
@@ -991,7 +999,7 @@ struct DetailsDrawer: View {
     private func editor(at i: Int) -> some View {
         ZStack(alignment: .topLeading) {
             if store.planRows[i].details.isEmpty {
-                Text("Адрес, дорога, стоимость, с кем…")
+                Text(T("Адрес, дорога, стоимость, с кем…", "Address, route, cost, with whom…"))
                     .font(Look.sans(14.5))
                     .foregroundStyle(Look.inkFaint)
                     .padding(.horizontal, 11)
@@ -1039,7 +1047,7 @@ struct FileSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Папка").font(.caption).foregroundStyle(.secondary)
+                        Text(T("Папка", "Folder")).font(.caption).foregroundStyle(.secondary)
                         Text(vault.displayPath)
                             .font(.system(.caption, design: .monospaced))
                             .textSelection(.enabled)
@@ -1052,11 +1060,11 @@ struct FileSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             }
-            .navigationTitle("Файл на диске")
+            .navigationTitle(T("Файл на диске", "File on disk"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Закрыть") { shell.showingFile = false }
+                    Button(T("Закрыть", "Close")) { shell.showingFile = false }
                 }
             }
         }
@@ -1072,10 +1080,12 @@ struct WelcomeView: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var archive: Archive
 
-    private static let invitation = """
-        Записи ложатся обычными файлами в папку «\(Vault.folderName)». Папка ваша: \
-        приложение только пишет и читает, и её всегда видно в «Файлах».
-        """
+    private static var invitation: String {
+        T("Записи ложатся обычными файлами в папку «\(Vault.folderName)». Папка ваша: "
+          + "приложение только пишет и читает, и её всегда видно в «Файлах».",
+          "Your entries are saved as plain files in the “\(Vault.folderName)” folder. The folder "
+          + "is yours: the app only writes and reads, and you can always see it in Files.")
+    }
 
     var body: some View {
         ScrollView {
@@ -1084,7 +1094,7 @@ struct WelcomeView: View {
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
 
-            Text("Где хранить записи").font(.title2)
+            Text(T("Где хранить записи", "Where to keep entries")).font(.title2)
 
             Text(Self.invitation)
                 .font(.callout)
@@ -1099,11 +1109,11 @@ struct WelcomeView: View {
                 store.load()
                 archive.reload()
             } label: {
-                Text("Хранить на этом iPhone").frame(maxWidth: .infinity)
+                Text(T("Хранить на этом iPhone", "Keep on this iPhone")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            Text("Одно касание. Папка «\(Vault.folderName)» будет видна в «Файлах» → «На iPhone». "
-                 + "Удалите приложение — iPhone удалит и её.")
+            Text(T("Одно касание. Папка «\(Vault.folderName)» будет видна в «Файлах» → «На iPhone». ", "One tap. The “\(Vault.folderName)” folder will be in Files → On My iPhone. ")
+                 + T("Удалите приложение — iPhone удалит и её.", "Delete the app, and the iPhone deletes it too."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -1111,19 +1121,19 @@ struct WelcomeView: View {
             Button {
                 shell.picking = true
             } label: {
-                Text("Выбрать свою папку…").frame(maxWidth: .infinity)
+                Text(T("Выбрать свою папку…", "Choose my own folder…")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             // Первые шаги по порядку. Системное окно выбора папки незнакомо
             // многим, и без подсказки человек не знает, куда в нём нажать
             // (решение P190).
             VStack(alignment: .leading, spacing: 8) {
-                step(1, "В окне выберите «iCloud Drive» — записи будут и на Маке и "
-                        + "переживут удаление приложения.")
-                step(2, "Нажмите «Открыть» вверху справа. Приложение предложит "
-                        + "завести там папку «\(Vault.folderName)».")
-                step(3, "Уже есть папка с записями — зайдите в неё и нажмите "
-                        + "«Открыть»: приложение узнает свой архив.")
+                step(1, T("В окне выберите «iCloud Drive» — записи будут и на Маке и ", "In the window choose “iCloud Drive” — your entries will be on your Mac too and ")
+                        + T("переживут удаление приложения.", "will outlive deleting the app."))
+                step(2, T("Нажмите «Открыть» вверху справа. Приложение предложит ", "Tap “Open” at the top right. The app will offer ")
+                        + T("завести там папку «\(Vault.folderName)».", "to make a “\(Vault.folderName)” folder there."))
+                step(3, T("Уже есть папка с записями — зайдите в неё и нажмите ", "Already have a folder with entries? Go into it and tap ")
+                        + T("«Открыть»: приложение узнает свой архив.", "“Open”: the app will recognise its archive."))
             }
             .font(.footnote)
             .foregroundStyle(.secondary)

@@ -32,7 +32,7 @@ struct RootView: View {
     }
 
     private func unlock() {
-        LockView.check(reason: "Открыть записи") { ok in
+        LockView.check(reason: T("Открыть записи", "Open your entries")) { ok in
             if ok { locked = false }
         }
     }
@@ -40,25 +40,32 @@ struct RootView: View {
 
     /// Человек должен увидеть полный путь до того, как что-то создано.
     private static func proposalText(_ p: Vault.Proposal) -> String {
-        var out = "Записей здесь не нашлось. Приложение может завести новую папку:\n\n"
+        var out = T("Записей здесь не нашлось. Приложение может завести новую папку:\n\n",
+                    "No entries here. The app can make a new folder:\n\n")
         out += p.path
-        out += "\n\nЭто будет отдельный архив — прежние записи останутся там, где лежат."
+        out += T("\n\nЭто будет отдельный архив — прежние записи останутся там, где лежат.",
+                 "\n\nIt will be a separate archive — earlier entries stay where they are.")
         if p.insideArchive {
-            out += "\n\nПохоже, вы зашли внутрь уже существующего архива. "
-            out += "Тогда выберите не эту папку, а саму «\(Vault.folderName)» — "
-            out += "или место, где она лежит."
+            out += T("\n\nПохоже, вы зашли внутрь уже существующего архива. "
+                     + "Тогда выберите не эту папку, а саму «\(Vault.folderName)» — "
+                     + "или место, где она лежит.",
+                     "\n\nIt looks like you went inside an existing archive. "
+                     + "Choose “\(Vault.folderName)” itself instead — or the place where it lies.")
         }
         return out
     }
 
     private static func transferText(_ t: Transfer.Offer) -> String {
-        var out = "В прежней папке осталось записей: \(t.records).\n\n"
+        var out = T("В прежней папке осталось записей: \(t.records).\n\n",
+                    "Entries left in the previous folder: \(t.records).\n\n")
         out += t.fromPath
-        out += "\n\nПеренести их сюда:\n\n"
+        out += T("\n\nПеренести их сюда:\n\n", "\n\nMove them here:\n\n")
         out += t.toPath
-        out += "\n\nСначала делается копия, и только потом убирается "
-        out += "прежний файл. Прервётся — ничего не пропадёт, перенос можно "
-        out += "будет продолжить."
+        out += T("\n\nСначала делается копия, и только потом убирается "
+                 + "прежний файл. Прервётся — ничего не пропадёт, перенос можно "
+                 + "будет продолжить.",
+                 "\n\nEach file is copied first, and only then the old one is removed. "
+                 + "If it is interrupted, nothing is lost — you can continue.")
         return out
     }
 
@@ -69,53 +76,71 @@ struct RootView: View {
         return Vault.trash(in: root).lastPathComponent
     }
 
+    private var trashTitle: String {
+        T("Убрать «" + shell.tab.title.lowercased() + "» этого дня в корзину?",
+          "Move this day’s " + shell.tab.title.lowercased() + " to the trash?")
+    }
+
     private var trashMessage: String {
-        let what = shell.tab == .diary ? "Запись" : "План"
-        return what + " этого дня переедет в папку «" + trashFolder
-            + "». Снимки и голос останутся на месте. Вернуть можно в настройках."
+        let what = shell.tab == .diary ? T("Запись", "The entry") : T("План", "The plan")
+        return what + T(" этого дня переедет в папку «", " of this day will move to the “") + trashFolder
+            + T("». Снимки и голос останутся на месте. Вернуть можно в настройках.",
+                "” folder. Photos and voice notes stay where they are. You can restore it in Settings.")
     }
 
     fileprivate static func renameText(_ r: Rename.Report) -> String {
-        var out = "Папок переименовано: \(r.folders). Записей поправлено: \(r.files)."
+        var out = T("Папок переименовано: \(r.folders). Записей поправлено: \(r.files).",
+                    "Folders renamed: \(r.folders). Entries updated: \(r.files).")
         if !r.stuck.isEmpty {
-            out += "\n\nОстались под прежним именем: " + r.stuck.joined(separator: ", ")
-            out += ". Они работают как раньше; перевод можно запустить ещё раз."
+            out += T("\n\nОстались под прежним именем: ", "\n\nKept their old name: ")
+                + r.stuck.joined(separator: ", ")
+            out += T(". Они работают как раньше; перевод можно запустить ещё раз.",
+                     ". They work as before; you can run the renaming again.")
         }
         if r.skipped > 0 {
-            out += "\n\nНе поправлено записей: \(r.skipped) — они ещё в iCloud или "
-            out += "изменились в другом месте. Снимки в них видны и так; "
-            out += "перевод можно запустить ещё раз позже."
+            out += T("\n\nНе поправлено записей: \(r.skipped) — они ещё в iCloud или "
+                     + "изменились в другом месте. Снимки в них видны и так; "
+                     + "перевод можно запустить ещё раз позже.",
+                     "\n\nEntries not updated: \(r.skipped) — they are still in iCloud or "
+                     + "were changed elsewhere. Their photos show anyway; you can run it again later.")
         }
         if r.kept > 0 {
-            out += "\n\nФайлов с одинаковыми именами, но разных: \(r.kept). "
-            out += "Они остались в папках с прежними именами — ничего не затёрто."
+            out += T("\n\nФайлов с одинаковыми именами, но разных: \(r.kept). "
+                     + "Они остались в папках с прежними именами — ничего не затёрто.",
+                     "\n\nFiles with the same name but different contents: \(r.kept). "
+                     + "They stayed in the folders with the old names — nothing was overwritten.")
         }
         return out
     }
 
     private static func reportText(_ r: Transfer.Report) -> String {
-        var out = "Перенесено файлов: \(r.moved)."
+        var out = T("Перенесено файлов: \(r.moved).", "Files moved: \(r.moved).")
         if r.kept > 0 {
-            out += "\n\nОсталось в прежней папке: \(r.kept). "
-            out += "За те же числа здесь уже есть записи, и приложение "
-            out += "не стало решать за вас, какая из них важнее. Обе целы."
+            out += T("\n\nОсталось в прежней папке: \(r.kept). "
+                     + "За те же числа здесь уже есть записи, и приложение "
+                     + "не стало решать за вас, какая из них важнее. Обе целы.",
+                     "\n\nLeft in the previous folder: \(r.kept). "
+                     + "There are already entries for those dates here, and the app did not "
+                     + "decide for you which one matters more. Both are safe.")
         }
         if r.failed > 0 {
-            out += "\n\nНе удалось перенести: \(r.failed). "
-            out += "Эти файлы остались на прежнем месте."
+            out += T("\n\nНе удалось перенести: \(r.failed). Эти файлы остались на прежнем месте.",
+                     "\n\nCould not move: \(r.failed). These files stayed where they were.")
         }
         if r.kept == 0 && r.failed == 0 {
-            out += " Прежняя папка осталась на месте, но записей в ней больше нет."
+            out += T(" Прежняя папка осталась на месте, но записей в ней больше нет.",
+                     " The previous folder is still there, but it has no entries any more.")
         } else {
-            out += "\n\nПрежняя папка:\n\n" + r.fromPath
+            out += T("\n\nПрежняя папка:\n\n", "\n\nPrevious folder:\n\n") + r.fromPath
         }
         return out
     }
 
-    private static let moved = """
-        Вы её переименовали или передвинули. Приложение пошло за ней следом \
-        и пишет теперь сюда:
-        """
+    private static var moved: String {
+        T("Вы её переименовали или передвинули. Приложение пошло за ней следом "
+          + "и пишет теперь сюда:",
+          "You renamed or moved it. The app followed it and now writes here:")
+    }
 
     var body: some View {
         Group {
@@ -145,31 +170,31 @@ struct RootView: View {
                 shell.screen = .today
             }
         }
-        .alert("Завести здесь новую папку?",
+        .alert(T("Завести здесь новую папку?", "Make a new folder here?"),
                isPresented: Binding(get: { vault.proposal != nil },
                                     set: { if !$0 { vault.declineProposal() } }),
                presenting: vault.proposal) { p in
-            Button("Отмена", role: .cancel) { vault.declineProposal() }
-            Button("Завести") { vault.acceptProposal() }
+            Button(T("Отмена", "Cancel"), role: .cancel) { vault.declineProposal() }
+            Button(T("Завести", "Make")) { vault.acceptProposal() }
         } message: { p in
             Text(Self.proposalText(p))
         }
-        .alert("Перенести записи?",
+        .alert(T("Перенести записи?", "Move your entries?"),
                isPresented: Binding(get: { vault.transfer != nil },
                                     set: { if !$0 { vault.declineTransfer() } }),
                presenting: vault.transfer) { _ in
-            Button("Оставить", role: .cancel) { vault.declineTransfer() }
-            Button("Перенести") {
+            Button(T("Оставить", "Leave them"), role: .cancel) { vault.declineTransfer() }
+            Button(T("Перенести", "Move")) {
                 vault.moveRecords()
             }
         } message: { t in
             Text(Self.transferText(t))
         }
-        .alert("Перенос закончен",
+        .alert(T("Перенос закончен", "Moving finished"),
                isPresented: Binding(get: { vault.transferDone != nil },
                                     set: { if !$0 { vault.transferDone = nil } }),
                presenting: vault.transferDone) { _ in
-            Button("Понятно") {
+            Button(T("Понятно", "OK")) {
                 vault.transferDone = nil
                 store.load()
                 archive.reload()
@@ -178,33 +203,39 @@ struct RootView: View {
             Text(Self.reportText(r))
         }
         .modifier(RenameShown())
-        .alert("Папка переехала",
+        .alert(T("Папка переехала", "The folder moved"),
                isPresented: Binding(get: { vault.moved != nil },
                                     set: { if !$0 { vault.moved = nil } })) {
-            Button("Понятно") { vault.moved = nil }
+            Button(T("Понятно", "OK")) { vault.moved = nil }
         } message: {
             Text(Self.moved + "\n\n" + (vault.moved ?? ""))
         }
         // Запись поправили в другом месте, пока она была открыта здесь.
         // Ничего не затёрто: чужая правка на экране, своя — рядом в папке.
         // Человек должен знать, где её искать (решение P183).
-        .alert("Запись изменилась в другом месте",
+        .alert(T("Запись изменилась в другом месте", "The entry changed elsewhere"),
                isPresented: Binding(get: { store.conflict != nil },
                                     set: { if !$0 { store.conflict = nil } })) {
-            Button("Понятно") { store.conflict = nil }
+            Button(T("Понятно", "OK")) { store.conflict = nil }
         } message: {
             Text(Self.conflictText(store.conflict ?? ""))
         }
     }
 
     static func conflictText(_ name: String) -> String {
-        """
+        T("""
         Пока день был открыт здесь, его файл поправили в другом месте — \
         на Mac или на другом устройстве. На экране теперь та версия.
 
         Ваша правка не пропала: она лежит рядом, в той же папке, в файле \
         «\(name)». Откройте его в «Файлах» и перенесите нужное.
-        """
+        """, """
+        While the day was open here, its file was changed elsewhere — \
+        on a Mac or another device. The screen now shows that version.
+
+        Your change is not lost: it is next to it, in the same folder, in the file \
+        “\(name)”. Open it in Files and move over what you need.
+        """)
     }
 
     private var app: some View {
@@ -268,7 +299,7 @@ struct RootView: View {
                             remove: store.canEdit(opened.tab) ? { i in
                                 store.removePhoto(at: i, from: opened.tab)
                                 shell.openedPhoto = nil
-                                shell.say("Убрано со страницы. Сам файл остался в папке.")
+                                shell.say(T("Убрано со страницы. Сам файл остался в папке.", "Removed from the page. The file stays in the folder."))
                             } : nil,
                             close: { shell.openedPhoto = nil })
             } else {
@@ -278,7 +309,7 @@ struct RootView: View {
                 onRemove: opened.url == nil && store.canEdit(opened.tab) ? {
                     store.removePhoto(at: opened.index, from: opened.tab)
                     shell.openedPhoto = nil
-                    shell.say("Убрано со страницы. Сам файл остался в папке.")
+                    shell.say(T("Убрано со страницы. Сам файл остался в папке.", "Removed from the page. The file stays in the folder."))
                 } : nil,
                 // Снимок из текста можно вернуть в полоску (P216).
                 onReturn: opened.link != nil && store.canEdit(opened.tab) ? {
@@ -289,18 +320,18 @@ struct RootView: View {
             }
         }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
-        .confirmationDialog("Убрать «" + shell.tab.rawValue.lowercased() + "» этого дня в корзину?",
+        .confirmationDialog(trashTitle,
                             isPresented: $shell.trashAsk, titleVisibility: .visible) {
-            Button("Убрать в корзину", role: .destructive) {
+            Button(T("Убрать в корзину", "Move to trash"), role: .destructive) {
                 let tab = shell.tab
                 store.save()
                 if Trash.put(store.date, parts: [tab.vaultFolder], in: vault) {
                     store.load()
                     archive.reload()
                     store.syncUpcomingReminders()
-                    shell.say(tab.rawValue + " в корзине. Вернуть — Настройки → Корзина.")
+                    shell.say(tab.title + T(" в корзине. Вернуть — Настройки → Корзина.", " is in the trash. Restore it in Settings → Trash."))
                 } else {
-                    shell.say("Тут нечего убирать.")
+                    shell.say(T("Тут нечего убирать.", "Nothing to remove here."))
                 }
             }
         } message: {
@@ -357,7 +388,7 @@ struct RootView: View {
             .buttonStyle(.plain)
             // Уголок тянут вниз, и бумажка идёт за пальцем (P233).
             .simultaneousGesture(pull(\.showingSettings, \.settingsPull))
-            .accessibilityLabel("Настройки")
+            .accessibilityLabel(T("Настройки", "Settings"))
 
             Spacer(minLength: 0)
 
@@ -415,10 +446,10 @@ struct RootView: View {
 
     private var dotsLabel: String {
         switch shell.screen {
-        case .today:    return "Меню страницы"
-        case .calendar: return "Меню календаря"
-        case .map:      return "Меню карты"
-        case .search:   return "Меню поиска"
+        case .today:    return T("Меню страницы", "Page menu")
+        case .calendar: return T("Меню календаря", "Calendar menu")
+        case .map:      return T("Меню карты", "Map menu")
+        case .search:   return T("Меню поиска", "Search menu")
         }
     }
 
@@ -501,10 +532,10 @@ struct RootView: View {
         HStack(spacing: 0) {
             // Сегодня, календарь, карта, поиск (P239). Глобус нарисован
             // автором (P248).
-            section("сегодня", "Сегодня", .today)
-            section("календарь", "Календарь", .calendar)
-            section("карта", "Карта", .map)
-            section("поиск", "Поиск", .search)
+            section("сегодня", T("Сегодня", "Today"), .today)
+            section("календарь", T("Календарь", "Calendar"), .calendar)
+            section("карта", T("Карта", "Map"), .map)
+            section("поиск", T("Поиск", "Search"), .search)
         }
         // На 5% тоньше, чем было, при книжке на 10% крупнее (P212).
         .padding(.top, 7)
@@ -553,7 +584,7 @@ struct RootView: View {
                 if shell.screen == .today && !store.isToday {
                     // Возвращаемся не мгновенно, а перелистнув страницы:
                     // дорога домой должна быть видна (решение P164).
-                    shell.say("Вернулись на сегодня")
+                    shell.say(T("Вернулись на сегодня", "Back to today"))
                     shell.goHome = true
                 } else if !store.isToday {
                     store.go(to: DayStore.today())
@@ -766,13 +797,13 @@ private struct RenameShown: ViewModifier {
         content
             .overlay {
                 if let m = vault.renaming {
-                    MovingView(progress: m, title: "Перевожу имена папок")
+                    MovingView(progress: m, title: T("Перевожу имена папок", "Renaming folders"))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea()
                 }
             }
-            .alert("Имена папок переведены", isPresented: shown, presenting: vault.renamed) { _ in
-                Button("Понятно") { done() }
+            .alert(T("Имена папок переведены", "Folders renamed"), isPresented: shown, presenting: vault.renamed) { _ in
+                Button(T("Понятно", "OK")) { done() }
             } message: { r in
                 Text(RootView.renameText(r))
             }

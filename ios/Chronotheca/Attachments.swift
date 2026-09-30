@@ -25,7 +25,7 @@ struct Recorder: View {
 
     var body: some View {
         VStack(spacing: 22) {
-            Text(started == nil ? "Голосовая запись" : "Идёт запись")
+            Text(started == nil ? T("Голосовая запись", "Voice note") : T("Идёт запись", "Recording"))
                 .font(Look.sans(17, weight: .semibold))
                 .foregroundStyle(Look.ink)
 
@@ -35,7 +35,8 @@ struct Recorder: View {
                     .foregroundStyle(started == nil ? Look.inkFaint : Look.ink)
             }
             if started != nil {
-                Text("Пишет и при погасшем экране. Квадрат — закончить и сохранить.")
+                Text(T("Пишет и при погасшем экране. Квадрат — закончить и сохранить.",
+                       "Keeps recording with the screen off. The square stops and saves."))
                     .font(Look.sans(12.5))
                     .foregroundStyle(Look.inkSoft)
                     .multilineTextAlignment(.center)
@@ -55,20 +56,21 @@ struct Recorder: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(started == nil ? "Начать запись" : "Закончить запись")
+                .accessibilityLabel(started == nil ? T("Начать запись", "Start recording") : T("Закончить запись", "Stop recording"))
                 .position(x: geo.size.width * align, y: geo.size.height / 2)
             }
             .frame(height: 96)
 
             if denied {
-                Text("Приложению не разрешён микрофон. Разрешить можно в Настройках iPhone → Chronotheca.")
+                Text(T("Приложению не разрешён микрофон. Разрешить можно в Настройках iPhone → Chronotheca.",
+                       "The app has no access to the microphone. Allow it in iPhone Settings → Chronotheca."))
                     .font(Look.sans(13))
                     .foregroundStyle(Look.inkSoft)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
             }
 
-            Button("Отмена") {
+            Button(T("Отмена", "Cancel")) {
                 recorder?.stop()
                 recorder?.deleteRecording()
                 recorder = nil
@@ -183,7 +185,8 @@ struct AudioPlayerView: View {
             }
             .buttonStyle(.plain)
             if failed {
-                Text("Запись не открылась — возможно, она ещё не скачана из iCloud.")
+                Text(T("Запись не открылась — возможно, она ещё не скачана из iCloud.",
+                         "The recording did not open — perhaps it is not downloaded from iCloud yet."))
                     .font(Look.sans(13))
                     .foregroundStyle(Look.inkSoft)
             }
@@ -347,23 +350,24 @@ struct AttachmentViewer: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("Готово", action: close).fontWeight(.semibold)
+                        Button(T("Готово", "Done"), action: close).fontWeight(.semibold)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 18) {
                             if let url { ShareLink(item: url) { Image(systemName: "square.and.arrow.up") } }
                             if onRemove != nil {
                                 Button { asking = true } label: { Image(systemName: "trash") }
-                                    .accessibilityLabel("Убрать со страницы")
+                                    .accessibilityLabel(T("Убрать со страницы", "Remove from the page"))
                             }
                         }
                     }
                 }
-                .confirmationDialog("Убрать со страницы?", isPresented: $asking,
+                .confirmationDialog(T("Убрать со страницы?", "Remove from the page?"), isPresented: $asking,
                                     titleVisibility: .visible) {
-                    Button("Убрать", role: .destructive) { onRemove?() }
+                    Button(T("Убрать", "Remove"), role: .destructive) { onRemove?() }
                 } message: {
-                    Text("Сам файл останется в папке — удалить его можно в «Файлах».")
+                    Text(T("Сам файл останется в папке — удалить его можно в «Файлах».",
+                   "The file itself stays in the folder — you can delete it in Files."))
                 }
         }
     }

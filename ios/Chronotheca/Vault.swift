@@ -160,11 +160,11 @@ final class Vault: ObservableObject {
         // iPhone» под именем приложения (P223).
         if path.contains("/Data/Application/"), let r = path.range(of: "/Documents") {
             let tail = path[r.upperBound...].split(separator: "/").map(String.init)
-            return (["На iPhone", Vault.folderName] + tail).joined(separator: " › ")
+            return ([T("На iPhone", "On My iPhone"), Vault.folderName] + tail).joined(separator: " › ")
         }
         let places: [(String, String)] = [
             ("/Mobile Documents/com~apple~CloudDocs", "iCloud Drive"),
-            ("/File Provider Storage", "На iPhone"),
+            ("/File Provider Storage", T("На iPhone", "On My iPhone")),
         ]
         for (marker, name) in places {
             if let r = path.range(of: marker) {
@@ -226,17 +226,25 @@ final class Vault: ObservableObject {
     private func seedPreview() {
         let today = Date()
 
-        var plan = DayFile(body: """
+        // Пример — на языке приложения, чтобы снимки экрана не были
+        // наполовину русскими (P355).
+        var plan = DayFile(body: T("""
         - [ ] 09:00 Отвезти документы нотариусу
               Малая Бронная 12, второй этаж. Взять оригинал доверенности.
         - [ ] Позвонить в поликлинику
         - [ ] 15:00 Дописать вторую главу
         - [ ] Забрать посылку до восьми
-        """)
+        """, """
+        - [ ] 09:00 Take the papers to the notary
+              12 Marylebone Lane, second floor. Bring the original power of attorney.
+        - [ ] Call the surgery
+        - [ ] 15:00 Finish the second chapter
+        - [ ] Collect the parcel before eight
+        """))
         plan.set("date", Vault.stamp(today))
         write(plan.text, to: .planner, for: today)
 
-        var diary = DayFile(body: """
+        var diary = DayFile(body: T("""
         ## How did it go?
 
         - Отвезти документы нотариусу: всё получилось, доверенность приняли
@@ -247,7 +255,18 @@ final class Vault: ObservableObject {
 
         23:40 В поликлинику так и не собрался. Зато глава дописана, и\
          кажется, что она вышла лучше первой.
-        """)
+        """, """
+        ## How did it go?
+
+        - Take the papers to the notary: all went well, they accepted the power of attorney
+        - Call the surgery: never got round to it
+
+        08:15 Woke up before the alarm, for the first time this week. The fog over the field\
+         is so thick you cannot see the second row of trees.
+
+        23:40 Never got round to calling the surgery. But the chapter is finished, and\
+         it seems better than the first one.
+        """))
         // Фотографии — чтобы на снимке было видно, как они стоят: одна
         // посреди текста, другая в полоске внизу (P203, P204).
         if let link = addPhoto(Photo.sample(), for: today) {
@@ -258,41 +277,55 @@ final class Vault: ObservableObject {
             diary.body += "\n\n" + Diary.line(link)
         }
         diary.set("date", Vault.stamp(today))
-        diary.set("title", "Туман")
+        diary.set("title", T("Туман", "Fog"))
         write(diary.text, to: .diary, for: today)
 
         // Вчерашний день нужен для снимка прошедшего: без него не видно,
         // как выцветает закрытый план и как остаётся контрастным дневник.
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today) ?? today
-        var past = DayFile(body: """
+        var past = DayFile(body: T("""
         - [x] 08:30 Забрать справку в банке
         - [x] Отменить подписку
-        - [ ] 19:00 Зайти к Анне (напомнить 18:30)
+        - [ ] 19:00 Зайти к Анне (remind 18:30)
               Второй подъезд, код 42. Забрать книги.
-        """)
+        """, """
+        - [x] 08:30 Pick up the letter at the bank
+        - [x] Cancel the subscription
+        - [ ] 19:00 Drop in on Anna (remind 18:30)
+              Second entrance, code 42. Collect the books.
+        """))
         past.set("date", Vault.stamp(yesterday))
         write(past.text, to: .planner, for: yesterday)
 
-        var pastDiary = DayFile(body: """
+        var pastDiary = DayFile(body: T("""
         09:10 Справку дали без очереди — редкий день.
 
         22:05 У Анны просидели до одиннадцати. Книги так и не забрал.
-        """)
+        """, """
+        09:10 Got the letter without queueing — a rare day.
+
+        22:05 Sat at Anna’s until eleven. Never collected the books.
+        """))
         pastDiary.set("date", Vault.stamp(yesterday))
-        pastDiary.set("title", "Справка и книги")
+        pastDiary.set("title", T("Справка и книги", "The letter and the books"))
         write(pastDiary.text, to: .diary, for: yesterday)
 
         // Тот же день год назад — чтобы облачко «…помнишь?» было видно
         // в работе, а не только на словах.
         let lastYear = Calendar.current.date(byAdding: .year, value: -1, to: today) ?? today
-        var old = DayFile(body: """
+        var old = DayFile(body: T("""
         07:40 Первый по-настоящему холодный день. Иней на перилах, и\
          видно дыхание.
 
         21:15 Перебирал бумаги, нашёл письмо, о котором забыл. Читал дважды.
-        """)
+        """, """
+        07:40 The first really cold day. Frost on the railings, and\
+         you can see your breath.
+
+        21:15 Sorted through papers, found a letter I had forgotten. Read it twice.
+        """))
         old.set("date", Vault.stamp(lastYear))
-        old.set("title", "Иней на перилах")
+        old.set("title", T("Иней на перилах", "Frost on the railings"))
         write(old.text, to: .diary, for: lastYear)
     }
 
@@ -356,7 +389,7 @@ final class Vault: ObservableObject {
         // Прежнюю папку пересчитываем, пока доступ к ней ещё открыт.
         let before = root.map { (root: $0, records: Transfer.records(in: $0)) }
         guard begin(url) else {
-            problem = "Система не дала доступ к этой папке."
+            problem = T("Система не дала доступ к этой папке.", "The system did not give access to this folder.")
             return
         }
         leaving = before
@@ -503,7 +536,7 @@ final class Vault: ObservableObject {
                              bookmarkDataIsStale: &stale)
         }
         guard let grantedOld = found else {
-            problem = "Прежняя папка больше недоступна. Записи в ней целы."
+            problem = T("Прежняя папка больше недоступна. Записи в ней целы.", "The previous folder is no longer available. The entries in it are safe.")
             return
         }
         let subpath = defaults.string(forKey: Vault.previousSubpathKey) ?? ""
@@ -556,7 +589,7 @@ final class Vault: ObservableObject {
             let url = try URL(resolvingBookmarkData: data, options: [],
                               relativeTo: nil, bookmarkDataIsStale: &stale)
             guard begin(url) else {
-                problem = "Прежняя папка больше недоступна."
+                problem = T("Прежняя папка больше недоступна.", "The previous folder is no longer available.")
                 return
             }
             let subpath = UserDefaults.standard.string(forKey: Vault.previousSubpathKey) ?? ""
@@ -605,11 +638,11 @@ final class Vault: ObservableObject {
                               relativeTo: nil,
                               bookmarkDataIsStale: &stale)
             guard begin(url) else {
-                problem = "Папка, в которую приложение писало, больше недоступна — "
-                        + "чаще всего это значит, что её перенесли между памятью "
-                        + "телефона и iCloud. Записи целы: они лежат там, куда вы "
-                        + "их перенесли. Укажите это место заново, и приложение "
-                        + "узнает свой архив."
+                problem = T("Папка, в которую приложение писало, больше недоступна — ", "The folder the app wrote to is no longer available — ")
+                        + T("чаще всего это значит, что её перенесли между памятью ", "most often this means it was moved between the phone’s ")
+                        + T("телефона и iCloud. Записи целы: они лежат там, куда вы ", "storage and iCloud. The entries are safe: they are where you ")
+                        + T("их перенесли. Укажите это место заново, и приложение ", "moved them. Point to that place again, and the app ")
+                        + T("узнает свой архив.", "will recognise its archive.")
                 return
             }
             let subpath = UserDefaults.standard.string(forKey: Vault.subpathKey) ?? ""
@@ -630,8 +663,8 @@ final class Vault: ObservableObject {
             }
             UserDefaults.standard.set(root?.path, forKey: Vault.lastPathKey)
         } catch {
-            problem = "Не удалось открыть прежнюю папку. Записи в ней целы — "
-                    + "укажите это место заново."
+            problem = T("Не удалось открыть прежнюю папку. Записи в ней целы — ", "Could not open the previous folder. The entries in it are safe — ")
+                    + T("укажите это место заново.", "point to that place again.")
         }
     }
 
@@ -905,7 +938,7 @@ final class Vault: ObservableObject {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "HH.mm.ss"
-        let name = Vault.stamp(date) + " — вторая версия " + f.string(from: Date()) + ".md"
+        let name = Vault.stamp(date) + T(" — вторая версия ", " — second version ") + f.string(from: Date()) + ".md"
         let aside = url.deletingLastPathComponent().appendingPathComponent(name)
         if let trouble = Vault.write(text, to: aside) {
             problem = trouble
@@ -926,7 +959,7 @@ final class Vault: ObservableObject {
     /// (решение P200).
     func addPhoto(_ data: Data, for date: Date) -> String? {
         guard let jpeg = Photo.jpeg(from: data) else {
-            problem = "Эту фотографию не удалось прочитать."
+            problem = T("Эту фотографию не удалось прочитать.", "This photo could not be read.")
             return nil
         }
         return addAttachment(jpeg, to: .photos, name: Vault.moment(date) + ".jpg", for: date)

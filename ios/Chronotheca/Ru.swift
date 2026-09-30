@@ -1,24 +1,42 @@
 import SwiftUI
 
-/// Русские даты и цвета дней недели.
+/// Даты и цвета дней недели.
 ///
 /// Цвет дня недели — из решений: он живёт в названии дня и лёгким оттенком
 /// на всём экране. По оттенку день узнаётся раньше, чем прочитана дата.
 enum Ru {
 
-    static let months = ["января", "февраля", "марта", "апреля", "мая", "июня",
-                         "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+    // Имя осталось от времени, когда приложение было только русским; даты
+    // теперь на языке приложения (P355).
 
-    static let monthNames = ["январь", "февраль", "март", "апрель", "май", "июнь",
-                             "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"]
+    private static let ruMonths = ["января", "февраля", "марта", "апреля", "мая", "июня",
+                                   "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+    private static let enMonths = ["January", "February", "March", "April", "May", "June",
+                                   "July", "August", "September", "October", "November", "December"]
+    private static let ruMonthNames = ["январь", "февраль", "март", "апрель", "май", "июнь",
+                                       "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"]
+
+    /// Месяц в дате: «30 сентября» / «30 September».
+    static var months: [String] { Lang.isRussian ? ruMonths : enMonths }
+    /// Месяц сам по себе: «сентябрь» / «September».
+    static var monthNames: [String] { Lang.isRussian ? ruMonthNames : enMonths }
 
     /// Порядок как у `Calendar.component(.weekday)`: 1 — воскресенье.
-    static let weekdays = ["воскресенье", "понедельник", "вторник", "среда",
-                           "четверг", "пятница", "суббота"]
-    static let weekdaysShort = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"]
+    static var weekdays: [String] {
+        Lang.isRussian
+            ? ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]
+            : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    }
+    static var weekdaysShort: [String] {
+        Lang.isRussian ? ["вс", "пн", "вт", "ср", "чт", "пт", "сб"]
+                       : ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+    }
 
-    /// Понедельник первым — как в русском календаре.
-    static let weekHeader = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
+    /// Понедельник первым.
+    static var weekHeader: [String] {
+        Lang.isRussian ? ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
+                       : ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    }
 
     private static func index(_ date: Date) -> Int {
         Calendar.current.component(.weekday, from: date) - 1
@@ -30,7 +48,8 @@ enum Ru {
     /// «13 сентября 2026 г.»
     static func longDate(_ date: Date) -> String {
         let c = Calendar.current.dateComponents([.day, .month, .year], from: date)
-        return "\(c.day ?? 1) \(months[(c.month ?? 1) - 1]) \(c.year ?? 2026) г."
+        let tail = Lang.isRussian ? " г." : ""
+        return "\(c.day ?? 1) \(months[(c.month ?? 1) - 1]) \(c.year ?? 2026)" + tail
     }
 
     /// «13 сентября ’26» — год двумя цифрами, для строки под именем дня

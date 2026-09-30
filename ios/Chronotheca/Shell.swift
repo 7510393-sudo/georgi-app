@@ -15,6 +15,10 @@ final class Shell: ObservableObject {
         case diary = "Дневник"
         var id: String { rawValue }
 
+        /// Название на языке приложения (P355). `rawValue` — прежнее
+        /// русское, его не показываем.
+        var title: String { self == .plan ? T("План", "Plan") : T("Дневник", "Diary") }
+
         /// Чей это файл в папке записей — для корзины (P300).
         var vaultFolder: Vault.Folder { self == .diary ? .diary : .planner }
     }
@@ -188,7 +192,18 @@ final class Shell: ObservableObject {
     /// Что искать: всё или только дни со снимками, видео, голосом,
     /// файлами, местами (P249).
     enum Find: String, CaseIterable { case all = "Всё", photo = "Снимки", video = "Видео",
-                                          audio = "Голос", file = "Файлы", place = "Места" }
+                                          audio = "Голос", file = "Файлы", place = "Места"
+        var title: String {
+            switch self {
+            case .all: return T("Всё", "Everything")
+            case .photo: return T("Снимки", "Photos")
+            case .video: return T("Видео", "Videos")
+            case .audio: return T("Голос", "Voice")
+            case .file: return T("Файлы", "Files")
+            case .place: return T("Места", "Places")
+            }
+        }
+    }
     @Published var find: Find = .all
 
     /// Просьбы к карте из её меню: показать все места, открыть список мест.
