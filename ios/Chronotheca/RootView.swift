@@ -69,7 +69,13 @@ struct RootView: View {
         return Vault.trash(in: root).lastPathComponent
     }
 
-    private static func renameText(_ r: Rename.Report) -> String {
+    private var trashMessage: String {
+        let what = shell.tab == .diary ? "Запись" : "План"
+        return what + " этого дня переедет в папку «" + trashFolder
+            + "». Снимки и голос останутся на месте. Вернуть можно в настройках."
+    }
+
+    fileprivate static func renameText(_ r: Rename.Report) -> String {
         var out = "Папок переименовано: \(r.folders). Записей поправлено: \(r.files)."
         if !r.stuck.isEmpty {
             out += "\n\nОстались под прежним именем: " + r.stuck.joined(separator: ", ")
@@ -171,18 +177,7 @@ struct RootView: View {
         } message: { r in
             Text(Self.reportText(r))
         }
-        .alert("Имена папок переведены",
-               isPresented: Binding(get: { vault.renamed != nil },
-                                    set: { if !$0 { vault.renamed = nil } }),
-               presenting: vault.renamed) { _ in
-            Button("Понятно") {
-                vault.renamed = nil
-                store.load()
-                archive.reload()
-            }
-        } message: { r in
-            Text(Self.renameText(r))
-        }
+        .modifier(RenameShown())
         .alert("Папка переехала",
                isPresented: Binding(get: { vault.moved != nil },
                                     set: { if !$0 { vault.moved = nil } })) {
@@ -245,10 +240,7 @@ struct RootView: View {
                 MovingView(progress: m)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            if let m = vault.renaming {
-                MovingView(progress: m, title: "Перевожу имена папок")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+
         }
         // Нижние разделы стоят на месте, что бы ни случилось: клавиатура их
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
@@ -312,8 +304,7 @@ struct RootView: View {
                 }
             }
         } message: {
-            Text((shell.tab == .diary ? "Запись" : "План") +
-                 " этого дня переедет в папку «\(trashFolder)». Снимки и голос останутся на месте. Вернуть можно в настройках.")
+            Text(trashMessage)
         }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
         .onAppear {
@@ -761,5 +752,39 @@ struct CornerShape: Shape {
         }
         p.closeSubpath()
         return p
+    }
+}
+
+/// Перевод имён папок (P353): пока идёт — экран закрыт, как при переносе;
+/// кончился — отчёт. Отдельно от `RootView`: её цепочка и так длинная.
+private struct RenameShown: ViewModifier {
+    @EnvironmentObject private var vault: Vault
+    @EnvironmentObject private var store: DayStore
+    @EnvironmentObject private var archive: Archive
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if let m = vault.renaming {
+                    MovingView(progress: m, title: "Перевожу имена папок")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .ignoresSafeArea()
+                }
+            }
+            .alert("Имена папок переведены", isPresented: shown, presenting: vault.renamed) { _ in
+                Button("Понятно") { done() }
+            } message: { r in
+                Text(RootView.renameText(r))
+            }
+    }
+
+    private var shown: Binding<Bool> {
+        Binding(get: { vault.renamed != nil }, set: { if !$0 { vault.renamed = nil } })
+    }
+
+    private func done() {
+        vault.renamed = nil
+        store.load()
+        archive.reload()
     }
 }
