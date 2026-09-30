@@ -281,6 +281,17 @@ struct SettingsSticker: View {
                 noWeather.toggle()
                 if !noWeather { store.fetchWeatherIfNeeded() }
             }
+            // Погоды нет — почему (P354). Текст можно выделить и прислать.
+            if !noWeather, let trouble = store.weatherTrouble {
+                Text(trouble)
+                    .font(Look.sans(11.5))
+                    .foregroundStyle(Color.red.opacity(0.8))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 8)
+            }
             if !noWeather {
                 StickerItem(title: "Градусы", note: fahrenheit ? "°F" : "°C", edge: Look.noteEdge) {
                     fahrenheit.toggle()

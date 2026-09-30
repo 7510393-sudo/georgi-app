@@ -6,20 +6,39 @@ import WeatherKit
 ///
 /// Берётся у Погоды Apple, когда человек сам отметил место: своих серверов
 /// у приложения нет, а координаты уходят только в Apple (P198, P208).
-/// Не вышло — молча без погоды: запись важнее.
+/// Не вышло — запись без погоды, а причина видна в настройках под строкой
+/// «Погода» (P354): молча — значит, не узнать, чего не хватает.
 enum WeatherNote {
 
     /// Страница с условиями Погоды Apple — её требуется показывать там,
     /// где приложение показывает погоду.
     static let legal = URL(string: "https://weatherkit.apple.com/legal-attribution.html")!
 
-    static func now(at location: CLLocation) async -> String? {
-        guard let weather = try? await WeatherService.shared.weather(for: location,
-                                                                     including: .current)
-        else { return nil }
-        let t = Int(weather.temperature.converted(to: .celsius).value.rounded())
-        let degrees = (t > 0 ? "+" : "") + "\(t)°"
-        return degrees + ", " + words(weather.condition)
+    static func now(at location: CLLocation) async -> Result<String, Error> {
+        do {
+            let weather = try await WeatherService.shared.weather(for: location, including: .current)
+            let t = Int(weather.temperature.converted(to: .celsius).value.rounded())
+            let degrees = (t > 0 ? "+" : "") + "\(t)°"
+            return .success(degrees + ", " + words(weather.condition))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    /// Почему Погода Apple не ответила — словами, и с кодом ошибки: по нему
+    /// видно, где чинить (P354).
+    static func explain(_ error: Error) -> String {
+        let ns = error as NSError
+        let code = "(" + ns.domain + " " + String(ns.code) + ")"
+        // Самая частая беда: у знака приложения на developer.apple.com
+        // включено право WeatherKit, но не включена служба WeatherKit —
+        // это две разные галочки на двух вкладках.
+        if ns.domain.contains("JWTAuthenticator") {
+            return "Apple не пускает приложение к погоде. На developer.apple.com → "
+                + "Identifiers → com.kobiashvili.diary должна стоять галочка WeatherKit "
+                + "и на вкладке Capabilities, и на вкладке App Services. " + code
+        }
+        return ns.localizedDescription + " " + code
     }
 
     /// Состояние неба по-русски: система отвечает на языке телефона, а

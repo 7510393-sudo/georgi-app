@@ -555,24 +555,48 @@ final class DayStore: ObservableObject {
     func fetchWeatherIfNeeded() {
         guard Prefs.weatherOn, isToday, canEditDiary, weather == nil, !weatherAsked else { return }
         let status = CLLocationManager().authorizationStatus
-        guard status != .denied, status != .restricted else { return }
+        guard status != .denied, status != .restricted else {
+            weatherTrouble = "Приложению не разрешено знать, где вы, — а погода нужна для "
+                + "места. Настройки iPhone → Хронотека → Геопозиция → «При использовании»."
+            return
+        }
         weatherAsked = true
         Locator.shared.current { [weak self] location in
-            guard let self, let location else { return }
+            guard let self else { return }
+            guard let location else {
+                self.weatherTrouble = "iPhone не сказал, где вы сейчас. Попробую снова, "
+                    + "когда вернётесь в приложение."
+                self.weatherAsked = false
+                return
+            }
             self.noteWeather(at: location)
         }
     }
     private var weatherAsked = false
 
+    /// Почему погоды нет — показывается в настройках под строкой «Погода»
+    /// (P354). Пусто — всё в порядке или ещё не спрашивали.
+    @Published var weatherTrouble: String?
+
     func noteWeather(at location: CLLocation) {
         guard isToday, canEditDiary else { return }
         let day = date
         Task { [weak self] in
-            guard let words = await WeatherNote.now(at: location) else { return }
+            let got = await WeatherNote.now(at: location)
             await MainActor.run {
-                guard let self, self.date == day else { return }
-                self.weather = words
-                self.save()
+                guard let self else { return }
+                switch got {
+                case .success(let words):
+                    self.weatherTrouble = nil
+                    guard self.date == day else { return }
+                    self.weather = words
+                    self.save()
+                case .failure(let error):
+                    // Не вышло — спросим снова при следующем возвращении в
+                    // приложение, а не никогда.
+                    self.weatherTrouble = WeatherNote.explain(error)
+                    self.weatherAsked = false
+                }
             }
         }
     }
