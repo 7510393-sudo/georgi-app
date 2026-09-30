@@ -186,7 +186,6 @@ struct SettingsSticker: View {
 
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
-    @EnvironmentObject private var store: DayStore
     @State private var askingRename = false
 
     var body: some View {
