@@ -164,7 +164,9 @@ struct PlanRowLine: View {
             .foregroundStyle(Look.inkSoft)
             .frame(width: PlanRowLine.badgeWidth, height: PlanRowLine.badgeWidth)
             .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
+            // Контур — заметной чертой, как у вкладок и корешка «Детали»:
+            // прежний, цвета линовки, на бумаге было не разглядеть (P364).
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.inkFaint, lineWidth: 1))
             .shadow(color: .black.opacity(0.06), radius: 1, y: 1)
     }
 
