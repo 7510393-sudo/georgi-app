@@ -69,6 +69,13 @@ struct RootView: View {
         return out
     }
 
+    /// Снимок, видео, документ — во весь экран; голос — нет, он шторкой
+    /// (P360).
+    private var coverShown: Binding<Shell.OpenedPhoto?> {
+        Binding(get: { shell.openedPhoto.flatMap { VoiceShown.isVoice($0, store) ? nil : $0 } },
+                set: { shell.openedPhoto = $0 })
+    }
+
     /// Имя корзины, как его видно в «Файлах»: «Trash» или прежнее
     /// «Корзина» (P353).
     private var trashFolder: String {
@@ -203,6 +210,9 @@ struct RootView: View {
             Text(Self.reportText(r))
         }
         .modifier(RenameShown())
+        // Голосовая запись — небольшой шторкой снизу, а не на весь экран
+        // (P360).
+        .modifier(VoiceShown())
         .alert(T("Папка переехала", "The folder moved"),
                isPresented: Binding(get: { vault.moved != nil },
                                     set: { if !$0 { vault.moved = nil } })) {
@@ -289,7 +299,7 @@ struct RootView: View {
         }
         // Снимок во весь экран — один на всё приложение: открывают его и
         // из плана, и из дневника (P203).
-        .fullScreenCover(item: $shell.openedPhoto) { opened in
+        .fullScreenCover(item: coverShown) { opened in
             let links = store.links(opened.tab)
             // Открыли из полоски — снимки листаются вбок, как в «Фото»:
             // влево — следующий в полоске, вправо — прежний (P278).
@@ -817,5 +827,58 @@ private struct RenameShown: ViewModifier {
         vault.renamed = nil
         store.load()
         archive.reload()
+    }
+}
+
+/// Голосовая запись открывается небольшой шторкой снизу: имя, ход
+/// записи, «играть» и «убрать» — весь экран ей ни к чему (P360).
+private struct VoiceShown: ViewModifier {
+    @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var store: DayStore
+
+    static func isVoice(_ opened: Shell.OpenedPhoto, _ store: DayStore) -> Bool {
+        let links = store.links(opened.tab)
+        let name = opened.url?.lastPathComponent
+            ?? (links.indices.contains(opened.index) ? links[opened.index] : "")
+        return Diary.kind(of: name) == .audio
+    }
+
+    private var shown: Binding<Shell.OpenedPhoto?> {
+        Binding(get: { shell.openedPhoto.flatMap { Self.isVoice($0, store) ? $0 : nil } },
+                set: { shell.openedPhoto = $0 })
+    }
+
+    func body(content: Content) -> some View {
+        content.sheet(item: shown) { opened in
+            VoiceSheet(opened: opened)
+                .presentationDetents([.height(300)])
+                .presentationDragIndicator(.visible)
+        }
+    }
+}
+
+private struct VoiceSheet: View {
+    let opened: Shell.OpenedPhoto
+    @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var store: DayStore
+
+    private var url: URL? {
+        if let url = opened.url { return url }
+        let links = store.links(opened.tab)
+        return links.indices.contains(opened.index) ? store.photoURL(links[opened.index]) : nil
+    }
+
+    var body: some View {
+        AttachmentViewer(
+            url: url,
+            onRemove: opened.url == nil && store.canEdit(opened.tab) ? { remove() } : nil,
+            close: { shell.openedPhoto = nil })
+    }
+
+    private func remove() {
+        store.removePhoto(at: opened.index, from: opened.tab)
+        shell.openedPhoto = nil
+        shell.say(T("Убрано со страницы. Сам файл остался в папке.",
+                    "Removed from the page. The file stays in the folder."))
     }
 }

@@ -150,10 +150,7 @@ struct AudioPlayerView: View {
     @State private var failed = false
 
     var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "waveform")
-                .font(.system(size: 44, weight: .light))
-                .foregroundStyle(Look.inkSoft)
+        VStack(spacing: 12) {
             Text(url.map { ($0.lastPathComponent as NSString).deletingPathExtension } ?? "")
                 .font(Look.mono(13))
                 .foregroundStyle(Look.inkSoft)
@@ -180,7 +177,7 @@ struct AudioPlayerView: View {
                 playing = player.isPlaying
             } label: {
                 Image(systemName: playing ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 64))
+                    .font(.system(size: 52))
                     .foregroundStyle(Look.accent)
             }
             .buttonStyle(.plain)
