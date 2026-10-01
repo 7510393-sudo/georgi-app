@@ -528,18 +528,28 @@ final class DayStore: ObservableObject {
     /// Вернуть снимок, стоящий посреди записи, в полоску внизу (P216).
     func returnToStrip(_ link: String) {
         guard canEditDiary else { return }
-        var lines = diaryText.components(separatedBy: "\n")
-        guard let i = lines.firstIndex(where: { Diary.links(in: $0).contains(link) }) else { return }
-        // Снимок из ряда (P348) уходит из ряда, остальные остаются строкой.
-        let row = Diary.pictures(in: lines[i])
-        if row.count > 1, let piece = row.first(where: { $0.link == link }) {
-            lines[i] = (lines[i] as NSString).replacingCharacters(in: piece.range, with: "")
-                .replacingOccurrences(of: "  ", with: " ")
-                .trimmingCharacters(in: .whitespaces)
-        } else {
-            lines.remove(at: i)
+        // Снимок ищется где угодно: своей строкой, в ряду (P348) или
+        // посреди фразы (P357). Уходит вместе с одним пробелом или переводом
+        // строки рядом — остальное остаётся как было.
+        let ns = diaryText as NSString
+        guard var cut = Diary.anywhere(in: diaryText).first(where: { $0.link == link })?.range
+        else { return }
+        let before = cut.location > 0 ? ns.character(at: cut.location - 1) : 10
+        let after = NSMaxRange(cut) < ns.length ? ns.character(at: NSMaxRange(cut)) : 10
+        if before == 10, after == 10 {
+            if NSMaxRange(cut) < ns.length {
+                cut.length += 1
+            } else if cut.location > 0 {
+                cut.location -= 1
+                cut.length += 1
+            }
+        } else if after == 32 {
+            cut.length += 1
+        } else if before == 32 {
+            cut.location -= 1
+            cut.length += 1
         }
-        diaryText = lines.joined(separator: "\n")
+        diaryText = ns.replacingCharacters(in: cut, with: "")
             .replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
         photos.append(link)
         touchDiary()

@@ -260,4 +260,20 @@ final class DiaryTests: XCTestCase {
         // Под текстом — своей строкой, как прежде.
         XCTAssertNil(DiaryEditor.besideDropped("Утро\n![](b.jpg)\n![](a.jpg)\nВечер", was: was))
     }
+
+    // P357: снимок посреди фразы — картинкой, а не буквами.
+    func testСнимокПосредиФразыОстаётсяКартинкой() {
+        let строка = "понимаю, о чём она воо ![](../../Photos/2026/a.jpg) бще толкует!"
+        XCTAssertEqual(Diary.anywhere(in: строка).map(\.link), ["../../Photos/2026/a.jpg"])
+        XCTAssertTrue(Diary.links(in: строка).isEmpty, "в полоску сам по себе не уходит")
+        let поле = DiaryEditor.styled(строка, size: 17, serif: true, stamped: true,
+                                      resolve: { _ in nil })
+        var снимков = 0
+        поле.enumerateAttribute(DiaryEditor.photoKey,
+                                in: NSRange(location: 0, length: поле.length)) { value, _, _ in
+            if value != nil { снимков += 1 }
+        }
+        XCTAssertEqual(снимков, 1)
+        XCTAssertEqual(DiaryEditor.plain(поле), строка, "в файл ложится как было")
+    }
 }

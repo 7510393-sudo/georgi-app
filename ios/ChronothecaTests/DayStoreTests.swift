@@ -281,4 +281,18 @@ extension DayStoreTests {
         XCTAssertEqual(день.planRows.last?.text, "Новое")
         XCTAssertTrue(день.planAhead.isEmpty)
     }
+
+    // P357: снимок, оказавшийся посреди фразы, возвращается в полоску, а
+    // фраза снова целая.
+    func testСнимокИзСерединыФразыВозвращаетсяВниз() {
+        let день = store(0)
+        день.diaryText = "она воо![](../../Photos/2026/a.jpg)бще толкует!\nДальше."
+        день.returnToStrip("../../Photos/2026/a.jpg")
+        XCTAssertEqual(день.diaryText, "она вообще толкует!\nДальше.")
+        XCTAssertEqual(день.photos, ["../../Photos/2026/a.jpg"])
+
+        день.diaryText = "Утро.\n![](../../Photos/2026/b.jpg)\nВечер."
+        день.returnToStrip("../../Photos/2026/b.jpg")
+        XCTAssertEqual(день.diaryText, "Утро.\nВечер.")
+    }
 }

@@ -390,10 +390,19 @@ struct DiaryEditor: UIViewRepresentable {
                                   (content as NSString).substring(with: r), point))
                 }
             }
+            // Снимок посреди фразы — тоже картинка, а не буквы (P357): так
+            // он мог лечь при переносе, и выглядеть набором цифр не должен.
+            if Diary.picture(in: content) == nil, row.count < 2 {
+                for piece in Diary.anywhere(in: content) where Diary.kind(of: piece.link) == .photo {
+                    found.append((NSRange(location: line.location + piece.range.location,
+                                          length: piece.range.length), piece.link, nil))
+                }
+            }
             guard line.length > 0 else { break }
             start = line.location + line.length
         }
-        for (range, link, point) in found.reversed() {
+        // С конца к началу: замена не сдвигает того, что ещё впереди.
+        for (range, link, point) in found.sorted(by: { $0.0.location < $1.0.location }).reversed() {
             let attachment: NSTextAttachment
             if let point {
                 attachment = PointChip(mini: point, glowing: glowing)
@@ -436,6 +445,7 @@ struct DiaryEditor: UIViewRepresentable {
         return text.components(separatedBy: "\n").contains {
             (Diary.picture(in: $0).map { Diary.kind(of: $0) == .photo } ?? false)
                 || Diary.pictures(in: $0).contains { Diary.kind(of: $0.link) == .photo }
+                || Diary.anywhere(in: $0).contains { Diary.kind(of: $0.link) == .photo }
                 || Geo.point(in: $0) != nil
                 // Посреди строки — когда точка дописана: за ней пробел или
                 // она в скобках с названием. Иначе кнопочкой стали бы
@@ -690,8 +700,11 @@ struct DiaryEditor: UIViewRepresentable {
             let text = DiaryEditor.plain(storage) as NSString
 
             // Точка — значок в строке: встаёт ровно туда, где отпустили,
-            // посреди текста, а не своей строкой (P259).
-            if storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil {
+            // посреди текста, а не своей строкой (P259). Снимок так не
+            // переносится никогда, даже если у него оказалась и метка
+            // точки: он всегда встаёт своей строкой (P357).
+            if storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil,
+               storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil {
                 let spot = min(drop, ns.length)
                 guard spot != i, spot != i + 1 else { return }
                 var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)

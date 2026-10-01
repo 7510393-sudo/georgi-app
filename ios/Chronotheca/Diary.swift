@@ -112,6 +112,23 @@ struct Diary: Equatable {
         return found
     }
 
+    /// Снимки где угодно в тексте — и посреди фразы (P357). Сюда снимок
+    /// мог попасть при переносе; показывать его буквами нельзя, и вернуть
+    /// его в полоску нужно уметь, где бы он ни стоял.
+    static func anywhere(in text: String) -> [(range: NSRange, link: String)] {
+        guard text.contains("![") else { return [] }
+        let ns = text as NSString
+        return onePicture.matches(in: text, range: NSRange(location: 0, length: ns.length))
+            .compactMap { m -> (range: NSRange, link: String)? in
+                var link = ns.substring(with: m.range(at: 1))
+                if link.hasPrefix("<"), link.hasSuffix(">") {
+                    link = String(link.dropFirst().dropLast())
+                }
+                guard !link.contains("://"), !link.hasPrefix("geo:") else { return nil }
+                return (range: m.range, link: link)
+            }
+    }
+
     /// Все вложения строки: одно — как прежде, или ряд снимков (P348).
     static func links(in line: String) -> [String] {
         if let one = picture(in: line) { return [one] }
