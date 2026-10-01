@@ -52,6 +52,9 @@
 "App language" = "アプリの言語";
 "Appearance" = "表示";
 "Apple Maps" = "Appleマップ";
+"Apple Maps asks to wait: too many searches in a row. " = "Appleマップから待つよう求められました: 続けて検索しすぎです。 ";
+"Apple Maps did not answer — no internet connection? " = "Appleマップから応答がありません。インターネットに接続されていますか？ ";
+"Apple Maps returned an error: " = "Appleマップがエラーを返しました: ";
 "Apple does not let the app get the weather. On developer.apple.com → Identifiers → com.kobiashvili.diary, WeatherKit must be ticked on both the Capabilities and the App Services tabs. " = "Appleがアプリに天気へのアクセスを許可していません。developer.apple.com → Identifiers → com.kobiashvili.diary で、Capabilities タブと App Services タブの両方で WeatherKit にチェックが必要です。";
 "As the iPhone took it, about 2–5 MB a photo" = "iPhoneで撮ったまま、1枚約2〜5MB";
 "As the iPhone took it: a minute of 4K is about 170–400 MB" = "iPhoneで撮ったまま: 4Kで1分約170〜400MB";

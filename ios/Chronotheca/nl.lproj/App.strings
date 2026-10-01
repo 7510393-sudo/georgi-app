@@ -52,6 +52,9 @@
 "App language" = "Taal van de app";
 "Appearance" = "Weergave";
 "Apple Maps" = "Apple Kaarten";
+"Apple Maps asks to wait: too many searches in a row. " = "Apple Kaarten vraagt even te wachten: te veel zoekopdrachten achter elkaar. ";
+"Apple Maps did not answer — no internet connection? " = "Apple Kaarten antwoordde niet — geen internetverbinding? ";
+"Apple Maps returned an error: " = "Apple Kaarten gaf een fout: ";
 "Apple does not let the app get the weather. On developer.apple.com → Identifiers → com.kobiashvili.diary, WeatherKit must be ticked on both the Capabilities and the App Services tabs. " = "Apple laat de app niet bij het weer. Op developer.apple.com → Identifiers → com.kobiashvili.diary moet WeatherKit aangevinkt zijn op zowel het tabblad Capabilities als App Services. ";
 "As the iPhone took it, about 2–5 MB a photo" = "Zoals de iPhone hem nam, ongeveer 2–5 MB per foto";
 "As the iPhone took it: a minute of 4K is about 170–400 MB" = "Zoals de iPhone hem opnam: een minuut 4K is ongeveer 170–400 MB";

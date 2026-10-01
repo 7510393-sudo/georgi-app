@@ -52,6 +52,9 @@
 "App language" = "Lingua dell’app";
 "Appearance" = "Aspetto";
 "Apple Maps" = "Mappe di Apple";
+"Apple Maps asks to wait: too many searches in a row. " = "Mappe di Apple chiede di aspettare: troppe ricerche di fila. ";
+"Apple Maps did not answer — no internet connection? " = "Mappe di Apple non ha risposto: niente connessione a Internet? ";
+"Apple Maps returned an error: " = "Mappe di Apple ha restituito un errore: ";
 "Apple does not let the app get the weather. On developer.apple.com → Identifiers → com.kobiashvili.diary, WeatherKit must be ticked on both the Capabilities and the App Services tabs. " = "Apple non lascia che l’app acceda al meteo. Su developer.apple.com → Identifiers → com.kobiashvili.diary, WeatherKit deve essere spuntato sia nella scheda Capabilities sia nella scheda App Services. ";
 "As the iPhone took it, about 2–5 MB a photo" = "Come l’ha scattata l’iPhone, circa 2–5 MB per foto";
 "As the iPhone took it: a minute of 4K is about 170–400 MB" = "Come l’ha girato l’iPhone: un minuto in 4K è circa 170–400 MB";

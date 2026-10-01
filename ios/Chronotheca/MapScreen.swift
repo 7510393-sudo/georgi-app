@@ -410,7 +410,18 @@ struct MapSearch: View {
     @State private var results: [Found] = []
     @State private var looking = false
     @State private var nothing = false
+    /// Почему Карты Apple ничего не дали — если они ответили ошибкой (P370).
+    @State private var trouble: String?
+    @State private var engine = Engine()
     @FocusState private var typing: Bool
+
+    /// Поиск держится, пока идёт: брошенный на полпути, он мог уйти, не
+    /// ответив, — и строка говорила «ничего не нашлось» (P370).
+    final class Engine {
+        var searches: [MKLocalSearch] = []
+        let geocoder = CLGeocoder()
+        var round = 0
+    }
 
     struct Found: Identifiable {
         let id = UUID()
@@ -491,6 +502,13 @@ struct MapSearch: View {
                 Text(T("Ничего не нашлось. Попробуйте иначе или вставьте координаты.",
                        "Nothing found. Try other words or paste coordinates."))
                     .font(Look.sans(13)).foregroundStyle(Look.inkSoft).padding(12)
+                if let trouble {
+                    Text(trouble)
+                        .font(Look.sans(12)).foregroundStyle(Color.red.opacity(0.8))
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12).padding(.bottom, 10)
+                }
             }
             ForEach(results.prefix(8)) { found in
                 Button { choose(found) } label: {
@@ -529,6 +547,7 @@ struct MapSearch: View {
     /// Пока пишут — только свои места: их видно сразу, без ожидания.
     private func ownOnly() {
         nothing = false
+        trouble = nil
         results = own(query)
         // Вставили координаты или ссылку с ними — точка видна сразу (P258).
         if let f = Pasted.find(query) {
@@ -573,19 +592,116 @@ struct MapSearch: View {
         let mine = own(text)
         results = mine
         looking = true
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = text
-        if let region = region() { request.region = region }
-        MKLocalSearch(request: request).start { response, _ in
+        nothing = false
+        trouble = nil
+        // Три поиска разом (P370): адрес, улица, город, индекс — по всему
+        // миру, через геокодер Apple; места на картах — и рядом с тем, что
+        // видно, и везде. Прежде искали только в видимой части карты, и
+        // улица или город за её краем не находились.
+        engine.round += 1
+        let round = engine.round
+        engine.searches.forEach { $0.cancel() }
+        engine.geocoder.cancelGeocode()
+        var addresses: [Found] = []
+        var near: [Found] = []
+        var far: [Found] = []
+        var errors: [Error] = []
+        var left = 3
+        let done = {
+            left -= 1
+            guard left == 0, round == engine.round else { return }
             looking = false
-            let items = (response?.mapItems ?? []).prefix(8).map { item in
-                Found(title: item.name ?? text,
-                      subtitle: item.placemark.title ?? "",
-                      at: item.placemark.coordinate)
-            }
-            results = mine + items
+            results = Self.merged(mine + addresses + near + far)
             nothing = results.isEmpty
+            if nothing, let e = errors.first { trouble = Self.explain(e) }
         }
+
+        engine.geocoder.geocodeAddressString(text) { marks, error in
+            if let error, !Self.empty(error) { errors.append(error) }
+            addresses = (marks ?? []).prefix(5).compactMap { mark in
+                guard let at = mark.location?.coordinate else { return nil }
+                return Found(title: mark.name ?? text, subtitle: Self.line(mark), at: at)
+            }
+            done()
+        }
+
+        func local(_ region: MKCoordinateRegion?, _ put: @escaping ([Found]) -> Void) {
+            let request = MKLocalSearch.Request()
+            request.naturalLanguageQuery = text
+            request.resultTypes = [.address, .pointOfInterest]
+            if let region { request.region = region }
+            let search = MKLocalSearch(request: request)
+            engine.searches.append(search)
+            search.start { response, error in
+                if let error, !Self.empty(error) { errors.append(error) }
+                put((response?.mapItems ?? []).prefix(8).map { item in
+                    Found(title: item.name ?? text,
+                          subtitle: item.placemark.title ?? "",
+                          at: item.placemark.coordinate)
+                })
+                done()
+            }
+        }
+        engine.searches = []
+        if let seen = region() {
+            local(seen) { near = $0 }
+        } else {
+            left -= 1
+        }
+        local(nil) { far = $0 }
+    }
+
+    /// Одно и то же место из разных поисков — один раз: ближе 50 метров и
+    /// с тем же названием.
+    private static func merged(_ all: [Found]) -> [Found] {
+        var out: [Found] = []
+        for f in all {
+            let twin = out.contains { o in
+                o.title == f.title
+                    && CLLocation(latitude: o.at.latitude, longitude: o.at.longitude)
+                        .distance(from: CLLocation(latitude: f.at.latitude, longitude: f.at.longitude)) < 50
+            }
+            if !twin { out.append(f) }
+        }
+        return out
+    }
+
+    /// Адрес строкой: «Baker Street, London NW1 6XE, England».
+    private static func line(_ m: CLPlacemark) -> String {
+        [m.thoroughfare.map { [m.subThoroughfare, $0].compactMap { $0 }.joined(separator: " ") },
+         m.locality, m.postalCode, m.country]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+
+    /// «Ничего не нашлось» — не ошибка: его и так скажет строка.
+    private static func empty(_ e: Error) -> Bool {
+        let ns = e as NSError
+        if ns.domain == kCLErrorDomain {
+            return ns.code == CLError.geocodeFoundNoResult.rawValue
+                || ns.code == CLError.geocodeFoundPartialResult.rawValue
+                || ns.code == CLError.geocodeCanceled.rawValue
+        }
+        if ns.domain == MKErrorDomain {
+            return ns.code == Int(MKError.placemarkNotFound.rawValue)
+                || ns.code == Int(MKError.directionsNotFound.rawValue)
+        }
+        return ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled
+    }
+
+    /// Почему Карты Apple не ответили — словами и с кодом.
+    private static func explain(_ e: Error) -> String {
+        let ns = e as NSError
+        if (ns.domain == kCLErrorDomain && ns.code == CLError.network.rawValue)
+            || (ns.domain == MKErrorDomain && ns.code == Int(MKError.serverFailure.rawValue)) {
+            return T("Карты Apple не ответили — нет связи с интернетом? ", "Apple Maps did not answer — no internet connection? ")
+                + "(\(ns.domain) \(ns.code))"
+        }
+        if ns.domain == MKErrorDomain, ns.code == Int(MKError.loadingThrottled.rawValue) {
+            return T("Карты Apple просят подождать: слишком много поисков подряд. ", "Apple Maps asks to wait: too many searches in a row. ")
+                + "(\(ns.domain) \(ns.code))"
+        }
+        return T("Карты Apple ответили ошибкой: ", "Apple Maps returned an error: ")
+            + "\(ns.domain) \(ns.code)"
     }
 }
 

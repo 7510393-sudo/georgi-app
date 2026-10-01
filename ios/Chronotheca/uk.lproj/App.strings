@@ -52,6 +52,9 @@
 "App language" = "Мова застосунку";
 "Appearance" = "Вигляд";
 "Apple Maps" = "Карти Apple";
+"Apple Maps asks to wait: too many searches in a row. " = "Карти Apple просять зачекати: забагато пошуків поспіль. ";
+"Apple Maps did not answer — no internet connection? " = "Карти Apple не відповіли — немає зв’язку з інтернетом? ";
+"Apple Maps returned an error: " = "Карти Apple відповіли помилкою: ";
 "Apple does not let the app get the weather. On developer.apple.com → Identifiers → com.kobiashvili.diary, WeatherKit must be ticked on both the Capabilities and the App Services tabs. " = "Apple не пускає застосунок до погоди. На developer.apple.com → Identifiers → com.kobiashvili.diary має стояти позначка WeatherKit і на вкладці Capabilities, і на вкладці App Services. ";
 "As the iPhone took it, about 2–5 MB a photo" = "Як зняв iPhone, знімок ~2–5 МБ";
 "As the iPhone took it: a minute of 4K is about 170–400 MB" = "Як зняв iPhone: хвилина 4K ~170–400 МБ";
