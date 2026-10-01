@@ -780,16 +780,22 @@ struct AttachBar: View {
         }
         for asset in assets {
             if asset.mediaType == .video {
-                GalleryRow.movie(of: asset) { url in
-                    defer { finish() }
-                    guard let url else { failed += 1; return }
-                    defer { try? FileManager.default.removeItem(at: url) }
-                    guard let data = try? Data(contentsOf: url, options: .mappedIfSafe),
-                          store.addAttachment(data, to: .videos,
-                                              name: Vault.moment(store.date) + "."
-                                                  + (url.pathExtension.isEmpty ? "mov" : url.pathExtension.lowercased()),
-                                              tab: tab)
-                    else { failed += 1; return }
+                GalleryRow.movie(of: asset) { found in
+                    guard let found else { failed += 1; finish(); return }
+                    // Крупный ролик — до 1080p, если так в настройках (P365).
+                    Movie.shrink(found) { url in
+                        defer {
+                            finish()
+                            try? FileManager.default.removeItem(at: found)
+                            if url != found { try? FileManager.default.removeItem(at: url) }
+                        }
+                        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe),
+                              store.addAttachment(data, to: .videos,
+                                                  name: Vault.moment(store.date) + "."
+                                                      + (url.pathExtension.isEmpty ? "mov" : url.pathExtension.lowercased()),
+                                                  tab: tab)
+                        else { failed += 1; return }
+                    }
                 }
             } else {
                 GalleryRow.data(of: asset) { data in
@@ -817,12 +823,17 @@ struct AttachBar: View {
             if items.count > 3 { shell.say(T("Кладу в папку: \(items.count)…", "Saving to the folder: \(items.count)…")) }
             for item in items {
                 if item.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
-                    // Видео — в «Видео», как есть, без пережатия (P214).
+                    // Видео — в «Видео»; крупное — до 1080p, если так в
+                    // настройках (P214, P365).
                     guard let movie = try? await item.loadTransferable(type: PickedMovie.self)
                     else { continue }
-                    defer { try? FileManager.default.removeItem(at: movie.url) }
-                    let ext = movie.url.pathExtension.isEmpty ? "mov" : movie.url.pathExtension
-                    guard let data = try? Data(contentsOf: movie.url, options: .mappedIfSafe)
+                    let file = await Movie.shrunk(movie.url)
+                    defer {
+                        try? FileManager.default.removeItem(at: movie.url)
+                        if file != movie.url { try? FileManager.default.removeItem(at: file) }
+                    }
+                    let ext = file.pathExtension.isEmpty ? "mov" : file.pathExtension
+                    guard let data = try? Data(contentsOf: file, options: .mappedIfSafe)
                     else { continue }
                     if store.addAttachment(data, to: .videos,
                                            name: Vault.moment(store.date) + "." + ext.lowercased(),

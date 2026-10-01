@@ -20,12 +20,16 @@ enum Prefs {
     static let noAsk = "prefs.noAsk"            // true — без «Как прошло?»
     static let calendarTint = "prefs.calendarTint" // "distance", "weekday", "none"
     static let sundayFirst = "prefs.sundayFirst"   // true — неделя с воскресенья
-    static let squeeze = "prefs.squeeze"        // "original", "high", "medium"
+    static let squeeze = "prefs.squeeze"        // "original" — без сжатия, "high" — среднее (2560), "medium" — высокое (1600)
+    static let videoSqueeze = "prefs.videoSqueeze" // "1080" — до 1080p (по умолчанию), "original" — без сжатия
 
     static var weatherOn: Bool { !UserDefaults.standard.bool(forKey: noWeather) }
     static var askOn: Bool { !UserDefaults.standard.bool(forKey: noAsk) }
     static var firstWeekday: Int { UserDefaults.standard.bool(forKey: sundayFirst) ? 1 : 2 }
-    static var squeezeKey: String { UserDefaults.standard.string(forKey: squeeze) ?? "original" }
+    /// По умолчанию — среднее сжатие (P365): на экране не отличить от
+    /// оригинала, а места в 5–6 раз меньше.
+    static var squeezeKey: String { UserDefaults.standard.string(forKey: squeeze) ?? "high" }
+    static var videoTo1080: Bool { (UserDefaults.standard.string(forKey: videoSqueeze) ?? "1080") == "1080" }
 
     /// Погода для показа: в файле она всегда в °C, показывается — как
     /// выбрано.

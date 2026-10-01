@@ -386,6 +386,16 @@ final class Vault: ObservableObject {
 
     /// Пользователь выбрал папку в системном окне.
     func adopt(_ url: URL) {
+        // Папка самого приложения — не место для записей: iPhone стирает её
+        // вместе с приложением (P366). Записи, что уже лежат там, читаются
+        // по-прежнему, но заново её не выбрать.
+        let own = Vault.phoneFolder.standardizedFileURL.resolvingSymlinksInPath().path
+        let picked = url.standardizedFileURL.resolvingSymlinksInPath().path
+        if picked == own || picked.hasPrefix(own + "/") {
+            problem = T("Это папка самого приложения — iPhone удалит её вместе с ним. Выберите «iCloud Drive» или заведите новую папку в «На iPhone».",
+                        "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”.")
+            return
+        }
         // Прежнюю папку пересчитываем, пока доступ к ней ещё открыт.
         let before = root.map { (root: $0, records: Transfer.records(in: $0)) }
         guard begin(url) else {
@@ -953,16 +963,16 @@ final class Vault: ObservableObject {
     /// из записи дня.
     ///
     /// Фотография — отдельный файл, по годам, с датой дня и временем в
-    /// имени: `Фотографии/2026/2026-09-24_08.15.30.jpg`. Без пробелов —
+    /// имени: `Photos/2026/2026-09-24_08.15.30.heic`. Без пробелов —
     /// тогда ссылку понимает любой редактор разметки. Файл с таким именем
     /// уже есть — к имени прибавляется номер: чужое не затирается никогда
     /// (решение P200).
     func addPhoto(_ data: Data, for date: Date) -> String? {
-        guard let jpeg = Photo.jpeg(from: data) else {
+        guard let photo = Photo.stored(from: data) else {
             problem = T("Эту фотографию не удалось прочитать.", "This photo could not be read.")
             return nil
         }
-        return addAttachment(jpeg, to: .photos, name: Vault.moment(date) + ".jpg", for: date)
+        return addAttachment(photo.data, to: .photos, name: Vault.moment(date) + "." + photo.ext, for: date)
     }
 
     /// Имя вложения по дню и нынешнему времени: «2026-09-25_21.40.05».

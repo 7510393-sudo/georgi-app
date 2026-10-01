@@ -124,6 +124,8 @@ struct StickerItem: View {
 
     let title: String
     var note = "→"
+    /// Пояснение мелко под названием — например, сколько весит снимок.
+    var detail: String? = nil
     var active = false
     var edge: Color = Look.stickerEdge
     let act: () -> Void
@@ -131,10 +133,19 @@ struct StickerItem: View {
     var body: some View {
         Button(action: act) {
             HStack(spacing: 10) {
-                Text(title)
-                    .font(Look.sans(15, weight: active ? .medium : .regular))
-                    .foregroundStyle(active ? Look.accent : Look.ink)
-                    .multilineTextAlignment(.leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(Look.sans(15, weight: active ? .medium : .regular))
+                        .foregroundStyle(active ? Look.accent : Look.ink)
+                        .multilineTextAlignment(.leading)
+                    if let detail {
+                        Text(detail)
+                            .font(Look.sans(11.5))
+                            .foregroundStyle(Look.inkFaint)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 Spacer(minLength: 0)
                 Text(note)
                     .font(Look.sans(12.5))

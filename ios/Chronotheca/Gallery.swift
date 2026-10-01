@@ -304,8 +304,9 @@ struct CameraPicker: UIViewControllerRepresentable {
 
         func imagePickerController(_ picker: UIImagePickerController,
                                    didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            // Формат iPhone — HEIC (P365); сжатие — дальше, по настройке.
             let image = info[.originalImage] as? UIImage
-            done(image?.jpegData(compressionQuality: 0.92))
+            done(image?.heicData() ?? image?.jpegData(compressionQuality: 0.92))
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {

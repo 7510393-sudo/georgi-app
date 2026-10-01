@@ -11,47 +11,66 @@ import UniformTypeIdentifiers
 /// текстом, а снимок — снимком, который открывается чем угодно (P200).
 enum Photo {
 
-    /// Снимок как файл JPEG.
+    /// Снимок как файл — в том формате, в котором его снял iPhone (P365):
+    /// HEIC остаётся HEIC, JPEG — JPEG. Прежде всё перегонялось в JPEG, и
+    /// снимок вырастал на 30–50% без всякой пользы.
     ///
-    /// JPEG кладётся как есть, без пережатия. Остальное (HEIC с iPhone)
-    /// переводится в JPEG: его открывает любой компьютер, а HEIC — не всякий.
+    /// Сжатие — по настройке: «без сжатия» — файл как есть, байт в байт;
+    /// «среднее» — 2560 точек по длинной стороне; «высокое» — 1600.
     /// Сведения снимка — где и когда он сделан — переносятся вместе с ним:
-    /// из них потом берётся геометка дня.
-    static func jpeg(from data: Data) -> Data? {
+    /// из них потом берётся геометка дня. Возвращает данные и расширение.
+    static func stored(from data: Data) -> (data: Data, ext: String)? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               CGImageSourceGetCount(source) > 0
         else { return nil }
-        // Сжатие по настройке (P290): оригинал — как есть (A6); иначе
-        // снимок уменьшается по длинной стороне.
+        let type = (CGImageSourceGetType(source) as String?) ?? UTType.jpeg.identifier
+        let isJPEG = UTType(type)?.conforms(to: .jpeg) ?? false
+        let side: CGFloat
         switch Prefs.squeezeKey {
-        case "high":   return shrunk(source, side: 2560, quality: 0.8) ?? data
-        case "medium": return shrunk(source, side: 1600, quality: 0.72) ?? data
-        default: break
+        case "high":   side = 2560
+        case "medium": side = 1600
+        default:
+            return (data, UTType(type)?.preferredFilenameExtension.map(Photo.ext) ?? "jpg")
         }
-        if (CGImageSourceGetType(source) as String?) == UTType.jpeg.identifier {
-            return data
+        // Уменьшенный снимок — тем же форматом. Снимок iPhone — HEIC;
+        // снятый «как совместимый» — JPEG; прочее (снимки экрана в PNG) —
+        // HEIC, родной формат iPhone. Не вышло записать HEIC — JPEG.
+        if !isJPEG, let out = shrunk(source, side: side, as: .heic, quality: 0.7) {
+            return (out, "heic")
         }
-        let out = NSMutableData()
-        guard let target = CGImageDestinationCreateWithData(
-                out, UTType.jpeg.identifier as CFString, 1, nil)
-        else { return nil }
-        let options = [kCGImageDestinationLossyCompressionQuality: 0.85] as CFDictionary
-        CGImageDestinationAddImageFromSource(target, source, 0, options)
-        guard CGImageDestinationFinalize(target) else { return nil }
-        return out as Data
+        let quality: CGFloat = side > 2000 ? 0.8 : 0.72
+        guard let out = shrunk(source, side: side, as: .jpeg, quality: quality) else {
+            return (data, UTType(type)?.preferredFilenameExtension.map(Photo.ext) ?? "jpg")
+        }
+        return (out, "jpg")
     }
 
-    private static func shrunk(_ source: CGImageSource, side: CGFloat, quality: CGFloat) -> Data? {
+    /// «jpeg» → «jpg»: привычнее и короче; остальное как есть.
+    private static func ext(_ e: String) -> String { e.lowercased() == "jpeg" ? "jpg" : e.lowercased() }
+
+    /// Снимок, уменьшенный по длинной стороне (меньший не растягивается),
+    /// со сведениями оригинала. Поворот уже применён — в сведениях он
+    /// сбрасывается, иначе снимок повернулся бы дважды.
+    private static func shrunk(_ source: CGImageSource, side: CGFloat, as type: UTType,
+                               quality: CGFloat) -> Data? {
         let options = [kCGImageSourceCreateThumbnailFromImageAlways: true,
                        kCGImageSourceCreateThumbnailWithTransform: true,
                        kCGImageSourceThumbnailMaxPixelSize: side] as CFDictionary
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else { return nil }
         let out = NSMutableData()
         guard let target = CGImageDestinationCreateWithData(
-                out, UTType.jpeg.identifier as CFString, 1, nil)
+                out, type.identifier as CFString, 1, nil)
         else { return nil }
-        CGImageDestinationAddImage(target, image,
-                                   [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+        var props = (CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]) ?? [:]
+        props[kCGImagePropertyOrientation] = 1
+        if var tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any] {
+            tiff[kCGImagePropertyTIFFOrientation] = 1
+            props[kCGImagePropertyTIFFDictionary] = tiff
+        }
+        props[kCGImagePropertyPixelWidth] = nil
+        props[kCGImagePropertyPixelHeight] = nil
+        props[kCGImageDestinationLossyCompressionQuality] = quality
+        CGImageDestinationAddImage(target, image, props as CFDictionary)
         guard CGImageDestinationFinalize(target) else { return nil }
         return out as Data
     }

@@ -333,8 +333,15 @@ struct SettingsSticker: View {
             }
 
             StickerSection(title: T("Вложения", "Attachments"))
-            StickerItem(title: T("Сжатие снимков", "Photo compression"), note: squeezeName, edge: Look.noteEdge) {
-                squeeze = squeeze == "original" ? "high" : squeeze == "high" ? "medium" : "original"
+            // Три уровня, снимок — в формате iPhone (P365). Под строкой —
+            // сколько весит снимок: по этому и выбирают.
+            StickerItem(title: T("Сжатие снимков", "Photo compression"), note: squeezeName,
+                        detail: squeezeDetail, edge: Look.noteEdge) {
+                squeeze = squeeze == "high" ? "medium" : squeeze == "medium" ? "original" : "high"
+            }
+            StickerItem(title: T("Сжатие видео", "Video compression"), note: videoName,
+                        detail: videoDetail, edge: Look.noteEdge) {
+                videoSqueeze = videoSqueeze == "1080" ? "original" : "1080"
             }
             // Корзина дней (P295): вернуть или удалить навсегда.
             StickerItem(title: T("Корзина", "Trash"), note: "→", edge: Look.noteEdge) {
@@ -377,25 +384,17 @@ struct SettingsSticker: View {
         }
         .confirmationDialog(T("Где хранить записи", "Where to keep entries"), isPresented: $choosingPlace,
                             titleVisibility: .visible) {
-            if !vault.onPhone {
-                Button(T("На этом iPhone", "On this iPhone")) {
-                    close()
-                    vault.usePhone()
-                    store.load()
-                    archive.reload()
-                    shell.screen = .today
-                }
-            }
-            Button(T("В свою папку — iCloud Drive и другие…", "In my own folder — iCloud Drive and others…")) {
+            // Папки самого приложения больше не предлагаем: iPhone стирает
+            // её вместе с приложением (P366).
+            Button(T("Выбрать папку…", "Choose a folder…")) {
                 close()
                 shell.picking = true
             }
             Button(T("Отмена", "Cancel"), role: .cancel) { }
         } message: {
-            Text(T("На iPhone — папка «Chronotheca» в «Файлах» → «На iPhone». Удалите приложение — ", "On iPhone — the “Chronotheca” folder in Files → On My iPhone. Delete the app, and ")
-                 + T("iPhone удалит и её, поэтому для надёжности лучше своя папка в iCloud Drive: ", "the iPhone deletes it too, so your own folder in iCloud Drive is safer: ")
-                 + T("там записи переживут и приложение, и телефон. Записи, что уже есть, ", "there, entries outlive both the app and the phone. Entries you already have, ")
-                 + T("приложение предложит перенести.", "the app will offer to move."))
+            Text(T("В iCloud Drive записи будут и на iPad, и на Mac. На iPhone — «На iPhone», ", "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, ")
+                 + T("новая папка, «Открыть»: она переживёт удаление приложения, но живёт только на этом телефоне. ", "a new folder, “Open”: it outlives deleting the app but lives only on this phone. ")
+                 + T("Записи, что уже есть, приложение предложит перенести.", "The app will offer to move the entries you already have."))
         }
         .onAppear(perform: measureStorage)
     }
@@ -437,7 +436,8 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.noAsk) private var noAsk = false
     @AppStorage(Prefs.calendarTint) private var calendarTint = "distance"
     @AppStorage(Prefs.sundayFirst) private var sundayFirst = false
-    @AppStorage(Prefs.squeeze) private var squeeze = "original"
+    @AppStorage(Prefs.squeeze) private var squeeze = "high"
+    @AppStorage(Prefs.videoSqueeze) private var videoSqueeze = "1080"
     @State private var showingTrash = false
     @State private var showingPDF = false
 
@@ -451,10 +451,36 @@ struct SettingsSticker: View {
 
     private var squeezeName: String {
         switch squeeze {
-        case "high":   return T("небольшое", "light")
-        case "medium": return T("сильное", "strong")
-        default:       return T("оригинал", "original")
+        case "high":   return T("среднее", "medium")
+        case "medium": return T("высокое", "high")
+        default:       return T("без сжатия", "none")
         }
+    }
+
+    private var squeezeDetail: String {
+        switch squeeze {
+        case "high":
+            return T("2560 точек, снимок ~0,5–1 МБ. На экране не отличить от оригинала",
+                     "2560 px, about 0.5–1 MB a photo. Looks the same as the original on screen")
+        case "medium":
+            return T("1600 точек, снимок ~0,2–0,4 МБ. При увеличении мягче",
+                     "1600 px, about 0.2–0.4 MB a photo. Softer when zoomed in")
+        default:
+            return T("Как снял iPhone, снимок ~2–5 МБ",
+                     "As the iPhone took it, about 2–5 MB a photo")
+        }
+    }
+
+    private var videoName: String {
+        videoSqueeze == "1080" ? T("до 1080p", "to 1080p") : T("без сжатия", "none")
+    }
+
+    private var videoDetail: String {
+        videoSqueeze == "1080"
+            ? T("Минута ~60 МБ. Ролики меньше 1080p — как есть",
+                "About 60 MB a minute. Smaller clips stay as they are")
+            : T("Как снял iPhone: минута 4K ~170–400 МБ",
+                "As the iPhone took it: a minute of 4K is about 170–400 MB")
     }
 
     private var themeName: String {
@@ -1159,43 +1185,41 @@ struct WelcomeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            // Два пути (P223). Одним касанием — своя папка приложения на
-            // телефоне. Через окно выбора — своя папка человека: в iCloud
-            // Drive она переживёт и приложение, и телефон.
+            // Два пути, и оба — папка человека, а не приложения (P366):
+            // папку приложения iPhone стирает вместе с ним, и записи
+            // пропали бы от одного неосторожного касания. Своя папка
+            // остаётся, что бы ни случилось с приложением.
             Button {
-                vault.usePhone()
-                store.load()
-                archive.reload()
+                shell.picking = true
             } label: {
-                Text(T("Хранить на этом iPhone", "Keep on this iPhone")).frame(maxWidth: .infinity)
+                Text(T("Папка в iCloud Drive", "A folder in iCloud Drive")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            Text(T("Одно касание. Папка «\(Vault.folderName)» будет видна в «Файлах» → «На iPhone». ", "One tap. The “\(Vault.folderName)” folder will be in Files → On My iPhone. ")
-                 + T("Удалите приложение — iPhone удалит и её.", "Delete the app, and the iPhone deletes it too."))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            guide(T("В окне выберите «iCloud Drive» и нажмите «Открыть» вверху справа. Записи будут "
+                    + "и на iPad, и на Mac; место берётся из вашего iCloud (бесплатно — 5 ГБ).",
+                    "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries "
+                    + "will be on your iPad and Mac too; they use your iCloud space (5 GB free)."))
 
             Button {
                 shell.picking = true
             } label: {
-                Text(T("Выбрать свою папку…", "Choose my own folder…")).frame(maxWidth: .infinity)
+                Text(T("Папка на этом iPhone", "A folder on this iPhone")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            // Первые шаги по порядку. Системное окно выбора папки незнакомо
-            // многим, и без подсказки человек не знает, куда в нём нажать
-            // (решение P190).
-            VStack(alignment: .leading, spacing: 8) {
-                step(1, T("В окне выберите «iCloud Drive» — записи будут и на Маке и ", "In the window choose “iCloud Drive” — your entries will be on your Mac too and ")
-                        + T("переживут удаление приложения.", "will outlive deleting the app."))
-                step(2, T("Нажмите «Открыть» вверху справа. Приложение предложит ", "Tap “Open” at the top right. The app will offer ")
-                        + T("завести там папку «\(Vault.folderName)».", "to make a “\(Vault.folderName)” folder there."))
-                step(3, T("Уже есть папка с записями — зайдите в неё и нажмите ", "Already have a folder with entries? Go into it and tap ")
-                        + T("«Открыть»: приложение узнает свой архив.", "“Open”: the app will recognise its archive."))
-            }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            guide(T("В окне выберите «На iPhone», нажмите значок новой папки, назовите её, например, "
+                    + "«Мои записи», зайдите в неё и нажмите «Открыть». Места в iCloud не нужно, но "
+                    + "записи будут только на этом iPhone — делайте резервные копии.",
+                    "In the window choose “On My iPhone”, tap the new folder icon, name it, say, "
+                    + "“My Journal”, open it and tap “Open”. No iCloud space needed, but your entries "
+                    + "will only be on this iPhone — make backups."))
+
+            Text(T("В обоих случаях папка ваша и переживёт удаление приложения. Уже есть папка "
+                   + "с записями — зайдите в неё и нажмите «Открыть»: приложение узнает свой архив.",
+                   "Either way the folder is yours and outlives deleting the app. Already have a "
+                   + "folder with entries? Go into it and tap “Open”: the app will recognise its archive."))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
             if let problem = vault.problem {
                 Text(problem)
@@ -1208,10 +1232,12 @@ struct WelcomeView: View {
         }
     }
 
-    private func step(_ n: Int, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("\(n)").monospacedDigit().fontWeight(.semibold)
-            Text(text).fixedSize(horizontal: false, vertical: true)
-        }
+    private func guide(_ text: String) -> some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 6)
     }
 }
