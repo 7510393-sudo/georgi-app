@@ -78,13 +78,16 @@ struct MenuSticker: View {
 
     private var dayMenu: some View {
         Sticker(side: .trailing, title: T("Меню страницы", "Page menu"), close: close) {
-            // Режим — той вкладки, на которой человек стоит (P211).
-            // Название — «редактировать» вместо «режим изменений» (P318).
-            StickerItem(title: T("Редактировать — ", "Edit — ") + shell.tab.title.lowercased(),
-                        note: store.editing(shell.tab) ? T("включён", "on") : T("выключен", "off"),
-                        active: store.editing(shell.tab)) {
-                store.setEditing(shell.tab, !store.editing(shell.tab))
-                close()
+            // Режима изменений больше нет: всё делается долгим нажатием
+            // (P362). Осталось одно — открыть для правки прошедший день
+            // плана; в остальные дни строки нет вовсе.
+            if shell.tab == .plan, store.isPast {
+                StickerItem(title: T("Править этот день", "Edit this day"),
+                            note: store.editing(.plan) ? T("включено", "on") : T("выключено", "off"),
+                            active: store.editing(.plan)) {
+                    store.setEditing(.plan, !store.editing(.plan))
+                    close()
+                }
             }
             StickerItem(title: T("Показать файл этого дня", "Show this day’s file")) {
                 close()

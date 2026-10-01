@@ -185,17 +185,15 @@ struct PhotoThumb: View {
 /// Сколько не поместилось — показывает последняя клетка «+N»; касание по
 /// ней открывает первый из не поместившихся снимков.
 ///
-/// В режиме изменений превью подсвечены — видно, что их можно взять.
+/// Превью берут долгим нажатием, без всякого режима (P362).
 struct PhotoStrip: View {
 
     let photos: [URL?]
-    var glowing = false
     var onOpen: ((Int) -> Void)?
     /// Что понесёт палец, взяв превью: строку-ссылку на снимок. Задано —
     /// превью можно взять долгим нажатием и бросить в текст (P204).
     var drag: ((Int) -> String)?
-    /// Переставить превью в полоске — перетаскиванием вбок в режиме
-    /// изменений (P210).
+    /// Переставить превью в полоске — перетаскиванием вбок (P210).
     var onMove: ((Int, Int) -> Void)?
     /// Снимок принесли сюда из-под дела в плане — вернуть его в полоску
     /// (P358). Пусто — полоска чужих снимков не принимает.
@@ -230,7 +228,7 @@ struct PhotoStrip: View {
             .contentShape(Rectangle())
             // Мимо превью — на пустое место полоски — тоже можно вернуть
             // снимок из-под дела (P358).
-            .onDrop(of: onTake != nil && glowing ? [UTType.plainText] : [], isTargeted: nil) { providers in
+            .onDrop(of: onTake != nil ? [UTType.plainText] : [], isTargeted: nil) { providers in
                 guard let onTake else { return false }
                 return PhotoDrop.read(providers, onTake)
             }
@@ -264,22 +262,15 @@ struct PhotoStrip: View {
     private func cell(_ i: Int) -> some View {
         face(i)
             .frame(width: Self.side, height: Self.side)
-            .overlay {
-                if glowing {
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Look.glow, lineWidth: 2)
-                }
-            }
-            .shadow(color: glowing ? Look.glow.opacity(0.8) : .clear, radius: 6)
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
             // Бросить в текст можно только снимок: голос и документ
             // остаются в полоске (P204, P209).
             .modifier(Carried(
-                on: glowing && (onMove != nil || (drag != nil && kind(i) == .photo)),
+                on: onMove != nil || (drag != nil && kind(i) == .photo),
                 text: kind(i) == .photo ? drag.map { $0(i) } : nil,
                 start: { carrying = i }))
-            .onDrop(of: glowing && (onMove != nil || onTake != nil) ? [UTType.plainText, Carried.strip] : [],
+            .onDrop(of: onMove != nil || onTake != nil ? [UTType.plainText, Carried.strip] : [],
                     delegate: StripDrop(index: i, carrying: $carrying, move: onMove, take: onTake))
             .accessibilityLabel(kind(i) == .photo ? T("Фотография \(i + 1)", "Photo \(i + 1)")
                                 : kind(i) == .video ? T("Видео", "Video")
@@ -409,13 +400,6 @@ struct PlanPhotoRow: View {
             HStack(spacing: 8) {
                 ForEach(links, id: \.self) { link in
                     PlanPhotoThumb(url: resolve?(link)) { open?(resolve?(link)) }
-                        .overlay {
-                            if carry {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .strokeBorder(Look.glow, lineWidth: 2)
-                            }
-                        }
-                        .shadow(color: carry ? Look.glow.opacity(0.8) : .clear, radius: 6)
                         .modifier(Carried(on: carry, text: Diary.line(link), start: {}))
                 }
             }

@@ -551,7 +551,7 @@ struct WobblyTitle: View {
                 }
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(text.capitalized + T(". Режим изменений, нажмите, чтобы выйти", ". Edit mode, tap to leave"))
+            .accessibilityLabel(text.capitalized + T(". Правка прошедшего дня, нажмите, чтобы выйти", ". Editing a past day, tap to leave"))
         } else {
             Text(text)
                 .font(font)
@@ -948,7 +948,8 @@ struct PlanPage: View {
     private var tasks: [PlanRow] { rows.filter(\.isTask) }
 
     var body: some View {
-        PlanScaffold(isPast: isPast, dimmed: isPast, weather: weather, photos: photos) {
+        PlanScaffold(isPast: isPast, dimmed: isPast, weather: weather, photos: photos,
+                     takesBack: Plan.hasPhotoRows(rows)) {
             if tasks.isEmpty {
                 PlanEmpty(isPast: isPast)
             } else {

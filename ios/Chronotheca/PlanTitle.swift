@@ -41,9 +41,10 @@ struct PlanTitle: UIViewRepresentable {
 
     /// Нажат «Ввод»: ввод переходит к делу ниже.
     var onNext: () -> Void = {}
-    /// Долгое нажатие на текст, пока его не правят (P361): отклик и дело
-    /// в тот же миг, как нажатие стало долгим.
-    var onHold: (() -> Void)?
+    /// Долгое нажатие на текст, пока его не правят, и ход пальца после
+    /// него (P361, P362): дело поднимается в тот же миг, как нажатие стало
+    /// долгим, и идёт за пальцем.
+    var onLift: ((Lift) -> Void)?
 
     static var placeholder: String { T("Без названия", "Untitled") }
     /// На ступень крупнее прежних 15 и растёт с настройкой (P274).
@@ -231,19 +232,36 @@ struct PlanTitle: UIViewRepresentable {
             // Долгое нажатие — только пока текст не правят: при правке оно
             // принадлежит курсору и лупе.
             if g is UILongPressGestureRecognizer {
-                return parent.onHold != nil && view?.isFirstResponder == false
+                return parent.onLift != nil && view?.isFirstResponder == false
             }
             return open != nil
         }
 
+        /// Где палец поднял дело — в координатах окна: поле едет вместе с
+        /// делом, и мерка от него дёргала бы дело взад-вперёд (P195).
+        private var start: CGPoint = .zero
+
         @objc func held(_ g: UILongPressGestureRecognizer) {
-            guard g.state == .began else { return }
-            parent.onHold?()
+            let spot = g.location(in: nil)
+            let way = CGSize(width: spot.x - start.x, height: spot.y - start.y)
+            switch g.state {
+            case .began:
+                start = spot
+                parent.onLift?(.began)
+            case .changed:
+                parent.onLift?(.moved(way))
+            case .ended:
+                parent.onLift?(.ended(way))
+            default:
+                parent.onLift?(.cancelled)
+            }
         }
 
+        /// Поднятое дело ведёт палец один: страница под ним не
+        /// прокручивается и не листается (P362).
         func gestureRecognizer(_ g: UIGestureRecognizer,
                                shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
-            true
+            !(g is UILongPressGestureRecognizer)
         }
 
         @objc func tapped(_ g: UITapGestureRecognizer) {

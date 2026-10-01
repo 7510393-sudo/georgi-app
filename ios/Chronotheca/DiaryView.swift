@@ -14,10 +14,7 @@ struct DiaryView: View {
     static let leading: CGFloat = size * 0.24
 
     var body: some View {
-        VStack(spacing: 0) {
-            if store.editing(.diary) { EditBanner(tab: .diary) }
-            page
-        }
+        page
     }
 
     private var page: some View {
@@ -33,13 +30,11 @@ struct DiaryView: View {
             photos: store.photos.map(store.photoURL),
             photoLinks: store.photos,
             resolve: store.photoURL,
-            glowing: store.editing(.diary),
             onOpenPhoto: { shell.openedPhoto = .init(tab: .diary, index: $0) },
             onMovePhoto: { store.movePhoto(from: $0, to: $1, in: .diary) },
-            // В режиме изменений запись переставляют, а не продолжают:
-            // отметка времени тогда ни к чему. Иначе брошенный в текст
-            // снимок заодно ставил бы в конец записи новое время.
-            onFocusText: { store.editing(.diary) ? false : store.stampIfNeeded() },
+            // Брошенный в текст снимок отметку времени не ставит — это
+            // знает само поле записи (P362).
+            onFocusText: { store.stampIfNeeded() },
             onOpenInline: { link in
                 shell.openedPhoto = .init(tab: .diary, index: -1,
                                           url: store.photoURL(link), link: link)
@@ -101,8 +96,6 @@ struct DiaryPage: View {
     var photoLinks: [String] = []
     /// Где лежат снимки, стоящие посреди текста (P204).
     var resolve: ((String) -> URL?)?
-    /// Режим изменений: превью подсвечены, их можно взять (P203).
-    var glowing = false
     var onOpenPhoto: ((Int) -> Void)?
     var onMovePhoto: ((Int, Int) -> Void)?
     /// Возвращает `true`, если приложение поставило отметку времени: тогда
@@ -142,6 +135,9 @@ struct DiaryPage: View {
     /// Поднимается по «Вводу» в заголовке: ввод переходит к тексту записи.
     @State private var toText = false
 
+    /// Точка заголовка, у которой сейчас крестик (P362).
+    @State private var armedPoint: String?
+
     /// Насколько клавиатура закрывает страницу снизу.
     @State private var keyboard: CGFloat = 0
 
@@ -154,7 +150,7 @@ struct DiaryPage: View {
             // Фотографии дневника — полоской внизу, над кнопками вложений,
             // как в Diarium; прокрутке страницы они не мешают (P203).
             if !photos.isEmpty {
-                PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto,
+                PhotoStrip(photos: photos, onOpen: onOpenPhoto,
                            drag: editable && photoLinks.count == photos.count
                                ? { Diary.line(photoLinks[$0]) } : nil,
                            onMove: editable ? onMovePhoto : nil)
@@ -282,6 +278,14 @@ struct DiaryPage: View {
                 set: { title = DiaryPage.title($0, keeping: title) })
     }
 
+    /// Заголовок без одной точки — той, что удаляют крестиком (P362).
+    static func without(_ line: String, in title: String) -> String {
+        guard let r = title.range(of: line) else { return title }
+        var out = title
+        out.removeSubrange(r)
+        return out
+    }
+
     /// Новые слова заголовка, а точки — прежние, за словами.
     static func title(_ words: String, keeping old: String) -> String {
         let ns = old as NSString
@@ -322,16 +326,22 @@ struct DiaryPage: View {
                 }
             }
             // Точки в заголовке — значками за словами (P358). Касание — на
-            // карту; долгое нажатие в режиме изменений — назад в текст.
+            // карту; подержать и потянуть вниз — назад в текст; подержать и
+            // отпустить — крупнее и с крестиком «удалить» (P362).
             ForEach(points.indices, id: \.self) { k in
                 let line = ns.substring(with: points[k].range)
-                PointChipView(point: points[k].point)
-                    .onTapGesture { onOpenPoint?(points[k].point) }
-                    .onLongPressGesture(minimumDuration: 0.3) {
-                        guard glowing, editable else { return }
-                        Feel.light()
-                        onPointFromTitle?(line)
-                    }
+                TitlePoint(point: points[k].point,
+                           armed: armedPoint == line,
+                           open: { onOpenPoint?(points[k].point) },
+                           arm: editable ? { on in
+                               withAnimation(.easeOut(duration: 0.15)) { armedPoint = on ? line : nil }
+                           } : nil,
+                           down: editable ? { onPointFromTitle?(line) } : nil,
+                           delete: editable ? {
+                               armedPoint = nil
+                               title = DiaryPage.title(Geo.stripped(title),
+                                                       keeping: DiaryPage.without(line, in: title))
+                           } : nil)
             }
           }
             // Заголовок — подпись к дню, а не вывеска: место на странице
@@ -366,10 +376,72 @@ struct DiaryPage: View {
                     grows: true, minHeight: 320, room: size * 1.5 * 5, resolve: resolve,
                     onOpenPhoto: onOpenInline, onReturnPhoto: onReturnPhoto,
                     onOpenPoint: onOpenPoint, onPointToTitle: onPointToTitle, onCaret: onCaret,
-                    moving: glowing && editable, onEditing: onEditing,
+                    moving: editable, onEditing: onEditing,
                     placeCaret: placeCaret)
             // Вдвое меньше, чем было: пробел между заголовком и записью не
             // должен отнимать место у страницы (P311).
             .padding(.top, 8)
+    }
+}
+
+/// Точка в заголовке дня (P358, P362): касание — карта; подержать и
+/// потянуть вниз — назад в текст записи; подержать и отпустить — крупнее и
+/// с крестиком «удалить».
+private struct TitlePoint: View {
+    let point: GeoPoint
+    var armed = false
+    var open: () -> Void
+    var arm: ((Bool) -> Void)?
+    var down: (() -> Void)?
+    var delete: (() -> Void)?
+
+    @State private var lifted = false
+    @State private var drop: CGFloat = 0
+
+    var body: some View {
+        PointChipView(point: point)
+            .scaleEffect(armed ? 1.3 : 1)
+            .offset(y: drop)
+            .overlay(alignment: .topTrailing) {
+                if armed, let delete {
+                    DeleteBadge(action: delete)
+                        .offset(x: PointChipView.width(point) * 0.15 + 13, y: -18)
+                }
+            }
+            .zIndex(armed || drop != 0 ? 1 : 0)
+            .contentShape(Capsule())
+            .onTapGesture {
+                if armed { arm?(false) } else { open() }
+            }
+            .gesture(arm == nil ? nil : hold)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(T("Точка на карте: ", "Place on the map: ") + point.label)
+    }
+
+    private var hold: some Gesture {
+        LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+            .onChanged { value in
+                guard case .second(true, let drag) = value else { return }
+                if !lifted {
+                    lifted = true
+                    Feel.lift()
+                }
+                if let drag { drop = max(0, drag.translation.height) }
+            }
+            .onEnded { value in
+                lifted = false
+                let way = drop
+                withAnimation(.easeOut(duration: 0.15)) { drop = 0 }
+                guard case .second(true, _) = value else { return }
+                // Потянули вниз, под черту заголовка, — назад в текст.
+                if way > 24 {
+                    arm?(false)
+                    Feel.light()
+                    down?()
+                } else {
+                    arm?(true)
+                }
+            }
     }
 }

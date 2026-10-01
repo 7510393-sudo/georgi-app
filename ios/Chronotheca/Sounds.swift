@@ -65,6 +65,10 @@ enum Feel {
     static func done() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
+    /// Дело или точка поднялись под пальцем долгим нажатием (P362).
+    static func lift() {
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+    }
     /// Бумажный листок лёг на место.
     static func paper() {
         UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.9)

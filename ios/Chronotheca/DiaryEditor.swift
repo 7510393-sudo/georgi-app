@@ -72,8 +72,9 @@ struct DiaryEditor: UIViewRepresentable {
     /// Курсор переставлен: где он теперь, отступом в тексте записи. Туда
     /// встанет точка с карты (P213).
     var onCaret: ((Int) -> Void)?
-    /// Режим изменений: снимок или точку в тексте можно взять долгим
-    /// нажатием и перенести в другое место записи (P226).
+    /// Снимок или точку в тексте можно взять долгим нажатием и перенести
+    /// в другое место записи (P226) — без всякого режима (P362). Вид от
+    /// этого не меняется: соседняя страница рисуется так же (P114).
     var moving = false
     /// Поле взяло ввод или отпустило его (P240).
     var onEditing: ((Bool) -> Void)?
@@ -143,14 +144,10 @@ struct DiaryEditor: UIViewRepresentable {
         // диктовка, система держит в поле свой временный знак; переписать
         // из-за него поле — вырвать знак у неё из рук, и он остаётся в
         // тексте «OBJ» (решение P197).
-        // Режим изменений включили или выключили — точки перерисовываются
-        // со свечением или без (P241).
-        if DiaryEditor.plain(view.attributedText) != text || view.attributedText.length == 0
-            || context.coordinator.drawnMoving != moving {
-            context.coordinator.drawnMoving = moving
+        if DiaryEditor.plain(view.attributedText) != text || view.attributedText.length == 0 {
             let selection = view.selectedRange
             view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped,
-                                              resolve: resolve, glowing: moving)
+                                              resolve: resolve)
             view.typingAttributes = Self.body(size, serif: serif)
             view.selectedRange = selection.location <= (view.text as NSString).length
                 ? selection
@@ -470,8 +467,10 @@ struct DiaryEditor: UIViewRepresentable {
 
         /// Где лежат снимки — обновляется с каждым обновлением поля.
         var resolve: ((String) -> URL?)?
-        /// Нарисованы ли точки со свечением режима изменений.
-        var drawnMoving = false
+        /// До какого мига поле, взявшее ввод, не ставит отметку времени:
+        /// в запись принесли снимок или переставили точку, а не пишут
+        /// дальше (прежде это делал режим изменений, P362).
+        private var quietUntil = Date.distantPast
 
         /// Поле, за которым присматривает этот попечитель.
         weak var view: UITextView?
@@ -493,7 +492,7 @@ struct DiaryEditor: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ view: UITextView) {
             parent.onEditing?(true)
-            parent.onFocus()
+            if Date() > quietUntil { parent.onFocus() }
             // Клавиатура могла подняться раньше — например, человек писал
             // заголовок дня и перешёл в запись. Тогда вестей о ней больше
             // не будет, и место надо освободить самому.
@@ -626,9 +625,81 @@ struct DiaryEditor: UIViewRepresentable {
 
         /// Взята точка, а не снимок.
         private func takenIsPoint(_ view: UITextView) -> Bool {
-            guard let i = taken, i < view.textStorage.length else { return false }
+            guard let i = taken else { return false }
+            return takenIsPoint(at: i, in: view)
+        }
+
+        private func takenIsPoint(at i: Int, in view: UITextView) -> Bool {
+            guard i < view.textStorage.length else { return false }
             return view.textStorage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil
                 && view.textStorage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil
+        }
+
+        // MARK: - Крестик у точки (P362)
+
+        /// Покрывало поверх окна: на нём точка крупнее и крестик. Касание
+        /// мимо крестика — покрывало уходит, и всё как было.
+        private var cover: UIView?
+
+        /// Показать точку крупнее, с крестиком «удалить» на углу — как
+        /// значок на экране «Домой», когда его подержали.
+        private func arm(_ i: Int, in view: UITextView) {
+            guard let window = view.window,
+                  let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
+                                                        effectiveRange: nil) as? String,
+                  let picture = (view.textStorage.attribute(.attachment, at: i, effectiveRange: nil)
+                                 as? NSTextAttachment)?.image,
+                  let start = view.position(from: view.beginningOfDocument, offset: i),
+                  let end = view.position(from: start, offset: 1),
+                  let range = view.textRange(from: start, to: end)
+            else { return }
+            disarm()
+            Feel.light()
+            let place = view.convert(view.firstRect(for: range), to: window)
+            let veil = UIControl(frame: window.bounds)
+            veil.backgroundColor = UIColor.black.withAlphaComponent(0.06)
+            veil.addTarget(self, action: #selector(disarm), for: .touchDown)
+            let chip = UIImageView(image: picture)
+            chip.center = CGPoint(x: place.midX, y: place.midY)
+            chip.layer.shadowOpacity = 0.25
+            chip.layer.shadowRadius = 6
+            chip.layer.shadowOffset = CGSize(width: 0, height: 2)
+            veil.addSubview(chip)
+            let grow: CGFloat = 1.6
+            let cross = UIButton(type: .custom)
+            let symbol = UIImage(systemName: "xmark.circle.fill",
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 22)
+                                     .applying(UIImage.SymbolConfiguration(
+                                        paletteColors: [.white, UIColor(Look.pin)])))
+            cross.setImage(symbol, for: .normal)
+            cross.frame = CGRect(x: 0, y: 0, width: 40, height: 40)
+            cross.center = CGPoint(x: place.midX + picture.size.width * grow / 2 - 2,
+                                   y: place.midY - picture.size.height * grow / 2 - 2)
+            cross.accessibilityLabel = T("Удалить точку", "Delete place")
+            cross.addAction(UIAction { [weak self, weak view] _ in
+                guard let self, let view else { return }
+                self.disarm()
+                // Удаляется та самая точка, если она ещё на своём месте.
+                guard i < view.textStorage.length,
+                      view.textStorage.attribute(DiaryEditor.lineKey, at: i,
+                                                 effectiveRange: nil) as? String == line
+                else { return }
+                Feel.light()
+                self.remove(at: i, in: view)
+            }, for: .touchUpInside)
+            cross.alpha = 0
+            veil.addSubview(cross)
+            window.addSubview(veil)
+            cover = veil
+            UIView.animate(withDuration: 0.15) {
+                chip.transform = CGAffineTransform(scaleX: grow, y: grow)
+                cross.alpha = 1
+            }
+        }
+
+        @objc private func disarm() {
+            cover?.removeFromSuperview()
+            cover = nil
         }
 
         /// Точка над заголовком дня — отпустить здесь значит перенести её в
@@ -681,12 +752,18 @@ struct DiaryEditor: UIViewRepresentable {
             return g.location(in: window).y > page.convert(page.bounds, to: window).maxY - 24
         }
 
+        /// Где палец взял снимок или точку — в окне.
+        private var takenAt: CGPoint = .zero
+
         @objc func carried(_ g: UILongPressGestureRecognizer) {
             guard let view, let i = taken else { return }
             let finger = g.location(in: view)
             let at = CGPoint(x: finger.x, y: finger.y - Self.lift)
+            quietUntil = Date().addingTimeInterval(1.5)
             switch g.state {
             case .began:
+                takenAt = g.location(in: nil)
+                disarm()
                 // Прочие жесты поля — лупа, выделение — отпускают палец.
                 for other in view.gestureRecognizers ?? [] where other !== g && other.isEnabled {
                     other.isEnabled = false
@@ -721,11 +798,19 @@ struct DiaryEditor: UIViewRepresentable {
             case .ended:
                 let back = overStrip(g, in: view)
                 let up = overTitle(g, in: view)
+                let spot = g.location(in: nil)
+                let still = hypot(spot.x - takenAt.x, spot.y - takenAt.y) < 10
                 ghost?.removeFromSuperview()
                 ghost = nil
                 mark?.removeFromSuperview()
                 mark = nil
                 taken = nil
+                // Точку подержали и отпустили, не сдвинув, — она крупнее и
+                // с крестиком «удалить» (P362).
+                if still {
+                    if takenIsPoint(at: i, in: view) { arm(i, in: view) }
+                    return
+                }
                 // Точку отпустили над заголовком дня — она уходит туда (P358).
                 if up, let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
                                                              effectiveRange: nil) as? String,
@@ -777,8 +862,7 @@ struct DiaryEditor: UIViewRepresentable {
             }
             let result = text.replacingCharacters(in: cut, with: "")
             view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
-                                                     stamped: parent.stamped, resolve: resolve,
-                                                     glowing: parent.moving)
+                                                     stamped: parent.stamped, resolve: resolve)
             view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
             loadPhotos()
             parent.text = result
@@ -823,8 +907,7 @@ struct DiaryEditor: UIViewRepresentable {
                 let (result, _) = DayStore.insert(piece, into: rest,
                                                   at: min(target, (rest as NSString).length))
                 view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
-                                                         stamped: parent.stamped, resolve: resolve,
-                                                         glowing: parent.moving)
+                                                         stamped: parent.stamped, resolve: resolve)
                 view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
                 loadPhotos()
                 parent.text = result
@@ -871,8 +954,7 @@ struct DiaryEditor: UIViewRepresentable {
                                                   with: (target == 0 ? "" : (beside ? " " : "\n")) + piece
                                                       + (target == 0 && rest.length > 0 ? "\n" : ""))
             view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
-                                                     stamped: parent.stamped, resolve: resolve,
-                                                     glowing: parent.moving)
+                                                     stamped: parent.stamped, resolve: resolve)
             view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
             loadPhotos()
             parent.text = result
@@ -1043,6 +1125,7 @@ struct DiaryEditor: UIViewRepresentable {
         func textDroppableView(_ droppable: UIView & UITextDroppable,
                                willPerformDrop drop: UITextDropRequest) {
             dropBefore = parent.text
+            quietUntil = Date().addingTimeInterval(1.5)
         }
 
         func textViewDidChange(_ view: UITextView) {
@@ -1063,8 +1146,7 @@ struct DiaryEditor: UIViewRepresentable {
                 view.attributedText = DiaryEditor.styled(now, size: parent.size,
                                                          serif: parent.serif,
                                                          stamped: parent.stamped,
-                                                         resolve: resolve,
-                                                         glowing: parent.moving)
+                                                         resolve: resolve)
                 view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
                 view.selectedRange = NSRange(location: min(at, view.textStorage.length), length: 0)
                 loadPhotos()

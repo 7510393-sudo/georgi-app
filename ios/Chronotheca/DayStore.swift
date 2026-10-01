@@ -34,18 +34,20 @@ final class DayStore: ObservableObject {
     /// сказать, где она (решение P183).
     @Published var conflict: String?
 
-    /// Режим изменений: открывает прошедший день для правки, меняет порядок
-    /// дел и позволяет удалять. Включается вручную в меню страницы и гаснет
-    /// при уходе со дня — чтобы нельзя было забыть его включённым.
+    /// «Править этот день» — открывает прошедший день плана для правки.
+    /// Включается вручную в меню страницы и гаснет при уходе со дня — чтобы
+    /// нельзя было забыть его включённым.
     ///
-    /// У каждой вкладки свой: включённый в плане не трогает дневник, и
-    /// наоборот (решение P211).
+    /// Прежде это был режим изменений для любого дня и обеих вкладок
+    /// (P211). Теперь перенос, порядок, удаление и отметка «сделано» —
+    /// долгим нажатием, без всякого режима (P362), и режим остался только
+    /// там, где он и правда что-то открывает: в прошедшем плане.
     @Published var editingTabs: Set<Shell.Tab> = []
 
     func editing(_ tab: Shell.Tab) -> Bool { editingTabs.contains(tab) }
 
     func setEditing(_ tab: Shell.Tab, _ on: Bool) {
-        if on { editingTabs.insert(tab) } else { editingTabs.remove(tab) }
+        if on, tab == .plan, isPast { editingTabs.insert(tab) } else if !on { editingTabs.remove(tab) }
     }
 
     /// Почему в этот день писать нельзя.
@@ -54,8 +56,8 @@ final class DayStore: ObservableObject {
             return T("Запись ещё загружается из iCloud. Как только придёт — её можно будет править.",
                      "This entry is still downloading from iCloud. You can edit it once it arrives.")
         }
-        return isPast ? T("День закрыт. Изменения — через режим изменений.",
-                          "This day is closed. Changes go through Edit mode.")
+        return isPast ? T("День закрыт. Править — «Править этот день» в меню страницы.",
+                          "This day is closed. To change it, use “Edit this day” in the page menu.")
                       : T("Этот день ещё не наступил.", "This day has not come yet.")
     }
 
