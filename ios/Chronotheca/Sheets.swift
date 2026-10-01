@@ -197,176 +197,19 @@ struct SettingsSticker: View {
           // Длинная бумажка прокручивается: разделов стало много (P249).
           ScrollView {
            VStack(spacing: 0) {
+            // Вид — тетрадь на голубой записке (P367): кружки-выбор,
+            // «Открыть ›», одна главная кнопка. Нажимается только кнопка.
+            //
             // Язык — первым: на незнакомом языке остальное не прочитать
             // (P355). Подпись на обоих языках, чтобы её нашли с любого.
-            StickerSection(title: "Language · Язык")
-            StickerItem(title: T("Язык приложения", "App language"), note: Lang.name, edge: Look.noteEdge) {
-                Lang.toggle()
-            }
-            StickerSection(title: T("Записи", "Entries"))
-            place
-            safety
-            // Папки с прежними, русскими, именами — перевести (P353).
-            if vault.hasRussianNames {
-                StickerItem(title: T("Имена папок — по-английски", "Rename folders to English"), note: "→", edge: Look.noteEdge) {
-                    askingRename = true
-                }
-                .confirmationDialog(T("Перевести имена папок?", "Rename the folders to English?"), isPresented: $askingRename,
-                                    titleVisibility: .visible) {
-                    Button(T("Перевести", "Rename")) {
-                        store.save()
-                        close()
-                        vault.translateNames()
-                    }
-                    Button(T("Не сейчас", "Not now"), role: .cancel) { }
-                } message: {
-                    Text(T("«Дневник» станет «Diary», «Фотографии» — «Photos» и так далее; ", "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; ")
-                         + T("ссылки на снимки в записях поправятся следом. Файлы не копируются ", "photo links in your entries are updated after that. Files are not copied ")
-                         + T("и не пересоздаются — меняются только имена. Если перевод оборвётся, ", "or recreated — only the names change. If it is interrupted, ")
-                         + T("ничего не пропадёт: приложение понимает оба имени.", "nothing is lost: the app understands both names."))
-                }
-            }
-            // Записи за срок одной книгой (P296).
-            StickerItem(title: T("PDF за выбранный срок", "PDF for a period"), note: "→", edge: Look.noteEdge) {
-                showingPDF = true
-            }
-            // Три места вместо одного окна выбора (P223): своя папка на
-            // телефоне — одним касанием; своя папка человека — через окно.
-            // Название говорит прямо: жмут — и весь архив переезжает, а не
-            // только то, что будет написано дальше (P325).
-            StickerItem(title: T("Перенести архив и писать в другое место", "Move the archive and write elsewhere"), edge: Look.noteEdge) {
-                choosingPlace = true
-            }
-            if let before = vault.previousFriendly {
-                StickerItem(title: T("Вернуться к прежней папке", "Back to the previous folder"), edge: Look.noteEdge) {
-                    close()
-                    vault.goBack()
-                }
-                // Куда именно вернёмся — видно до нажатия, а не после.
-                Text(before)
-                    .font(Look.sans(11.5))
-                    .foregroundStyle(Look.inkSoft)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.top, -4)
-                    .padding(.bottom, 9)
-            }
-
-            StickerSection(title: T("Защита", "Privacy"))
-            StickerItem(title: T("Замок: Face ID или код", "Lock: Face ID or passcode"), note: locked ? T("включён", "on") : T("выключен", "off"),
-                        active: locked, edge: Look.noteEdge) {
-                // Включить замок можно, только доказав, что телефон свой:
-                // иначе можно запереться и не открыть (P249).
-                LockView.check(reason: locked ? T("Снять замок с записей", "Unlock your entries")
-                                              : T("Закрыть записи замком", "Lock your entries")) { ok in
-                    if ok { locked.toggle() } else {
-                        shell.say(T("Телефон не подтвердил владельца — замок не изменён.", "The phone did not confirm the owner — the lock was not changed."))
-                    }
-                }
-            }
-
-            StickerSection(title: T("День", "Day"))
-            StickerItem(title: T("Новый день начинается в", "A new day starts at"), note: "\(boundary):00",
-                        edge: Look.noteEdge) {
-                boundary = (boundary + 1) % 7
-                Prefs.applyBoundary()
-                store.go(to: DayStore.today())
-            }
-            StickerItem(title: T("Открывать приложение на", "Open the app on"),
-                        note: startTab == "diary" ? T("дневнике", "diary") : T("плане", "plan"), edge: Look.noteEdge) {
-                startTab = startTab == "diary" ? "plan" : "diary"
-            }
-            // P290.
-            StickerItem(title: T("Неделя начинается с", "Week starts on"),
-                        note: sundayFirst ? T("воскресенья", "Sunday") : T("понедельника", "Monday"), edge: Look.noteEdge) {
-                sundayFirst.toggle()
-            }
-            StickerItem(title: T("«Как прошло?» в дневнике", "“How did it go?” in the diary"), note: noAsk ? T("нет", "no") : T("да", "yes"),
-                        edge: Look.noteEdge) {
-                noAsk.toggle()
-            }
-            StickerItem(title: T("Погода", "Weather"), note: noWeather ? T("выключена", "off") : T("включена", "on"),
-                        edge: Look.noteEdge) {
-                noWeather.toggle()
-                if !noWeather { store.fetchWeatherIfNeeded() }
-            }
-            // Погоды нет — почему (P354). Текст можно выделить и прислать.
-            if !noWeather, let trouble = store.weatherTrouble {
-                Text(trouble)
-                    .font(Look.sans(11.5))
-                    .foregroundStyle(Color.red.opacity(0.8))
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 8)
-            }
-            if !noWeather {
-                StickerItem(title: T("Градусы", "Degrees"), note: fahrenheit ? "°F" : "°C", edge: Look.noteEdge) {
-                    fahrenheit.toggle()
-                }
-            }
-
-            StickerSection(title: T("Вид", "Appearance"))
-            StickerItem(title: T("Тема", "Theme"), note: themeName, edge: Look.noteEdge) {
-                theme = theme == "system" ? "light" : theme == "light" ? "dark" : "system"
-            }
-            // Размер и шрифт записей (P274).
-            StickerItem(title: T("Размер текста", "Text size"), note: Prefs.textSteps[Prefs.textStep].name,
-                        edge: Look.noteEdge) {
-                textSize = textSize >= Prefs.textSteps.count - 2 ? -1 : textSize + 1
-            }
-            StickerItem(title: T("Шрифт записи", "Entry font"),
-                        note: Prefs.fonts.first { $0.key == fontKey }?.name ?? "Georgia",
-                        edge: Look.noteEdge) {
-                let i = Prefs.fonts.firstIndex { $0.key == fontKey } ?? 0
-                fontKey = Prefs.fonts[(i + 1) % Prefs.fonts.count].key
-            }
-            StickerItem(title: T("Цвет дней в календаре", "Day colours in the calendar"), note: calendarTintName,
-                        edge: Look.noteEdge) {
-                calendarTint = calendarTint == "distance" ? "weekday"
-                    : calendarTint == "weekday" ? "none" : "distance"
-            }
-            StickerItem(title: T("Шелест страниц", "Page rustle"), note: quiet ? T("выключен", "off") : T("включён", "on"),
-                        edge: Look.noteEdge) {
-                quiet.toggle()
-            }
-
-            StickerSection(title: T("Вложения", "Attachments"))
-            // Три уровня, снимок — в формате iPhone (P365). Под строкой —
-            // сколько весит снимок: по этому и выбирают.
-            StickerItem(title: T("Сжатие снимков", "Photo compression"), note: squeezeName,
-                        detail: squeezeDetail, edge: Look.noteEdge) {
-                squeeze = squeeze == "high" ? "medium" : squeeze == "medium" ? "original" : "high"
-            }
-            StickerItem(title: T("Сжатие видео", "Video compression"), note: videoName,
-                        detail: videoDetail, edge: Look.noteEdge) {
-                videoSqueeze = videoSqueeze == "1080" ? "original" : "1080"
-            }
-            // Корзина дней (P295): вернуть или удалить навсегда.
-            StickerItem(title: T("Корзина", "Trash"), note: "→", edge: Look.noteEdge) {
-                showingTrash = true
-            }
-
-            StickerSection(title: T("Карта", "Map"))
-            StickerItem(title: T("«В навигатор» открывает", "“Directions” opens"),
-                        note: navigator == "google" ? T("Google Карты", "Google Maps") : T("Карты Apple", "Apple Maps"),
-                        edge: Look.noteEdge) {
-                navigator = navigator == "google" ? "apple" : "google"
-            }
-
-            StickerSection(title: T("О приложении", "About"))
-            StickerItem(title: T("Чего ещё нет", "Not there yet"), note: undone ? "▾" : "▸",
-                        edge: Look.noteEdge) {
-                undone.toggle()
-            }
-            if undone { missing }
-            // Погода в записях — от Погоды Apple; её условия положено
-            // показывать там, где приложение показывает погоду (P208).
-            StickerItem(title: T("Погода — Погода Apple", "Weather — Apple Weather"), note: T("условия", "terms"),
-                        edge: Look.noteEdge) {
-                openURL(WeatherNote.legal)
-            }
+            languagePart
+            entriesPart
+            privacyPart
+            dayPart
+            lookPart
+            attachPart
+            mapPart
+            aboutPart
             version
            }
           }
@@ -375,6 +218,9 @@ struct SettingsSticker: View {
         }
         .sheet(isPresented: $showingPDF) {
             PDFSheet(vault: vault, archive: archive)
+        }
+        .sheet(isPresented: $showingBackup, onDismiss: measureStorage) {
+            BackupSheet().environmentObject(vault)
         }
         .sheet(isPresented: $showingTrash) {
             TrashSheet(vault: vault) {
@@ -397,6 +243,199 @@ struct SettingsSticker: View {
                  + T("Записи, что уже есть, приложение предложит перенести.", "The app will offer to move the entries you already have."))
         }
         .onAppear(perform: measureStorage)
+    }
+
+    @ViewBuilder private var languagePart: some View {
+        NoteSection(title: "Language · Язык")
+        NoteRow(title: T("Язык приложения", "App language")) {
+            Choice(options: [("en", "English"), ("ru", "Русский")], selection: $language)
+        }
+    }
+
+    @ViewBuilder private var entriesPart: some View {
+        NoteSection(title: T("Записи", "Entries"))
+        place
+        safety
+        // Резервная копия (P368): когда была и кнопка — единственная
+        // главная кнопка на записке.
+        NoteRow(title: T("Резервная копия", "Backup"), detail: Backup.summary(size: storageBytes)) {
+            NoteButton(title: T("Сделать", "Make"), main: true) { showingBackup = true }
+        }
+        // Папки с прежними, русскими, именами — перевести (P353).
+        if vault.hasRussianNames {
+            NoteRow(title: T("Имена папок — по-английски", "Rename folders to English")) {
+                NoteButton(title: T("Перевести ›", "Rename ›")) { askingRename = true }
+            }
+            .confirmationDialog(T("Перевести имена папок?", "Rename the folders to English?"), isPresented: $askingRename,
+                                titleVisibility: .visible) {
+                Button(T("Перевести", "Rename")) {
+                    store.save()
+                    close()
+                    vault.translateNames()
+                }
+                Button(T("Не сейчас", "Not now"), role: .cancel) { }
+            } message: {
+                Text(T("«Дневник» станет «Diary», «Фотографии» — «Photos» и так далее; ", "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; ")
+                     + T("ссылки на снимки в записях поправятся следом. Файлы не копируются ", "photo links in your entries are updated after that. Files are not copied ")
+                     + T("и не пересоздаются — меняются только имена. Если перевод оборвётся, ", "or recreated — only the names change. If it is interrupted, ")
+                     + T("ничего не пропадёт: приложение понимает оба имени.", "nothing is lost: the app understands both names."))
+            }
+        }
+        // Записи за срок одной книгой (P296).
+        NoteRow(title: T("PDF за выбранный срок", "PDF for a period")) {
+            NoteButton(title: T("Собрать ›", "Make ›")) { showingPDF = true }
+        }
+        // Жмут — и весь архив переезжает, а не только то, что будет
+        // написано дальше (P325).
+        NoteRow(title: T("Перенести архив в другое место", "Move the archive elsewhere")) {
+            NoteButton(title: T("Выбрать ›", "Choose ›")) { choosingPlace = true }
+        }
+        if let before = vault.previousFriendly {
+            // Куда именно вернёмся — видно до нажатия, а не после.
+            NoteRow(title: T("Вернуться к прежней папке", "Back to the previous folder"), detail: before) {
+                NoteButton(title: T("Вернуть ›", "Go back ›")) {
+                    close()
+                    vault.goBack()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var privacyPart: some View {
+        NoteSection(title: T("Защита", "Privacy"))
+        NoteRow(title: T("Замок: Face ID или код", "Lock: Face ID or passcode")) {
+            Choice(options: onOff, selection: lockChoice)
+        }
+    }
+
+    @ViewBuilder private var dayPart: some View {
+        NoteSection(title: T("День", "Day"))
+        NoteRow(title: T("Новый день начинается в", "A new day starts at")) {
+            Menu {
+                ForEach(0..<7, id: \.self) { h in
+                    Button("\(h):00") {
+                        boundary = h
+                        Prefs.applyBoundary()
+                        store.go(to: DayStore.today())
+                    }
+                }
+            } label: {
+                Text("\(boundary):00 ▾")
+                    .font(Look.sans(12.5, weight: .semibold))
+                    .foregroundStyle(Look.accent)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Look.planBg))
+                    .overlay(Capsule().strokeBorder(Look.noteEdge, lineWidth: 1.5))
+            }
+        }
+        NoteRow(title: T("Открывать на", "Open on")) {
+            Choice(options: [("plan", T("плане", "plan")), ("diary", T("дневнике", "diary"))],
+                   selection: $startTab)
+        }
+        // P290.
+        NoteRow(title: T("Неделя с", "Week starts on")) {
+            Choice(options: [(false, T("понедельника", "Monday")), (true, T("воскресенья", "Sunday"))],
+                   selection: $sundayFirst)
+        }
+        NoteRow(title: T("«Как прошло?»", "“How did it go?”")) {
+            Choice(options: onOff, selection: Binding(get: { !noAsk }, set: { noAsk = !$0 }))
+        }
+        // Погоды нет — почему (P354). Текст можно выделить и прислать.
+        NoteRow(title: T("Погода", "Weather")) {
+            Choice(options: onOff, selection: Binding(get: { !noWeather }, set: { on in
+                noWeather = !on
+                if on { store.fetchWeatherIfNeeded() }
+            }))
+        }
+        if !noWeather, let trouble = store.weatherTrouble {
+            Text(trouble)
+                .font(Look.sans(11.5))
+                .foregroundStyle(Color.red.opacity(0.8))
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+        }
+        if !noWeather {
+            NoteRow(title: T("Градусы", "Degrees")) {
+                Choice(options: [(false, "°C"), (true, "°F")], selection: $fahrenheit)
+            }
+        }
+    }
+
+    @ViewBuilder private var lookPart: some View {
+        NoteSection(title: T("Вид", "Appearance"))
+        NoteRow(title: T("Тема", "Theme")) {
+            Choice(options: [("system", T("как iPhone", "as iPhone")), ("light", T("светлая", "light")),
+                             ("dark", T("тёмная", "dark"))], selection: $theme)
+        }
+        // Размер и шрифт записей (P274).
+        NoteRow(title: T("Размер текста", "Text size")) {
+            HStack(spacing: 6) {
+                NoteButton(title: "A−") { if textSize > -1 { Feel.tick(); textSize -= 1 } }
+                    .opacity(textSize > -1 ? 1 : 0.4)
+                Text(Prefs.textSteps[Prefs.textStep].name)
+                    .font(Look.sans(12.5))
+                    .foregroundStyle(Look.ink)
+                    .frame(minWidth: 62)
+                NoteButton(title: "A+") {
+                    if textSize < Prefs.textSteps.count - 2 { Feel.tick(); textSize += 1 }
+                }
+                .opacity(textSize < Prefs.textSteps.count - 2 ? 1 : 0.4)
+            }
+        }
+        NoteRow(title: T("Шрифт записи", "Entry font")) {
+            Choice(options: Prefs.fonts.map { ($0.key, $0.name) }, selection: $fontKey)
+        }
+        NoteRow(title: T("Цвет дней в календаре", "Day colours in the calendar")) {
+            Choice(options: [("distance", T("по удалённости", "by distance")),
+                             ("weekday", T("по дням недели", "by weekday")),
+                             ("none", T("без цвета", "none"))], selection: $calendarTint)
+        }
+        NoteRow(title: T("Шелест страниц", "Page rustle")) {
+            Choice(options: onOff, selection: Binding(get: { !quiet }, set: { quiet = !$0 }))
+        }
+    }
+
+    @ViewBuilder private var attachPart: some View {
+        NoteSection(title: T("Вложения", "Attachments"))
+        // Три уровня, снимок — в формате iPhone (P365). Под строкой —
+        // сколько весит снимок: по этому и выбирают.
+        NoteRow(title: T("Сжатие снимков", "Photo compression"), detail: squeezeDetail) {
+            Choice(options: [("medium", T("высокое", "high")), ("high", T("среднее", "medium")),
+                             ("original", T("без сжатия", "none"))], selection: $squeeze)
+        }
+        NoteRow(title: T("Сжатие видео", "Video compression"), detail: videoDetail) {
+            Choice(options: [("1080", T("до 1080p", "to 1080p")), ("original", T("без сжатия", "none"))],
+                   selection: $videoSqueeze)
+        }
+        // Корзина дней (P295): вернуть или удалить навсегда.
+        NoteRow(title: T("Корзина", "Trash")) {
+            NoteButton(title: T("Открыть ›", "Open ›")) { showingTrash = true }
+        }
+    }
+
+    @ViewBuilder private var mapPart: some View {
+        NoteSection(title: T("Карта", "Map"))
+        NoteRow(title: T("«В навигатор»", "“Directions”")) {
+            Choice(options: [("apple", T("Карты Apple", "Apple Maps")), ("google", "Google")],
+                   selection: $navigator)
+        }
+    }
+
+    @ViewBuilder private var aboutPart: some View {
+        NoteSection(title: T("О приложении", "About"))
+        NoteRow(title: T("Чего ещё нет", "Not there yet")) {
+            NoteButton(title: undone ? T("Скрыть ▾", "Hide ▾") : T("Показать ›", "Show ›")) { undone.toggle() }
+        }
+        if undone { missing }
+        // Погода в записях — от Погоды Apple; её условия положено
+        // показывать там, где приложение показывает погоду (P208).
+        NoteRow(title: T("Погода — Погода Apple", "Weather — Apple Weather")) {
+            NoteButton(title: T("Условия ›", "Terms ›")) { openURL(WeatherNote.legal) }
+        }
     }
 
     @State private var storageBytes: Int64?
@@ -440,21 +479,22 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.videoSqueeze) private var videoSqueeze = "1080"
     @State private var showingTrash = false
     @State private var showingPDF = false
+    @State private var showingBackup = false
+    @AppStorage(Lang.key) private var language = "en"
 
-    private var calendarTintName: String {
-        switch calendarTint {
-        case "weekday": return T("по дням недели", "by weekday")
-        case "none":    return T("без цвета", "no colour")
-        default:        return T("по удалённости", "by distance")
-        }
-    }
+    private var onOff: [(Bool, String)] { [(true, T("вкл", "on")), (false, T("выкл", "off"))] }
 
-    private var squeezeName: String {
-        switch squeeze {
-        case "high":   return T("среднее", "medium")
-        case "medium": return T("высокое", "high")
-        default:       return T("без сжатия", "none")
-        }
+    /// Замок меняется, только если телефон подтвердил владельца: иначе
+    /// можно запереться и не открыть (P249).
+    private var lockChoice: Binding<Bool> {
+        Binding(get: { locked }, set: { want in
+            LockView.check(reason: want ? T("Закрыть записи замком", "Lock your entries")
+                                        : T("Снять замок с записей", "Unlock your entries")) { ok in
+                if ok { locked = want } else {
+                    shell.say(T("Телефон не подтвердил владельца — замок не изменён.", "The phone did not confirm the owner — the lock was not changed."))
+                }
+            }
+        })
     }
 
     private var squeezeDetail: String {
@@ -471,10 +511,6 @@ struct SettingsSticker: View {
         }
     }
 
-    private var videoName: String {
-        videoSqueeze == "1080" ? T("до 1080p", "to 1080p") : T("без сжатия", "none")
-    }
-
     private var videoDetail: String {
         videoSqueeze == "1080"
             ? T("Минута ~60 МБ. Ролики меньше 1080p — как есть",
@@ -483,13 +519,6 @@ struct SettingsSticker: View {
                 "As the iPhone took it: a minute of 4K is about 170–400 MB")
     }
 
-    private var themeName: String {
-        switch theme {
-        case "light": return T("светлая", "light")
-        case "dark":  return T("тёмная", "dark")
-        default:      return T("как в iPhone", "as on iPhone")
-        }
-    }
     @State private var choosingPlace = false
     @State private var showingSafety = false
     @EnvironmentObject private var store: DayStore
@@ -504,87 +533,49 @@ struct SettingsSticker: View {
     /// Строка целиком — кнопка: нажатие открывает ту же папку в «Файлах».
     /// Раньше это было две строки — теперь одна (P305).
     private var place: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Button {
-                close()
-                if let link = vault.filesLink { openURL(link) }
-            } label: {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(T("ХРАНИЛИЩЕ ХРОНОТЕКИ", "CHRONOTHECA STORAGE"))
-                        .font(Look.sans(9))
-                        .tracking(0.6)
-                        .foregroundStyle(Look.inkFaint)
-                    Text(count)
-                        .font(Look.sans(14, weight: .medium))
-                        .foregroundStyle(Look.ink)
-                    // Путь — справочный, не главный: блёклыми буквами
-                    // (P316).
-                    Text(vault.friendlyPath)
-                        .font(Look.sans(11.5))
-                        .foregroundStyle(Look.inkFaint)
-                        .lineLimit(3)
+        VStack(alignment: .leading, spacing: 0) {
+            NoteRow(title: T("Хранилище", "Storage"), detail: vault.friendlyPath + "\n" + count) {
+                NoteButton(title: T("Где ›", "Show ›")) {
+                    close()
+                    if let link = vault.filesLink { openURL(link) }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
             if let parent = vault.nestedIn {
                 Text(T("Похоже, это папка внутри архива, а не сам архив. Прежние ", "This looks like a folder inside the archive, not the archive itself. Earlier ")
                      + T("записи, скорее всего, лежат уровнем выше — в «\(parent)». ", "entries are most likely one level up — in “\(parent)”. ")
-                     + T("Нажмите «Перенести архив и писать в другое место» и выберите саму «\(parent)»: ", "Tap “Move the archive and write elsewhere” and choose “\(parent)” itself: ")
+                     + T("Нажмите «Перенести архив» и выберите саму «\(parent)»: ", "Tap “Move the archive” and choose “\(parent)” itself: ")
                      + T("приложение узнает архив и предложит перенести туда то, ", "the app will recognise the archive and offer to move there ")
                      + T("что записано здесь.", "what was written here."))
                     .font(Look.sans(11.5))
                     .foregroundStyle(Color.red.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
             }
-            // Точный путь — отдельно от кнопки: его выделяют и копируют,
-            // а не нажимают.
-            Text(vault.displayPath)
-                .font(.system(size: 9.5, design: .monospaced))
-                .foregroundStyle(Look.inkFaint)
-                .textSelection(.enabled)
-                .lineLimit(4)
-                .padding(.top, 3)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 
     /// «Данные в сохранности?» — сразу под строкой хранилища: да, если папка
     /// не в самом приложении, и заметное «нет», если записи живут только
     /// внутри «Хронотеки» и пропадут вместе с ней (P326).
     private var safety: some View {
-        Button {
-            showingSafety = true
-        } label: {
-            HStack(spacing: 10) {
-                Text(T("Данные в сохранности?", "Is my data safe?"))
-                    .font(Look.sans(15))
-                    .foregroundStyle(Look.ink)
-                Spacer(minLength: 0)
+        NoteRow(title: T("Данные в сохранности?", "Is my data safe?")) {
+            Button {
+                showingSafety = true
+            } label: {
                 if vault.onPhone {
                     HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.yellow)
-                        Text(T("НЕТ", "NO"))
-                            .font(Look.sans(15, weight: .bold))
-                            .foregroundStyle(.red)
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                        Text(T("НЕТ ›", "NO ›")).font(Look.sans(13.5, weight: .bold)).foregroundStyle(.red)
                     }
                 } else {
-                    Text(T("да", "yes"))
-                        .font(Look.sans(14))
-                        .foregroundStyle(Look.inkSoft)
+                    Text(T("✓ да ›", "✓ yes ›"))
+                        .font(Look.sans(13.5, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.23, green: 0.6, blue: 0.35))
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
-        .overlay(alignment: .top) { Rectangle().fill(Look.noteEdge).frame(height: 1) }
         .sheet(isPresented: $showingSafety) {
             SafetySheet(onPhone: vault.onPhone) {
                 showingSafety = false
@@ -631,9 +622,6 @@ struct SettingsSticker: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Look.noteEdge).frame(height: 1)
-        }
     }
 
     private func close() {

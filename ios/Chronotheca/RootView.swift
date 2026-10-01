@@ -210,6 +210,8 @@ struct RootView: View {
             Text(Self.reportText(r))
         }
         .modifier(RenameShown())
+        // Пора ли сделать резервную копию (P368) — спросить, но не делать.
+        .modifier(BackupReminder())
         // Голосовая запись — небольшой шторкой снизу, а не на весь экран
         // (P360).
         .modifier(VoiceShown())
