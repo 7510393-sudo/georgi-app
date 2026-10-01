@@ -1,0 +1,6 @@
+/* Вопросы о разрешениях на телефоне с этим языком (P369). */
+"NSMicrophoneUsageDescription" = "日記にボイスメモを録音するためです。録音は「Audio」フォルダにファイルとして保存されます。";
+"NSLocationWhenInUseUsageDescription" = "その日の天気を記録し、今いる場所を地図に示すためです。場所はあなたのファイルにだけ書き込まれ、天気のためにApple天気へ送られます。";
+"NSCameraUsageDescription" = "その日の記録に直接写真を撮るためです。写真は「Photos」フォルダに保存されます。";
+"NSPhotoLibraryUsageDescription" = "その日の写真をページに直接表示するためです。選んだ写真は「Photos」フォルダにコピーされ、それ以外はどこにも送られません。";
+"NSFaceIDUsageDescription" = "記録をロックするためです。あなたの顔かパスコードがなければ、誰も開けません。";

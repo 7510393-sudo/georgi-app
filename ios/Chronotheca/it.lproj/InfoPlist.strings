@@ -1,0 +1,6 @@
+/* Вопросы о разрешениях на телефоне с этим языком (P369). */
+"NSMicrophoneUsageDescription" = "Per registrare una nota vocale nel tuo diario. La registrazione viene salvata come file nella tua cartella «Audio».";
+"NSLocationWhenInUseUsageDescription" = "Per annotare il meteo del giorno e segnare sulla tua mappa dove sei. Il luogo viene scritto solo nei tuoi file; per il meteo viene inviato a Meteo di Apple.";
+"NSCameraUsageDescription" = "Per scattare una foto direttamente nella nota del giorno. La foto viene salvata nella tua cartella «Photos».";
+"NSPhotoLibraryUsageDescription" = "Per mostrare le foto del giorno direttamente sulla pagina. La foto che scegli viene copiata nella tua cartella «Photos»; le altre non vanno da nessuna parte.";
+"NSFaceIDUsageDescription" = "Per bloccare le tue note: senza il tuo volto o il tuo codice nessuno può aprirle.";

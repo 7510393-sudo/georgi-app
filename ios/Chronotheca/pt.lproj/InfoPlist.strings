@@ -1,0 +1,6 @@
+/* Вопросы о разрешениях на телефоне с этим языком (P369). */
+"NSMicrophoneUsageDescription" = "Para gravar uma nota de voz no seu diário. A gravação é salva como arquivo na sua pasta “Audio”.";
+"NSLocationWhenInUseUsageDescription" = "Para anotar o tempo do dia e marcar no seu mapa onde você está. O lugar é escrito só nos seus arquivos; para o tempo, ele é enviado ao Tempo da Apple.";
+"NSCameraUsageDescription" = "Para tirar uma foto direto na anotação do dia. A foto é salva na sua pasta “Photos”.";
+"NSPhotoLibraryUsageDescription" = "Para mostrar as fotos do dia direto na página. A foto que você escolher é copiada para a sua pasta “Photos”; as outras não vão para lugar nenhum.";
+"NSFaceIDUsageDescription" = "Para bloquear suas anotações: sem o seu rosto ou código, ninguém consegue abri-las.";

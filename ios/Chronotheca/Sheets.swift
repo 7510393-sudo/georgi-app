@@ -247,8 +247,30 @@ struct SettingsSticker: View {
 
     @ViewBuilder private var languagePart: some View {
         NoteSection(title: "Language · Язык")
+        // Десять языков (P369) — списком: кружков столько не поместить.
+        // Пока не выбран — язык телефона, если он у нас есть.
         NoteRow(title: T("Язык приложения", "App language")) {
-            Choice(options: [("en", "English"), ("ru", "Русский")], selection: $language)
+            Menu {
+                ForEach(Lang.all, id: \.code) { lang in
+                    Button {
+                        Lang.set(lang.code)
+                        language = lang.code
+                    } label: {
+                        if lang.code == Lang.code {
+                            Label(lang.name, systemImage: "checkmark")
+                        } else {
+                            Text(lang.name)
+                        }
+                    }
+                }
+            } label: {
+                Text(Lang.name + " ▾")
+                    .font(Look.sans(12.5, weight: .semibold))
+                    .foregroundStyle(Look.note)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Look.accent))
+            }
         }
     }
 

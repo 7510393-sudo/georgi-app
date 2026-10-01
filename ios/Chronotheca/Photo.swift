@@ -527,8 +527,8 @@ struct PhotoViewer: View {
     private var stays: String {
         let folder = url?.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
             ?? "Photos"
-        return T("Файл останется в папке «" + folder + "» — удалить его можно в «Файлах».",
-                 "The file stays in the “" + folder + "” folder — you can delete it in Files.")
+        return T("Файл останется в папке «\(folder)» — удалить его можно в «Файлах».",
+                 "The file stays in the “\(folder)” folder — you can delete it in Files.")
     }
 
     /// Свайп вниз убирает снимок, как в «Фото» Apple (P270): потянул

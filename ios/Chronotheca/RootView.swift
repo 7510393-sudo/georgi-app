@@ -84,8 +84,8 @@ struct RootView: View {
     }
 
     private var trashTitle: String {
-        T("Убрать «" + shell.tab.title.lowercased() + "» этого дня в корзину?",
-          "Move this day’s " + shell.tab.title.lowercased() + " to the trash?")
+        let name = shell.tab.title.lowercased()
+        return T("Убрать «\(name)» этого дня в корзину?", "Move this day’s \(name) to the trash?")
     }
 
     private var trashMessage: String {
@@ -235,19 +235,8 @@ struct RootView: View {
     }
 
     static func conflictText(_ name: String) -> String {
-        T("""
-        Пока день был открыт здесь, его файл поправили в другом месте — \
-        на Mac или на другом устройстве. На экране теперь та версия.
-
-        Ваша правка не пропала: она лежит рядом, в той же папке, в файле \
-        «\(name)». Откройте его в «Файлах» и перенесите нужное.
-        """, """
-        While the day was open here, its file was changed elsewhere — \
-        on a Mac or another device. The screen now shows that version.
-
-        Your change is not lost: it is next to it, in the same folder, in the file \
-        “\(name)”. Open it in Files and move over what you need.
-        """)
+        T("Пока день был открыт здесь, его файл поправили в другом месте — на Mac или на другом устройстве. На экране теперь та версия.\n\nВаша правка не пропала: она лежит рядом, в той же папке, в файле «\(name)». Откройте его в «Файлах» и перенесите нужное.",
+          "While the day was open here, its file was changed elsewhere — on a Mac or another device. The screen now shows that version.\n\nYour change is not lost: it is next to it, in the same folder, in the file “\(name)”. Open it in Files and move over what you need.")
     }
 
     private var app: some View {
