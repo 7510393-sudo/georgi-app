@@ -77,7 +77,7 @@ struct PlanTitle: UIViewRepresentable {
         view.allowsEditingTextAttributes = false
         // Снимок, который несут по плану, ложится под дело, а не буквами в
         // его название (P358): поле названия переносов не принимает.
-        view.textDropInteraction?.isEnabled = false
+        if let drop = view.textDropInteraction { view.removeInteraction(drop) }
         // Поле меряется по тексту и не прокручивает в себе ничего: строка
         // плана растёт вниз вместе с названием.
         view.isScrollEnabled = false
