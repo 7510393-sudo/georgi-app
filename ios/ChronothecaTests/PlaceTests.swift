@@ -26,7 +26,7 @@ final class PlaceTests: XCTestCase {
 
     func testИмяФайлаБезОпасныхЗнаков() {
         XCTAssertEqual(Place.fileName(for: "Дача: у озера / летом"), "Дача- у озера - летом.md")
-        XCTAssertEqual(Place.fileName(for: "   "), "Место.md")
+        XCTAssertEqual(Place.fileName(for: "   "), T("Место", "Place") + ".md")
     }
 
     func testКоординатыСловами() {
