@@ -84,7 +84,7 @@ final class Strings {
         return t
     }
 
-    init(code: String, bundle: Bundle = .main) {
+    convenience init(code: String, bundle: Bundle = .main) {
         let path = bundle.path(forResource: "App", ofType: "strings", inDirectory: nil,
                                forLocalization: code)
         let dict = (path.flatMap { NSDictionary(contentsOfFile: $0) } as? [String: String]) ?? [:]
