@@ -370,7 +370,7 @@ struct DayPage: View {
             shell.tab = which
         } label: {
             // Качающиеся буквы — того же синего, что и рамка (P341).
-            WobblyTitle(text: which.rawValue.uppercased(), wobbling: wobbling,
+            WobblyTitle(text: which.title.uppercased(), wobbling: wobbling,
                         font: Look.sans(13, weight: on || wobbling ? .semibold : .regular),
                         color: wobbling ? Look.glow : (on ? Look.ink : Look.inkFaint))
                 .frame(maxWidth: .infinity)
