@@ -35,6 +35,9 @@ struct PlanRowLine: View {
     /// двигают (решение P179).
     var onGrab: ((CGFloat) -> Void)?
     var onDrop: (() -> Void)?
+    /// Долгое нажатие на текст дела (P361): засчитывается и толкает палец
+    /// сразу, как нажатие стало долгим, а не когда палец убрали.
+    var onHold: (() -> Void)?
 
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
@@ -231,7 +234,8 @@ struct PlanRowLine: View {
                   editable: text != nil && (typing || editMode),
                   typing: typing,
                   onDone: onDone,
-                  onNext: onNext)
+                  onNext: onNext,
+                  onHold: onHold)
             .alignmentGuide(.firstTextBaseline) { _ in PlanTitle.baseline }
     }
 
@@ -487,6 +491,10 @@ struct PlanView: View {
     /// поле само берёт ввод, когда строка названа, и само отдаёт его,
     /// когда клавиатура уходит.
     @State private var typingIn: UUID?
+    /// Когда долгое нажатие на текст дела засчитано полем названия (P361).
+    @State private var heldAt = Date.distantPast
+    /// Когда долгое нажатие засчитала сама строка, мимо текста.
+    @State private var rowHeldAt = Date.distantPast
 
     /// Дело, которое сейчас тащат за номер, и на сколько оно сдвинуто.
     @State private var dragged: UUID?
@@ -624,7 +632,13 @@ struct PlanView: View {
                 dragOffset = сдвиг
                 dragBy = Int((сдвиг / PlanRowLine.height).rounded())
             },
-            onDrop: { drop(id) })
+            onDrop: { drop(id) },
+            onHold: store.editing(.plan) ? nil : {
+                // То же нажатие уже засчитала строка — не гасить дважды.
+                guard Date().timeIntervalSince(rowHeldAt) > 1 else { return }
+                heldAt = Date()
+                toggle(row)
+            })
             // Где дело на экране — на его середину бросают точку (P358).
             .background(GeometryReader { geo in
                 let frame = geo.frame(in: .global)
@@ -654,7 +668,16 @@ struct PlanView: View {
             .background(store.editing(.plan) ? Look.ruleSoft.opacity(0.5) : .clear)
             .contentShape(Rectangle())
             .onLongPressGesture(minimumDuration: 0.35) {
+                // Нажатие на текст уже засчитано самим полем — второй раз
+                // не гасить (P361).
                 guard !store.editing(.plan) else { return }
+                // Нажатие на текст засчитано полем (оно отпускает строку,
+                // только когда палец убран) — второй раз не гасить.
+                if Date().timeIntervalSince(heldAt) < 30 {
+                    heldAt = .distantPast
+                    return
+                }
+                rowHeldAt = Date()
                 toggle(row)
             }
             // Короткое нажатие ставит курсор в текст дела, длинное затеняет

@@ -898,9 +898,11 @@ enum PlaceLabel {
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let mid = size.width / 2
             let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
+            // Кружок значка — полупрозрачный: карта под отметкой видна
+            // (P361). Значок на нём — белый, чёткий.
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
-                                    color: UIColor.black.withAlphaComponent(0.25).cgColor)
-            UIColor(Look.inkSoft).setFill()
+                                    color: UIColor.black.withAlphaComponent(0.15).cgColor)
+            UIColor(Look.inkSoft).withAlphaComponent(0.6).setFill()
             UIBezierPath(ovalIn: circle).fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             UIColor.white.setStroke()
@@ -924,10 +926,10 @@ enum PlaceLabel {
             }
             let box = CGRect(x: mid - plate.width / 2, y: dot + 4, width: plate.width, height: plate.height)
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
-                                    color: UIColor.black.withAlphaComponent(0.2).cgColor)
+                                    color: UIColor.black.withAlphaComponent(0.12).cgColor)
             // Полупрозрачная: много названий рядом не должны закрывать карту
-            // совсем (P330, было — почти непрозрачная, P244).
-            UIColor(Look.sticker).withAlphaComponent(0.62).setFill()
+            // (P361; было 0.62 — P330, почти непрозрачная — P244).
+            UIColor(Look.sticker).withAlphaComponent(0.42).setFill()
             let plateShape = UIBezierPath(roundedRect: box, cornerRadius: 5)
             plateShape.fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)

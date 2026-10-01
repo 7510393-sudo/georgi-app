@@ -41,6 +41,9 @@ struct PlanTitle: UIViewRepresentable {
 
     /// Нажат «Ввод»: ввод переходит к делу ниже.
     var onNext: () -> Void = {}
+    /// Долгое нажатие на текст, пока его не правят (P361): отклик и дело
+    /// в тот же миг, как нажатие стало долгим.
+    var onHold: (() -> Void)?
 
     static var placeholder: String { T("Без названия", "Untitled") }
     /// На ступень крупнее прежних 15 и растёт с настройкой (P274).
@@ -90,6 +93,11 @@ struct PlanTitle: UIViewRepresentable {
                                          action: #selector(Coordinator.tapped(_:)))
         tap.delegate = context.coordinator
         view.addGestureRecognizer(tap)
+        let hold = UILongPressGestureRecognizer(target: context.coordinator,
+                                                action: #selector(Coordinator.held(_:)))
+        hold.minimumPressDuration = 0.35
+        hold.delegate = context.coordinator
+        view.addGestureRecognizer(hold)
         return view
     }
 
@@ -220,7 +228,17 @@ struct PlanTitle: UIViewRepresentable {
         }
 
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-            open != nil
+            // Долгое нажатие — только пока текст не правят: при правке оно
+            // принадлежит курсору и лупе.
+            if g is UILongPressGestureRecognizer {
+                return parent.onHold != nil && view?.isFirstResponder == false
+            }
+            return open != nil
+        }
+
+        @objc func held(_ g: UILongPressGestureRecognizer) {
+            guard g.state == .began else { return }
+            parent.onHold?()
         }
 
         func gestureRecognizer(_ g: UIGestureRecognizer,
