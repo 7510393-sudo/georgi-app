@@ -56,6 +56,14 @@ struct DiaryView: View {
                 store.returnToStrip(link)
                 shell.say(T("Снимок вернулся в полоску", "Photo moved back to the strip"))
             },
+            // Точка из текста — в заголовок и обратно (P358).
+            onPointToTitle: { line in
+                store.diaryTitle = DiaryPage.title(Geo.stripped(store.diaryTitle),
+                                                   keeping: store.diaryTitle + " " + line)
+            },
+            onPointFromTitle: { line in
+                store.pointFromTitle(line)
+            },
             undo: store.diaryBack.isEmpty || !store.canEditDiary ? nil : { store.undoDiary() },
             redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() },
             home: shell.freshStart)
@@ -107,6 +115,9 @@ struct DiaryPage: View {
     var onEditing: ((Bool) -> Void)?
     var placeCaret: Binding<Int?> = .constant(nil)
     var onReturnPhoto: ((String) -> Void)?
+    /// Точку перенесли из текста в заголовок дня — и обратно (P358).
+    var onPointToTitle: ((String) -> Void)?
+    var onPointFromTitle: ((String) -> Void)?
     /// Шаг назад и вперёд (P261) — там же, где в плане (P312).
     var undo: (() -> Void)?
     var redo: (() -> Void)?
@@ -265,8 +276,25 @@ struct DiaryPage: View {
 
     // MARK: - Заголовок
 
+    /// Слова заголовка — без точек: точки стоят за ними значками (P358).
+    private var titleWords: Binding<String> {
+        Binding(get: { Geo.stripped(title) },
+                set: { title = DiaryPage.title($0, keeping: title) })
+    }
+
+    /// Новые слова заголовка, а точки — прежние, за словами.
+    static func title(_ words: String, keeping old: String) -> String {
+        let ns = old as NSString
+        let points = Geo.points(inText: old).map { ns.substring(with: $0.range) }
+        let head = words.trimmingCharacters(in: .whitespaces)
+        return ([head] + points).filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
     private var titleField: some View {
-        VStack(spacing: 0) {
+        let points = Geo.points(inText: title)
+        let ns = title as NSString
+        return VStack(spacing: 0) {
+          HStack(spacing: 6) {
             ZStack(alignment: .leading) {
                 if title.isEmpty {
                     Text(T("Заголовок дня", "Title of the day"))
@@ -275,7 +303,7 @@ struct DiaryPage: View {
                         .allowsHitTesting(false)
                 }
                 if editable {
-                    TextField("", text: $title)
+                    TextField("", text: titleWords)
                         .font(Look.serif(16.5, weight: .semibold))
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .title)
@@ -287,15 +315,35 @@ struct DiaryPage: View {
                             toText = true
                         }
                 } else {
-                    Text(title)
+                    Text(Geo.stripped(title))
                         .font(Look.serif(16.5, weight: .semibold))
                         .foregroundStyle(Look.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            // Точки в заголовке — значками за словами (P358). Касание — на
+            // карту; долгое нажатие в режиме изменений — назад в текст.
+            ForEach(points.indices, id: \.self) { k in
+                let line = ns.substring(with: points[k].range)
+                PointChipView(point: points[k].point)
+                    .onTapGesture { onOpenPoint?(points[k].point) }
+                    .onLongPressGesture(minimumDuration: 0.3) {
+                        guard glowing, editable else { return }
+                        Feel.light()
+                        onPointFromTitle?(line)
+                    }
+            }
+          }
             // Заголовок — подпись к дню, а не вывеска: место на странице
             // принадлежит записи (решение P162).
             .frame(height: 23, alignment: .leading)
+            // Где заголовок на экране — туда бросают точку из текста (P358).
+            .background(GeometryReader { geo in
+                let zone = geo.frame(in: .global)
+                Color.clear
+                    .onAppear { if editable { DiaryEditor.titleZone = zone } }
+                    .onChange(of: zone) { _, now in if editable { DiaryEditor.titleZone = now } }
+            })
             .padding(.bottom, 5)
 
             Rectangle().fill(Look.rule).frame(height: 1)
@@ -317,7 +365,7 @@ struct DiaryPage: View {
                     // коснуться, чтобы продолжить (P346).
                     grows: true, minHeight: 320, room: size * 1.5 * 5, resolve: resolve,
                     onOpenPhoto: onOpenInline, onReturnPhoto: onReturnPhoto,
-                    onOpenPoint: onOpenPoint, onCaret: onCaret,
+                    onOpenPoint: onOpenPoint, onPointToTitle: onPointToTitle, onCaret: onCaret,
                     moving: glowing && editable, onEditing: onEditing,
                     placeCaret: placeCaret)
             // Вдвое меньше, чем было: пробел между заголовком и записью не

@@ -75,6 +75,9 @@ struct PlanTitle: UIViewRepresentable {
         // Вставлять в название картинки и вложения нельзя: в файле это
         // обычная строка (P161).
         view.allowsEditingTextAttributes = false
+        // Снимок, который несут по плану, ложится под дело, а не буквами в
+        // его название (P358): поле названия переносов не принимает.
+        view.textDropInteraction?.isEnabled = false
         // Поле меряется по тексту и не прокручивает в себе ничего: строка
         // плана растёт вниз вместе с названием.
         view.isScrollEnabled = false

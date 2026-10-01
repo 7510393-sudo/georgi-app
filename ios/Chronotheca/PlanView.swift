@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import CoreLocation
+import UniformTypeIdentifiers
 
 /// Строка дела.
 ///
@@ -196,6 +197,15 @@ struct PlanRowLine: View {
             Image(systemName: row.bell == nil ? "bell" : "bell.fill")
                 .font(.system(size: 20))
                 .foregroundStyle(row.bell == nil ? Look.inkFaint : bellColor)
+                // Дело из серии — значок повтора у колокольчика (P359).
+                .overlay(alignment: .bottomTrailing) {
+                    if row.repeats != nil {
+                        Image(systemName: "arrow.2.circlepath")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Look.accent)
+                            .offset(x: 5, y: 3)
+                    }
+                }
                 .frame(width: PlanRowLine.bellWidth, height: 38)
                 .contentShape(Rectangle())
                 // Площадка колокольчика вдвое выше квадратика номера, но
@@ -327,6 +337,8 @@ struct PlanScaffold<Content: View>: View {
     /// Что несёт палец, взяв превью из полоски (P205).
     var drag: ((Int) -> String)?
     var onMovePhoto: ((Int, Int) -> Void)?
+    /// Снимок из-под дела отпустили над полоской — назад в неё (P358).
+    var onTakePhoto: ((String) -> Void)?
     /// Приложение вернулось после паузы — список снова с самого верха
     /// (P346). Меняется — прокрутить вверх; у соседних страниц не меняется.
     var home = 0
@@ -360,9 +372,11 @@ struct PlanScaffold<Content: View>: View {
             // Ход плавный и один: без него страница дёргалась, потому что
             // клавиатура и содержимое ехали вразнобой.
             .animation(.easeOut(duration: 0.25), value: keyboard)
-            if !photos.isEmpty {
+            // В режиме изменений полоска видна и пустой: в неё возвращают
+            // снимки из-под дел (P358).
+            if !photos.isEmpty || (glowing && onTakePhoto != nil) {
                 PhotoStrip(photos: photos, glowing: glowing, onOpen: onOpenPhoto,
-                           drag: drag, onMove: onMovePhoto)
+                           drag: drag, onMove: onMovePhoto, onTake: onTakePhoto)
             }
         }
         .keyboardHeight($keyboard)
@@ -494,10 +508,16 @@ struct PlanView: View {
                          photos: store.planPhotos.map(store.photoURL),
                          glowing: store.editing(.plan),
                          onOpenPhoto: { shell.openedPhoto = .init(tab: .plan, index: $0) },
-                         // Снимки плана к делам не носят — только
-                         // переставляют вдоль полоски (P210).
+                         // В режиме изменений снимок из полоски несут под
+                         // любое дело (P358; прежде — только вдоль полоски,
+                         // P210).
+                         drag: store.editing(.plan) && store.canEditPlan
+                             ? { i in store.planPhotos.indices.contains(i)
+                                 ? Diary.line(store.planPhotos[i]) : "" } : nil,
                          onMovePhoto: store.editing(.plan) && store.canEditPlan
                              ? { store.movePhoto(from: $0, to: $1, in: .plan) } : nil,
+                         onTakePhoto: store.editing(.plan) && store.canEditPlan
+                             ? { store.returnPlanPhoto($0) } : nil,
                          home: shell.freshStart) {
                 if store.tasks.isEmpty {
                     PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
@@ -524,6 +544,9 @@ struct PlanView: View {
             shell.showPoint(point)
         })
         .onChange(of: store.date) { _, _ in typingIn = nil }
+        // Дело из серии поправили или убирают — только здесь или дальше
+        // тоже (P359).
+        .modifier(SeriesQuestion())
         // Где курсор в плане — туда встанет точка с карты (P240).
         .onChange(of: typingIn) { _, now in store.planTyping = now }
         .opacity(store.isPast && !store.editing(.plan) ? 0.58 : 1)
@@ -553,7 +576,13 @@ struct PlanView: View {
                                   ? { store.moveLine(id, by: $0) } : nil,
                               onDelete: store.editing(.plan) && store.canEditPlan
                                   ? { withAnimation(.easeOut(duration: 0.2)) { store.delete(id) } }
-                                  : nil)
+                                  : nil,
+                              onInto: store.editing(.plan) && store.canEditPlan
+                                  ? { spot in
+                                      guard let task = PlanZones.task(at: spot) else { return false }
+                                      store.putPointIntoTask(id, task: task)
+                                      return true
+                                  } : nil)
             }
         }
         stat
@@ -584,7 +613,11 @@ struct PlanView: View {
             // Правку кончила эта самая строка, а не соседняя, которой
             // только что отдали ввод: иначе курсор гас бы сразу после
             // перехода в следующее дело.
-            onDone: { if typingIn == id { typingIn = nil }; store.save() },
+            onDone: {
+                if typingIn == id { typingIn = nil }
+                store.save()
+                store.checkSeries(id)
+            },
             onNext: { next(after: id) },
             onGrab: { сдвиг in
                 dragged = id
@@ -592,6 +625,20 @@ struct PlanView: View {
                 dragBy = Int((сдвиг / PlanRowLine.height).rounded())
             },
             onDrop: { drop(id) })
+            // Где дело на экране — на его середину бросают точку (P358).
+            .background(GeometryReader { geo in
+                let frame = geo.frame(in: .global)
+                Color.clear
+                    .onAppear { PlanZones.rows[id] = frame }
+                    .onChange(of: frame) { _, now in PlanZones.rows[id] = now }
+                    .onDisappear { PlanZones.rows[id] = nil }
+            })
+            // Снимок из полоски или из-под другого дела — под это дело, в
+            // ряд с теми, что уже там (P358).
+            .onDrop(of: store.editing(.plan) && store.canEditPlan ? [UTType.plainText] : [],
+                    isTargeted: nil) { providers in
+                PhotoDrop.read(providers) { store.putPlanPhoto($0, under: id) }
+            }
             // Взятое дело идёт за пальцем, остальные расступаются по целым
             // строкам — так под ним открывается место, и видно, куда оно
             // встанет (решение P163).
@@ -768,19 +815,24 @@ struct PlanExtraLine: View {
     /// плана (P352). Сам снимок остаётся в папке, запомненное место — на
     /// карте: из плана уходит только ссылка на них.
     var onDelete: (() -> Void)?
+    /// Точку отпустили на середине дела — она уходит в его название
+    /// (P358). Получает место пальца на экране; `true` — взяло.
+    var onInto: ((CGPoint) -> Bool)?
 
     @State private var dragged: CGFloat = 0
 
     var body: some View {
-        if let link = Diary.picture(in: line), Diary.kind(of: link) == .photo {
-            PlanPhotoLine(url: resolve?(link)) { open?(resolve?(link)) }
+        if Plan.isPhotoRow(line) {
+            // Снимки под делом — в ряд; в режиме изменений каждый несут
+            // пальцем под другое дело или назад в полоску (P358).
+            PlanPhotoRow(links: Diary.links(in: line), resolve: resolve, open: open,
+                         carry: onMove != nil)
                 .overlay(alignment: .trailing) { cross }
-                .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove))
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         } else if let point = Geo.point(in: line) {
             PlanPointLine(point: point, open: openPoint, glowing: onMove != nil)
                 .overlay(alignment: .trailing) { cross }
-                .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove))
+                .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove, into: onInto))
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         }
     }
@@ -802,11 +854,66 @@ struct PlanExtraLine: View {
     }
 }
 
+/// Вопрос о деле из серии: только этот день или этот и все следующие
+/// (P359). Отдельно от плана: его цепочка и так длинная.
+private struct SeriesQuestion: ViewModifier {
+    @EnvironmentObject private var store: DayStore
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog(title, isPresented: shown, titleVisibility: .visible,
+                                   presenting: store.seriesAsk) { ask in
+            Button(only(ask)) { store.answerSeries(ask, all: false) }
+            if ask.delete {
+                Button(all(ask), role: .destructive) { store.answerSeries(ask, all: true) }
+            } else {
+                Button(all(ask)) { store.answerSeries(ask, all: true) }
+            }
+            Button(T("Отмена", "Cancel"), role: .cancel) { cancel(ask) }
+        }
+    }
+
+    private var title: String { T("Это повторяющееся дело", "This is a repeating task") }
+
+    private var shown: Binding<Bool> {
+        Binding(get: { store.seriesAsk != nil }, set: { if !$0 { store.seriesAsk = nil } })
+    }
+
+    private func only(_ ask: DayStore.SeriesAsk) -> String {
+        ask.delete ? T("Удалить только в этот день", "Delete this day only")
+                   : T("Изменить только этот день", "Change this day only")
+    }
+
+    private func all(_ ask: DayStore.SeriesAsk) -> String {
+        ask.delete ? T("Удалить этот и все следующие", "Delete this and all following")
+                   : T("Изменить этот и все следующие", "Change this and all following")
+    }
+
+    /// Правку уже не отменить — она остаётся только в этом дне.
+    private func cancel(_ ask: DayStore.SeriesAsk) {
+        if ask.delete { store.seriesAsk = nil } else { store.answerSeries(ask, all: false) }
+    }
+}
+
+/// Где на экране строки дел открытой страницы — чтобы точку, отпущенную
+/// на середине дела, положить в его название (P358).
+enum PlanZones {
+    static var rows: [UUID: CGRect] = [:]
+
+    /// Дело, на середине которого палец: верхняя и нижняя четверть строки —
+    /// это граница между делами, там точка встаёт своей строкой.
+    static func task(at spot: CGPoint) -> UUID? {
+        rows.first { _, frame in
+            frame.insetBy(dx: 0, dy: frame.height * 0.25).contains(spot)
+        }?.key
+    }
+}
+
 /// Строку плана цепляют долгим нажатием и тащат вверх-вниз.
 private struct Carry: ViewModifier {
     let on: Bool
     @Binding var dragged: CGFloat
     let move: ((Int) -> Void)?
+    var into: ((CGPoint) -> Bool)? = nil
 
     func body(content: Content) -> some View {
         if on {
@@ -815,7 +922,7 @@ private struct Carry: ViewModifier {
                 .zIndex(dragged == 0 ? 0 : 1)
                 .shadow(color: .black.opacity(dragged == 0 ? 0 : 0.18), radius: 8, y: 3)
                 .gesture(LongPressGesture(minimumDuration: 0.3)
-                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
                     .onChanged { value in
                         if case .second(true, let drag?) = value {
                             dragged = drag.translation.height
@@ -825,6 +932,11 @@ private struct Carry: ViewModifier {
                         guard case .second(true, let drag?) = value else { dragged = 0; return }
                         let steps = Int((drag.translation.height / PlanRowLine.height).rounded())
                         dragged = 0
+                        // На середине дела — внутрь него, в название (P358).
+                        if let into, into(drag.location) {
+                            Feel.light()
+                            return
+                        }
                         if steps != 0 { move?(steps) }
                     })
                 .accessibilityHint(T("Долгое нажатие — перетащить к другому делу", "Long press to drag next to another task"))

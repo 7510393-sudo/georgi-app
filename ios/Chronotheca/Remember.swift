@@ -100,7 +100,7 @@ struct RememberSheet: View {
                         .foregroundStyle(Look.inkFaint)
 
                     if !day.title.isEmpty {
-                        Text(day.title)
+                        Text(Geo.stripped(day.title))
                             .font(Look.serif(19, weight: .semibold))
                             .foregroundStyle(Look.ink)
                     }

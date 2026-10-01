@@ -695,6 +695,8 @@ struct RollerSheet: View {
     @State private var picked = Date()
     /// Готовый ответ, нажатый последним.
     @State private var chosen: String?
+    /// Повтор дела (P359): нет, каждую неделю, месяц, год.
+    @State private var every: Repeat.Every?
 
     private var isBell: Bool { roller.kind == .bell }
 
@@ -702,6 +704,7 @@ struct RollerSheet: View {
         NavigationStack {
             VStack(spacing: 12) {
                 TimeWheel(time: $picked)
+                if !isBell { repeatRow }
                 if isBell {
                     presets
                     Text(Self.aboutBell)
@@ -732,9 +735,46 @@ struct RollerSheet: View {
                 let row = store.planRows[i]
                 let current = isBell ? row.bell : row.time
                 set(Clock.date(current) ?? start(row))
+                every = row.repeats?.every
             }
         }
-        .presentationDetents([.height(isBell ? 392 : 290)])
+        .presentationDetents([.height(isBell ? 392 : 370)])
+    }
+
+    /// Повторять ли дело (P359). Выбор — до «Готово»: ничего не пишется,
+    /// пока ролик не закрыт.
+    private var repeatRow: some View {
+        VStack(spacing: 8) {
+            Text(T("Повторять", "Repeat"))
+                .font(Look.sans(12, weight: .semibold))
+                .foregroundStyle(Look.inkSoft)
+            HStack(spacing: 6) {
+                repeatChip(nil, T("нет", "no"))
+                ForEach(Repeat.Every.allCases, id: \.self) { kind in
+                    repeatChip(kind, kind.title)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private func repeatChip(_ kind: Repeat.Every?, _ title: String) -> some View {
+        let on = every == kind
+        return Button {
+            Feel.tick()
+            every = kind
+        } label: {
+            Text(title)
+                .font(Look.sans(12.5))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(on ? Look.planBg : Look.accent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(on ? Look.accent : Look.chrome, in: Capsule())
+                .overlay(Capsule().strokeBorder(Look.accent.opacity(0.35)))
+        }
+        .buttonStyle(.plain)
     }
 
     /// Поставить ролик. Всегда через подгонку к шагу: ролик с шагом в пять
@@ -818,8 +858,23 @@ struct RollerSheet: View {
 
     private func apply(_ value: String?) {
         if let i = store.index(of: roller.id) {
+            let before = store.planRows[i].repeats?.every
             if isBell { store.planRows[i].bell = value } else { store.planRows[i].time = value }
             store.save()
+            // Повтор поменяли — серия заводится или снимается; иначе, если
+            // дело из серии, спросить, только ли здесь новое время (P359).
+            if !isBell, every != before {
+                if let every {
+                    let n = store.startSeries(roller.id, every: every)
+                    shell.say(T("Повтор вписан в дни на год вперёд: \(n)",
+                                "Repeat written into the days a year ahead: \(n)"))
+                } else {
+                    store.stopSeries(roller.id)
+                    shell.say(T("Больше не повторяется", "No longer repeats"))
+                }
+            } else {
+                store.checkSeries(roller.id)
+            }
         }
         // Колокольчик поставлен — спросить у iPhone разрешение звонить
         // (P260). Запрещено — сказать, где разрешить.

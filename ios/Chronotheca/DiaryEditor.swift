@@ -62,6 +62,13 @@ struct DiaryEditor: UIViewRepresentable {
     var onReturnPhoto: ((String) -> Void)?
     /// Касание по точке в тексте — открыть карту на ней (P213).
     var onOpenPoint: ((GeoPoint) -> Void)?
+    /// Точку из текста отпустили над заголовком дня — она переходит туда
+    /// (P358). Строка точки, как в файле.
+    var onPointToTitle: ((String) -> Void)?
+
+    /// Где на экране заголовок дня открытой страницы — туда можно бросить
+    /// точку из текста (P358). Пусто — заголовка не видно.
+    static var titleZone: CGRect = .null
     /// Курсор переставлен: где он теперь, отступом в тексте записи. Туда
     /// встанет точка с карты (P213).
     var onCaret: ((Int) -> Void)?
@@ -611,7 +618,56 @@ struct DiaryEditor: UIViewRepresentable {
         /// Взятое идёт над пальцем, а не под ним: иначе палец закрывает его
         /// целиком и тащить приходится вслепую (P349). Ложится оно тоже туда,
         /// где видно, — над пальцем.
-        private static let lift: CGFloat = 64
+        private static let lift: CGFloat = 48
+
+        /// Тонкая синяя черта там, куда ляжет взятое (P358): палец и
+        /// поднятая над ним картинка не дают увидеть место точно.
+        private var mark: UIView?
+
+        /// Взята точка, а не снимок.
+        private func takenIsPoint(_ view: UITextView) -> Bool {
+            guard let i = taken, i < view.textStorage.length else { return false }
+            return view.textStorage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil
+                && view.textStorage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil
+        }
+
+        /// Точка над заголовком дня — отпустить здесь значит перенести её в
+        /// заголовок (P358).
+        private func overTitle(_ g: UIGestureRecognizer, in view: UITextView) -> Bool {
+            guard takenIsPoint(view), let window = view.window,
+                  !DiaryEditor.titleZone.isNull else { return false }
+            let spot = g.location(in: window)
+            let lifted = CGPoint(x: spot.x, y: spot.y - Self.lift)
+            return DiaryEditor.titleZone.insetBy(dx: -8, dy: -10).contains(lifted)
+        }
+
+        /// Показать, куда ляжет взятое: точка — ровно в место под картинкой,
+        /// снимок — в конец абзаца под ней.
+        private func showMark(at at: CGPoint, in view: UITextView, hidden: Bool) {
+            guard !hidden, let window = view.window, let position = view.closestPosition(to: at)
+            else { mark?.isHidden = true; return }
+            var spot = position
+            if !takenIsPoint(view) {
+                let ns = view.textStorage.string as NSString
+                let offset = min(view.offset(from: view.beginningOfDocument, to: position), ns.length)
+                let para = ns.paragraphRange(for: NSRange(location: offset, length: 0))
+                var end = para.location + para.length
+                if end > para.location, ns.character(at: end - 1) == 10 { end -= 1 }
+                spot = view.position(from: view.beginningOfDocument, offset: end) ?? position
+            }
+            let rect = view.convert(view.caretRect(for: spot), to: window)
+            let bar = mark ?? {
+                let v = UIView()
+                v.backgroundColor = UIColor(Look.glow)
+                v.layer.cornerRadius = 1.5
+                v.isUserInteractionEnabled = false
+                window.addSubview(v)
+                self.mark = v
+                return v
+            }()
+            bar.isHidden = false
+            bar.frame = CGRect(x: rect.minX - 1.5, y: rect.minY - 2, width: 3, height: rect.height + 4)
+        }
 
         /// Палец со взятым снимком ниже страницы — над полоской превью:
         /// отпустить здесь значит вернуть снимок вниз (P272, P349).
@@ -658,13 +714,27 @@ struct DiaryEditor: UIViewRepresentable {
                 let spot = g.location(in: ghost?.superview ?? view)
                 ghost?.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
                 // Над полоской снимок бледнеет — видно, что отпустить здесь
-                // значит вернуть его вниз.
-                ghost?.alpha = overStrip(g, in: view) ? 0.5 : 0.9
+                // значит вернуть его вниз; над заголовком — то же для точки.
+                let away = overStrip(g, in: view) || overTitle(g, in: view)
+                ghost?.alpha = away ? 0.5 : 0.9
+                showMark(at: at, in: view, hidden: away)
             case .ended:
                 let back = overStrip(g, in: view)
+                let up = overTitle(g, in: view)
                 ghost?.removeFromSuperview()
                 ghost = nil
+                mark?.removeFromSuperview()
+                mark = nil
                 taken = nil
+                // Точку отпустили над заголовком дня — она уходит туда (P358).
+                if up, let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
+                                                             effectiveRange: nil) as? String,
+                   let toTitle = parent.onPointToTitle {
+                    remove(at: i, in: view)
+                    Feel.light()
+                    toTitle(line)
+                    return
+                }
                 // Отпустили ниже страницы, над полоской превью — снимок
                 // возвращается туда, откуда его взяли (P272).
                 if back, let link = view.textStorage.attribute(DiaryEditor.photoKey, at: i,
@@ -681,8 +751,37 @@ struct DiaryEditor: UIViewRepresentable {
             default:
                 ghost?.removeFromSuperview()
                 ghost = nil
+                mark?.removeFromSuperview()
+                mark = nil
                 taken = nil
             }
+        }
+
+        /// Убрать точку из текста — вместе с пробелом рядом, а если она
+        /// стояла своей строкой — с этой строкой (P358).
+        private func remove(at i: Int, in view: UITextView) {
+            let storage = view.textStorage
+            let start = (DiaryEditor.plain(storage.attributedSubstring(
+                from: NSRange(location: 0, length: i))) as NSString).length
+            let piece = DiaryEditor.plain(storage.attributedSubstring(
+                from: NSRange(location: i, length: 1)))
+            let text = DiaryEditor.plain(storage) as NSString
+            var cut = NSRange(location: start, length: (piece as NSString).length)
+            let after = NSMaxRange(cut) < text.length ? text.character(at: NSMaxRange(cut)) : 10
+            let before = cut.location > 0 ? text.character(at: cut.location - 1) : 10
+            if after == 32 || (after == 10 && before == 10 && NSMaxRange(cut) < text.length) {
+                cut.length += 1
+            } else if before == 32 || before == 10 && cut.location > 0 {
+                cut.location -= 1
+                cut.length += 1
+            }
+            let result = text.replacingCharacters(in: cut, with: "")
+            view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
+                                                     stamped: parent.stamped, resolve: resolve,
+                                                     glowing: parent.moving)
+            view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+            loadPhotos()
+            parent.text = result
         }
 
         /// Переставить строку снимка или точки: она встаёт своей строкой в
@@ -1060,46 +1159,51 @@ final class PointChip: NSTextAttachment {
         let picture = PointChip.mark(glowing: glowing, title: point.title)
         image = picture
         let pad: CGFloat = glowing ? 3 : 0
-        bounds = CGRect(origin: CGPoint(x: 0, y: -3 - pad), size: picture.size)
+        bounds = CGRect(origin: CGPoint(x: 0, y: -5 - pad), size: picture.size)
         accessibilityLabel = T("Точка на карте: ", "Place on the map: ") + point.label
     }
 
-    /// Булавка; у точки с названием — и название рядом (P284).
+    /// Булавка; у точки с названием — и название рядом (P284). Красная
+    /// булавка на светло-красной подложке с красной кромкой — точку видно в
+    /// тексте сразу (P358).
     static func mark(glowing: Bool, title: String = "") -> UIImage {
         let pad: CGFloat = glowing ? 3 : 0
-        let font = UIFont.systemFont(ofSize: 11.5, weight: .medium)
+        let red = UIColor(Look.pin)
+        let font = UIFont.systemFont(ofSize: 12.5, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font,
-                                                     .foregroundColor: UIColor(Look.inkSoft)]
+                                                     .foregroundColor: UIColor(Look.ink)]
         let name = title.trimmingCharacters(in: .whitespaces)
         let wide = name.isEmpty ? 0 : min(ceil((name as NSString).size(withAttributes: words).width), 180)
-        let chip = CGSize(width: name.isEmpty ? 20 : 20 + wide + 6, height: 17)
+        let chip = CGSize(width: name.isEmpty ? 24 : 24 + wide + 8, height: 21)
         let size = CGSize(width: chip.width + pad * 2, height: chip.height + pad * 2)
-        let pin = UIImage(systemName: "mappin.and.ellipse",
-                          withConfiguration: UIImage.SymbolConfiguration(pointSize: 10.5,
-                                                                         weight: .medium))?
-            .withTintColor(UIColor(Look.inkSoft), renderingMode: .alwaysOriginal)
+        let pin = UIImage(systemName: "mappin.circle.fill",
+                          withConfiguration: UIImage.SymbolConfiguration(pointSize: 13.5,
+                                                                         weight: .semibold))?
+            .withTintColor(red, renderingMode: .alwaysOriginal)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let box = CGRect(x: pad, y: pad, width: chip.width, height: chip.height)
-                .insetBy(dx: 0.5, dy: 0.5)
-            let shape = UIBezierPath(roundedRect: box, cornerRadius: 6)
+                .insetBy(dx: 0.6, dy: 0.6)
+            let shape = UIBezierPath(roundedRect: box, cornerRadius: 7)
             if glowing {
                 ctx.cgContext.setShadow(offset: .zero, blur: 4, color: UIColor(Look.glow).cgColor)
             }
-            UIColor(Look.chrome).setFill()
+            UIColor(Look.planBg).setFill()
             shape.fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
-            UIColor(glowing ? Look.glow : Look.rule).setStroke()
-            shape.lineWidth = glowing ? 1.5 : 1
+            red.withAlphaComponent(0.13).setFill()
+            shape.fill()
+            (glowing ? UIColor(Look.glow) : red.withAlphaComponent(0.75)).setStroke()
+            shape.lineWidth = glowing ? 1.6 : 1.2
             shape.stroke()
             if let pin {
                 let s = pin.size
-                pin.draw(in: CGRect(x: pad + (20 - s.width) / 2,
+                pin.draw(in: CGRect(x: pad + (24 - s.width) / 2,
                                     y: pad + (chip.height - s.height) / 2,
                                     width: s.width, height: s.height))
             }
             if !name.isEmpty {
                 (name as NSString).draw(
-                    with: CGRect(x: pad + 18, y: pad + (chip.height - font.lineHeight) / 2,
+                    with: CGRect(x: pad + 22, y: pad + (chip.height - font.lineHeight) / 2,
                                  width: wide, height: font.lineHeight),
                     options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                     attributes: words, context: nil)

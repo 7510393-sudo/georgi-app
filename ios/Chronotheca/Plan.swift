@@ -25,6 +25,9 @@ struct PlanRow: Identifiable, Equatable {
 
     var text = ""
     var details: [String] = []
+    /// Дело из повторяющейся серии (P359). В файле — пометкой в конце
+    /// строки: «(every week #k3f9)».
+    var repeats: Repeat? = nil
 
     var isTask: Bool { verbatim == nil }
 
@@ -39,6 +42,7 @@ struct PlanRow: Identifiable, Equatable {
     static func == (a: PlanRow, b: PlanRow) -> Bool {
         a.verbatim == b.verbatim && a.done == b.done && a.time == b.time
             && a.bell == b.bell && a.text == b.text && a.details == b.details
+            && a.repeats == b.repeats
     }
 }
 
@@ -103,6 +107,20 @@ enum Plan {
             }
         }
 
+        // Пометка серии стоит последней: «… (remind 18:30) (every week #k3f9)»
+        // (P359).
+        var repeats: Repeat?
+        if let range = rest.range(of: #"\s*\(every (week|month|year) #[a-z0-9]{4,12}\)$"#,
+                                  options: .regularExpression) {
+            let inside = String(rest[range]).trimmingCharacters(in: .whitespaces)
+                .dropFirst(7).dropLast()
+            let parts = inside.split(separator: " ")
+            if parts.count == 2, let every = Repeat.Every(rawValue: String(parts[0])) {
+                repeats = Repeat(every: every, series: String(parts[1].dropFirst()))
+                rest.removeSubrange(range)
+            }
+        }
+
         var bell: String?
         // «(remind 08:30)»; до P355 — «(напомнить 08:30)», читается и так.
         if let range = rest.range(of: #"\s*\((?:remind|напомнить) (\d{2}:\d{2})\)$"#,
@@ -116,7 +134,7 @@ enum Plan {
         }
 
         return PlanRow(verbatim: nil, done: done, time: time, bell: bell,
-                       text: rest, details: [])
+                       text: rest, details: [], repeats: repeats)
     }
 
     private static func isTime(_ s: String) -> Bool {
@@ -132,21 +150,32 @@ enum Plan {
     ///
     /// Фотографии плана и дневника разные: снимок, положенный в план,
     /// лежит в файле плана и показывается на странице плана (решение P203).
+    ///
+    /// Полоска — это снимки, стоящие в самом конце **после пустой строки**
+    /// (так их всегда и пишет `body`). Снимки сразу под делом, без пустой
+    /// строки, — это снимки того дела (P358): они остаются под ним, даже
+    /// если дело последнее.
     static func splitPhotos(_ rows: [PlanRow]) -> (rows: [PlanRow], photos: [String]) {
-        var rows = rows
-        var photos: [String] = []
-        while let last = rows.last, let line = last.verbatim {
-            if line.trimmingCharacters(in: .whitespaces).isEmpty {
-                rows.removeLast()
-            } else if let link = Diary.picture(in: line) {
-                photos.insert(link, at: 0)
-                rows.removeLast()
-            } else {
-                break
-            }
+        func blank(_ row: PlanRow) -> Bool {
+            row.verbatim?.trimmingCharacters(in: .whitespaces).isEmpty == true
         }
-        guard !photos.isEmpty else { return (rows, []) }
+        var rows = rows
+        while let last = rows.last, blank(last) { rows.removeLast() }
+        var start = rows.count
+        while start > 0, let line = rows[start - 1].verbatim, Diary.picture(in: line) != nil {
+            start -= 1
+        }
+        guard start < rows.count, start == 0 || blank(rows[start - 1]) else { return (rows, []) }
+        let photos = rows[start...].compactMap { $0.verbatim.flatMap(Diary.picture(in:)) }
+        rows.removeSubrange(start...)
+        while let last = rows.last, blank(last) { rows.removeLast() }
         return (rows, photos)
+    }
+
+    /// Строка снимков под делом: один снимок или ряд (P358).
+    static func isPhotoRow(_ line: String) -> Bool {
+        let links = Diary.links(in: line)
+        return !links.isEmpty && links.allSatisfy { Diary.kind(of: $0) == .photo }
     }
 
     /// План вместе с фотографиями в конце.
@@ -170,6 +199,7 @@ enum Plan {
             if let time = row.time { out += time + " " }
             out += row.text
             if let bell = row.bell { out += " (remind \(bell))" }
+            if let r = row.repeats { out += " (every \(r.every.rawValue) #\(r.series))" }
             out += "\n"
             for detail in row.details {
                 out += indent + detail + "\n"

@@ -169,7 +169,7 @@ struct MapScreen: View {
                 if locating {
                     oval(ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity), on: true)
                 } else {
-                    oval(MapFace(icon: "pin.fill", name: T("запомнить точку", "save place"), tint: Look.accent), on: true)
+                    oval(MapFace(icon: "pin.fill", name: saveName, tint: Look.accent), on: true)
                 }
             }
             .accessibilityHint(point ? T("Запишет выбранную точку", "Saves the chosen place") : T("Запишет, где вы сейчас", "Saves where you are now"))
@@ -338,12 +338,15 @@ struct MapScreen: View {
     /// туда, откуда открыли карту: в план или в дневник на место курсора.
     private func remember() {
         hideKeyboard()
-        // Пришли не со страницы дня — спросить, куда записать (P240).
-        guard shell.mapFrom == .today else {
-            choosingTab = true
-            return
-        }
+        // Куда — написано на самой кнопке (P358): в ту вкладку, что была
+        // открыта последней. Спрашивать незачем.
         remember(to: shell.tab)
+    }
+
+    /// Название кнопки — куда ляжет точка (P358).
+    private var saveName: String {
+        shell.tab == .diary ? T("сохранить в дневник", "save to diary")
+                            : T("сохранить в план", "save to plan")
     }
 
     private func remember(to tab: Shell.Tab) {

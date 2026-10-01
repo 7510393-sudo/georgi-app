@@ -56,6 +56,8 @@ struct ChronothecaApp: App {
             // старая копия не должна лечь поверх новой (P183).
             case .active:
                 store.comeBack()
+                // Повторяющиеся дела — дописать на год вперёд (P359).
+                Repeats.extendAll(vault: vault, open: store.date)
                 archive.reload()
                 store.syncUpcomingReminders()
                 store.fetchWeatherIfNeeded()

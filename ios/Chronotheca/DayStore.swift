@@ -224,8 +224,124 @@ final class DayStore: ObservableObject {
 
     func delete(_ id: UUID) {
         guard canEditPlan, let i = index(of: id) else { return }
+        // Дело из серии — спросить: только этот день или и следующие (P359).
+        if planRows[i].repeats != nil {
+            seriesAsk = SeriesAsk(row: id, delete: true)
+            return
+        }
         planRows.remove(at: i)
         save()
+    }
+
+    // MARK: - Повторяющиеся дела (P359)
+
+    /// Вопрос «только этот день или этот и все следующие».
+    struct SeriesAsk: Identifiable {
+        let id = UUID()
+        let row: UUID
+        let delete: Bool
+    }
+    @Published var seriesAsk: SeriesAsk?
+
+    /// Каким дело серии было, когда день читали или когда о нём спросили в
+    /// последний раз: по нему видно, что его поправили.
+    private var seriesSeen: [UUID: PlanRow] = [:]
+
+    private func noteSeries() {
+        seriesSeen = Dictionary(uniqueKeysWithValues:
+            planRows.filter { $0.repeats != nil }.map { ($0.id, $0) })
+    }
+
+    /// Дальний край: на год вперёд от сегодня или от открытого дня, что
+    /// позже.
+    private var seriesHorizon: Date {
+        let cal = Calendar.current
+        let base = max(cal.startOfDay(for: Date()), date)
+        return cal.date(byAdding: .day, value: Repeats.horizon, to: base) ?? base
+    }
+
+    /// Поставить делу повтор: оно само встанет в файлы будущих дней на год
+    /// вперёд. Возвращает, во сколько дней вписано.
+    @discardableResult
+    func startSeries(_ id: UUID, every: Repeat.Every) -> Int {
+        guard canEditPlan, let was = index(of: id) else { return 0 }
+        if planRows[was].repeats != nil { stopSeries(id) }
+        guard let i = index(of: id) else { return 0 }
+        let row = planRows[i]
+        let series = Repeats.newID()
+        planRows[i].repeats = Repeat(every: every, series: series)
+        save()
+        var s = Series(id: series, every: every.rawValue, anchor: Vault.stamp(date),
+                       until: Vault.stamp(date), time: row.time, bell: row.bell,
+                       text: row.text, missed: nil)
+        Repeats.extend(&s, through: seriesHorizon, vault: vault, open: date)
+        Repeats.save(Repeats.load(vault) + [s], vault)
+        noteSeries()
+        syncUpcomingReminders()
+        return Repeats.written(s, after: date).count - (s.missed?.count ?? 0)
+    }
+
+    /// Перестать повторять: будущие повторы уходят из файлов, этот день
+    /// остаётся обычным делом.
+    func stopSeries(_ id: UUID) {
+        guard canEditPlan, let i = index(of: id), let r = planRows[i].repeats else { return }
+        dropFuture(r.series)
+        planRows[i].repeats = nil
+        save()
+        noteSeries()
+        syncUpcomingReminders()
+    }
+
+    /// Убрать будущие повторы серии и саму серию.
+    private func dropFuture(_ series: String) {
+        var list = Repeats.load(vault)
+        if let s = list.first(where: { $0.id == series }) {
+            for day in Repeats.written(s, after: date) {
+                _ = Repeats.edit(series, on: day, vault: vault) { rows, k in _ = rows.remove(at: k) }
+            }
+        }
+        list.removeAll { $0.id == series }
+        Repeats.save(list, vault)
+    }
+
+    /// Дело серии поправили — название, время, напоминание. Спросить,
+    /// только ли здесь (P359).
+    func checkSeries(_ id: UUID) {
+        guard let i = index(of: id), planRows[i].repeats != nil,
+              let seen = seriesSeen[id] else { return }
+        let now = planRows[i]
+        guard now.text != seen.text || now.time != seen.time || now.bell != seen.bell else { return }
+        seriesAsk = SeriesAsk(row: id, delete: false)
+    }
+
+    /// Ответ на вопрос: `all` — этот день и все следующие. Вопрос
+    /// передаётся сам: окно вопроса могло уже закрыться и забыть его.
+    func answerSeries(_ ask: SeriesAsk, all: Bool) {
+        seriesAsk = nil
+        guard canEditPlan, let i = index(of: ask.row), let r = planRows[i].repeats else { return }
+        if ask.delete {
+            planRows.remove(at: i)
+            save()
+            if all { dropFuture(r.series) }
+        } else if all {
+            let row = planRows[i]
+            var list = Repeats.load(vault)
+            if let k = list.firstIndex(where: { $0.id == r.series }) {
+                for day in Repeats.written(list[k], after: date) {
+                    _ = Repeats.edit(r.series, on: day, vault: vault) { rows, j in
+                        rows[j].text = row.text
+                        rows[j].time = row.time
+                        rows[j].bell = row.bell
+                    }
+                }
+                list[k].text = row.text
+                list[k].time = row.time
+                list[k].bell = row.bell
+                Repeats.save(list, vault)
+            }
+        }
+        noteSeries()
+        syncUpcomingReminders()
     }
 
     /// Переставить дело выше или ниже соседнего дела.
@@ -525,6 +641,71 @@ final class DayStore: ObservableObject {
         return (head + after, (head as NSString).length)
     }
 
+    /// Снимок плана — под дело (P358): в строку снимков сразу под ним, в
+    /// ряд с теми, что уже там. Откуда бы его ни взяли — из полоски или
+    /// из-под другого дела, — там он больше не стоит.
+    func putPlanPhoto(_ link: String, under id: UUID) {
+        guard canEditPlan, takeOutPlanPhoto(link), let i = index(of: id) else { return }
+        let next = i + 1
+        if next < planRows.count, let line = planRows[next].verbatim, Plan.isPhotoRow(line) {
+            planRows[next].verbatim = line.trimmingCharacters(in: .whitespaces) + " " + Diary.line(link)
+        } else {
+            planRows.insert(.verbatim(Diary.line(link)), at: next)
+        }
+        save()
+    }
+
+    /// Точку, стоявшую своей строкой, — в название дела, в конец (P358).
+    func putPointIntoTask(_ pointRow: UUID, task: UUID) {
+        guard canEditPlan, let r = index(of: pointRow),
+              let line = planRows[r].verbatim, Geo.point(in: line) != nil,
+              index(of: task) != nil else { return }
+        planRows.remove(at: r)
+        guard let t = index(of: task) else { return }
+        let text = planRows[t].text.trimmingCharacters(in: .whitespaces)
+        planRows[t].text = text.isEmpty ? line : text + " " + line
+        save()
+    }
+
+    /// Снимок из-под дела — назад в полоску плана внизу (P358).
+    func returnPlanPhoto(_ link: String) {
+        guard canEditPlan, !planPhotos.contains(link), takeOutPlanPhoto(link) else { return }
+        planPhotos.append(link)
+        save()
+    }
+
+    /// Убрать снимок оттуда, где он стоит в плане. `false` — его там нет.
+    private func takeOutPlanPhoto(_ link: String) -> Bool {
+        if let k = planPhotos.firstIndex(of: link) {
+            planPhotos.remove(at: k)
+            return true
+        }
+        for r in planRows.indices {
+            guard let line = planRows[r].verbatim else { continue }
+            let links = Diary.links(in: line)
+            guard links.contains(link) else { continue }
+            let rest = links.filter { $0 != link }
+            if rest.isEmpty {
+                planRows.remove(at: r)
+            } else {
+                planRows[r].verbatim = rest.map(Diary.line).joined(separator: " ")
+            }
+            return true
+        }
+        return false
+    }
+
+    /// Точку из заголовка дня — назад в текст записи, в конец (P358).
+    func pointFromTitle(_ line: String) {
+        guard canEditDiary, let r = diaryTitle.range(of: line) else { return }
+        diaryTitle.removeSubrange(r)
+        diaryTitle = diaryTitle.replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+        diaryText = DayStore.insert(line, into: diaryText, at: nil).0
+        touchDiary()
+        save()
+    }
+
     /// Вернуть снимок, стоящий посреди записи, в полоску внизу (P216).
     func returnToStrip(_ link: String) {
         guard canEditDiary else { return }
@@ -659,6 +840,7 @@ final class DayStore: ObservableObject {
         quietPlan = true
         (planRows, planPhotos) = Plan.splitPhotos(Plan.rows(from: DayFile(text: plan.text).body))
         quietPlan = false
+        noteSeries()
 
         let file = DayFile(text: diaryFile.text)
         // План читается первым, поэтому названия дел уже известны — по ним

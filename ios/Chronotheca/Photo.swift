@@ -197,6 +197,9 @@ struct PhotoStrip: View {
     /// Переставить превью в полоске — перетаскиванием вбок в режиме
     /// изменений (P210).
     var onMove: ((Int, Int) -> Void)?
+    /// Снимок принесли сюда из-под дела в плане — вернуть его в полоску
+    /// (P358). Пусто — полоска чужих снимков не принимает.
+    var onTake: ((String) -> Void)? = nil
 
     /// Превью, которое сейчас несут, — по нему соседи расступаются.
     @State private var carrying: Int?
@@ -213,13 +216,27 @@ struct PhotoStrip: View {
                 ForEach(0..<shown, id: \.self) { i in
                     cell(i)
                 }
+                if photos.isEmpty {
+                    Text(T("Сюда — вернуть снимок вниз", "Drop here to move a photo back down"))
+                        .font(Look.sans(12))
+                        .foregroundStyle(Look.inkFaint)
+                        .frame(height: Self.side)
+                }
                 if photos.count > shown {
                     more(photos.count - shown, from: shown)
                 }
                 Spacer(minLength: 0)
             }
+            .contentShape(Rectangle())
+            // Мимо превью — на пустое место полоски — тоже можно вернуть
+            // снимок из-под дела (P358).
+            .onDrop(of: onTake != nil && glowing ? [UTType.plainText] : [], isTargeted: nil) { providers in
+                guard let onTake else { return false }
+                return PhotoDrop.read(providers, onTake)
+            }
         }
         .frame(height: Self.side)
+        .onChange(of: photos.count) { _, _ in carrying = nil }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
@@ -262,8 +279,8 @@ struct PhotoStrip: View {
                 on: glowing && (onMove != nil || (drag != nil && kind(i) == .photo)),
                 text: kind(i) == .photo ? drag.map { $0(i) } : nil,
                 start: { carrying = i }))
-            .onDrop(of: glowing && onMove != nil ? [UTType.plainText, Carried.strip] : [],
-                    delegate: StripDrop(index: i, carrying: $carrying, move: onMove))
+            .onDrop(of: glowing && (onMove != nil || onTake != nil) ? [UTType.plainText, Carried.strip] : [],
+                    delegate: StripDrop(index: i, carrying: $carrying, move: onMove, take: onTake))
             .accessibilityLabel(kind(i) == .photo ? T("Фотография \(i + 1)", "Photo \(i + 1)")
                                 : kind(i) == .video ? T("Видео", "Video")
                                 : kind(i) == .audio ? T("Голосовая запись", "Voice note") : T("Файл", "File"))
@@ -305,7 +322,7 @@ struct FileTile: View {
 /// Снимок несёт строку-ссылку как текст: поле записи принимает её и рисует
 /// снимок на её месте (P204). Голос и документ несут только свою метку:
 /// в текст их не бросить, только переставить в полоске (P209, P210).
-private struct Carried: ViewModifier {
+struct Carried: ViewModifier {
     let on: Bool
     let text: String?
     let start: () -> Void
@@ -317,6 +334,8 @@ private struct Carried: ViewModifier {
         if on {
             content.onDrag {
                 start()
+                // Толчок в тот миг, когда снимок оторвался от места (P358).
+                Feel.light()
                 if let text { return NSItemProvider(object: ("\n" + text) as NSString) }
                 let item = NSItemProvider()
                 item.registerDataRepresentation(forTypeIdentifier: Carried.strip.identifier,
@@ -333,11 +352,13 @@ private struct Carried: ViewModifier {
 }
 
 /// Превью несут вдоль полоски: соседи расступаются, превью встаёт туда,
-/// где его отпустили (P210).
+/// где его отпустили (P210). Снимок, принесённый не из полоски, — из-под
+/// дела в плане — возвращается в неё (P358).
 private struct StripDrop: DropDelegate {
     let index: Int
     @Binding var carrying: Int?
     let move: ((Int, Int) -> Void)?
+    var take: ((String) -> Void)? = nil
 
     func dropEntered(info: DropInfo) {
         guard let from = carrying, from != index else { return }
@@ -348,8 +369,92 @@ private struct StripDrop: DropDelegate {
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
 
     func performDrop(info: DropInfo) -> Bool {
+        let ours = carrying != nil
         carrying = nil
+        guard !ours, let take else { return true }
+        return PhotoDrop.read(info.itemProviders(for: [UTType.plainText]), take)
+    }
+}
+
+/// Строка-ссылка снимка, которую принёс палец, — из системного переноса.
+enum PhotoDrop {
+    /// Прочитать первую ссылку на снимок и отдать её. `false` — нечего.
+    static func read(_ providers: [NSItemProvider], _ take: @escaping (String) -> Void) -> Bool {
+        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) })
+        else { return false }
+        _ = provider.loadObject(ofClass: NSString.self) { item, _ in
+            guard let text = (item as? NSString).map({ $0 as String }),
+                  let link = Diary.anywhere(in: text).first?.link
+            else { return }
+            DispatchQueue.main.async {
+                Feel.light()
+                take(link)
+            }
+        }
         return true
+    }
+}
+
+/// Снимки под делом в плане — в ряд, а не столбиком (P358). В режиме
+/// изменений каждый можно взять пальцем и унести под другое дело или
+/// назад в полоску внизу.
+struct PlanPhotoRow: View {
+    let links: [String]
+    var resolve: ((String) -> URL?)?
+    var open: ((URL?) -> Void)?
+    var carry = false
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(links, id: \.self) { link in
+                    PlanPhotoThumb(url: resolve?(link)) { open?(resolve?(link)) }
+                        .overlay {
+                            if carry {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(Look.glow, lineWidth: 2)
+                            }
+                        }
+                        .shadow(color: carry ? Look.glow.opacity(0.8) : .clear, radius: 6)
+                        .modifier(Carried(on: carry, text: Diary.line(link), start: {}))
+                }
+            }
+            .padding(.horizontal, 14)
+        }
+        .scrollDisabled(links.count < 4)
+        .frame(height: PlanPhotoLine.height)
+    }
+}
+
+/// Один снимок под делом — той же величины, что снимок в тексте записи.
+struct PlanPhotoThumb: View {
+    let url: URL?
+    var onOpen: (() -> Void)?
+    @State private var image: UIImage?
+
+    init(url: URL?, onOpen: (() -> Void)? = nil) {
+        self.url = url
+        self.onOpen = onOpen
+        _image = State(initialValue: url.flatMap { Photo.cache.object(forKey: PhotoAttachment.key($0)) })
+    }
+
+    var body: some View {
+        Image(uiImage: image ?? PhotoAttachment.empty)
+            .resizable()
+            .frame(width: DiaryEditor.photoSize.width, height: DiaryEditor.photoSize.height)
+            .contentShape(Rectangle())
+            .onTapGesture { onOpen?() }
+            .task(id: url) {
+                guard image == nil, let url else { return }
+                let got = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+                    guard let raw = Photo.load(url, side: 280) else { return nil }
+                    return PhotoAttachment.frame(raw)
+                }.value
+                guard let got else { return }
+                Photo.cache.setObject(got, forKey: PhotoAttachment.key(url))
+                image = got
+            }
+            .accessibilityLabel(T("Фотография", "Photo"))
     }
 }
 

@@ -158,7 +158,7 @@ struct SearchView: View {
                         .foregroundStyle(Look.dateBlue)
 
                     if !day.title.isEmpty {
-                        Text(day.title)
+                        Text(Geo.stripped(day.title))
                             .font(Look.serif(15, weight: .semibold))
                             .foregroundStyle(Look.ink)
                             .lineLimit(1)

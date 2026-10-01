@@ -195,7 +195,7 @@ enum PDFBook {
             add("", .systemFont(ofSize: 6), after: 8)
         }
 
-        if !day.title.isEmpty { add(day.title, serif(16).withWeight(.semibold), after: 8) }
+        if !day.title.isEmpty { add(Geo.stripped(day.title), serif(16).withWeight(.semibold), after: 8) }
 
         for line in day.text.components(separatedBy: .newlines) {
             // Одно вложение строкой или ряд снимков (P348) — каждый по
