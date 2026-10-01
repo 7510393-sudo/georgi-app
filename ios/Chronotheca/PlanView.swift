@@ -411,9 +411,9 @@ struct PlanHead: View {
             step("arrow.uturn.backward", undo, T("Шаг назад", "Undo"))
             step("arrow.uturn.forward", redo, T("Шаг вперёд", "Redo"))
             Text("+")
-                .font(.system(size: 21))
+                .font(.system(size: 25))
                 .foregroundStyle(Look.accent)
-                .frame(width: 34, height: 34)
+                .frame(width: StepButton.side, height: StepButton.side)
                 .overlay(Circle().strokeBorder(Look.rule))
                 .opacity(dimmed ? 0.3 : 1)
                 .onTapGesture { add?() }
@@ -438,11 +438,15 @@ struct StepButton: View {
     let name: String
     var dimmed = false
 
+    /// Кружок и «плюс» рядом — на 20% крупнее прежних 34 (P356): в мелкий
+    /// пальцем не попасть.
+    static let side: CGFloat = 41
+
     var body: some View {
         Image(systemName: icon)
-            .font(.system(size: 14, weight: .medium))
+            .font(.system(size: 17, weight: .medium))
             .foregroundStyle(Look.accent)
-            .frame(width: 34, height: 34)
+            .frame(width: Self.side, height: Self.side)
             .overlay(Circle().strokeBorder(Look.rule))
             .opacity(act == nil || dimmed ? 0.3 : 1)
             .contentShape(Circle())
