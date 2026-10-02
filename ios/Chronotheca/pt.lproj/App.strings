@@ -179,6 +179,7 @@
 "Folder" = "Pasta";
 "Folders renamed" = "Pastas renomeadas";
 "Folders renamed: %@. Entries updated: %@." = "Pastas renomeadas: %@. Anotações atualizadas: %@.";
+"For this language the iPhone recognises via Apple." = "Para este idioma o iPhone reconhece pela Apple.";
 "From" = "De";
 "From: " = "De: ";
 "Frost on the railings" = "Geada no corrimão";
@@ -247,9 +248,11 @@
 "No entries here. The app can make a new folder:\n\n" = "Não há anotações aqui. O app pode criar uma pasta nova:\n\n";
 "No entries in this period" = "Nenhuma anotação neste período";
 "No longer repeats" = "Não se repete mais";
+"No permission for speech recognition — you can allow it in iPhone Settings." = "Sem permissão para o reconhecimento de fala — você pode dá-la nos Ajustes do iPhone.";
 "No photos from this day. Others are in “all photos”." = "Nenhuma foto deste dia. As outras estão em “todas as fotos”.";
 "No places yet. A long press on the map makes a new one." = "Ainda não há lugares. Um toque longo no mapa cria um novo.";
 "No reminder" = "Sem lembrete";
+"No speech was found in the recording." = "Nenhuma fala foi encontrada na gravação.";
 "No tasks on this day." = "Nenhuma tarefa neste dia.";
 "No tasks. Tap again to open the day →" = "Nenhuma tarefa. Toque de novo para abrir o dia →";
 "No title" = "Sem título";
@@ -303,6 +306,7 @@
 "Previous month" = "Mês anterior";
 "Previous year" = "Ano anterior";
 "Privacy" = "Privacidade";
+"Recognised on the iPhone itself, offline." = "Reconhecido pelo próprio iPhone, sem internet.";
 "Recording" = "Gravando";
 "Redo" = "Refazer";
 "Remember? The entry from this day a year ago" = "Lembra? A anotação deste dia há um ano";
@@ -350,6 +354,7 @@
 "Show this day’s file" = "Mostrar o arquivo deste dia";
 "Show ›" = "Mostrar ›";
 "Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Desde o último backup, faltam arquivos nas suas entradas: %@. Se você os apagou, está tudo bem. Se não, eles estão a salvo no backup.";
+"Speech recognition for this language is not available right now." = "O reconhecimento de fala não está disponível agora para este idioma.";
 "Start recording" = "Começar a gravar";
 "Stop recording" = "Parar a gravação";
 "Storage" = "Armazenamento";
@@ -402,6 +407,7 @@
 "The selected photos were not added: another day is open" = "As fotos selecionadas não foram adicionadas: outro dia está aberto";
 "The system did not give access to this folder." = "O sistema não deu acesso a esta pasta.";
 "The system did not let the app remember this folder." = "O sistema não permitiu lembrar esta pasta.";
+"The text is in your diary, under the recording." = "O texto está no seu diário, abaixo da gravação.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "O lixo está vazio. Um dia vai para o lixo pelo menu da página — os três pontos.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "O lixo está vazio. Um dia vai para o lixo pelo menu da página — os três pontos. Tudo fica no lixo por 30 dias e depois é apagado.";
 "Theme" = "Tema";
@@ -436,6 +442,7 @@
 "To the strip" = "Para a faixa";
 "Today" = "Hoje";
 "Tomorrow" = "Amanhã";
+"Transcribe to text" = "Transcrever em texto";
 "Trash" = "Lixo";
 "Two days ago" = "Anteontem";
 "Undo" = "Desfazer";

@@ -179,6 +179,7 @@
 "Folder" = "Dossier";
 "Folders renamed" = "Dossiers renommés";
 "Folders renamed: %@. Entries updated: %@." = "Dossiers renommés : %@. Notes mises à jour : %@.";
+"For this language the iPhone recognises via Apple." = "Pour cette langue, l’iPhone reconnaît via Apple.";
 "From" = "Du";
 "From: " = "Depuis : ";
 "Frost on the railings" = "Givre sur la rambarde";
@@ -247,9 +248,11 @@
 "No entries here. The app can make a new folder:\n\n" = "Aucune note ici. L’app peut créer un nouveau dossier :\n\n";
 "No entries in this period" = "Aucune note sur cette période";
 "No longer repeats" = "Ne se répète plus";
+"No permission for speech recognition — you can allow it in iPhone Settings." = "Pas d’autorisation pour la reconnaissance vocale — vous pouvez l’accorder dans les Réglages de l’iPhone.";
 "No photos from this day. Others are in “all photos”." = "Aucune photo de ce jour. Les autres sont dans « toutes les photos ».";
 "No places yet. A long press on the map makes a new one." = "Aucun lieu pour l’instant. Un appui long sur la carte en crée un.";
 "No reminder" = "Aucun rappel";
+"No speech was found in the recording." = "Aucune parole n’a été trouvée dans l’enregistrement.";
 "No tasks on this day." = "Aucune tâche ce jour-là.";
 "No tasks. Tap again to open the day →" = "Aucune tâche. Touchez encore pour ouvrir le jour →";
 "No title" = "Sans titre";
@@ -303,6 +306,7 @@
 "Previous month" = "Mois précédent";
 "Previous year" = "Année précédente";
 "Privacy" = "Confidentialité";
+"Recognised on the iPhone itself, offline." = "Reconnu par l’iPhone lui-même, hors ligne.";
 "Recording" = "Enregistrement en cours";
 "Redo" = "Rétablir";
 "Remember? The entry from this day a year ago" = "Vous vous souvenez ? La note de ce jour il y a un an";
@@ -350,6 +354,7 @@
 "Show this day’s file" = "Afficher le fichier de ce jour";
 "Show ›" = "Afficher ›";
 "Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Depuis la dernière sauvegarde, des fichiers ont disparu de vos entrées : %@. Si vous les avez supprimés vous-même, tout va bien. Sinon, ils sont intacts dans la sauvegarde.";
+"Speech recognition for this language is not available right now." = "La reconnaissance vocale n’est pas disponible pour cette langue pour le moment.";
 "Start recording" = "Démarrer l’enregistrement";
 "Stop recording" = "Arrêter l’enregistrement";
 "Storage" = "Stockage";
@@ -402,6 +407,7 @@
 "The selected photos were not added: another day is open" = "Les photos sélectionnées n’ont pas été ajoutées : un autre jour est ouvert";
 "The system did not give access to this folder." = "Le système n’a pas donné accès à ce dossier.";
 "The system did not let the app remember this folder." = "Le système n’a pas permis de mémoriser ce dossier.";
+"The text is in your diary, under the recording." = "Le texte est dans votre journal, sous l’enregistrement.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "La corbeille est vide. Un jour va à la corbeille depuis le menu de la page — les trois points.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "La corbeille est vide. Un jour va à la corbeille depuis le menu de la page — les trois points. Tout reste 30 jours dans la corbeille, puis est effacé.";
 "Theme" = "Thème";
@@ -436,6 +442,7 @@
 "To the strip" = "Dans la bande";
 "Today" = "Aujourd’hui";
 "Tomorrow" = "Demain";
+"Transcribe to text" = "Transcrire en texte";
 "Trash" = "Corbeille";
 "Two days ago" = "Avant-hier";
 "Undo" = "Annuler";

@@ -5,3 +5,4 @@
 "NSPhotoLibraryUsageDescription" = "Om de foto’s van de dag direct op de pagina te tonen. De foto die je kiest, wordt naar je map ‘Photos’ gekopieerd; de rest gaat nergens heen.";
 "NSFaceIDUsageDescription" = "Om je aantekeningen te vergrendelen: zonder je gezicht of code kan niemand ze openen.";
 "NSCalendarsFullAccessUsageDescription" = "Om de afspraken uit je iPhone-agenda in het dagplan te tonen, op tijd en met hun herinneringen. Er wordt niets uit Agenda gekopieerd tenzij je erom vraagt.";
+"NSSpeechRecognitionUsageDescription" = "Om je spraakmemo’s om te zetten in tekst in het dagboek. De opname blijft; waar je taal het toelaat, herkent de iPhone zelf, zonder netwerk.";

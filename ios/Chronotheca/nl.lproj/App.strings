@@ -179,6 +179,7 @@
 "Folder" = "Map";
 "Folders renamed" = "Mappen hernoemd";
 "Folders renamed: %@. Entries updated: %@." = "Mappen hernoemd: %@. Aantekeningen bijgewerkt: %@.";
+"For this language the iPhone recognises via Apple." = "Voor deze taal herkent de iPhone via Apple.";
 "From" = "Van";
 "From: " = "Van: ";
 "Frost on the railings" = "Rijp op de reling";
@@ -247,9 +248,11 @@
 "No entries here. The app can make a new folder:\n\n" = "Hier staan geen aantekeningen. De app kan een nieuwe map maken:\n\n";
 "No entries in this period" = "Geen aantekeningen in deze periode";
 "No longer repeats" = "Wordt niet meer herhaald";
+"No permission for speech recognition — you can allow it in iPhone Settings." = "Geen toestemming voor spraakherkenning — je kunt die geven in de iPhone-instellingen.";
 "No photos from this day. Others are in “all photos”." = "Geen foto’s van deze dag. Andere staan bij ‘alle foto’s’.";
 "No places yet. A long press on the map makes a new one." = "Nog geen plekken. Lang drukken op de kaart maakt er een.";
 "No reminder" = "Geen herinnering";
+"No speech was found in the recording." = "Er is geen spraak gevonden in de opname.";
 "No tasks on this day." = "Geen taken op deze dag.";
 "No tasks. Tap again to open the day →" = "Geen taken. Tik nogmaals om de dag te openen →";
 "No title" = "Zonder titel";
@@ -303,6 +306,7 @@
 "Previous month" = "Vorige maand";
 "Previous year" = "Vorig jaar";
 "Privacy" = "Privacy";
+"Recognised on the iPhone itself, offline." = "Herkend door de iPhone zelf, offline.";
 "Recording" = "Opnemen";
 "Redo" = "Opnieuw";
 "Remember? The entry from this day a year ago" = "Weet je nog? De aantekening van vandaag een jaar geleden";
@@ -350,6 +354,7 @@
 "Show this day’s file" = "Bestand van deze dag tonen";
 "Show ›" = "Toon ›";
 "Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Sinds de vorige reservekopie ontbreken er bestanden in je items: %@. Heb je ze zelf verwijderd, dan is alles in orde. Zo niet, dan zijn ze veilig in de kopie.";
+"Speech recognition for this language is not available right now." = "Spraakherkenning is nu niet beschikbaar voor deze taal.";
 "Start recording" = "Opname starten";
 "Stop recording" = "Opname stoppen";
 "Storage" = "Opslag";
@@ -402,6 +407,7 @@
 "The selected photos were not added: another day is open" = "De gekozen foto’s zijn niet toegevoegd: er is een andere dag open";
 "The system did not give access to this folder." = "Het systeem gaf geen toegang tot deze map.";
 "The system did not let the app remember this folder." = "Het systeem liet de app deze map niet onthouden.";
+"The text is in your diary, under the recording." = "De tekst staat in je dagboek, onder de opname.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "De prullenmand is leeg. Een dag gaat naar de prullenmand via het paginamenu — de drie puntjes.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "De prullenmand is leeg. Een dag gaat naar de prullenmand via het paginamenu — de drie puntjes. Alles blijft 30 dagen in de prullenmand en wordt daarna gewist.";
 "Theme" = "Thema";
@@ -436,6 +442,7 @@
 "To the strip" = "Naar de strook";
 "Today" = "Vandaag";
 "Tomorrow" = "Morgen";
+"Transcribe to text" = "Omzetten in tekst";
 "Trash" = "Prullenmand";
 "Two days ago" = "Eergisteren";
 "Undo" = "Ongedaan maken";

@@ -5,3 +5,4 @@
 "NSPhotoLibraryUsageDescription" = "Um die Fotos des Tages direkt auf der Seite zu zeigen. Das gewählte Foto wird in deinen Ordner „Photos“ kopiert; die übrigen gehen nirgendwohin.";
 "NSFaceIDUsageDescription" = "Um deine Einträge zu sperren: Ohne dein Gesicht oder deinen Code kann sie niemand öffnen.";
 "NSCalendarsFullAccessUsageDescription" = "Um die Termine deines iPhone-Kalenders im Tagesplan zu zeigen — nach Uhrzeit und mit ihren Erinnerungen. Aus dem Kalender wird nichts kopiert, solange du es nicht möchtest.";
+"NSSpeechRecognitionUsageDescription" = "Um deine Sprachnotizen in Tagebuchtext zu verwandeln. Die Aufnahme bleibt erhalten; wo deine Sprache es erlaubt, erkennt das iPhone selbst, ohne Netz.";

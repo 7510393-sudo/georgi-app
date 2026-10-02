@@ -506,6 +506,23 @@ final class DayStore: ObservableObject {
 
     func touchDiary() { lastEdit = Date() }
 
+    /// Расшифровка голоса (P378): под строкой записи, если она в тексте;
+    /// иначе — новым абзацем в конце записи.
+    func addTranscript(_ text: String, after link: String) {
+        guard canEditDiary else { return }
+        let line = Diary.line(link)
+        var lines = diaryText.components(separatedBy: "\n")
+        if let i = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == line }) {
+            lines.insert(text, at: i + 1)
+            diaryText = lines.joined(separator: "\n")
+        } else {
+            let body = diaryText.trimmingCharacters(in: .whitespacesAndNewlines)
+            diaryText = (body.isEmpty ? "" : body + "\n\n") + text
+        }
+        touchDiary()
+        save()
+    }
+
     /// Положить фотографию в папку и сослаться на неё из файла дня — плана
     /// или дневника, смотря на какой вкладке её положили.
     ///

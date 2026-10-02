@@ -298,9 +298,13 @@ struct AttachmentViewer: View {
     var onReturn: (() -> Void)?
     let close: () -> Void
     /// Листнули снимок вбок: +1 — следующий, −1 — прежний (P278).
-    var onSwipe: ((Int) -> Void)?
+    var onSwipe: ((Int) -> Void)? = nil
+    /// Голос — в текст дневника (P378). Пусто — кнопки нет.
+    var onTranscript: ((String) -> Void)? = nil
 
     @State private var ready: URL?
+    @State private var transcribing = false
+    @State private var transcriptNote: String?
     @State private var player: AVPlayer?
     @State private var asking = false
 
@@ -326,7 +330,12 @@ struct AttachmentViewer: View {
             }
             .onDisappear { player?.pause() }
         case .audio:
-            framed { AudioPlayerView(url: url) }
+            framed {
+                VStack(spacing: 14) {
+                    AudioPlayerView(url: url)
+                    if let onTranscript, let url { transcribeButton(url, onTranscript) }
+                }
+            }
         case .file:
             framed {
                 if let ready { QuickLookView(url: ready) } else { ProgressView() }
@@ -336,6 +345,41 @@ struct AttachmentViewer: View {
                 ready = await Task.detached { Attachment.fetch(url) }.value
             }
         }
+    }
+
+    /// «Расшифровать в текст»: распознаёт сам iPhone, запись остаётся.
+    @ViewBuilder private func transcribeButton(_ url: URL, _ put: @escaping (String) -> Void) -> some View {
+        VStack(spacing: 6) {
+            Button {
+                transcribing = true
+                transcriptNote = nil
+                Transcribe.run(url) { text, trouble in
+                    transcribing = false
+                    if let text {
+                        put(text)
+                        Feel.done()
+                        transcriptNote = T("Текст лёг в дневник под записью.", "The text is in your diary, under the recording.")
+                    } else {
+                        transcriptNote = trouble
+                    }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    if transcribing { ProgressView().controlSize(.small) } else { Image(systemName: "text.quote") }
+                    Text(T("Расшифровать в текст", "Transcribe to text"))
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(transcribing)
+            Text(transcriptNote ?? (Transcribe.onPhone
+                ? T("Распознаёт сам iPhone, без интернета.", "Recognised on the iPhone itself, offline.")
+                : T("Для этого языка iPhone распознаёт через Apple.", "For this language the iPhone recognises via Apple.")))
+                .font(Look.sans(12))
+                .foregroundStyle(Look.inkSoft)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 20)
     }
 
     private func framed<C: View>(@ViewBuilder _ content: () -> C) -> some View {

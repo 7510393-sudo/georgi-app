@@ -179,6 +179,7 @@
 "Folder" = "Ordner";
 "Folders renamed" = "Ordner umbenannt";
 "Folders renamed: %@. Entries updated: %@." = "Ordner umbenannt: %@. Einträge angepasst: %@.";
+"For this language the iPhone recognises via Apple." = "Für diese Sprache erkennt das iPhone über Apple.";
 "From" = "Von";
 "From: " = "Von: ";
 "Frost on the railings" = "Reif auf dem Geländer";
@@ -247,9 +248,11 @@
 "No entries here. The app can make a new folder:\n\n" = "Hier gibt es keine Einträge. Die App kann einen neuen Ordner anlegen:\n\n";
 "No entries in this period" = "Keine Einträge in diesem Zeitraum";
 "No longer repeats" = "Wiederholt sich nicht mehr";
+"No permission for speech recognition — you can allow it in iPhone Settings." = "Keine Erlaubnis für Spracherkennung — du kannst sie in den iPhone-Einstellungen erteilen.";
 "No photos from this day. Others are in “all photos”." = "Keine Fotos von diesem Tag. Andere findest du unter „alle Fotos“.";
 "No places yet. A long press on the map makes a new one." = "Noch keine Orte. Lange auf die Karte drücken legt einen neuen an.";
 "No reminder" = "Keine Erinnerung";
+"No speech was found in the recording." = "In der Aufnahme wurde keine Sprache gefunden.";
 "No tasks on this day." = "An diesem Tag gibt es keine Aufgaben.";
 "No tasks. Tap again to open the day →" = "Keine Aufgaben. Nochmals tippen, um den Tag zu öffnen →";
 "No title" = "Ohne Titel";
@@ -303,6 +306,7 @@
 "Previous month" = "Vorheriger Monat";
 "Previous year" = "Vorheriges Jahr";
 "Privacy" = "Schutz";
+"Recognised on the iPhone itself, offline." = "Das iPhone erkennt selbst, ohne Internet.";
 "Recording" = "Aufnahme läuft";
 "Redo" = "Wiederholen";
 "Remember? The entry from this day a year ago" = "Weißt du noch? Der Eintrag von heute vor einem Jahr";
@@ -350,6 +354,7 @@
 "Show this day’s file" = "Datei dieses Tages zeigen";
 "Show ›" = "Zeigen ›";
 "Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Seit der letzten Sicherung fehlen Dateien in deinen Einträgen: %@. Wenn du sie selbst gelöscht hast, ist alles in Ordnung. Wenn nicht, sind sie in der Sicherung erhalten.";
+"Speech recognition for this language is not available right now." = "Spracherkennung ist für diese Sprache gerade nicht verfügbar.";
 "Start recording" = "Aufnahme starten";
 "Stop recording" = "Aufnahme beenden";
 "Storage" = "Speicherort";
@@ -402,6 +407,7 @@
 "The selected photos were not added: another day is open" = "Die ausgewählten Fotos wurden nicht hinzugefügt: Ein anderer Tag ist geöffnet";
 "The system did not give access to this folder." = "Das System hat keinen Zugriff auf diesen Ordner gegeben.";
 "The system did not let the app remember this folder." = "Das System hat nicht erlaubt, sich diesen Ordner zu merken.";
+"The text is in your diary, under the recording." = "Der Text steht im Tagebuch unter der Aufnahme.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "Der Papierkorb ist leer. Ein Tag kommt über das Seitenmenü – die drei Punkte – in den Papierkorb.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "Der Papierkorb ist leer. Ein Tag kommt über das Seitenmenü – die drei Punkte – in den Papierkorb. Alles bleibt dort 30 Tage und wird dann gelöscht.";
 "Theme" = "Design";
@@ -436,6 +442,7 @@
 "To the strip" = "In die Leiste";
 "Today" = "Heute";
 "Tomorrow" = "Morgen";
+"Transcribe to text" = "In Text umwandeln";
 "Trash" = "Papierkorb";
 "Two days ago" = "Vorgestern";
 "Undo" = "Rückgängig";

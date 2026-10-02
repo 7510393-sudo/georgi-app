@@ -861,7 +861,16 @@ private struct VoiceSheet: View {
         AttachmentViewer(
             url: url,
             onRemove: opened.url == nil && store.canEdit(opened.tab) ? { remove($0) } : nil,
-            close: { shell.openedPhoto = nil })
+            close: { shell.openedPhoto = nil },
+            onTranscript: opened.tab == .diary && store.canEditDiary && link != nil
+                ? { store.addTranscript($0, after: link ?? "") } : nil)
+    }
+
+    /// Ссылка на запись: из текста — своя, из полоски — по месту в ней.
+    private var link: String? {
+        if let l = opened.link { return l }
+        let links = store.links(opened.tab)
+        return links.indices.contains(opened.index) ? links[opened.index] : nil
     }
 
     private func remove(_ delete: Bool) {

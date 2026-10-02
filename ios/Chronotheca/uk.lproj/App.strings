@@ -179,6 +179,7 @@
 "Folder" = "Тека";
 "Folders renamed" = "Назви тек перекладено";
 "Folders renamed: %@. Entries updated: %@." = "Тек перейменовано: %@. Записів виправлено: %@.";
+"For this language the iPhone recognises via Apple." = "Для цієї мови iPhone розпізнає через Apple.";
 "From" = "З";
 "From: " = "З якого пристрою: ";
 "Frost on the railings" = "Іній на поруччі";
@@ -247,9 +248,11 @@
 "No entries here. The app can make a new folder:\n\n" = "Записів тут не знайшлося. Застосунок може створити нову теку:\n\n";
 "No entries in this period" = "За цей строк записів немає";
 "No longer repeats" = "Більше не повторюється";
+"No permission for speech recognition — you can allow it in iPhone Settings." = "Немає дозволу на розпізнавання мовлення — його можна дати в Параметрах iPhone.";
 "No photos from this day. Others are in “all photos”." = "За цей день знімків у галереї немає. Інші — в «усі фото».";
 "No places yet. A long press on the map makes a new one." = "Своїх місць поки немає. Довге натискання на мапу — нове місце.";
 "No reminder" = "Нагадування не призначено";
+"No speech was found in the recording." = "Мовлення в записі не знайшлося.";
 "No tasks on this day." = "Справ на цей день немає.";
 "No tasks. Tap again to open the day →" = "Справ немає. Натисніть ще раз, щоб відкрити день →";
 "No title" = "Без назви";
@@ -303,6 +306,7 @@
 "Previous month" = "Попередній місяць";
 "Previous year" = "Попередній рік";
 "Privacy" = "Захист";
+"Recognised on the iPhone itself, offline." = "Розпізнає сам iPhone, без інтернету.";
 "Recording" = "Іде запис";
 "Redo" = "Крок уперед";
 "Remember? The entry from this day a year ago" = "Пам’ятаєш? Запис того самого числа рік тому";
@@ -350,6 +354,7 @@
 "Show this day’s file" = "Показати файл цього дня";
 "Show ›" = "Показати ›";
 "Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Від минулої копії в записах не стало файлів: %@. Якщо ви видаляли їх самі — усе гаразд. Якщо ні — вони цілі в копії.";
+"Speech recognition for this language is not available right now." = "Розпізнавання мовлення для цієї мови зараз недоступне.";
 "Start recording" = "Почати запис";
 "Stop recording" = "Закінчити запис";
 "Storage" = "Сховище";
@@ -402,6 +407,7 @@
 "The selected photos were not added: another day is open" = "Позначене в галереї не додано: відкрито інший день";
 "The system did not give access to this folder." = "Система не дала доступу до цієї теки.";
 "The system did not let the app remember this folder." = "Система не дала запам’ятати цю теку.";
+"The text is in your diary, under the recording." = "Текст ліг у щоденник під записом.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "Кошик порожній. День прибирають у кошик із меню сторінки — три крапки.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "Кошик порожній. День прибирають у кошик із меню сторінки — три крапки. Усе в кошику зберігається 30 днів, потім стирається.";
 "Theme" = "Тема";
@@ -436,6 +442,7 @@
 "To the strip" = "У смужку";
 "Today" = "Сьогодні";
 "Tomorrow" = "Завтра";
+"Transcribe to text" = "Розшифрувати в текст";
 "Trash" = "Кошик";
 "Two days ago" = "Позавчора";
 "Undo" = "Крок назад";

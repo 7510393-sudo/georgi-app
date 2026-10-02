@@ -179,6 +179,7 @@
 "Folder" = "Cartella";
 "Folders renamed" = "Cartelle rinominate";
 "Folders renamed: %@. Entries updated: %@." = "Cartelle rinominate: %@. Note aggiornate: %@.";
+"For this language the iPhone recognises via Apple." = "Per questa lingua l’iPhone riconosce tramite Apple.";
 "From" = "Dal";
 "From: " = "Da: ";
 "Frost on the railings" = "Brina sulla ringhiera";
@@ -247,9 +248,11 @@
 "No entries here. The app can make a new folder:\n\n" = "Qui non ci sono note. L’app può creare una nuova cartella:\n\n";
 "No entries in this period" = "Nessuna nota in questo periodo";
 "No longer repeats" = "Non si ripete più";
+"No permission for speech recognition — you can allow it in iPhone Settings." = "Nessun permesso per il riconoscimento vocale — puoi concederlo nelle Impostazioni di iPhone.";
 "No photos from this day. Others are in “all photos”." = "Nessuna foto di questo giorno. Le altre sono in «tutte le foto».";
 "No places yet. A long press on the map makes a new one." = "Ancora nessun luogo. Una pressione prolungata sulla mappa ne crea uno.";
 "No reminder" = "Nessun promemoria";
+"No speech was found in the recording." = "Nella registrazione non è stata trovata voce.";
 "No tasks on this day." = "Nessuna attività in questo giorno.";
 "No tasks. Tap again to open the day →" = "Nessuna attività. Tocca di nuovo per aprire il giorno →";
 "No title" = "Senza titolo";
@@ -303,6 +306,7 @@
 "Previous month" = "Mese precedente";
 "Previous year" = "Anno precedente";
 "Privacy" = "Privacy";
+"Recognised on the iPhone itself, offline." = "Riconosciuto dall’iPhone stesso, offline.";
 "Recording" = "Registrazione in corso";
 "Redo" = "Ripristina";
 "Remember? The entry from this day a year ago" = "Ti ricordi? La nota di questo giorno un anno fa";
@@ -350,6 +354,7 @@
 "Show this day’s file" = "Mostra il file di questo giorno";
 "Show ›" = "Mostra ›";
 "Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Dall’ultimo backup mancano file nelle tue voci: %@. Se li hai eliminati tu, va tutto bene. Altrimenti sono al sicuro nel backup.";
+"Speech recognition for this language is not available right now." = "Il riconoscimento vocale per questa lingua non è disponibile al momento.";
 "Start recording" = "Avvia registrazione";
 "Stop recording" = "Termina registrazione";
 "Storage" = "Archivio";
@@ -402,6 +407,7 @@
 "The selected photos were not added: another day is open" = "Le foto selezionate non sono state aggiunte: è aperto un altro giorno";
 "The system did not give access to this folder." = "Il sistema non ha dato accesso a questa cartella.";
 "The system did not let the app remember this folder." = "Il sistema non ha permesso di ricordare questa cartella.";
+"The text is in your diary, under the recording." = "Il testo è nel diario, sotto la registrazione.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "Il cestino è vuoto. Un giorno va nel cestino dal menu della pagina: i tre puntini.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "Il cestino è vuoto. Un giorno va nel cestino dal menu della pagina: i tre puntini. Tutto resta nel cestino 30 giorni, poi viene cancellato.";
 "Theme" = "Tema";
@@ -436,6 +442,7 @@
 "To the strip" = "Nella striscia";
 "Today" = "Oggi";
 "Tomorrow" = "Domani";
+"Transcribe to text" = "Trascrivi in testo";
 "Trash" = "Cestino";
 "Two days ago" = "L’altro ieri";
 "Undo" = "Annulla";

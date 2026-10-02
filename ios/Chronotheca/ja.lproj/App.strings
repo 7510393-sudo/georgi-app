@@ -179,6 +179,7 @@
 "Folder" = "フォルダ";
 "Folders renamed" = "フォルダ名を変更しました";
 "Folders renamed: %@. Entries updated: %@." = "名前を変えたフォルダ: %@。更新した記録: %@。";
+"For this language the iPhone recognises via Apple." = "この言語では iPhone は Apple 経由で認識します。";
 "From" = "開始";
 "From: " = "デバイス：";
 "Frost on the railings" = "手すりの霜";
@@ -247,9 +248,11 @@
 "No entries here. The app can make a new folder:\n\n" = "ここには記録がありません。アプリは新しいフォルダを作成できます:\n\n";
 "No entries in this period" = "この期間の記録はありません";
 "No longer repeats" = "繰り返しをやめました";
+"No permission for speech recognition — you can allow it in iPhone Settings." = "音声認識の許可がありません — iPhone の設定で許可できます。";
 "No photos from this day. Others are in “all photos”." = "この日の写真はありません。ほかの写真は「すべての写真」にあります。";
 "No places yet. A long press on the map makes a new one." = "まだ場所はありません。地図を長押しすると新しく作れます。";
 "No reminder" = "通知なし";
+"No speech was found in the recording." = "録音に音声が見つかりませんでした。";
 "No tasks on this day." = "この日の予定はありません。";
 "No tasks. Tap again to open the day →" = "予定はありません。もう一度タップすると日を開きます →";
 "No title" = "タイトルなし";
@@ -303,6 +306,7 @@
 "Previous month" = "前の月";
 "Previous year" = "前の年";
 "Privacy" = "プライバシー";
+"Recognised on the iPhone itself, offline." = "iPhone 自身がオフラインで認識します。";
 "Recording" = "録音中";
 "Redo" = "やり直す";
 "Remember? The entry from this day a year ago" = "覚えていますか？ 1年前の今日の記録";
@@ -350,6 +354,7 @@
 "Show this day’s file" = "この日のファイルを表示";
 "Show ›" = "表示 ›";
 "Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "前回のバックアップ以降、記録からファイルがなくなっています：%@ 件。ご自分で削除したのなら問題ありません。そうでなければ、バックアップに無事に残っています。";
+"Speech recognition for this language is not available right now." = "この言語の音声認識は現在利用できません。";
 "Start recording" = "録音を開始";
 "Stop recording" = "録音を終了";
 "Storage" = "保存場所";
@@ -402,6 +407,7 @@
 "The selected photos were not added: another day is open" = "選んだ写真は追加されませんでした: 別の日が開いています";
 "The system did not give access to this folder." = "システムがこのフォルダへのアクセスを許可しませんでした。";
 "The system did not let the app remember this folder." = "システムがこのフォルダの記憶を許可しませんでした。";
+"The text is in your diary, under the recording." = "テキストを日記の録音の下に入れました。";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "ゴミ箱は空です。日はページメニュー（3つの点）からゴミ箱に入れられます。";
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "ゴミ箱は空です。日はページメニュー（3つの点）からゴミ箱に入れられます。ゴミ箱の中身は30日間保管され、その後消去されます。";
 "Theme" = "テーマ";
@@ -436,6 +442,7 @@
 "To the strip" = "ストリップへ";
 "Today" = "今日";
 "Tomorrow" = "明日";
+"Transcribe to text" = "テキストに書き起こす";
 "Trash" = "ゴミ箱";
 "Two days ago" = "一昨日";
 "Undo" = "元に戻す";

@@ -5,3 +5,4 @@
 "NSPhotoLibraryUsageDescription" = "Pour afficher les photos du jour directement sur la page. La photo choisie est copiée dans votre dossier « Photos » ; les autres ne vont nulle part.";
 "NSFaceIDUsageDescription" = "Pour verrouiller vos notes : sans votre visage ou votre code, personne ne peut les ouvrir.";
 "NSCalendarsFullAccessUsageDescription" = "Pour afficher les événements du Calendrier de l’iPhone dans le plan du jour, par heure et avec leurs rappels. Rien n’est copié hors du Calendrier sans votre demande.";
+"NSSpeechRecognitionUsageDescription" = "Pour transformer vos notes vocales en texte dans le journal. L’enregistrement reste tel quel ; quand votre langue le permet, la reconnaissance se fait sur l’iPhone, sans réseau.";
