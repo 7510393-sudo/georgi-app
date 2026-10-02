@@ -49,6 +49,7 @@
 "Add" = "Додати";
 "Address, route, cost, with whom…" = "Адреса, дорога, вартість, з ким…";
 "All places as a list" = "Усі місця списком";
+"Another file with the same name is already in its place. The file stayed in the trash." = "На місці цього файла вже лежить інший із тією самою назвою. Файл залишився в кошику.";
 "App language" = "Мова застосунку";
 "Appearance" = "Вигляд";
 "Apple Maps" = "Карти Apple";
@@ -98,9 +99,11 @@
 "Degrees" = "Градуси";
 "Delete" = "Видалити";
 "Delete forever" = "Видалити назавжди";
+"Delete from storage" = "Видалити зі сховища";
 "Delete place" = "Видалити точку";
 "Delete the app, and the iPhone erases them with it, for good." = "Видаліть застосунок — iPhone зітре їх разом із ним, без повернення.";
 "Delete the day forever?" = "Видалити день назавжди?";
+"Delete the file forever?" = "Видалити файл назавжди?";
 "Delete the place?" = "Видалити точку?";
 "Delete this and all following" = "Видалити цю й усі наступні";
 "Delete this day only" = "Видалити лише в цей день";
@@ -130,6 +133,7 @@
 "Files" = "Файли";
 "Files moved: %@." = "Перенесено файлів: %@.";
 "Files not saved: %@" = "Не вдалося покласти файлів: %@";
+"Files — erased after 30 days" = "Файли — зітруться через 30 днів";
 "Files: %@ of %@" = "Скопійовано файлів: %@ з %@";
 "Find everything" = "Шукати все";
 "First choose a place with a long press on the map." = "Спершу виберіть точку довгим натисканням на мапу.";
@@ -264,6 +268,8 @@
 "Remove from the page" = "Прибрати зі сторінки";
 "Remove from the page?" = "Прибрати зі сторінки?";
 "Remove the photo from the entry?" = "Прибрати фотографію із запису?";
+"Removed from the page. The file could not be deleted — it stays in the folder." = "Прибрано зі сторінки. Файл видалити не вдалося — він залишився в теці.";
+"Removed from the page. The file is still used on %@, so it stays in the folder." = "Прибрано зі сторінки. Файл потрібен ще в записі за %@ — він залишився в теці.";
 "Removed from the page. The file stays in the folder." = "Прибрано зі сторінки. Сам файл залишився в теці.";
 "Rename" = "Перекласти";
 "Rename folders to English" = "Назви тек — англійською";
@@ -315,9 +321,12 @@
 "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”." = "На обкладинці — строк і що всередині; кожен день з нової сторінки. Файл ляже в теку записів, у «PDF».";
 "The entry" = "Запис";
 "The entry changed elsewhere" = "Запис змінився деінде";
+"The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files." = "Файл повернувся в теку, але поставити його на сторінку дня не вдалося — день ще в iCloud або змінився деінде. Додайте його знову з «Файлів».";
+"The file is in the trash for 30 days. Restore it in Settings → Trash." = "Файл у кошику на 30 днів. Повернути — Налаштування → Кошик.";
 "The file itself stays in the folder — you can delete it in Files." = "Сам файл залишиться в теці — видалити його можна в «Файлах».";
 "The file of this place will be deleted from the “" = "Файл цієї точки буде видалено з теки «";
 "The file stays in the “%@” folder — you can delete it in Files." = "Файл залишиться в теці «%@» — видалити його можна в «Файлах».";
+"The file will be erased and cannot be restored." = "Файл буде стерто, повернути його буде неможливо.";
 "The folder moved" = "Тека переїхала";
 "The folder the app wrote to is no longer available — " = "Тека, в яку писав застосунок, більше недоступна — ";
 "The iPhone did not say where you are. I will try again when you come back." = "iPhone не сказав, де ви зараз. Спробую знову, коли повернетеся.";
@@ -386,6 +395,7 @@
 "Weather — Apple Weather" = "Погода — Погода Apple";
 "Week starts on" = "Тиждень з";
 "What happened here" = "Що тут було";
+"What should happen to the file?" = "Що зробити з файлом?";
 "What to include" = "Що включити";
 "Where to copy" = "Куди копіювати";
 "Where to keep entries" = "Де зберігати записи";
@@ -427,6 +437,7 @@
 "directions" = "у навігатор";
 "drizzle" = "мряка";
 "entries are most likely one level up — in “%@”. " = "записи, найімовірніше, лежать рівнем вище — у «%@». ";
+"erased in %@ days" = "зітреться через %@ дн.";
 "every month" = "щомісяця";
 "every week" = "щотижня";
 "every year" = "щороку";
@@ -493,6 +504,7 @@
 "yesterday" = "учора";
 "“Directions”" = "«У навігатор»";
 "“How did it go?”" = "«Як минуло?»";
+"“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "«Прибрати зі сторінки» — файл залишиться в теці. «Видалити зі сховища» — файл піде в кошик на 30 днів: повернути його можна в Налаштування → Кошик, потім він зітреться назавжди.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "«Дневник» стане «Diary», «Фотографии» — «Photos» і так далі; ";
 "” folder" = "»";
 "” folder." = "».";

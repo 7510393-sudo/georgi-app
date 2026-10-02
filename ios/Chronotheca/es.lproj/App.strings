@@ -49,6 +49,7 @@
 "Add" = "Añadir";
 "Address, route, cost, with whom…" = "Dirección, camino, coste, con quién…";
 "All places as a list" = "Todos los lugares en lista";
+"Another file with the same name is already in its place. The file stayed in the trash." = "En su lugar ya hay otro archivo con el mismo nombre. El archivo sigue en la papelera.";
 "App language" = "Idioma de la app";
 "Appearance" = "Apariencia";
 "Apple Maps" = "Mapas de Apple";
@@ -98,9 +99,11 @@
 "Degrees" = "Grados";
 "Delete" = "Eliminar";
 "Delete forever" = "Eliminar para siempre";
+"Delete from storage" = "Eliminar del almacenamiento";
 "Delete place" = "Eliminar lugar";
 "Delete the app, and the iPhone erases them with it, for good." = "Si borras la app, el iPhone las borra con ella, para siempre.";
 "Delete the day forever?" = "¿Eliminar el día para siempre?";
+"Delete the file forever?" = "¿Eliminar el archivo para siempre?";
 "Delete the place?" = "¿Eliminar el lugar?";
 "Delete this and all following" = "Eliminar esta y todas las siguientes";
 "Delete this day only" = "Eliminar solo este día";
@@ -130,6 +133,7 @@
 "Files" = "Archivos";
 "Files moved: %@." = "Archivos movidos: %@.";
 "Files not saved: %@" = "Archivos sin guardar: %@";
+"Files — erased after 30 days" = "Archivos: se borran a los 30 días";
 "Files: %@ of %@" = "Archivos: %@ de %@";
 "Find everything" = "Buscar todo";
 "First choose a place with a long press on the map." = "Primero elige un lugar manteniendo pulsado el mapa.";
@@ -264,6 +268,8 @@
 "Remove from the page" = "Quitar de la página";
 "Remove from the page?" = "¿Quitar de la página?";
 "Remove the photo from the entry?" = "¿Quitar la foto de la entrada?";
+"Removed from the page. The file could not be deleted — it stays in the folder." = "Quitado de la página. No se pudo eliminar el archivo; sigue en la carpeta.";
+"Removed from the page. The file is still used on %@, so it stays in the folder." = "Quitado de la página. El archivo aún se usa el %@, así que sigue en la carpeta.";
 "Removed from the page. The file stays in the folder." = "Quitado de la página. El archivo sigue en la carpeta.";
 "Rename" = "Renombrar";
 "Rename folders to English" = "Nombres de carpetas en inglés";
@@ -315,9 +321,12 @@
 "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”." = "La portada muestra el periodo y lo que contiene; cada día empieza en una página nueva. El archivo va a tu carpeta de entradas, en «PDF».";
 "The entry" = "La entrada";
 "The entry changed elsewhere" = "La entrada cambió en otro sitio";
+"The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files." = "El archivo volvió a su carpeta, pero no se pudo poner de nuevo en la página del día: el día aún está en iCloud o se cambió en otro sitio. Añádelo otra vez desde Archivos.";
+"The file is in the trash for 30 days. Restore it in Settings → Trash." = "El archivo está en la papelera durante 30 días. Restáuralo en Ajustes → Papelera.";
 "The file itself stays in the folder — you can delete it in Files." = "El archivo sigue en la carpeta; puedes borrarlo en Archivos.";
 "The file of this place will be deleted from the “" = "El archivo de este lugar se borrará de la carpeta «";
 "The file stays in the “%@” folder — you can delete it in Files." = "El archivo sigue en la carpeta «%@»; puedes borrarlo en Archivos.";
+"The file will be erased and cannot be restored." = "El archivo se borrará y no se podrá restaurar.";
 "The folder moved" = "La carpeta se movió";
 "The folder the app wrote to is no longer available — " = "La carpeta donde escribía la app ya no está disponible: ";
 "The iPhone did not say where you are. I will try again when you come back." = "El iPhone no dijo dónde estás. Lo intentaré de nuevo cuando vuelvas.";
@@ -386,6 +395,7 @@
 "Weather — Apple Weather" = "Tiempo — El Tiempo de Apple";
 "Week starts on" = "La semana empieza el";
 "What happened here" = "Qué pasó aquí";
+"What should happen to the file?" = "¿Qué hacer con el archivo?";
 "What to include" = "Qué incluir";
 "Where to copy" = "Dónde copiar";
 "Where to keep entries" = "Dónde guardar las entradas";
@@ -427,6 +437,7 @@
 "directions" = "cómo llegar";
 "drizzle" = "llovizna";
 "entries are most likely one level up — in “%@”. " = "entradas anteriores probablemente están un nivel más arriba, en «%@». ";
+"erased in %@ days" = "se borra en %@ días";
 "every month" = "cada mes";
 "every week" = "cada semana";
 "every year" = "cada año";
@@ -493,6 +504,7 @@
 "yesterday" = "ayer";
 "“Directions”" = "«Cómo llegar»";
 "“How did it go?”" = "«¿Qué tal fue?»";
+"“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "«Quitar de la página» deja el archivo en la carpeta. «Eliminar del almacenamiento» lo lleva a la papelera durante 30 días: puedes restaurarlo en Ajustes → Papelera; después se borra para siempre.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "«Дневник» pasa a ser «Diary», «Фотографии», «Photos», etc.; ";
 "” folder" = "»";
 "” folder." = "».";

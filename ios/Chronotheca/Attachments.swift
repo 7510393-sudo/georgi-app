@@ -294,7 +294,7 @@ enum Attachment {
 struct AttachmentViewer: View {
 
     let url: URL?
-    var onRemove: (() -> Void)?
+    var onRemove: ((Bool) -> Void)?
     var onReturn: (() -> Void)?
     let close: () -> Void
     /// Листнули снимок вбок: +1 — следующий, −1 — прежний (P278).
@@ -359,13 +359,7 @@ struct AttachmentViewer: View {
                         }
                     }
                 }
-                .confirmationDialog(T("Убрать со страницы?", "Remove from the page?"), isPresented: $asking,
-                                    titleVisibility: .visible) {
-                    Button(T("Убрать", "Remove"), role: .destructive) { onRemove?() }
-                } message: {
-                    Text(T("Сам файл останется в папке — удалить его можно в «Файлах».",
-                   "The file itself stays in the folder — you can delete it in Files."))
-                }
+                .modifier(RemoveQuestion(asking: $asking, act: onRemove))
         }
     }
 }

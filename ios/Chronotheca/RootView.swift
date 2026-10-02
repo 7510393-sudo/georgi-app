@@ -297,20 +297,18 @@ struct RootView: View {
             if opened.url == nil, links.indices.contains(opened.index) {
                 StripViewer(count: links.count, start: opened.index,
                             url: { store.photoURL(links[$0]) },
-                            remove: store.canEdit(opened.tab) ? { i in
-                                store.removePhoto(at: i, from: opened.tab)
+                            remove: store.canEdit(opened.tab) ? { i, delete in
                                 shell.openedPhoto = nil
-                                shell.say(T("Убрано со страницы. Сам файл остался в папке.", "Removed from the page. The file stays in the folder."))
+                                shell.say(store.removeAttachment(at: i, from: opened.tab, delete: delete))
                             } : nil,
                             close: { shell.openedPhoto = nil })
             } else {
             AttachmentViewer(
                 url: opened.url ?? (links.indices.contains(opened.index)
                     ? store.photoURL(links[opened.index]) : nil),
-                onRemove: opened.url == nil && store.canEdit(opened.tab) ? {
-                    store.removePhoto(at: opened.index, from: opened.tab)
+                onRemove: opened.url == nil && store.canEdit(opened.tab) ? { delete in
                     shell.openedPhoto = nil
-                    shell.say(T("Убрано со страницы. Сам файл остался в папке.", "Removed from the page. The file stays in the folder."))
+                    shell.say(store.removeAttachment(at: opened.index, from: opened.tab, delete: delete))
                 } : nil,
                 // Снимок из текста можно вернуть в полоску (P216).
                 onReturn: opened.link != nil && store.canEdit(opened.tab) ? {
@@ -862,14 +860,12 @@ private struct VoiceSheet: View {
     var body: some View {
         AttachmentViewer(
             url: url,
-            onRemove: opened.url == nil && store.canEdit(opened.tab) ? { remove() } : nil,
+            onRemove: opened.url == nil && store.canEdit(opened.tab) ? { remove($0) } : nil,
             close: { shell.openedPhoto = nil })
     }
 
-    private func remove() {
-        store.removePhoto(at: opened.index, from: opened.tab)
+    private func remove(_ delete: Bool) {
         shell.openedPhoto = nil
-        shell.say(T("Убрано со страницы. Сам файл остался в папке.",
-                    "Removed from the page. The file stays in the folder."))
+        shell.say(store.removeAttachment(at: opened.index, from: opened.tab, delete: delete))
     }
 }

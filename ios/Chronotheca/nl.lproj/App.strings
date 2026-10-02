@@ -49,6 +49,7 @@
 "Add" = "Voeg toe";
 "Address, route, cost, with whom…" = "Adres, route, kosten, met wie…";
 "All places as a list" = "Alle plekken als lijst";
+"Another file with the same name is already in its place. The file stayed in the trash." = "Op zijn plek staat al een ander bestand met dezelfde naam. Het bestand blijft in de prullenmand.";
 "App language" = "Taal van de app";
 "Appearance" = "Weergave";
 "Apple Maps" = "Apple Kaarten";
@@ -98,9 +99,11 @@
 "Degrees" = "Graden";
 "Delete" = "Verwijder";
 "Delete forever" = "Definitief verwijderen";
+"Delete from storage" = "Uit de opslag verwijderen";
 "Delete place" = "Plek verwijderen";
 "Delete the app, and the iPhone erases them with it, for good." = "Verwijder je de app, dan wist de iPhone ze mee, voorgoed.";
 "Delete the day forever?" = "De dag definitief verwijderen?";
+"Delete the file forever?" = "Het bestand definitief verwijderen?";
 "Delete the place?" = "Plek verwijderen?";
 "Delete this and all following" = "Deze en alle volgende verwijderen";
 "Delete this day only" = "Alleen op deze dag verwijderen";
@@ -130,6 +133,7 @@
 "Files" = "Bestanden";
 "Files moved: %@." = "Verplaatste bestanden: %@.";
 "Files not saved: %@" = "Bestanden niet bewaard: %@";
+"Files — erased after 30 days" = "Bestanden — gewist na 30 dagen";
 "Files: %@ of %@" = "Bestanden: %@ van %@";
 "Find everything" = "Alles vinden";
 "First choose a place with a long press on the map." = "Kies eerst een plek door lang op de kaart te drukken.";
@@ -264,6 +268,8 @@
 "Remove from the page" = "Van de pagina halen";
 "Remove from the page?" = "Van de pagina halen?";
 "Remove the photo from the entry?" = "Foto uit de aantekening halen?";
+"Removed from the page. The file could not be deleted — it stays in the folder." = "Van de pagina gehaald. Het bestand kon niet worden verwijderd — het blijft in de map.";
+"Removed from the page. The file is still used on %@, so it stays in the folder." = "Van de pagina gehaald. Het bestand wordt nog gebruikt op %@ en blijft in de map.";
 "Removed from the page. The file stays in the folder." = "Van de pagina gehaald. Het bestand blijft in de map.";
 "Rename" = "Hernoem";
 "Rename folders to English" = "Mapnamen in het Engels";
@@ -315,9 +321,12 @@
 "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”." = "Op de omslag staan de periode en de inhoud; elke dag begint op een nieuwe pagina. Het bestand komt in je aantekeningenmap, bij ‘PDF’.";
 "The entry" = "De aantekening";
 "The entry changed elsewhere" = "De aantekening is elders gewijzigd";
+"The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files." = "Het bestand staat weer in zijn map, maar kon niet terug op de pagina van de dag — de dag staat nog in iCloud of is elders gewijzigd. Voeg het opnieuw toe vanuit Bestanden.";
+"The file is in the trash for 30 days. Restore it in Settings → Trash." = "Het bestand ligt 30 dagen in de prullenmand. Terugzetten: Instellingen → Prullenmand.";
 "The file itself stays in the folder — you can delete it in Files." = "Het bestand zelf blijft in de map — je kunt het verwijderen in Bestanden.";
 "The file of this place will be deleted from the “" = "Het bestand van deze plek wordt verwijderd uit de map ‘";
 "The file stays in the “%@” folder — you can delete it in Files." = "Het bestand blijft in de map ‘%@’ — je kunt het verwijderen in Bestanden.";
+"The file will be erased and cannot be restored." = "Het bestand wordt gewist en kan niet worden teruggezet.";
 "The folder moved" = "De map is verhuisd";
 "The folder the app wrote to is no longer available — " = "De map waarin de app schreef, is niet meer beschikbaar — ";
 "The iPhone did not say where you are. I will try again when you come back." = "De iPhone heeft niet gezegd waar je bent. Ik probeer het opnieuw als je terugkomt.";
@@ -386,6 +395,7 @@
 "Weather — Apple Weather" = "Weer — Apple Weer";
 "Week starts on" = "Week begint op";
 "What happened here" = "Wat hier gebeurde";
+"What should happen to the file?" = "Wat moet er met het bestand gebeuren?";
 "What to include" = "Wat erin moet";
 "Where to copy" = "Waarheen kopiëren";
 "Where to keep entries" = "Waar je aantekeningen bewaren";
@@ -427,6 +437,7 @@
 "directions" = "route";
 "drizzle" = "motregen";
 "entries are most likely one level up — in “%@”. " = "aantekeningen staan waarschijnlijk een niveau hoger — in ‘%@’. ";
+"erased in %@ days" = "gewist over %@ dagen";
 "every month" = "elke maand";
 "every week" = "elke week";
 "every year" = "elk jaar";
@@ -493,6 +504,7 @@
 "yesterday" = "gisteren";
 "“Directions”" = "‘Route’";
 "“How did it go?”" = "‘Hoe ging het?’";
+"“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "‘Van de pagina halen’ laat het bestand in de map. ‘Uit de opslag verwijderen’ legt het 30 dagen in de prullenmand: je kunt het terugzetten via Instellingen → Prullenmand; daarna wordt het voorgoed gewist.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "‘Дневник’ wordt ‘Diary’, ‘Фотографии’ — ‘Photos’ enzovoort; ";
 "” folder" = "’";
 "” folder." = "’.";

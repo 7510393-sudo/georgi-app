@@ -465,8 +465,9 @@ struct PlanPhotoThumb: View {
 struct PhotoViewer: View {
 
     let url: URL?
-    /// Убрать снимок из записи. Пусто — день закрыт для правки.
-    var onRemove: (() -> Void)?
+    /// Убрать снимок из записи; `true` — и удалить файл в корзину (P371).
+    /// Пусто — день закрыт для правки.
+    var onRemove: ((Bool) -> Void)?
     /// Вернуть снимок из текста в полоску внизу (P216).
     var onReturn: (() -> Void)?
     let close: () -> Void
@@ -514,22 +515,9 @@ struct PhotoViewer: View {
                 Photo.load(url, side: 1400)
             }.value
         }
-        .confirmationDialog(T("Убрать фотографию из записи?", "Remove the photo from the entry?"),
-                            isPresented: $asking, titleVisibility: .visible) {
-            Button(T("Убрать из записи", "Remove from entry"), role: .destructive) { onRemove?() }
-        } message: {
-            Text(stays)
-        }
+        .modifier(RemoveQuestion(asking: $asking, act: onRemove))
     }
 
-    /// Имя папки — как её видно в «Файлах»: «Photos» или прежнее
-    /// «Фотографии» (P353).
-    private var stays: String {
-        let folder = url?.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
-            ?? "Photos"
-        return T("Файл останется в папке «\(folder)» — удалить его можно в «Файлах».",
-                 "The file stays in the “\(folder)” folder — you can delete it in Files.")
-    }
 
     /// Свайп вниз убирает снимок, как в «Фото» Apple (P270): потянул
     /// и отпустил — снимок уходит; не дотянул — возвращается на место.
@@ -658,14 +646,14 @@ struct PlanPhotoLine: View {
 struct StripViewer: View {
     let count: Int
     let url: (Int) -> URL?
-    var remove: ((Int) -> Void)?
+    var remove: ((Int, Bool) -> Void)?
     let close: () -> Void
 
     @State private var index: Int
     @State private var forward = true
 
     init(count: Int, start: Int, url: @escaping (Int) -> URL?,
-         remove: ((Int) -> Void)?, close: @escaping () -> Void) {
+         remove: ((Int, Bool) -> Void)?, close: @escaping () -> Void) {
         self.count = count
         self.url = url
         self.remove = remove
@@ -676,7 +664,7 @@ struct StripViewer: View {
     var body: some View {
         ZStack {
             AttachmentViewer(url: url(index),
-                             onRemove: remove.map { r in { r(index) } },
+                             onRemove: remove.map { r in { r(index, $0) } },
                              onReturn: nil,
                              close: close,
                              onSwipe: step)
@@ -694,5 +682,25 @@ struct StripViewer: View {
         forward = by > 0
         Feel.tick()
         withAnimation(.easeOut(duration: 0.22)) { index = next }
+    }
+}
+
+/// Удаление вложения (P371): убрать только со страницы или удалить и сам
+/// файл — в корзину на 30 дней. Одно окно на снимки, видео, голос и
+/// документы.
+struct RemoveQuestion: ViewModifier {
+    @Binding var asking: Bool
+    let act: ((Bool) -> Void)?
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog(T("Что сделать с файлом?", "What should happen to the file?"),
+                                   isPresented: $asking, titleVisibility: .visible) {
+            Button(T("Убрать со страницы", "Remove from the page")) { act?(false) }
+            Button(T("Удалить из хранилища", "Delete from storage"), role: .destructive) { act?(true) }
+            Button(T("Отмена", "Cancel"), role: .cancel) { }
+        } message: {
+            Text(T("«Убрать со страницы» — файл останется в папке. «Удалить из хранилища» — файл уйдёт в корзину на 30 дней: вернуть его можно в Настройки → Корзина, потом он сотрётся насовсем.",
+                   "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good."))
+        }
     }
 }

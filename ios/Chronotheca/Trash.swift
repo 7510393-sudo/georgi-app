@@ -130,17 +130,26 @@ enum Trash {
 /// Корзина в настройках: убранные дни — вернуть или удалить навсегда.
 struct TrashSheet: View {
     let vault: Vault
+    /// Записать открытый день до того, как в его файл вернётся ссылка.
+    var save: () -> Void = {}
     let changed: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var items: [Trash.Item] = []
+    @State private var files: [FileTrash.Entry] = []
+    @State private var doomedFile: FileTrash.Entry?
     @State private var doomed: Trash.Item?
     @State private var note: String?
 
     var body: some View {
         NavigationStack {
             List {
-                if items.isEmpty {
+                if !files.isEmpty {
+                    Section(T("Файлы — сотрутся через 30 дней", "Files — erased after 30 days")) {
+                        ForEach(files) { entry in fileRow(entry) }
+                    }
+                }
+                if items.isEmpty && files.isEmpty {
                     Text(T("Корзина пуста. День убирают в корзину из меню страницы — три точки.",
                            "The trash is empty. A day goes to the trash from the page menu — the three dots."))
                         .font(Look.sans(14))
@@ -198,5 +207,77 @@ struct TrashSheet: View {
         .onAppear(perform: reload)
     }
 
-    private func reload() { items = Trash.items(in: vault) }
+    private func reload() {
+        items = Trash.items(in: vault)
+        files = FileTrash.items(vault)
+    }
+
+    /// Удалённый файл (P371): превью, откуда он и сколько ему осталось;
+    /// «Вернуть» — на место и на страницу своего дня.
+    private func fileRow(_ entry: FileTrash.Entry) -> some View {
+        let url = FileTrash.url(of: entry, vault)
+        let kind = Diary.kind(of: entry.path)
+        let left = FileTrash.daysLeft(entry)
+        return HStack(alignment: .top, spacing: 12) {
+            Group {
+                if kind == .photo || kind == .video {
+                    PhotoThumb(url: url, video: kind == .video)
+                } else {
+                    FileTile(icon: kind == .audio ? "waveform" : "doc.text",
+                             label: (entry.path as NSString).pathExtension.lowercased())
+                }
+            }
+            .frame(width: 54, height: 54)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            VStack(alignment: .leading, spacing: 5) {
+                Text((entry.path as NSString).lastPathComponent)
+                    .font(Look.sans(14, weight: .medium))
+                    .lineLimit(1)
+                Text(dayName(entry.day) + " · "
+                     + T("сотрётся через \(left) дн.", "erased in \(left) days"))
+                    .font(Look.sans(12.5))
+                    .foregroundStyle(Look.inkSoft)
+                HStack(spacing: 18) {
+                    Button(T("Вернуть", "Restore")) { restore(entry) }
+                    Button(T("Удалить навсегда", "Delete forever"), role: .destructive) { doomedFile = entry }
+                }
+                .buttonStyle(.borderless)
+                .font(Look.sans(14))
+            }
+        }
+        .padding(.vertical, 4)
+        .confirmationDialog(T("Удалить файл навсегда?", "Delete the file forever?"),
+                            isPresented: Binding(get: { doomedFile == entry },
+                                                 set: { if !$0 { doomedFile = nil } }),
+                            titleVisibility: .visible) {
+            Button(T("Удалить навсегда", "Delete forever"), role: .destructive) {
+                FileTrash.purge(entry, vault)
+                doomedFile = nil
+                reload()
+            }
+        } message: {
+            Text(T("Файл будет стёрт, вернуть его будет нельзя.", "The file will be erased and cannot be restored."))
+        }
+    }
+
+    private func dayName(_ stamp: String) -> String {
+        guard let date = Vault.date(from: stamp) else { return stamp }
+        return Ru.longDate(date)
+    }
+
+    private func restore(_ entry: FileTrash.Entry) {
+        save()
+        guard FileTrash.restore(entry, vault) else {
+            note = T("На месте этого файла уже лежит другой с тем же именем. Файл остался в корзине.",
+                     "Another file with the same name is already in its place. The file stayed in the trash.")
+            return
+        }
+        Feel.done()
+        if !FileTrash.relink(entry, vault) {
+            note = T("Файл вернулся в папку, но на страницу дня его поставить не вышло — день ещё в iCloud или изменился в другом месте. Добавьте его снова из «Файлов».",
+                     "The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files.")
+        }
+        reload()
+        changed()
+    }
 }

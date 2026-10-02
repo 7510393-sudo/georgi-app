@@ -515,6 +515,29 @@ final class DayStore: ObservableObject {
         save()
     }
 
+    /// Убрать вложение со страницы и, если просят, удалить сам файл — в
+    /// корзину на 30 дней (P371). Возвращает, что сказать человеку.
+    func removeAttachment(at index: Int, from tab: Shell.Tab, delete: Bool) -> String {
+        let links = self.links(tab)
+        guard canEdit(tab), links.indices.contains(index) else { return closedReason }
+        let link = links[index]
+        removePhoto(at: index, from: tab)
+        guard delete else {
+            return T("Убрано со страницы. Сам файл остался в папке.", "Removed from the page. The file stays in the folder.")
+        }
+        switch FileTrash.put(link, from: date, tab: tab == .plan ? "plan" : "diary", vault: vault) {
+        case .trashed:
+            return T("Файл в корзине на 30 дней. Вернуть — Настройки → Корзина.",
+                     "The file is in the trash for 30 days. Restore it in Settings → Trash.")
+        case .stillUsed(let day):
+            return T("Убрано со страницы. Файл нужен ещё в записи за \(day) — он остался в папке.",
+                     "Removed from the page. The file is still used on \(day), so it stays in the folder.")
+        case .failed:
+            return T("Убрано со страницы. Файл удалить не вышло — он остался в папке.",
+                     "Removed from the page. The file could not be deleted — it stays in the folder.")
+        }
+    }
+
     /// Снимок, брошенный из полоски в текст, уходит из полоски: он теперь
     /// стоит на своём месте в записи, и дважды его показывать незачем (P204).
     func settlePhotos() {

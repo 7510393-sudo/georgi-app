@@ -223,7 +223,7 @@ struct SettingsSticker: View {
             BackupSheet().environmentObject(vault)
         }
         .sheet(isPresented: $showingTrash) {
-            TrashSheet(vault: vault) {
+            TrashSheet(vault: vault, save: { store.save() }) {
                 store.load()
                 archive.reload()
             }

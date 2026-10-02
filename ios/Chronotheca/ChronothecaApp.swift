@@ -58,6 +58,8 @@ struct ChronothecaApp: App {
                 store.comeBack()
                 // Повторяющиеся дела — дописать на год вперёд (P359).
                 Repeats.extendAll(vault: vault, open: store.date)
+                // Файлы, пролежавшие в корзине 30 дней, — стереть (P371).
+                FileTrash.purgeOld(vault)
                 archive.reload()
                 store.syncUpcomingReminders()
                 store.fetchWeatherIfNeeded()

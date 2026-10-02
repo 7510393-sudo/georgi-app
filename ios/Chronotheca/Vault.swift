@@ -1020,12 +1020,19 @@ final class Vault: ObservableObject {
             .appendingPathComponent(clean).standardizedFileURL
         // Ссылка ещё со старым именем папки, а папку уже перевели, — или
         // наоборот (P353): файл тот же, ищем его под другим именем.
-        guard !FileManager.default.fileExists(atPath: url.path),
-              let other = Vault.otherName(of: clean)
-        else { return url }
-        let there = day.deletingLastPathComponent()
-            .appendingPathComponent(other).standardizedFileURL
-        return FileManager.default.fileExists(atPath: there.path) ? there : url
+        guard !FileManager.default.fileExists(atPath: url.path) else { return url }
+        if let other = Vault.otherName(of: clean) {
+            let there = day.deletingLastPathComponent()
+                .appendingPathComponent(other).standardizedFileURL
+            if FileManager.default.fileExists(atPath: there.path) { return there }
+        }
+        // Файл удалили в корзину, а ссылку вернули «шагом назад» — снимок
+        // виден из корзины, пока его не вернули или не стёрли (P371).
+        if let root, clean.hasPrefix("../../"),
+           let trashed = FileTrash.find(String(clean.dropFirst(6)), root: root) {
+            return trashed
+        }
+        return url
     }
 
     /// Та же ссылка с именем папки на другом языке: `../../Фотографии/…` ⇄
