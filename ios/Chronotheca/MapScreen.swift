@@ -1015,10 +1015,11 @@ enum PlaceLabel {
             let mid = size.width / 2
             let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
             // Кружок значка — полупрозрачный: карта под отметкой видна
-            // (P361). Значок на нём — белый, чёткий.
+            // (P361; ещё на 20% прозрачнее — P372). Значок на нём — белый,
+            // с тёмной обводкой, чтобы читался на любой карте.
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
                                     color: UIColor.black.withAlphaComponent(0.15).cgColor)
-            UIColor(Look.inkSoft).withAlphaComponent(0.6).setFill()
+            UIColor(Look.inkSoft).withAlphaComponent(0.48).setFill()
             UIBezierPath(ovalIn: circle).fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             UIColor.white.setStroke()
@@ -1031,21 +1032,35 @@ enum PlaceLabel {
                 let mark = symbol as NSString
                 let markAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 13)]
                 let markSize = mark.size(withAttributes: markAttrs)
+                // Обводка эмодзи — тёмный ореол вплотную к знаку.
+                ctx.cgContext.setShadow(offset: .zero, blur: 1.2,
+                                        color: UIColor.black.withAlphaComponent(0.85).cgColor)
                 mark.draw(at: CGPoint(x: circle.midX - markSize.width / 2,
                                       y: circle.midY - markSize.height / 2), withAttributes: markAttrs)
-            } else if let glyph = UIImage(systemName: symbol,
-                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))?
-                .withTintColor(.white, renderingMode: .alwaysOriginal) {
-                let g = glyph.size
-                glyph.draw(in: CGRect(x: circle.midX - g.width / 2, y: circle.midY - g.height / 2,
-                                      width: g.width, height: g.height))
+                ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            } else if let shape = UIImage(systemName: symbol,
+                                          withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)) {
+                let g = shape.size
+                let at = CGRect(x: circle.midX - g.width / 2, y: circle.midY - g.height / 2,
+                                width: g.width, height: g.height)
+                // Обводка (P372): тот же знак тёмным, сдвинутый на полточки
+                // во все стороны, — а сверху белый. Знак читается и на
+                // светлой карте сквозь прозрачный кружок.
+                let outline = shape.withTintColor(UIColor(white: 0.1, alpha: 0.9), renderingMode: .alwaysOriginal)
+                let step: CGFloat = 0.8
+                for dx in [-step, 0, step] {
+                    for dy in [-step, 0, step] where dx != 0 || dy != 0 {
+                        outline.draw(in: at.offsetBy(dx: dx, dy: dy))
+                    }
+                }
+                shape.withTintColor(.white, renderingMode: .alwaysOriginal).draw(in: at)
             }
             let box = CGRect(x: mid - plate.width / 2, y: dot + 4, width: plate.width, height: plate.height)
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
                                     color: UIColor.black.withAlphaComponent(0.12).cgColor)
             // Полупрозрачная: много названий рядом не должны закрывать карту
-            // (P361; было 0.62 — P330, почти непрозрачная — P244).
-            UIColor(Look.sticker).withAlphaComponent(0.42).setFill()
+            // (0.34 — P372; 0.42 — P361; 0.62 — P330; почти непрозрачная — P244).
+            UIColor(Look.sticker).withAlphaComponent(0.34).setFill()
             let plateShape = UIBezierPath(roundedRect: box, cornerRadius: 5)
             plateShape.fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
