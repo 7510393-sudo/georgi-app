@@ -386,6 +386,10 @@ struct DiaryEditor: UIViewRepresentable {
             let row = Diary.pictures(in: content)
             if let link = Diary.picture(in: content), Diary.kind(of: link) == .photo {
                 found.append((range, link, nil))
+            } else if Diary.picture(in: content) != nil {
+                // Голос, видео, документ своей строкой — кнопочкой с
+                // именем, как точка (P377). В файле — та же строка.
+                found.append((range, content, nil))
             } else if row.count > 1 {
                 // Несколько снимков в одной строке — рядом, через пробел
                 // (P348). Каждый — своей картинкой, пробел остаётся.
@@ -416,8 +420,11 @@ struct DiaryEditor: UIViewRepresentable {
         // С конца к началу: замена не сдвигает того, что ещё впереди.
         for (range, link, point) in found.sorted(by: { $0.0.location < $1.0.location }).reversed() {
             let attachment: NSTextAttachment
+            let file = point == nil && Diary.picture(in: link).map { Diary.kind(of: $0) != .photo } == true
             if let point {
                 attachment = PointChip(mini: point, glowing: glowing)
+            } else if file, let inner = Diary.picture(in: link) {
+                attachment = FileChip(link: inner)
             } else {
                 attachment = PhotoAttachment(link: link, url: resolve(link))
             }
@@ -425,7 +432,7 @@ struct DiaryEditor: UIViewRepresentable {
             let whole = NSRange(location: 0, length: piece.length)
             piece.addAttributes(out.attributes(at: range.location, effectiveRange: nil),
                                 range: whole)
-            piece.addAttribute(point == nil ? photoKey : lineKey, value: link, range: whole)
+            piece.addAttribute(point == nil && !file ? photoKey : lineKey, value: link, range: whole)
             out.replaceCharacters(in: range, with: piece)
         }
     }
@@ -450,12 +457,47 @@ struct DiaryEditor: UIViewRepresentable {
         return new.joined(separator: "\n")
     }
 
+    private static let fileLink = try! NSRegularExpression(
+        pattern: #"(?<!!)\[[^\]\n]*\]\((<[^>\n]+>|[^)\s]+)\)"#)
+
+    /// Ссылка на голос, видео или документ посреди строки — на свою строку.
+    /// `nil` — таких нет.
+    static func ownLine(_ text: String) -> String? {
+        guard text.contains("](") else { return nil }
+        var changed = false
+        var out: [String] = []
+        for line in text.components(separatedBy: "\n") {
+            let ns = line as NSString
+            guard Diary.picture(in: line) == nil else { out.append(line); continue }
+            let found = fileLink.matches(in: line, range: NSRange(location: 0, length: ns.length))
+                .filter { m in
+                    var link = ns.substring(with: m.range(at: 1))
+                    if link.hasPrefix("<") { link = String(link.dropFirst().dropLast()) }
+                    return !link.contains("://") && !link.hasPrefix("geo:")
+                        && Diary.kind(of: link) != .photo
+                }
+            guard !found.isEmpty else { out.append(line); continue }
+            changed = true
+            var from = 0
+            for m in found {
+                let before = ns.substring(with: NSRange(location: from, length: m.range.location - from))
+                    .trimmingCharacters(in: .whitespaces)
+                if !before.isEmpty { out.append(before) }
+                out.append(ns.substring(with: m.range))
+                from = NSMaxRange(m.range)
+            }
+            let rest = ns.substring(from: from).trimmingCharacters(in: .whitespaces)
+            if !rest.isEmpty { out.append(rest) }
+        }
+        return changed ? out.joined(separator: "\n") : nil
+    }
+
     /// Есть ли в поле строка-ссылка, ещё не ставшая картинкой: её только
     /// что бросили в текст или вписали руками.
     static func hasLoosePicture(_ text: String) -> Bool {
-        guard text.contains("![") || text.contains("geo:") else { return false }
+        guard text.contains("![") || text.contains("geo:") || text.contains("](") else { return false }
         return text.components(separatedBy: "\n").contains {
-            (Diary.picture(in: $0).map { Diary.kind(of: $0) == .photo } ?? false)
+            Diary.picture(in: $0) != nil
                 || Diary.pictures(in: $0).contains { Diary.kind(of: $0.link) == .photo }
                 || Diary.anywhere(in: $0).contains { Diary.kind(of: $0.link) == .photo }
                 || Geo.point(in: $0) != nil
@@ -573,6 +615,13 @@ struct DiaryEditor: UIViewRepresentable {
                     guard parent.onOpenPoint != nil else { return nil }
                     return (photo: nil, point: point)
                 }
+                // Голос или файл в тексте — открыть, как из полоски (P377).
+                if let line = storage.attribute(DiaryEditor.lineKey, at: i,
+                                                effectiveRange: nil) as? String,
+                   let link = Diary.picture(in: line) {
+                    guard parent.onOpenPhoto != nil else { return nil }
+                    return (photo: link, point: nil)
+                }
             }
             return nil
         }
@@ -639,7 +688,10 @@ struct DiaryEditor: UIViewRepresentable {
 
         private func takenIsPoint(at i: Int, in view: UITextView) -> Bool {
             guard i < view.textStorage.length else { return false }
-            return view.textStorage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil
+            guard let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
+                                                        effectiveRange: nil) as? String
+            else { return false }
+            return Geo.point(in: line) != nil
                 && view.textStorage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil
         }
 
@@ -831,6 +883,7 @@ struct DiaryEditor: UIViewRepresentable {
                 // Точку отпустили над заголовком дня — она уходит туда (P358).
                 if up, let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
                                                              effectiveRange: nil) as? String,
+                   Geo.point(in: line) != nil,
                    let toTitle = parent.onPointToTitle {
                     remove(at: i, in: view)
                     Feel.light()
@@ -839,8 +892,10 @@ struct DiaryEditor: UIViewRepresentable {
                 }
                 // Отпустили ниже страницы, над полоской превью — снимок
                 // возвращается туда, откуда его взяли (P272).
-                if back, let link = view.textStorage.attribute(DiaryEditor.photoKey, at: i,
-                                                               effectiveRange: nil) as? String,
+                if back, let link = (view.textStorage.attribute(DiaryEditor.photoKey, at: i,
+                                                                effectiveRange: nil) as? String)
+                    ?? (view.textStorage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) as? String)
+                        .flatMap(Diary.picture(in:)),
                    let giveBack = parent.onReturnPhoto {
                     Feel.light()
                     giveBack(link)
@@ -969,7 +1024,8 @@ struct DiaryEditor: UIViewRepresentable {
                 from: NSRange(location: i, length: 1)))
             let text = DiaryEditor.plain(storage) as NSString
 
-            if storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil,
+            if let line = storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) as? String,
+               Geo.point(in: line) != nil,
                storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil {
                 let spot = min(drop, ns.length)
                 guard spot != i, spot != i + 1 else { return nil }
@@ -1218,6 +1274,12 @@ struct DiaryEditor: UIViewRepresentable {
                     now = beside
                     merged = true
                 }
+                // Голос или файл бросили посреди фразы — он встаёт своей
+                // строкой: кнопочкой он бывает только так (P377).
+                if let own = DiaryEditor.ownLine(now) {
+                    now = own
+                    merged = true
+                }
             }
             parent.text = now
             if resolve != nil, merged || DiaryEditor.hasLoosePicture(view.text) {
@@ -1407,6 +1469,63 @@ final class PointChip: NSTextAttachment {
             (label as NSString).draw(
                 with: CGRect(x: pad + 15 + pinSide, y: (size.height - font.lineHeight) / 2,
                              width: wide, height: font.lineHeight),
+                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+                attributes: words, context: nil)
+        }
+    }
+}
+
+/// Голос, видео или документ в тексте записи (P377) — кнопочка со значком
+/// и именем файла, как точка. Касание открывает, долгое нажатие несёт.
+final class FileChip: NSTextAttachment {
+
+    init(link: String) {
+        super.init(data: nil, ofType: nil)
+        let picture = FileChip.draw(link)
+        image = picture
+        bounds = CGRect(origin: CGPoint(x: 0, y: -5), size: picture.size)
+        accessibilityLabel = FileChip.name(link)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    static func name(_ link: String) -> String {
+        ((link as NSString).lastPathComponent as NSString).deletingPathExtension
+    }
+
+    static func draw(_ link: String) -> UIImage {
+        let icon: String
+        switch Diary.kind(of: link) {
+        case .audio: icon = "waveform"
+        case .video: icon = "film"
+        default: icon = "doc"
+        }
+        let font = UIFont.systemFont(ofSize: 12.5, weight: .semibold)
+        let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
+        let name = Self.name(link)
+        let wide = min(ceil((name as NSString).size(withAttributes: words).width), 180)
+        let size = CGSize(width: 26 + wide + 9, height: 21)
+        let tint = UIColor(Look.accent)
+        let glyph = UIImage(systemName: icon,
+                            withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold))?
+            .withTintColor(tint, renderingMode: .alwaysOriginal)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            let shape = UIBezierPath(roundedRect: CGRect(origin: .zero, size: size).insetBy(dx: 0.6, dy: 0.6),
+                                     cornerRadius: 7)
+            UIColor(Look.planBg).setFill()
+            shape.fill()
+            tint.withAlphaComponent(0.1).setFill()
+            shape.fill()
+            tint.withAlphaComponent(0.7).setStroke()
+            shape.lineWidth = 1.2
+            shape.stroke()
+            if let glyph {
+                let s = glyph.size
+                glyph.draw(in: CGRect(x: (26 - s.width) / 2, y: (size.height - s.height) / 2,
+                                      width: s.width, height: s.height))
+            }
+            (name as NSString).draw(
+                with: CGRect(x: 24, y: (size.height - font.lineHeight) / 2, width: wide, height: font.lineHeight),
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: words, context: nil)
         }

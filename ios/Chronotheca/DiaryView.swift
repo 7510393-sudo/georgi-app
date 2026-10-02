@@ -153,7 +153,8 @@ struct DiaryPage: View {
                 PhotoStrip(photos: photos, onOpen: onOpenPhoto,
                            drag: editable && photoLinks.count == photos.count
                                ? { Diary.line(photoLinks[$0]) } : nil,
-                           onMove: editable ? onMovePhoto : nil)
+                           onMove: editable ? onMovePhoto : nil,
+                           anyKind: true)
                     .background(Color.clear)
             }
         }

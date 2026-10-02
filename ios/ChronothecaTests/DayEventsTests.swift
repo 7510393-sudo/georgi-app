@@ -55,3 +55,20 @@ final class DayEventsTests: XCTestCase {
         XCTAssertEqual(DayEvents.short("x").count, 8)
     }
 }
+
+/// P377: голос или файл, брошенный посреди фразы, встаёт своей строкой;
+/// снимки и точки не трогаются.
+final class FileLineTests: XCTestCase {
+
+    func testГолосПосредиФразыВстаётСвоейСтрокой() {
+        let text = "Утром гуляли [Голос 1](Audio/2026/a.m4a) и пили чай"
+        XCTAssertEqual(DiaryEditor.ownLine(text),
+                       "Утром гуляли\n[Голос 1](Audio/2026/a.m4a)\nи пили чай")
+    }
+
+    func testСнимокИТочкаНеТрогаются() {
+        XCTAssertNil(DiaryEditor.ownLine("Вот ![](Photos/a.heic) снимок"))
+        XCTAssertNil(DiaryEditor.ownLine("Были [Дом](geo:51.5,-0.1) вечером"))
+        XCTAssertNil(DiaryEditor.ownLine("[Голос](Audio/a.m4a)"), "уже своей строкой")
+    }
+}

@@ -584,7 +584,7 @@ final class DayStore: ObservableObject {
     /// Снимок, брошенный из полоски в текст, уходит из полоски: он теперь
     /// стоит на своём месте в записи, и дважды его показывать незачем (P204).
     func settlePhotos() {
-        guard !photos.isEmpty, diaryText.contains("![") else { return }
+        guard !photos.isEmpty, diaryText.contains("](") else { return }
         let placed = photos.filter { diaryText.contains(Diary.line($0)) }
         guard !placed.isEmpty else { return }
         photos.removeAll { placed.contains($0) }
@@ -781,7 +781,10 @@ final class DayStore: ObservableObject {
         // посреди фразы (P357). Уходит вместе с одним пробелом или переводом
         // строки рядом — остальное остаётся как было.
         let ns = diaryText as NSString
+        // Голос и файл стоят своей строкой `[имя](…)` (P377).
+        let whole = ns.range(of: Diary.line(link))
         guard var cut = Diary.anywhere(in: diaryText).first(where: { $0.link == link })?.range
+            ?? (whole.location == NSNotFound ? nil : whole)
         else { return }
         let before = cut.location > 0 ? ns.character(at: cut.location - 1) : 10
         let after = NSMaxRange(cut) < ns.length ? ns.character(at: NSMaxRange(cut)) : 10

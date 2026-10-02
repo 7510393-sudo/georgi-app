@@ -217,6 +217,9 @@ struct PhotoStrip: View {
     /// Снимок принесли сюда из-под дела в плане — вернуть его в полоску
     /// (P358). Пусто — полоска чужих снимков не принимает.
     var onTake: ((String) -> Void)? = nil
+    /// В текст можно бросить не только снимок, но и голос, видео, документ
+    /// (дневник, P377).
+    var anyKind = false
 
     /// Превью, которое сейчас несут, — по нему соседи расступаются.
     @State private var carrying: Int?
@@ -283,11 +286,12 @@ struct PhotoStrip: View {
             .frame(width: Self.side, height: Self.side)
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
-            // Бросить в текст можно только снимок: голос и документ
-            // остаются в полоске (P204, P209).
+            // В плане бросить под дело можно только снимок; в дневнике в
+            // текст — и голос, и видео, и документ: там они кнопочкой
+            // (P204, P209, P377).
             .modifier(Carried(
-                on: onMove != nil || (drag != nil && kind(i) == .photo),
-                text: kind(i) == .photo ? drag.map { $0(i) } : nil,
+                on: onMove != nil || (drag != nil && (anyKind || kind(i) == .photo)),
+                text: anyKind || kind(i) == .photo ? drag.map { $0(i) } : nil,
                 start: { carrying = i }))
             .onDrop(of: onMove != nil || onTake != nil ? [UTType.plainText, Carried.strip] : [],
                     delegate: StripDrop(index: i, carrying: $carrying, move: onMove, take: onTake))
