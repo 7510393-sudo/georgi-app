@@ -71,6 +71,7 @@
 "Back to today" = "今日に戻りました";
 "Backup" = "バックアップ";
 "Backup place" = "バックアップ先";
+"Bring them back from the backup" = "バックアップから戻す";
 "Calendar" = "カレンダー";
 "Calendar access" = "カレンダーへのアクセス";
 "Calendar did not let the event be deleted: " = "カレンダーが予定の削除を許可しませんでした：";
@@ -154,6 +155,7 @@
 "File" = "ファイル";
 "File on disk" = "ディスク上のファイル";
 "Files" = "ファイル";
+"Files brought back: %@. Files already in place were left alone." = "戻したファイル：%@ 件。すでにあったファイルはそのままです。";
 "Files moved: %@." = "移動したファイル: %@。";
 "Files not on this phone — only in iCloud: %@. Without them the backup will be incomplete." = "この iPhone にないファイル（iCloud のみ）：%@ 件。これらがないとバックアップは不完全になります。";
 "Files not saved: %@" = "保存できなかったファイル: %@";
@@ -336,6 +338,7 @@
 "Show all my places" = "自分の場所をすべて表示";
 "Show this day’s file" = "この日のファイルを表示";
 "Show ›" = "表示 ›";
+"Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "前回のバックアップ以降、記録からファイルがなくなっています：%@ 件。ご自分で削除したのなら問題ありません。そうでなければ、バックアップに無事に残っています。";
 "Start recording" = "録音を開始";
 "Stop recording" = "録音を終了";
 "Storage" = "保存場所";

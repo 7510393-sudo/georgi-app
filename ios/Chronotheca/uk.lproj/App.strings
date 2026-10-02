@@ -71,6 +71,7 @@
 "Back to today" = "Повернулися до сьогодні";
 "Backup" = "Резервна копія";
 "Backup place" = "Місце копії";
+"Bring them back from the backup" = "Повернути з копії";
 "Calendar" = "Календар";
 "Calendar access" = "Доступ до Календаря";
 "Calendar did not let the event be deleted: " = "Календар не дав видалити подію: ";
@@ -154,6 +155,7 @@
 "File" = "Файл";
 "File on disk" = "Файл на диску";
 "Files" = "Файли";
+"Files brought back: %@. Files already in place were left alone." = "Повернуто файлів: %@. Ті, що вже лежали на місці, не зачеплено.";
 "Files moved: %@." = "Перенесено файлів: %@.";
 "Files not on this phone — only in iCloud: %@. Without them the backup will be incomplete." = "Файлів немає на телефоні — вони лише в iCloud: %@. Без них копія буде неповною.";
 "Files not saved: %@" = "Не вдалося покласти файлів: %@";
@@ -336,6 +338,7 @@
 "Show all my places" = "Показати всі мої місця";
 "Show this day’s file" = "Показати файл цього дня";
 "Show ›" = "Показати ›";
+"Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Від минулої копії в записах не стало файлів: %@. Якщо ви видаляли їх самі — усе гаразд. Якщо ні — вони цілі в копії.";
 "Start recording" = "Почати запис";
 "Stop recording" = "Закінчити запис";
 "Storage" = "Сховище";

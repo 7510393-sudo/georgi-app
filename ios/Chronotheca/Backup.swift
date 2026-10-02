@@ -343,6 +343,65 @@ enum Backup {
         return (try? Data(text.utf8).write(to: target.appendingPathComponent(noteName), options: .atomic)) != nil
     }
 
+    // MARK: - Исчезнувшие файлы (P377)
+
+    /// Опись прошлой копии — пути внутри архива. Лежит у приложения, а не в
+    /// папке человека: это память приложения, а не запись.
+    private static var listURL: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("backup-list.json")
+    }
+
+    static func previousList() -> [String] {
+        guard let url = listURL, let data = try? Data(contentsOf: url),
+              let list = try? JSONDecoder().decode([String].self, from: data) else { return [] }
+        return list
+    }
+
+    static func saveList(_ inv: Inventory, root: URL) {
+        guard let url = listURL else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        let all = inv.items.map(\.rel) + inv.away.map { rel($0, root: root) }
+        if let data = try? JSONEncoder().encode(all.sorted()) { try? data.write(to: url, options: .atomic) }
+    }
+
+    static func rel(_ url: URL, root: URL) -> String {
+        String(url.standardizedFileURL.path.dropFirst(root.standardizedFileURL.path.count))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    /// Файлы, которые были в архиве при прошлой копии, а теперь их нет, —
+    /// и не потому, что их убрали в корзину приложения. В копии они целы.
+    static func vanished(_ inv: Inventory, previous: [String], root: URL, target: URL) -> [String] {
+        let now = Set(inv.items.map(\.rel) + inv.away.map { rel($0, root: root) })
+        let trash = Vault.trash(in: root).lastPathComponent
+        let fm = FileManager.default
+        return previous.filter { path in
+            !now.contains(path)
+                && path.split(separator: "/").first.map(String.init) != trash
+                && FileTrash.find(path, root: root) == nil
+                && fm.fileExists(atPath: target.appendingPathComponent(path).path)
+        }
+    }
+
+    /// Вернуть файлы из копии в архив. Файл, который уже лежит на месте,
+    /// не трогается (P182). Возвращает, сколько вернулось.
+    static func bringBack(_ paths: [String], archive root: URL) -> Int {
+        guard case .success(let session) = openPlace(archive: root) else { return 0 }
+        defer { session.close() }
+        let fm = FileManager.default
+        var n = 0
+        for path in paths {
+            let from = session.target.appendingPathComponent(path)
+            let to = root.appendingPathComponent(path)
+            guard fm.fileExists(atPath: from.path), !fm.fileExists(atPath: to.path) else { continue }
+            try? fm.createDirectory(at: to.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if (try? fm.copyItem(at: from, to: to)) != nil { n += 1 }
+        }
+        return n
+    }
+
     /// Запомнить копию: когда, сколько весил архив, полная ли.
     static func record(size: Int64, complete: Bool, missing: Int) {
         let d = UserDefaults.standard
@@ -388,6 +447,7 @@ enum Backup {
         report.missing = verify(inv, in: session.target)
         writeNote(inv, missing: report.missing, away: inv.away, in: session.target, device: "test")
         record(size: size, complete: report.complete, missing: report.missing.count + report.away)
+        saveList(inv, root: root)
         return .success(report)
     }
 
@@ -450,6 +510,7 @@ enum Backup {
         for key in [bookmarkKey, pathKey, lastKey, sizeKey, sinceKey, laterKey, completeKey, missingKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        if let url = listURL { try? FileManager.default.removeItem(at: url) }
     }
 
     static func later() {
@@ -494,6 +555,9 @@ struct BackupSheet: View {
     @State private var running = false
     /// Не все файлы пришли из iCloud — ждём ответа человека.
     @State private var pending: (Backup.Session, Backup.Inventory)?
+    /// С прошлой копии этих файлов в архиве не стало (P377).
+    @State private var vanished: [String] = []
+    @State private var broughtBack: String?
 
     private static var names: [String] {
         [T("Место копии", "Backup place"),
@@ -555,6 +619,7 @@ struct BackupSheet: View {
                         .background(Look.chrome, in: RoundedRectangle(cornerRadius: 10))
                     }
                     if let pending { question(pending.1.away.count) }
+                    if !vanished.isEmpty || broughtBack != nil { vanishedNote }
                     if let problem {
                         Text(problem).font(Look.sans(14)).foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
@@ -647,6 +712,46 @@ struct BackupSheet: View {
         .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
     }
 
+    /// «С прошлой копии не стало файлов» — и кнопка вернуть их из копии.
+    private var vanishedNote: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !vanished.isEmpty {
+                Text(T("С прошлой копии в записях не стало файлов: \(vanished.count). Если вы удаляли их сами — "
+                       + "всё в порядке. Если нет — они целы в копии.",
+                       "Since the last backup, files are gone from your entries: \(vanished.count). If you deleted "
+                       + "them yourself, all is well. If not, they are safe in the backup."))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(vanished.prefix(5).joined(separator: "\n") + (vanished.count > 5 ? "\n…" : ""))
+                    .font(Look.mono(11.5))
+                    .foregroundStyle(Look.inkSoft)
+                Button(T("Вернуть из копии", "Bring them back from the backup")) { bringBack() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(running)
+            }
+            if let broughtBack {
+                Text(broughtBack).font(Look.sans(14, weight: .medium))
+            }
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func bringBack() {
+        guard let root = vault.root else { return }
+        let list = vanished
+        running = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let n = Backup.bringBack(list, archive: root)
+            DispatchQueue.main.async {
+                running = false
+                vanished = []
+                broughtBack = T("Возвращено файлов: \(n). Те, что уже лежали на месте, не тронуты.",
+                                "Files brought back: \(n). Files already in place were left alone.")
+                Feel.done()
+            }
+        }
+    }
+
     // MARK: - Ход
 
     private func pick(_ url: URL) {
@@ -681,6 +786,8 @@ struct BackupSheet: View {
         guard let root = vault.root else { return }
         problem = nil
         running = true
+        vanished = []
+        broughtBack = nil
         stages = Array(repeating: .waiting, count: 5)
         DispatchQueue.global(qos: .userInitiated).async {
             set(0, .running(T("Проверяю, можно ли туда писать…", "Checking that the place can be written to…")))
@@ -761,6 +868,8 @@ struct BackupSheet: View {
                         " · only in iCloud, left out: \(inv.away.count)")
         }
         set(1, inv.away.isEmpty ? .done(listed) : .warn(listed))
+        let gone = Backup.vanished(inv, previous: Backup.previousList(), root: root, target: target)
+        if !gone.isEmpty { DispatchQueue.main.async { vanished = gone } }
 
         // 3. Копирование.
         var failed: [String] = []
@@ -808,6 +917,9 @@ struct BackupSheet: View {
 
         Backup.record(size: Backup.size(of: root), complete: complete,
                       missing: missing.count + inv.away.count)
+        // Опись этой копии — чтобы в следующий раз заметить исчезнувшее.
+        // О тех, что исчезли сейчас, спрашиваем один раз: в копии они целы.
+        Backup.saveList(inv, root: root)
         DispatchQueue.main.async {
             if complete { Feel.done() } else { Feel.light() }
             running = false

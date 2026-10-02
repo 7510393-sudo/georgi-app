@@ -85,6 +85,24 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(copied("Photos/2026/b.heic"), "снимок")
     }
 
+    /// P377: файл пропал из архива не через корзину приложения — копия это
+    /// замечает и возвращает его, ничего не перезаписывая.
+    func testИсчезнувшееЗамечаетсяИВозвращается() {
+        put("Diary/2026/2026-10-03.md", "дождь")
+        put("Photos/2026/c.heic", "снимок")
+        XCTAssertNil(Backup.choose(place))
+        XCTAssertNotNil(run())
+        try? fm.removeItem(at: archive.appendingPathComponent("Photos/2026/c.heic"))
+        let target = place.appendingPathComponent(Backup.folderName)
+        let gone = Backup.vanished(Backup.inventory(archive), previous: Backup.previousList(),
+                                   root: archive, target: target)
+        XCTAssertEqual(gone, ["Photos/2026/c.heic"])
+        XCTAssertEqual(Backup.bringBack(gone, archive: archive), 1)
+        XCTAssertEqual(try? String(contentsOf: archive.appendingPathComponent("Photos/2026/c.heic"),
+                                   encoding: .utf8), "снимок")
+        XCTAssertEqual(Backup.bringBack(gone, archive: archive), 0, "лежащий на месте файл не трогается")
+    }
+
     func testФайлыСравниваютсяБайтВБайт() {
         put("a.txt", "один")
         put("b.txt", "один")

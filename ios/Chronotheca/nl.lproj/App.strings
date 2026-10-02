@@ -71,6 +71,7 @@
 "Back to today" = "Terug bij vandaag";
 "Backup" = "Reservekopie";
 "Backup place" = "Plek van de kopie";
+"Bring them back from the backup" = "Terughalen uit de kopie";
 "Calendar" = "Agenda";
 "Calendar access" = "Toegang tot Agenda";
 "Calendar did not let the event be deleted: " = "Agenda liet de afspraak niet verwijderen: ";
@@ -154,6 +155,7 @@
 "File" = "Bestand";
 "File on disk" = "Bestand op schijf";
 "Files" = "Bestanden";
+"Files brought back: %@. Files already in place were left alone." = "Teruggehaalde bestanden: %@. Bestanden die er al stonden, zijn niet aangeraakt.";
 "Files moved: %@." = "Verplaatste bestanden: %@.";
 "Files not on this phone — only in iCloud: %@. Without them the backup will be incomplete." = "Bestanden niet op deze telefoon — alleen in iCloud: %@. Zonder deze is de kopie onvolledig.";
 "Files not saved: %@" = "Bestanden niet bewaard: %@";
@@ -336,6 +338,7 @@
 "Show all my places" = "Al mijn plekken tonen";
 "Show this day’s file" = "Bestand van deze dag tonen";
 "Show ›" = "Toon ›";
+"Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Sinds de vorige reservekopie ontbreken er bestanden in je items: %@. Heb je ze zelf verwijderd, dan is alles in orde. Zo niet, dan zijn ze veilig in de kopie.";
 "Start recording" = "Opname starten";
 "Stop recording" = "Opname stoppen";
 "Storage" = "Opslag";

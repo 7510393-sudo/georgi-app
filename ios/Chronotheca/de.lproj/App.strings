@@ -71,6 +71,7 @@
 "Back to today" = "Zurück bei heute";
 "Backup" = "Sicherung";
 "Backup place" = "Ort der Sicherung";
+"Bring them back from the backup" = "Aus der Sicherung zurückholen";
 "Calendar" = "Kalender";
 "Calendar access" = "Zugriff auf den Kalender";
 "Calendar did not let the event be deleted: " = "Der Kalender hat das Löschen nicht erlaubt: ";
@@ -154,6 +155,7 @@
 "File" = "Datei";
 "File on disk" = "Datei auf dem Gerät";
 "Files" = "Dateien";
+"Files brought back: %@. Files already in place were left alone." = "Zurückgeholte Dateien: %@. Dateien, die schon da waren, blieben unberührt.";
 "Files moved: %@." = "Verschobene Dateien: %@.";
 "Files not on this phone — only in iCloud: %@. Without them the backup will be incomplete." = "Dateien nicht auf diesem iPhone — nur in iCloud: %@. Ohne sie ist die Sicherung unvollständig.";
 "Files not saved: %@" = "Dateien nicht gespeichert: %@";
@@ -336,6 +338,7 @@
 "Show all my places" = "Alle meine Orte zeigen";
 "Show this day’s file" = "Datei dieses Tages zeigen";
 "Show ›" = "Zeigen ›";
+"Since the last backup, files are gone from your entries: %@. If you deleted them yourself, all is well. If not, they are safe in the backup." = "Seit der letzten Sicherung fehlen Dateien in deinen Einträgen: %@. Wenn du sie selbst gelöscht hast, ist alles in Ordnung. Wenn nicht, sind sie in der Sicherung erhalten.";
 "Start recording" = "Aufnahme starten";
 "Stop recording" = "Aufnahme beenden";
 "Storage" = "Speicherort";
