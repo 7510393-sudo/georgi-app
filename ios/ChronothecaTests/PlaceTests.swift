@@ -57,16 +57,19 @@ final class PlaceTests: XCTestCase {
         XCTAssertTrue(запись.text.hasSuffix(строка))
     }
 
-    /// Точка с карты встаёт туда, где стоял курсор, своей строкой (P213).
-    func testТочкаВстаётНаМестоКурсора() {
+    /// Точка с карты встаёт своей строкой — следующей за абзацем, где
+    /// стоял курсор (P213, P380); пустую строку под курсором занимает сама.
+    func testТочкаВстаётСвоейСтрокой() {
         let (посреди, курсор) = DayStore.insert("geo:1.00000,2.00000",
-                                                into: "Утром туман. Днём солнце.", at: 12)
-        XCTAssertEqual(посреди, "Утром туман. geo:1.00000,2.00000 Днём солнце.")
-        XCTAssertEqual(курсор, ("Утром туман. geo:1.00000,2.00000" as NSString).length)
+                                                into: "Утром туман. Днём солнце.\nВечер.", at: 12)
+        XCTAssertEqual(посреди, "Утром туман. Днём солнце.\ngeo:1.00000,2.00000\nВечер.")
+        XCTAssertEqual(курсор, ("Утром туман. Днём солнце.\ngeo:1.00000,2.00000" as NSString).length)
         let (вКонце, _) = DayStore.insert("geo:1.00000,2.00000", into: "Туман.\n", at: nil)
-        XCTAssertEqual(вКонце, "Туман. geo:1.00000,2.00000")
+        XCTAssertEqual(вКонце, "Туман.\ngeo:1.00000,2.00000")
         let (сНачала, _) = DayStore.insert("geo:1.00000,2.00000", into: "", at: 0)
         XCTAssertEqual(сНачала, "geo:1.00000,2.00000")
+        let (вПустую, _) = DayStore.insert("geo:1.00000,2.00000", into: "Туман.\n\nВечер.", at: 7)
+        XCTAssertEqual(вПустую, "Туман.\ngeo:1.00000,2.00000\nВечер.")
     }
 
     /// Значок места лежит в шапке файла словом и читается обратно; чужое
@@ -141,5 +144,25 @@ final class PlaceTests: XCTestCase {
         XCTAssertEqual(Pasted.find("https://maps.apple.com/?ll=51.5,-0.12&q=Big%20Ben")?.title, "Big Ben")
         XCTAssertNil(Pasted.find("10 Downing St, London"))
         XCTAssertNotNil(Pasted.shortLink(in: "Биг-Бен https://maps.app.goo.gl/abc123"))
+    }
+
+    /// P380: шаг назад после броска снимка из полоски в текст возвращает
+    /// снимок в полоску — со страницы он не пропадает.
+    func testШагНазадВозвращаетСнимокВПолоску() {
+        XCTAssertEqual(DayStore.attachmentLinks(in: "Утро\n![](../../Photos/a.heic)\n[Голос](../../Audio/b.m4a)"),
+                       ["../../Photos/a.heic", "../../Audio/b.m4a"])
+    }
+
+    /// P380: из полоски в текст — своей строкой за абзацем; снимок к
+    /// снимкам — рядом в ту же строку; на пустую строку — на неё саму.
+    func testИзПолоскиВТекстСвоейСтрокой() {
+        let голос = "[Голос](../../Audio/b.m4a)"
+        XCTAssertEqual(DiaryEditor.putting(голос, at: 3, into: "Утро.\nВечер.").0,
+                       "Утро.\n" + голос + "\nВечер.")
+        let снимок = "![](../../Photos/c.heic)"
+        XCTAssertEqual(DiaryEditor.putting(снимок, at: 2, into: "![](../../Photos/a.heic)\nВечер.").0,
+                       "![](../../Photos/a.heic) " + снимок + "\nВечер.")
+        XCTAssertEqual(DiaryEditor.putting(голос, at: 6, into: "Утро.\n\nВечер.").0,
+                       "Утро.\n" + голос + "\nВечер.")
     }
 }

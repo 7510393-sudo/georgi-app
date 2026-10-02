@@ -220,6 +220,12 @@ struct PhotoStrip: View {
     /// В текст можно бросить не только снимок, но и голос, видео, документ
     /// (дневник, P377).
     var anyKind = false
+    /// Своё перенесение превью (дневник, P380): долгое нажатие и ход
+    /// пальца по экрану — вместо системного перетаскивания, у которого
+    /// не было ни синей рамки, ни раздвигания строк.
+    var onCarry: ((Int, Lift, CGPoint) -> Void)? = nil
+    /// Превью, которое сейчас несут, — на своём месте оно бледное.
+    var carried: Int? = nil
 
     /// Превью, которое сейчас несут, — по нему соседи расступаются.
     @State private var carrying: Int?
@@ -286,11 +292,23 @@ struct PhotoStrip: View {
             .frame(width: Self.side, height: Self.side)
             .contentShape(Rectangle())
             .onTapGesture { onOpen?(i) }
+            .opacity(carried == i ? 0.3 : 1)
+            // Где превью на экране — чтобы, отпустив над полоской, поставить
+            // взятое на место соседа (P380).
+            .background(GeometryReader { geo in
+                let frame = geo.frame(in: .global)
+                Color.clear
+                    .onAppear { if onCarry != nil { StripZones.cells[i] = frame } }
+                    .onChange(of: frame) { _, now in if onCarry != nil { StripZones.cells[i] = now } }
+            })
+            .modifier(ThumbCarry(report: onCarry.map { f -> (Lift, CGPoint) -> Void in
+                { phase, spot in f(i, phase, spot) }
+            }))
             // В плане бросить под дело можно только снимок; в дневнике в
             // текст — и голос, и видео, и документ: там они кнопочкой
             // (P204, P209, P377).
             .modifier(Carried(
-                on: onMove != nil || (drag != nil && (anyKind || kind(i) == .photo)),
+                on: onCarry == nil && (onMove != nil || (drag != nil && (anyKind || kind(i) == .photo))),
                 text: anyKind || kind(i) == .photo ? drag.map { $0(i) } : nil,
                 start: { carrying = i }))
             .onDrop(of: onMove != nil || onTake != nil ? [UTType.plainText, Carried.strip] : [],
@@ -440,6 +458,18 @@ struct PlanPhotoRow: View {
     private func report(_ link: String) -> ((Lift, CGPoint) -> Void)? {
         guard let onCarry else { return nil }
         return { phase, spot in onCarry(link, phase, spot) }
+    }
+}
+
+/// Где на экране превью полоски дневника и сама полоска (P380).
+enum StripZones {
+    static var cells: [Int: CGRect] = [:]
+    static var strip: CGRect?
+
+    /// Превью, ближайшее к пальцу по горизонтали, — куда встанет взятое.
+    static func nearest(to spot: CGPoint, count: Int) -> Int? {
+        cells.filter { $0.key < count }
+            .min { abs($0.value.midX - spot.x) < abs($1.value.midX - spot.x) }?.key
     }
 }
 

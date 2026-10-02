@@ -40,13 +40,20 @@ enum Transcribe {
                                            "Speech recognition for this language is not available right now."))
                     }
                     let request = SFSpeechURLRecognitionRequest(url: local)
-                    request.shouldReportPartialResults = false
+                    // Промежуточные ответы нужны: после каждой паузы iPhone
+                    // начинает распознавать заново, и последний ответ несёт
+                    // только последний кусок — из 20 секунд оставались два
+                    // слова (P380). Куски собираются по порядку.
+                    request.shouldReportPartialResults = true
                     request.addsPunctuation = true
                     if r.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
+                    var pieces = Pieces()
                     running = r.recognitionTask(with: request) { result, error in
-                        if let result, result.isFinal {
+                        if let result {
+                            pieces.take(result.bestTranscription)
+                            guard result.isFinal else { return }
                             running = nil
-                            let text = result.bestTranscription.formattedString
+                            let text = pieces.text
                             DispatchQueue.main.async {
                                 text.isEmpty
                                     ? done(nil, T("Речи в записи не нашлось.", "No speech was found in the recording."))
@@ -54,11 +61,37 @@ enum Transcribe {
                             }
                         } else if let error {
                             running = nil
-                            DispatchQueue.main.async { done(nil, error.localizedDescription) }
+                            let text = pieces.text
+                            DispatchQueue.main.async {
+                                text.isEmpty ? done(nil, error.localizedDescription) : done(text, nil)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    /// Куски распознанного: новый кусок узнаётся по тому, что его первое
+    /// слово звучит позже, чем кончилось последнее слово прежнего.
+    struct Pieces {
+        private var done: [String] = []
+        private var current = ""
+        private var currentEnd: TimeInterval = 0
+
+        mutating func take(_ t: SFTranscription) {
+            let start = t.segments.first?.timestamp ?? 0
+            if !current.isEmpty, start >= currentEnd - 0.05 {
+                done.append(current)
+            }
+            current = t.formattedString
+            currentEnd = t.segments.last.map { $0.timestamp + $0.duration } ?? currentEnd
+        }
+
+        var text: String {
+            (done + [current]).map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
         }
     }
 

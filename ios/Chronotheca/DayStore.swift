@@ -162,16 +162,39 @@ final class DayStore: ObservableObject {
         guard canEditDiary, let back = diaryBack.popLast() else { return }
         quietDiary = true
         diaryAhead.append(diaryText)
+        keepAttachments(from: diaryText, to: back)
         diaryText = back
         quietDiary = false
         diaryTouched = .distantPast
         save()
     }
 
+    /// Шаг назад или вперёд убирает из текста снимок, голос или файл —
+    /// они возвращаются в полоску, а не пропадают со страницы (P380):
+    /// бросок из полоски в текст и его отмена — одна пара шагов.
+    private func keepAttachments(from old: String, to new: String) {
+        let gone = DayStore.attachmentLinks(in: old).filter {
+            !DayStore.attachmentLinks(in: new).contains($0) && !photos.contains($0)
+        }
+        photos.append(contentsOf: gone)
+    }
+
+    /// Все вложения записи: своей строкой, рядом и посреди фразы.
+    static func attachmentLinks(in text: String) -> [String] {
+        var out: [String] = []
+        for line in text.components(separatedBy: "\n") {
+            for link in Diary.links(in: line) + Diary.anywhere(in: line).map(\.link) where !out.contains(link) {
+                out.append(link)
+            }
+        }
+        return out
+    }
+
     func redoDiary() {
         guard canEditDiary, let ahead = diaryAhead.popLast() else { return }
         quietDiary = true
         diaryBack.append(diaryText)
+        keepAttachments(from: diaryText, to: ahead)
         diaryText = ahead
         quietDiary = false
         diaryTouched = .distantPast
@@ -719,20 +742,27 @@ final class DayStore: ObservableObject {
     /// отделив пробелами (P259). Возвращает текст и место курсора за
     /// вставкой.
     static func insert(_ line: String, into text: String, at caret: Int?) -> (String, Int) {
+        // Точка, снимок, голос — всегда своей строкой (P380): строку не
+        // рвут пополам, точка встаёт следующей строкой за абзацем, где
+        // стоит курсор; пустая строка под курсором занимается ею самой.
         let ns = text as NSString
         guard let caret, caret >= 0, caret <= ns.length else {
-            // Курсора нет — в конец записи, той же строкой.
             let body = text.replacingOccurrences(of: "\\s+$", with: "",
                                                  options: .regularExpression)
-            let out = body + (body.isEmpty ? "" : " ") + line
+            let out = body + (body.isEmpty ? "" : "\n") + line
             return (out, (out as NSString).length)
         }
-        let before = ns.substring(to: caret)
-        let after = ns.substring(from: caret)
-        let lead = before.isEmpty || before.last?.isWhitespace == true ? "" : " "
-        let tail = after.isEmpty || after.first?.isWhitespace == true ? "" : " "
-        let head = before + lead + line + tail
-        return (head + after, (head as NSString).length)
+        let para = ns.paragraphRange(for: NSRange(location: min(caret, ns.length), length: 0))
+        var end = para.location + para.length
+        if end > para.location, ns.character(at: end - 1) == 10 { end -= 1 }
+        let content = ns.substring(with: NSRange(location: para.location, length: end - para.location))
+        if content.trimmingCharacters(in: .whitespaces).isEmpty {
+            let out = ns.replacingCharacters(in: NSRange(location: para.location,
+                                                         length: end - para.location), with: line)
+            return (out, para.location + (line as NSString).length)
+        }
+        let out = ns.replacingCharacters(in: NSRange(location: end, length: 0), with: "\n" + line)
+        return (out, end + 1 + (line as NSString).length)
     }
 
     /// Снимок плана — под дело (P358): в строку снимков сразу под ним, в

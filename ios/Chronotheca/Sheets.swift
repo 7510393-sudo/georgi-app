@@ -250,7 +250,8 @@ struct SettingsSticker: View {
     }
 
     @ViewBuilder private var languagePart: some View {
-        NoteSection(title: "Language · Язык")
+        // Заголовок — на языке приложения, как всё остальное (P380).
+        NoteSection(title: T("Язык", "Language"))
         // Десять языков (P369) — списком: кружков столько не поместить.
         // Пока не выбран — язык телефона, если он у нас есть.
         NoteRow(title: T("Язык приложения", "App language")) {

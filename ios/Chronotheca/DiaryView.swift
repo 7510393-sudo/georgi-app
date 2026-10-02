@@ -9,6 +9,9 @@ struct DiaryView: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
     @State private var health: String?
+    /// Превью из полоски, которое несут, и где палец (P380).
+    @State private var stripCarry: Int?
+    @State private var stripSpot: CGPoint = .zero
 
     /// На ступень крупнее прежних 15,5 и растёт с настройкой (P274).
     static var size: CGFloat { 16.5 * Prefs.textScale }
@@ -65,7 +68,20 @@ struct DiaryView: View {
             home: shell.freshStart,
             health: health,
             // Касание по строке «Здоровья» — она ложится в запись (P378).
-            onHealth: store.canEditDiary ? { line in store.addHealthLine(line) } : nil)
+            onHealth: store.canEditDiary ? { line in store.addHealthLine(line) } : nil,
+            onStripCarry: { carryStrip($0, $1, $2) },
+            stripCarried: stripCarry)
+        // Взятое из полоски — над пальцем, в синей рамке (P380).
+        .overlay {
+            if let i = stripCarry, stripSpot != .zero, store.photos.indices.contains(i) {
+                GeometryReader { g in
+                    let o = g.frame(in: .global).origin
+                    stripGhost(store.photos[i])
+                        .position(x: stripSpot.x - o.x, y: stripSpot.y - o.y - 48)
+                }
+                .allowsHitTesting(false)
+            }
+        }
         .task(id: store.date) { health = await HealthDay.summary(for: store.date) }
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
@@ -74,6 +90,60 @@ struct DiaryView: View {
             store.settlePhotos()
             store.scheduleSave()
         }
+    }
+}
+
+extension DiaryView {
+
+    /// Превью из полоски несут (P380): над полем записи текст расступается
+    /// там, куда оно ляжет; над полоской — встанет на место соседа.
+    fileprivate func carryStrip(_ i: Int, _ phase: Lift, _ spot: CGPoint) {
+        guard store.canEditDiary, store.photos.indices.contains(i) else { return }
+        let line = Diary.line(store.photos[i])
+        let overStrip = StripZones.strip.map { spot.y >= $0.minY - 8 } ?? false
+        switch phase {
+        case .began:
+            Feel.lift()
+            stripCarry = i
+            stripSpot = spot
+        case .moved:
+            stripSpot = spot
+            if overStrip {
+                DiaryEditor.active?.carryOut()
+            } else {
+                DiaryEditor.active?.carryIn(line, at: CGPoint(x: spot.x, y: spot.y))
+            }
+        case .ended:
+            if overStrip || spot == .zero {
+                DiaryEditor.active?.carryOut()
+                if let to = StripZones.nearest(to: spot, count: store.photos.count), to != i, spot != .zero {
+                    store.movePhoto(from: i, to: to, in: .diary)
+                    Feel.light()
+                }
+            } else if DiaryEditor.active?.carryEnd() == true {
+                Feel.thud()
+            }
+            stripCarry = nil
+            stripSpot = .zero
+        case .cancelled:
+            DiaryEditor.active?.carryOut()
+            stripCarry = nil
+            stripSpot = .zero
+        }
+    }
+
+    @ViewBuilder fileprivate func stripGhost(_ link: String) -> some View {
+        Group {
+            if Diary.kind(of: link) == .photo {
+                PlanPhotoThumb(url: store.photoURL(link))
+            } else {
+                Image(uiImage: FileChip.draw(link)).scaleEffect(1.3)
+                    .padding(10)
+                    .background(Look.planBg, in: RoundedRectangle(cornerRadius: 9))
+            }
+        }
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.glow, lineWidth: 2.6))
+        .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
     }
 }
 
@@ -126,6 +196,10 @@ struct DiaryPage: View {
     /// День из «Здоровья» (P378) — слева в верхней строке, где пусто.
     var health: String? = nil
     var onHealth: ((String) -> Void)? = nil
+    /// Превью из полоски несут своим жестом — в текст или на место соседа
+    /// в полоске (P380).
+    var onStripCarry: ((Int, Lift, CGPoint) -> Void)? = nil
+    var stripCarried: Int? = nil
 
     /// Для какого открытия запись уже прокручена к концу.
     private static var homed = -1
@@ -162,8 +236,15 @@ struct DiaryPage: View {
                            drag: editable && photoLinks.count == photos.count
                                ? { Diary.line(photoLinks[$0]) } : nil,
                            onMove: editable ? onMovePhoto : nil,
-                           anyKind: true)
-                    .background(Color.clear)
+                           anyKind: true,
+                           onCarry: editable ? onStripCarry : nil,
+                           carried: stripCarried)
+                    .background(GeometryReader { geo in
+                        let frame = geo.frame(in: .global)
+                        Color.clear
+                            .onAppear { if editable { StripZones.strip = frame } }
+                            .onChange(of: frame) { _, now in if editable { StripZones.strip = now } }
+                    })
             }
         }
     }
@@ -174,16 +255,25 @@ struct DiaryPage: View {
         HStack(spacing: 8) {
             // Высота строки задана кнопками шага — строка «Здоровья»,
             // пришедшая позже, ничего не сдвигает (P113).
-            if let health {
-                Label(health, systemImage: "heart")
-                    .font(Look.sans(12))
-                    .foregroundStyle(Look.inkFaint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onHealth?(health) }
-                    .accessibilityHint(T("Касание — записать в дневник", "Tap to add to the diary"))
+            // Погода и «Здоровье» — в той же строке, слева, где было пусто
+            // (P380); вдвоём — друг под другом, высоту строки задают кнопки.
+            VStack(alignment: .leading, spacing: 2) {
+                if let weather, Prefs.weatherOn {
+                    Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                if let health {
+                    Label(health, systemImage: "heart")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onHealth?(health) }
+                        .accessibilityHint(T("Касание — записать в дневник", "Tap to add to the diary"))
+                }
             }
+            .font(Look.sans(12))
+            .foregroundStyle(Look.inkFaint)
             Spacer()
             StepButton(icon: "arrow.uturn.backward", act: undo, name: T("Шаг назад", "Undo"))
             StepButton(icon: "arrow.uturn.forward", act: redo, name: T("Шаг вперёд", "Redo"))
@@ -203,12 +293,6 @@ struct DiaryPage: View {
                         .font(Look.serif(size - 1))
                         .foregroundStyle(Look.inkFaint)
                         .padding(.bottom, 12)
-                }
-                if let weather, Prefs.weatherOn {
-                    Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
-                        .font(Look.sans(12.5))
-                        .foregroundStyle(Look.inkFaint)
-                        .padding(.bottom, 10)
                 }
                 // «Как прошло?» можно выключить в настройках (P290).
                 if Prefs.askOn, !asked.isEmpty { askBlock }

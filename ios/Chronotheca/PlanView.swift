@@ -1569,32 +1569,31 @@ struct PlanPointLine: View {
     var body: some View {
         HStack(spacing: 0) {
             PointChipView(point: point)
-                .overlay {
-                    if glowing {
-                        Capsule()
-                            .strokeBorder(Look.glow, lineWidth: 2)
-                            .shadow(color: Look.glow.opacity(0.8), radius: 4)
-                            .padding(-2)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .scaleEffect(armed ? 1.3 : 1, anchor: .leading)
-                .overlay(alignment: .topTrailing) {
-                    if armed, let onDelete {
-                        DeleteBadge(action: onDelete)
-                            // Значок вырос на треть — крестик стоит на его
-                            // углу, а не на прежнем.
-                            .offset(x: PointChipView.width(point) * 0.3 + 13, y: -18)
-                    }
-                }
+                .scaleEffect(armed ? 1.25 : 1, anchor: .leading)
                 .contentShape(Capsule())
                 .onTapGesture { open?(point) }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityLabel(T("Точка на карте: ", "Place on the map: ") + point.label)
             Spacer(minLength: 0)
+            // Крестик — крупный, в той же строке справа (P380): маленький
+            // на углу точки было плохо видно.
+            if armed, let onDelete { DeleteBadge(action: onDelete) }
         }
         .padding(.horizontal, 14)
         .frame(height: 40)
+        // Строка точки — в тонкой синей рамке, пока точку держат или у
+        // неё крестик; рамка едет вместе с точкой (P380).
+        .background {
+            if glowing {
+                RoundedRectangle(cornerRadius: 9)
+                    .fill(Look.planBg.opacity(0.6))
+                    .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Look.glow, lineWidth: 1.5))
+                    .shadow(color: Look.glow.opacity(0.5), radius: 4)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
 
@@ -1608,8 +1607,8 @@ struct DeleteBadge: View {
             Image(systemName: "xmark.circle.fill")
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(.white, Look.pin)
-                .font(.system(size: 22))
-                .frame(width: 34, height: 34)
+                .font(.system(size: 34))
+                .frame(width: 48, height: 40)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

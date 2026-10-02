@@ -139,8 +139,12 @@ struct DiaryEditor: UIViewRepresentable {
         return view
     }
 
+    /// Поле записи открытого дня — в него несут из полоски (P380).
+    static weak var active: Coordinator?
+
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.parent = self
+        if editable && grows { DiaryEditor.active = context.coordinator }
         view.isEditable = editable
         view.isSelectable = editable
         context.coordinator.resolve = resolve
@@ -492,6 +496,31 @@ struct DiaryEditor: UIViewRepresentable {
         return changed ? out.joined(separator: "\n") : nil
     }
 
+    /// Поставить вложение своей строкой за абзацем, где `drop` (в тексте
+    /// записи); снимок к снимкам — рядом в ту же строку (P348, P380).
+    /// Возвращает текст и где стоит вложение.
+    static func putting(_ piece: String, at drop: Int, into text: String) -> (String, Int) {
+        let ns = text as NSString
+        guard ns.length > 0 else { return (piece, 0) }
+        let spot = min(max(drop, 0), ns.length)
+        let para = ns.paragraphRange(for: NSRange(location: min(spot, ns.length - 1), length: 0))
+        var j = para.location + para.length
+        if j > para.location, ns.character(at: j - 1) == 10 { j -= 1 }
+        let above = ns.substring(with: NSRange(location: para.location, length: j - para.location))
+            .trimmingCharacters(in: .whitespaces)
+        if above.isEmpty {
+            let out = ns.replacingCharacters(in: NSRange(location: para.location,
+                                                         length: j - para.location), with: piece)
+            return (out, para.location)
+        }
+        let isPhoto = { (s: String) in
+            !Diary.links(in: s).isEmpty && Diary.links(in: s).allSatisfy { Diary.kind(of: $0) == .photo }
+        }
+        let lead = isPhoto(piece) && isPhoto(above) ? " " : "\n"
+        let out = ns.replacingCharacters(in: NSRange(location: j, length: 0), with: lead + piece)
+        return (out, j + (lead as NSString).length)
+    }
+
     /// Есть ли в поле строка-ссылка, ещё не ставшая картинкой: её только
     /// что бросили в текст или вписали руками.
     static func hasLoosePicture(_ text: String) -> Bool {
@@ -719,6 +748,16 @@ struct DiaryEditor: UIViewRepresentable {
             let veil = UIControl(frame: window.bounds)
             veil.backgroundColor = UIColor.black.withAlphaComponent(0.06)
             veil.addTarget(self, action: #selector(disarm), for: .touchDown)
+            // Строка точки — в тонкой синей рамке во всю ширину текста (P380).
+            let field = view.convert(view.bounds, to: window)
+            let row = UIView(frame: CGRect(x: field.minX - 6, y: place.minY - 10,
+                                           width: field.width + 12, height: place.height + 20))
+            row.layer.borderColor = UIColor(Look.glow).cgColor
+            row.layer.borderWidth = 1.5
+            row.layer.cornerRadius = 9
+            row.backgroundColor = UIColor(Look.planBg).withAlphaComponent(0.55)
+            row.isUserInteractionEnabled = false
+            veil.addSubview(row)
             let chip = UIImageView(image: picture)
             chip.center = CGPoint(x: place.midX, y: place.midY)
             // Синяя кромка — та же, что у поднятого дела (P374).
@@ -729,16 +768,18 @@ struct DiaryEditor: UIViewRepresentable {
             chip.layer.shadowRadius = 6
             chip.layer.shadowOffset = CGSize(width: 0, height: 2)
             veil.addSubview(chip)
-            let grow: CGFloat = 1.6
+            let grow: CGFloat = 1.4
             let cross = UIButton(type: .custom)
+            // Крестик вдвое крупнее прежнего — его видно и пальцем не
+            // промахнуться (P380).
             let symbol = UIImage(systemName: "xmark.circle.fill",
-                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 22)
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 36)
                                      .applying(UIImage.SymbolConfiguration(
                                         paletteColors: [.white, UIColor(Look.pin)])))
             cross.setImage(symbol, for: .normal)
-            cross.frame = CGRect(x: 0, y: 0, width: 40, height: 40)
-            cross.center = CGPoint(x: place.midX + picture.size.width * grow / 2 - 2,
-                                   y: place.midY - picture.size.height * grow / 2 - 2)
+            cross.frame = CGRect(x: 0, y: 0, width: 56, height: 56)
+            cross.center = CGPoint(x: min(place.midX + picture.size.width * grow / 2 + 22, field.maxX - 10),
+                                   y: place.midY)
             cross.accessibilityLabel = T("Удалить точку", "Delete place")
             cross.addAction(UIAction { [weak self, weak view] _ in
                 guard let self, let view else { return }
@@ -782,7 +823,7 @@ struct DiaryEditor: UIViewRepresentable {
             guard !hidden, let window = view.window, let position = view.closestPosition(to: at)
             else { mark?.isHidden = true; return }
             var spot = position
-            if !takenIsPoint(view) {
+            do {
                 let ns = view.textStorage.string as NSString
                 let offset = min(view.offset(from: view.beginningOfDocument, to: position), ns.length)
                 let para = ns.paragraphRange(for: NSRange(location: offset, length: 0))
@@ -826,6 +867,8 @@ struct DiaryEditor: UIViewRepresentable {
         private var before: NSAttributedString?
         /// Где взятое стоит сейчас — в показанном поле.
         private var now: Int?
+        /// Над пальцем едет строка, а не картинка (точка, голос, файл).
+        private var ghostLine = false
         /// Запись, как она станет после переноса.
         private var result: String?
 
@@ -856,7 +899,8 @@ struct DiaryEditor: UIViewRepresentable {
                     lift(i, g, in: view)
                 }
                 let local = g.location(in: ghost?.superview ?? view)
-                ghost?.center = CGPoint(x: local.x, y: local.y - Self.lift)
+                ghost?.center = CGPoint(x: ghostLine ? (ghost?.center.x ?? local.x) : local.x,
+                                        y: local.y - Self.lift)
                 // Над полоской снимок бледнеет — видно, что отпустить здесь
                 // значит вернуть его вниз; над заголовком — то же для точки.
                 let away = overStrip(g, in: view) || overTitle(g, in: view)
@@ -937,9 +981,31 @@ struct DiaryEditor: UIViewRepresentable {
             // полоски внизу, за край страницы (P272).
             let host: UIView = view.window ?? view
             let spot = g.location(in: host)
-            shadow.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
-            host.addSubview(shadow)
-            ghost = shadow
+            if small {
+                // Точка, голос, файл — строкой (P380): над пальцем едет вся
+                // строка в синей рамке, во всю ширину текста.
+                let field = view.convert(view.bounds, to: host)
+                let size = picture?.size ?? .zero
+                let row = UIView(frame: CGRect(x: 0, y: 0, width: field.width + 12, height: size.height * 1.3 + 16))
+                row.backgroundColor = UIColor(Look.planBg).withAlphaComponent(0.95)
+                row.layer.borderColor = UIColor(Look.glow).cgColor
+                row.layer.borderWidth = 2
+                row.layer.cornerRadius = 9
+                row.layer.shadowOpacity = 0.25
+                row.layer.shadowRadius = 8
+                let chip = UIImageView(image: picture)
+                chip.frame = CGRect(x: 6, y: 8, width: size.width * 1.3, height: size.height * 1.3)
+                row.addSubview(chip)
+                row.center = CGPoint(x: field.midX, y: spot.y - Self.lift)
+                host.addSubview(row)
+                ghost = row
+                ghostLine = true
+            } else {
+                shadow.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
+                host.addSubview(shadow)
+                ghost = shadow
+                ghostLine = false
+            }
             before = view.attributedText.copy() as? NSAttributedString
             now = i
             result = nil
@@ -957,6 +1023,58 @@ struct DiaryEditor: UIViewRepresentable {
             result = next.0
             show(next.0, in: view)
             now = DiaryEditor.viewOffset(plain: next.1, in: view.attributedText)
+        }
+
+        // MARK: - Из полоски в текст (P380)
+
+        /// Снимок, голос или файл из полоски несут над полем: текст
+        /// расступается там, куда он ляжет. `false` — палец не над полем.
+        @discardableResult
+        func carryIn(_ piece: String, at global: CGPoint) -> Bool {
+            guard let view, let window = view.window else { return false }
+            let local = view.convert(global, from: window)
+            guard view.bounds.insetBy(dx: -10, dy: -30).contains(local) else {
+                carryOut()
+                return false
+            }
+            let at = CGPoint(x: local.x, y: local.y - Self.lift)
+            quietUntil = Date().addingTimeInterval(1.5)
+            if result == nil {
+                guard let position = view.closestPosition(to: at) else { return true }
+                let drop = min(view.offset(from: view.beginningOfDocument, to: position),
+                               view.textStorage.length)
+                let plainDrop = (DiaryEditor.plain(view.attributedText.attributedSubstring(
+                    from: NSRange(location: 0, length: drop))) as NSString).length
+                before = view.attributedText.copy() as? NSAttributedString
+                previewing = true
+                let next = DiaryEditor.putting(piece, at: plainDrop,
+                                               into: DiaryEditor.plain(view.attributedText))
+                result = next.0
+                show(next.0, in: view)
+                now = DiaryEditor.viewOffset(plain: next.1, in: view.attributedText)
+            } else {
+                preview(at, in: view)
+            }
+            return true
+        }
+
+        /// Палец ушёл с поля — текст, каким был.
+        func carryOut() {
+            guard let view, previewing, taken == nil else { return }
+            restore(view)
+        }
+
+        /// Отпустили над полем — вложение встаёт туда, где его показывали.
+        @discardableResult
+        func carryEnd() -> Bool {
+            guard let view, previewing, taken == nil, let done = result else {
+                carryOut()
+                return false
+            }
+            restore(view)
+            show(done, in: view)
+            parent.text = done
+            return true
         }
 
         /// Вернуть поле, каким оно было до переноса.
@@ -1024,33 +1142,8 @@ struct DiaryEditor: UIViewRepresentable {
                 from: NSRange(location: i, length: 1)))
             let text = DiaryEditor.plain(storage) as NSString
 
-            if let line = storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) as? String,
-               Geo.point(in: line) != nil,
-               storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil {
-                let spot = min(drop, ns.length)
-                guard spot != i, spot != i + 1 else { return nil }
-                var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
-                if NSMaxRange(cut) < text.length, text.character(at: NSMaxRange(cut)) == 32 {
-                    cut.length += 1
-                } else if cut.location > 0, text.character(at: cut.location - 1) == 32 {
-                    cut.location -= 1
-                    cut.length += 1
-                }
-                var target = plainLength(spot)
-                if target >= NSMaxRange(cut) {
-                    target -= cut.length
-                } else if target > cut.location {
-                    target = cut.location
-                }
-                let rest = text.replacingCharacters(in: cut, with: "")
-                let into = min(target, (rest as NSString).length)
-                let (out, _) = DayStore.insert(piece, into: rest, at: into)
-                let found = (out as NSString).range(of: piece, options: [],
-                                                    range: NSRange(location: max(0, into - 1),
-                                                                   length: (out as NSString).length - max(0, into - 1)))
-                return (out, found.location == NSNotFound ? into : found.location)
-            }
-
+            // Точка, как и снимок, встаёт только своей строкой (P380): строку
+            // текста она больше не рвёт.
             let para = ns.paragraphRange(for: NSRange(location: min(drop, ns.length), length: 0))
             var j = para.location + para.length
             if j > para.location, ns.character(at: j - 1) == 10 { j -= 1 }
@@ -1085,7 +1178,9 @@ struct DiaryEditor: UIViewRepresentable {
                 ? rest.substring(with: rest.lineRange(for: NSRange(location: target - 1, length: 0)))
                     .trimmingCharacters(in: .newlines)
                 : ""
-            let beside = !Diary.links(in: above).isEmpty
+            let pieceIsPhoto = !Diary.links(in: piece).isEmpty
+                && Diary.links(in: piece).allSatisfy { Diary.kind(of: $0) == .photo }
+            let beside = pieceIsPhoto && !Diary.links(in: above).isEmpty
                 && Diary.links(in: above).allSatisfy { Diary.kind(of: $0) == .photo }
             let lead = target == 0 ? "" : (beside ? " " : "\n")
             let out = rest.replacingCharacters(in: NSRange(location: target, length: 0),
@@ -1093,6 +1188,15 @@ struct DiaryEditor: UIViewRepresentable {
                                                    + (target == 0 && rest.length > 0 ? "\n" : ""))
             return (out, target + (lead as NSString).length)
         }
+
+        // Долгое нажатие на снимок или точку iPhone сам превращал в меню
+        // «Скопировать изображение / Сохранить в Фото» (P380) — его нет:
+        // у вложений в записи свои касание и долгое нажатие.
+        func textView(_ textView: UITextView, menuConfigurationFor textItem: UITextItem,
+                      defaultMenu: UIMenu) -> UITextItem.MenuConfiguration? { nil }
+
+        func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem,
+                      defaultAction: UIAction) -> UIAction? { nil }
 
         @objc func tapped(_ g: UITapGestureRecognizer) {
             // Метка касания не снимается здесь: поле может спросить
@@ -1397,8 +1501,11 @@ final class PointChip: NSTextAttachment {
         let font = UIFont.systemFont(ofSize: 12.5, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font,
                                                      .foregroundColor: UIColor(Look.ink)]
-        let name = title.trimmingCharacters(in: .whitespaces)
-        let wide = name.isEmpty ? 0 : min(ceil((name as NSString).size(withAttributes: words).width), 180)
+        // Точка без названия подписана «Место» (P380): одна булавка в
+        // строке не читалась как запись.
+        let given = title.trimmingCharacters(in: .whitespaces)
+        let name = given.isEmpty ? T("Место", "Place") : given
+        let wide = min(ceil((name as NSString).size(withAttributes: words).width), 180)
         let chip = CGSize(width: name.isEmpty ? 24 : 24 + wide + 8, height: 21)
         let size = CGSize(width: chip.width + pad * 2, height: chip.height + pad * 2)
         let pin = UIImage(systemName: "mappin.circle.fill",
