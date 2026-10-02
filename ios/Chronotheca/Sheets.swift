@@ -394,6 +394,17 @@ struct SettingsSticker: View {
                 Choice(options: [(false, "°C"), (true, "°F")], selection: $fahrenheit)
             }
         }
+        // «Здоровье» в шапке дневника (P378): включили — iPhone спросит.
+        if HealthDay.available {
+            NoteRow(title: T("Здоровье: шаги, сон, тренировки", "Health: steps, sleep, workouts"),
+                    detail: health ? T("Строкой над дневником; касание — в запись.",
+                                       "A line above the diary; tap to add it.") : nil) {
+                Choice(options: onOff, selection: Binding(get: { health }, set: { on in
+                    health = on
+                    if on { HealthDay.ask { _ in } }
+                }))
+            }
+        }
         // События Календаря iPhone в плане (P376).
         NoteRow(title: T("События Календаря iPhone", "iPhone Calendar events"),
                 detail: eventsDetail, detailColor: eventsDenied ? .orange : Look.inkSoft) {
@@ -542,6 +553,7 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.fahrenheit) private var fahrenheit = false
     @AppStorage(Prefs.noAsk) private var noAsk = false
     @AppStorage(DayEvents.onKey) private var calendarEvents = true
+    @AppStorage(HealthDay.key) private var health = false
     @AppStorage(DayEvents.holidaysKey) private var calendarHolidays = false
     @AppStorage(Prefs.calendarTint) private var calendarTint = "distance"
     @AppStorage(Prefs.sundayFirst) private var sundayFirst = false

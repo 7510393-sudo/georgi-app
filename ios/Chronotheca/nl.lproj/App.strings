@@ -32,6 +32,9 @@
 "%@ YEARS AGO" = "%@ JAAR GELEDEN";
 "%@ added since the last backup." = "Sinds de laatste reservekopie is er %@ bijgekomen.";
 "%@ days ago" = "%@ dagen geleden";
+"%@ h" = "%@ u";
+"%@ h %@ min" = "%@ u %@ min";
+"%@ min" = "%@ min";
 "%@ more" = "nog %@";
 "%@ of %@" = "%@ van %@";
 ", copy" = ", kopiëren";
@@ -52,6 +55,7 @@
 "A backup is a second folder with the same entries, photos and videos, kept somewhere else: on a USB stick or in another cloud (Google Drive, OneDrive, Dropbox). If something happens to your phone or iCloud, your entries stay there." = "Een reservekopie is een tweede map met dezelfde aantekeningen, foto’s en video’s, maar ergens anders: op een usb-stick of in een andere cloud (Google Drive, OneDrive, Dropbox). Gebeurt er iets met je telefoon of met iCloud, dan blijven je aantekeningen daar.";
 "A folder in iCloud Drive" = "Een map in iCloud Drive";
 "A folder on this iPhone" = "Een map op deze iPhone";
+"A line above the diary; tap to add it." = "Een regel boven het dagboek; tik om hem toe te voegen.";
 "A new day starts at" = "Een nieuwe dag begint om";
 "About" = "Over";
 "About 60 MB a minute. Smaller clips stay as they are" = "Ongeveer 60 MB per minuut. Kleinere clips blijven zoals ze zijn";
@@ -185,6 +189,7 @@
 "Frost on the railings" = "Rijp op de reling";
 "Go back ›" = "Terug ›";
 "HOW DID IT GO?" = "HOE GING HET?";
+"Health: steps, sleep, workouts" = "Gezondheid: stappen, slaap, trainingen";
 "Hide ▾" = "Verberg ▾";
 "Holidays and birthdays" = "Feestdagen en verjaardagen";
 "How did it go?" = "Hoe ging het?";
@@ -363,6 +368,7 @@
 "Tap again to go back to this month" = "Tik nogmaals om terug te gaan naar deze maand";
 "Tap again to go back to this year" = "Tik nogmaals om terug te gaan naar dit jaar";
 "Tap again to open the day →" = "Tik nogmaals om de dag te openen →";
+"Tap to add to the diary" = "Tik om toe te voegen aan het dagboek";
 "Tap “+” to add a task." = "Tik op ‘+’ om een taak toe te voegen.";
 "Tap “Move the archive” and choose “%@” itself: " = "Tik op ‘Archief verplaatsen’ en kies ‘%@’ zelf: ";
 "Task at %@" = "Taak om %@";
@@ -558,9 +564,11 @@
 "save to diary" = "bewaren in het dagboek";
 "save to plan" = "bewaren in het plan";
 "show" = "tonen";
+"sleep " = "slaap ";
 "sleet" = "natte sneeuw";
 "smaller" = "kleiner";
 "snow" = "sneeuw";
+"steps " = "stappen ";
 "storage and iCloud. The entries are safe: they are where you " = "van de telefoon en iCloud. De aantekeningen zijn veilig: ze staan waar je ";
 "the app will recognise the archive and offer to move there " = "de app herkent het archief en biedt aan om daarheen te verplaatsen ";
 "the future" = "de toekomst";
@@ -576,6 +584,7 @@
 "what was written here." = "wat hier is geschreven.";
 "will recognise its archive." = "herkent zijn archief.";
 "windy" = "winderig";
+"workouts " = "trainingen ";
 "yesterday" = "gisteren";
 "“Directions”" = "‘Route’";
 "“How did it go?”" = "‘Hoe ging het?’";

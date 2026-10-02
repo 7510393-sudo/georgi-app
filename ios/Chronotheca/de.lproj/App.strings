@@ -32,6 +32,9 @@
 "%@ YEARS AGO" = "VOR %@ JAHREN";
 "%@ added since the last backup." = "Seit der letzten Sicherung sind %@ dazugekommen.";
 "%@ days ago" = "vor %@ Tagen";
+"%@ h" = "%@ Std.";
+"%@ h %@ min" = "%@ Std. %@ Min.";
+"%@ min" = "%@ Min.";
 "%@ more" = "%@ weitere";
 "%@ of %@" = "%@ von %@";
 ", copy" = ", kopieren";
@@ -52,6 +55,7 @@
 "A backup is a second folder with the same entries, photos and videos, kept somewhere else: on a USB stick or in another cloud (Google Drive, OneDrive, Dropbox). If something happens to your phone or iCloud, your entries stay there." = "Eine Sicherung ist ein zweiter Ordner mit denselben Einträgen, Fotos und Videos – an einem anderen Ort: auf einem USB-Stick oder in einer anderen Cloud (Google Drive, OneDrive, Dropbox). Passiert etwas mit dem Telefon oder mit iCloud, bleiben die Einträge dort erhalten.";
 "A folder in iCloud Drive" = "Ein Ordner in iCloud Drive";
 "A folder on this iPhone" = "Ein Ordner auf diesem iPhone";
+"A line above the diary; tap to add it." = "Eine Zeile über dem Tagebuch; Tippen übernimmt sie.";
 "A new day starts at" = "Ein neuer Tag beginnt um";
 "About" = "Über die App";
 "About 60 MB a minute. Smaller clips stay as they are" = "Etwa 60 MB pro Minute. Kleinere Clips bleiben, wie sie sind";
@@ -185,6 +189,7 @@
 "Frost on the railings" = "Reif auf dem Geländer";
 "Go back ›" = "Zurück ›";
 "HOW DID IT GO?" = "WIE WAR ES?";
+"Health: steps, sleep, workouts" = "Health: Schritte, Schlaf, Training";
 "Hide ▾" = "Ausblenden ▾";
 "Holidays and birthdays" = "Feiertage und Geburtstage";
 "How did it go?" = "Wie war es?";
@@ -363,6 +368,7 @@
 "Tap again to go back to this month" = "Nochmals tippen, um zum aktuellen Monat zurückzukehren";
 "Tap again to go back to this year" = "Nochmals tippen, um zum aktuellen Jahr zurückzukehren";
 "Tap again to open the day →" = "Nochmals tippen, um den Tag zu öffnen →";
+"Tap to add to the diary" = "Tippen — ins Tagebuch übernehmen";
 "Tap “+” to add a task." = "Tippe auf „+“, um eine Aufgabe einzutragen.";
 "Tap “Move the archive” and choose “%@” itself: " = "Tippe auf „Archiv verschieben“ und wähle „%@“ selbst: ";
 "Task at %@" = "Aufgabe um %@";
@@ -558,9 +564,11 @@
 "save to diary" = "ins Tagebuch speichern";
 "save to plan" = "in den Plan speichern";
 "show" = "zeigen";
+"sleep " = "Schlaf ";
 "sleet" = "Schneeregen";
 "smaller" = "kleiner";
 "snow" = "Schnee";
+"steps " = "Schritte ";
 "storage and iCloud. The entries are safe: they are where you " = "und iCloud verschoben wurde. Die Einträge sind sicher: Sie liegen dort, wohin du ";
 "the app will recognise the archive and offer to move there " = "Die App erkennt das Archiv und bietet an, dorthin zu verschieben, ";
 "the future" = "die Zukunft";
@@ -576,6 +584,7 @@
 "what was written here." = "was hier geschrieben wurde.";
 "will recognise its archive." = "erkennt ihr Archiv.";
 "windy" = "windig";
+"workouts " = "Training ";
 "yesterday" = "gestern";
 "“Directions”" = "„Route“";
 "“How did it go?”" = "„Wie war es?“";

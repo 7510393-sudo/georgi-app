@@ -32,6 +32,9 @@
 "%@ YEARS AGO" = "%@年前";
 "%@ added since the last backup." = "前回のバックアップから%@増えました。";
 "%@ days ago" = "%@日前";
+"%@ h" = "%@時間";
+"%@ h %@ min" = "%@時間%@分";
+"%@ min" = "%@分";
 "%@ more" = "ほか%@件";
 "%@ of %@" = "%@ / %@";
 ", copy" = "、コピー";
@@ -52,6 +55,7 @@
 "A backup is a second folder with the same entries, photos and videos, kept somewhere else: on a USB stick or in another cloud (Google Drive, OneDrive, Dropbox). If something happens to your phone or iCloud, your entries stay there." = "バックアップとは、同じ記録・写真・ビデオを入れた2つ目のフォルダを別の場所に置くことです。USBメモリや別のクラウド（Google ドライブ、OneDrive、Dropbox）などです。スマートフォンやiCloudに何かあっても、記録はそこに残ります。";
 "A folder in iCloud Drive" = "iCloud Driveのフォルダ";
 "A folder on this iPhone" = "このiPhoneのフォルダ";
+"A line above the diary; tap to add it." = "日記の上に1行で表示。タップで記録に追加。";
 "A new day starts at" = "新しい日の始まり";
 "About" = "このアプリについて";
 "About 60 MB a minute. Smaller clips stay as they are" = "1分で約60MB。1080pより小さいクリップはそのまま";
@@ -185,6 +189,7 @@
 "Frost on the railings" = "手すりの霜";
 "Go back ›" = "戻る ›";
 "HOW DID IT GO?" = "どうでしたか？";
+"Health: steps, sleep, workouts" = "ヘルスケア：歩数・睡眠・ワークアウト";
 "Hide ▾" = "隠す ▾";
 "Holidays and birthdays" = "祝日と誕生日";
 "How did it go?" = "どうでしたか？";
@@ -363,6 +368,7 @@
 "Tap again to go back to this month" = "もう一度タップすると今月に戻ります";
 "Tap again to go back to this year" = "もう一度タップすると今年に戻ります";
 "Tap again to open the day →" = "もう一度タップすると日を開きます →";
+"Tap to add to the diary" = "タップで日記に追加";
 "Tap “+” to add a task." = "「+」をタップして予定を追加します。";
 "Tap “Move the archive” and choose “%@” itself: " = "「アーカイブを移動」をタップして「%@」自体を選んでください。";
 "Task at %@" = "%@の予定";
@@ -558,9 +564,11 @@
 "save to diary" = "日記に保存";
 "save to plan" = "計画に保存";
 "show" = "表示";
+"sleep " = "睡眠 ";
 "sleet" = "みぞれ";
 "smaller" = "小さめ";
 "snow" = "雪";
+"steps " = "歩数 ";
 "storage and iCloud. The entries are safe: they are where you " = "移動されたことが原因です。記録は無事で、移動先に";
 "the app will recognise the archive and offer to move there " = "アプリがアーカイブを認識し、ここで書いたものを";
 "the future" = "未来";
@@ -576,6 +584,7 @@
 "what was written here." = "そこへ移動するよう提案します。";
 "will recognise its archive." = "自分のアーカイブを認識します。";
 "windy" = "風が強い";
+"workouts " = "ワークアウト ";
 "yesterday" = "昨日";
 "“Directions”" = "「経路」";
 "“How did it go?”" = "「どうでしたか？」";

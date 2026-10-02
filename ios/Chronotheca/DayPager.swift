@@ -900,6 +900,8 @@ struct SideDay: View {
     @State private var weather: String?
     /// События Календаря этого дня (P376) — как на открытой странице.
     @State private var events: [DayEvents.Shown] = []
+    /// День из «Здоровья» (P378) — как на открытой странице.
+    @State private var health: String?
 
     var body: some View {
         Group {
@@ -928,7 +930,9 @@ struct SideDay: View {
                   editable: false,
                   weather: weather,
                   photos: photos.map { vault.mediaURL($0, for: date) },
-                  resolve: { [vault, date] in vault.mediaURL($0, for: date) })
+                  resolve: { [vault, date] in vault.mediaURL($0, for: date) },
+                  health: health)
+        .task(id: date) { health = await HealthDay.summary(for: date) }
     }
 
     private func load() {

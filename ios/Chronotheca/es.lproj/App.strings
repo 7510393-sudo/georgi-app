@@ -32,6 +32,9 @@
 "%@ YEARS AGO" = "HACE %@ AÑOS";
 "%@ added since the last backup." = "Desde la última copia se han añadido %@.";
 "%@ days ago" = "hace %@ días";
+"%@ h" = "%@ h";
+"%@ h %@ min" = "%@ h %@ min";
+"%@ min" = "%@ min";
 "%@ more" = "%@ más";
 "%@ of %@" = "%@ de %@";
 ", copy" = ", copiar";
@@ -52,6 +55,7 @@
 "A backup is a second folder with the same entries, photos and videos, kept somewhere else: on a USB stick or in another cloud (Google Drive, OneDrive, Dropbox). If something happens to your phone or iCloud, your entries stay there." = "Una copia de seguridad es una segunda carpeta con las mismas entradas, fotos y vídeos, guardada en otro sitio: en una memoria USB o en otra nube (Google Drive, OneDrive, Dropbox). Si le pasa algo a tu teléfono o a iCloud, tus entradas siguen allí.";
 "A folder in iCloud Drive" = "Una carpeta en iCloud Drive";
 "A folder on this iPhone" = "Una carpeta en este iPhone";
+"A line above the diary; tap to add it." = "Una línea sobre el diario; toca para añadirla.";
 "A new day starts at" = "Un nuevo día empieza a las";
 "About" = "Acerca de";
 "About 60 MB a minute. Smaller clips stay as they are" = "Unos 60 MB por minuto. Los clips más pequeños quedan tal cual";
@@ -185,6 +189,7 @@
 "Frost on the railings" = "Escarcha en la barandilla";
 "Go back ›" = "Volver ›";
 "HOW DID IT GO?" = "¿QUÉ TAL FUE?";
+"Health: steps, sleep, workouts" = "Salud: pasos, sueño, entrenamientos";
 "Hide ▾" = "Ocultar ▾";
 "Holidays and birthdays" = "Festivos y cumpleaños";
 "How did it go?" = "¿Qué tal fue?";
@@ -363,6 +368,7 @@
 "Tap again to go back to this month" = "Toca otra vez para volver a este mes";
 "Tap again to go back to this year" = "Toca otra vez para volver a este año";
 "Tap again to open the day →" = "Toca otra vez para abrir el día →";
+"Tap to add to the diary" = "Toca para añadir al diario";
 "Tap “+” to add a task." = "Toca «+» para añadir una tarea.";
 "Tap “Move the archive” and choose “%@” itself: " = "Toca «Mover el archivo» y elige «%@» en sí: ";
 "Task at %@" = "Tarea a las %@";
@@ -558,9 +564,11 @@
 "save to diary" = "guardar en el diario";
 "save to plan" = "guardar en el plan";
 "show" = "mostrar";
+"sleep " = "sueño ";
 "sleet" = "aguanieve";
 "smaller" = "más pequeño";
 "snow" = "nieve";
+"steps " = "pasos ";
 "storage and iCloud. The entries are safe: they are where you " = "del teléfono e iCloud. Las entradas están a salvo: están donde ";
 "the app will recognise the archive and offer to move there " = "la app reconocerá el archivo y te ofrecerá mover allí ";
 "the future" = "el futuro";
@@ -576,6 +584,7 @@
 "what was written here." = "lo que se escribió aquí.";
 "will recognise its archive." = "reconocerá su archivo.";
 "windy" = "ventoso";
+"workouts " = "entrenamientos ";
 "yesterday" = "ayer";
 "“Directions”" = "«Cómo llegar»";
 "“How did it go?”" = "«¿Qué tal fue?»";

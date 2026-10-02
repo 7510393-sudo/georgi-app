@@ -8,6 +8,7 @@ struct DiaryView: View {
 
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var shell: Shell
+    @State private var health: String?
 
     /// На ступень крупнее прежних 15,5 и растёт с настройкой (P274).
     static var size: CGFloat { 16.5 * Prefs.textScale }
@@ -61,7 +62,11 @@ struct DiaryView: View {
             },
             undo: store.diaryBack.isEmpty || !store.canEditDiary ? nil : { store.undoDiary() },
             redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() },
-            home: shell.freshStart)
+            home: shell.freshStart,
+            health: health,
+            // Касание по строке «Здоровья» — она ложится в запись (P378).
+            onHealth: store.canEditDiary ? { line in store.addHealthLine(line) } : nil)
+        .task(id: store.date) { health = await HealthDay.summary(for: store.date) }
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in store.scheduleSave() }
         .onChange(of: store.diaryText) { _, _ in
@@ -118,6 +123,9 @@ struct DiaryPage: View {
     /// прокручивается к концу, под ней пять пустых строк: коснулся — и
     /// пишешь (P346). У соседних страниц не меняется.
     var home = 0
+    /// День из «Здоровья» (P378) — слева в верхней строке, где пусто.
+    var health: String? = nil
+    var onHealth: ((String) -> Void)? = nil
 
     /// Для какого открытия запись уже прокручена к концу.
     private static var homed = -1
@@ -164,6 +172,18 @@ struct DiaryPage: View {
     /// (P312): строка не уезжает со страницей, что бы та ни листала.
     private var head: some View {
         HStack(spacing: 8) {
+            // Высота строки задана кнопками шага — строка «Здоровья»,
+            // пришедшая позже, ничего не сдвигает (P113).
+            if let health {
+                Label(health, systemImage: "heart")
+                    .font(Look.sans(12))
+                    .foregroundStyle(Look.inkFaint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onHealth?(health) }
+                    .accessibilityHint(T("Касание — записать в дневник", "Tap to add to the diary"))
+            }
             Spacer()
             StepButton(icon: "arrow.uturn.backward", act: undo, name: T("Шаг назад", "Undo"))
             StepButton(icon: "arrow.uturn.forward", act: redo, name: T("Шаг вперёд", "Redo"))

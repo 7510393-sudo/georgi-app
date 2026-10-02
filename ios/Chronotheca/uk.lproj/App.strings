@@ -32,6 +32,9 @@
 "%@ YEARS AGO" = "%@ РОКИ ТОМУ";
 "%@ added since the last backup." = "Від минулої копії додалося %@.";
 "%@ days ago" = "%@ дн. тому";
+"%@ h" = "%@ год";
+"%@ h %@ min" = "%@ год %@ хв";
+"%@ min" = "%@ хв";
 "%@ more" = "ще %@";
 "%@ of %@" = "%@ з %@";
 ", copy" = ", скопіювати";
@@ -52,6 +55,7 @@
 "A backup is a second folder with the same entries, photos and videos, kept somewhere else: on a USB stick or in another cloud (Google Drive, OneDrive, Dropbox). If something happens to your phone or iCloud, your entries stay there." = "Копія — це друга тека з тими самими записами, знімками й відео, але в іншому місці: на флешці або в іншій хмарі (Google Диск, OneDrive, Dropbox). Якщо щось станеться з телефоном чи iCloud — записи залишаться там.";
 "A folder in iCloud Drive" = "Тека в iCloud Drive";
 "A folder on this iPhone" = "Тека на цьому iPhone";
+"A line above the diary; tap to add it." = "Рядком над щоденником; дотик — у запис.";
 "A new day starts at" = "Новий день починається о";
 "About" = "Про застосунок";
 "About 60 MB a minute. Smaller clips stay as they are" = "Хвилина ~60 МБ. Ролики, менші за 1080p, — як є";
@@ -185,6 +189,7 @@
 "Frost on the railings" = "Іній на поруччі";
 "Go back ›" = "Повернути ›";
 "HOW DID IT GO?" = "ЯК МИНУЛО?";
+"Health: steps, sleep, workouts" = "Здоров’я: кроки, сон, тренування";
 "Hide ▾" = "Сховати ▾";
 "Holidays and birthdays" = "Свята й дні народження";
 "How did it go?" = "Як минуло?";
@@ -363,6 +368,7 @@
 "Tap again to go back to this month" = "Натисніть ще раз, щоб повернутися до цього місяця";
 "Tap again to go back to this year" = "Натисніть ще раз, щоб повернутися до цього року";
 "Tap again to open the day →" = "Натисніть ще раз, щоб відкрити день →";
+"Tap to add to the diary" = "Торкніться — записати в щоденник";
 "Tap “+” to add a task." = "Натисніть «+», щоб вписати справу.";
 "Tap “Move the archive” and choose “%@” itself: " = "Натисніть «Перенести архів» і виберіть саму «%@»: ";
 "Task at %@" = "Справа на %@";
@@ -558,9 +564,11 @@
 "save to diary" = "зберегти в щоденник";
 "save to plan" = "зберегти в план";
 "show" = "показувати";
+"sleep " = "сон ";
 "sleet" = "мокрий сніг";
 "smaller" = "дрібніше";
 "snow" = "сніг";
+"steps " = "кроки ";
 "storage and iCloud. The entries are safe: they are where you " = "телефона й iCloud. Записи цілі: вони лежать там, куди ви ";
 "the app will recognise the archive and offer to move there " = "застосунок упізнає архів і запропонує перенести туди те, ";
 "the future" = "майбутнє";
@@ -576,6 +584,7 @@
 "what was written here." = "що записано тут.";
 "will recognise its archive." = "упізнає свій архів.";
 "windy" = "вітряно";
+"workouts " = "тренування ";
 "yesterday" = "учора";
 "“Directions”" = "«У навігатор»";
 "“How did it go?”" = "«Як минуло?»";

@@ -6,3 +6,4 @@
 "NSFaceIDUsageDescription" = "Para bloquear suas anotações: sem o seu rosto ou código, ninguém consegue abri-las.";
 "NSCalendarsFullAccessUsageDescription" = "Para mostrar os eventos do Calendário do iPhone no plano do dia, por horário e com os seus alertas. Nada é copiado do Calendário a menos que você peça.";
 "NSSpeechRecognitionUsageDescription" = "Para transformar suas notas de voz em texto do diário. A gravação continua; quando o idioma permite, o reconhecimento é feito no próprio iPhone, sem rede.";
+"NSHealthShareUsageDescription" = "Para mostrar os passos, o sono e os treinos do dia acima do diário. Os dados ficam no Saúde; só vão para a entrada se você tocar na linha.";

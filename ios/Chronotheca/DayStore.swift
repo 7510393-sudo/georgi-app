@@ -506,6 +506,15 @@ final class DayStore: ObservableObject {
 
     func touchDiary() { lastEdit = Date() }
 
+    /// Строка «Здоровья» — касанием, в конец записи (P378).
+    func addHealthLine(_ line: String) {
+        guard canEditDiary else { return }
+        let body = diaryText.trimmingCharacters(in: .whitespacesAndNewlines)
+        diaryText = (body.isEmpty ? "" : body + "\n\n") + "♥ " + line
+        touchDiary()
+        save()
+    }
+
     /// Расшифровка голоса (P378): под строкой записи, если она в тексте;
     /// иначе — новым абзацем в конце записи.
     func addTranscript(_ text: String, after link: String) {

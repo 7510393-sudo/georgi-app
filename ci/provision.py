@@ -180,6 +180,23 @@ def main():
               "без неё; включить можно вручную: developer.apple.com → "
               "Identifiers → com.kobiashvili.diary → WeatherKit.")
 
+    # «Здоровье» (P378) — тоже право знака; без него приложение просто
+    # не получит доступа, сборка от этого не падает.
+    try:
+        caps = api(f"/v1/bundleIds/{bundle_ref}/bundleIdCapabilities", tok=tok)
+        have = [c["attributes"].get("capabilityType") for c in caps.get("data", [])]
+        if "HEALTHKIT" not in have:
+            api("/v1/bundleIdCapabilities", "POST", {
+                "data": {
+                    "type": "bundleIdCapabilities",
+                    "attributes": {"capabilityType": "HEALTHKIT"},
+                    "relationships": {
+                        "bundleId": {"data": {"id": bundle_ref, "type": "bundleIds"}}},
+                }}, tok)
+            print("  «Здоровье» включено для знака")
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::«Здоровье» включить не удалось ({e}). Сборка идёт без него.")
+
     for p in api("/v1/profiles?limit=200", tok=tok).get("data", []):
         if p["attributes"]["name"] == PROFILE_NAME:
             print(f"  убираю прежний профиль {p['id']}")
