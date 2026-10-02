@@ -898,6 +898,8 @@ struct SideDay: View {
     @State private var photos: [String] = []
     @State private var planPhotos: [String] = []
     @State private var weather: String?
+    /// События Календаря этого дня (P376) — как на открытой странице.
+    @State private var events: [DayEvents.Shown] = []
 
     var body: some View {
         Group {
@@ -912,6 +914,7 @@ struct SideDay: View {
     private var plan: some View {
         PlanPage(rows: rows, isPast: date < DayStore.today(),
                  bellColor: Ru.dayColor(date),
+                 events: events,
                  weather: weather,
                  photos: planPhotos.map { vault.mediaURL($0, for: date) },
                  resolve: { [vault, date] in vault.mediaURL($0, for: date) })
@@ -938,6 +941,7 @@ struct SideDay: View {
         answers = diary.answers
         photos = diary.photos
         weather = file.value("weather")
+        events = DayEvents.shown(DayEvents.items(for: date), marks: DayEvents.marks(in: rows))
     }
 }
 
@@ -951,6 +955,7 @@ struct PlanPage: View {
     /// Цвет дня недели: колокольчик красится им и на соседних страницах,
     /// иначе он бледнеет на просвет и вспыхивает после поворота.
     var bellColor: Color = Look.inkFaint
+    var events: [DayEvents.Shown] = []
     var weather: String?
     var photos: [URL?] = []
     /// Где лежат снимки, поставленные между делами (P205).
@@ -961,21 +966,29 @@ struct PlanPage: View {
     var body: some View {
         PlanScaffold(isPast: isPast, dimmed: isPast, weather: weather, photos: photos,
                      takesBack: Plan.hasPhotoRows(rows)) {
-            if tasks.isEmpty {
+            if tasks.isEmpty && events.isEmpty {
                 PlanEmpty(isPast: isPast)
             } else {
+                // События Календаря — первыми, тем же кодом, что на
+                // открытой странице (P114, P376).
+                ForEach(Array(events.enumerated()), id: \.element.key) { i, e in
+                    PlanRowLine(number: i + 1, row: e.row, faded: isPast, bellColor: bellColor,
+                                stripe: e.color)
+                    Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                }
                 // Дела и снимки между ними — в том же порядке, что и на
                 // открытой странице; прочие строки файла не рисуются.
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
                     if row.isTask {
-                        PlanRowLine(number: rows[..<i].filter(\.isTask).count + 1,
+                        PlanRowLine(number: events.count + rows[..<i].filter(\.isTask).count + 1,
                                     row: row, faded: isPast, bellColor: bellColor)
                         Rectangle().fill(Look.ruleSoft).frame(height: 1)
                     } else if let line = row.verbatim {
                         PlanExtraLine(line: line, resolve: resolve)
                     }
                 }
-                PlanStat(planned: tasks.count, done: tasks.filter(\.done).count)
+                PlanStat(planned: tasks.count + events.count,
+                         done: tasks.filter(\.done).count + events.filter(\.row.done).count)
             }
         }
         .opacity(isPast ? 0.58 : 1)

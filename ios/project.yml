@@ -40,6 +40,9 @@ targets:
         # Замок записей (P249).
         INFOPLIST_KEY_NSCameraUsageDescription: "To take a photo straight into the day’s entry. The photo is saved in your Photos folder."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "To show the day’s photos right on the page. The photo you choose is copied to your Photos folder; the rest go nowhere."
+        # События Календаря в плане дня (P376): только читать и, по просьбе
+        # человека, удалить событие.
+        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: "To show your iPhone Calendar events in the day’s plan, by time, with their reminders. Nothing is copied out of Calendar unless you ask."
         INFOPLIST_KEY_NSFaceIDUsageDescription: "To lock your entries: without your face or passcode no one can open them."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait

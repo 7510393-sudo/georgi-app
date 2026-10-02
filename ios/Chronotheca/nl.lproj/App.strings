@@ -49,6 +49,7 @@
 "A new day starts at" = "Een nieuwe dag begint om";
 "About" = "Over";
 "About 60 MB a minute. Smaller clips stay as they are" = "Ongeveer 60 MB per minuut. Kleinere clips blijven zoals ze zijn";
+"Above your tasks, by time; Calendar itself rings." = "Boven je taken, op tijd; Agenda geeft zelf de melding.";
 "Add" = "Voeg toe";
 "Address, route, cost, with whom…" = "Adres, route, kosten, met wie…";
 "All places as a list" = "Alle plekken als lijst";
@@ -71,6 +72,9 @@
 "Backup" = "Reservekopie";
 "Backup place" = "Plek van de kopie";
 "Calendar" = "Agenda";
+"Calendar access" = "Toegang tot Agenda";
+"Calendar did not let the event be deleted: " = "Agenda liet de afspraak niet verwijderen: ";
+"Calendar event" = "Agenda-afspraak";
 "Calendar menu" = "Agendamenu";
 "Cancel" = "Annuleer";
 "Cancelled — nothing was copied." = "Geannuleerd — er is niets gekopieerd.";
@@ -113,6 +117,9 @@
 "Degrees" = "Graden";
 "Delete" = "Verwijder";
 "Delete forever" = "Definitief verwijderen";
+"Delete from Calendar: this and all following" = "Verwijderen uit Agenda: deze en alle volgende";
+"Delete from Calendar: this one only" = "Verwijderen uit Agenda: alleen deze";
+"Delete from iPhone Calendar" = "Verwijderen uit iPhone-agenda";
 "Delete from storage" = "Uit de opslag verwijderen";
 "Delete place" = "Plek verwijderen";
 "Delete the app, and the iPhone erases them with it, for good." = "Verwijder je de app, dan wist de iPhone ze mee, voorgoed.";
@@ -168,6 +175,7 @@
 "Go back ›" = "Terug ›";
 "HOW DID IT GO?" = "HOE GING HET?";
 "Hide ▾" = "Verberg ▾";
+"Holidays and birthdays" = "Feestdagen en verjaardagen";
 "How did it go?" = "Hoe ging het?";
 "Icon: " = "Symbool: ";
 "Import from Day One and Apple Journal" = "Importeren uit Day One en Apple Dagboek";
@@ -222,6 +230,7 @@
 "New task" = "Nieuwe taak";
 "Next month" = "Volgende maand";
 "Next year" = "Volgend jaar";
+"No access to Calendar — allow it in iPhone Settings." = "Geen toegang tot Agenda — sta het toe in de iPhone-instellingen.";
 "No entries %@match “%@”." = "Geen aantekeningen %@passen bij ‘%@’.";
 "No entries here. The app can make a new folder:\n\n" = "Hier staan geen aantekeningen. De app kan een nieuwe map maken:\n\n";
 "No entries in this period" = "Geen aantekeningen in deze periode";
@@ -231,6 +240,7 @@
 "No reminder" = "Geen herinnering";
 "No tasks on this day." = "Geen taken op deze dag.";
 "No tasks. Tap again to open the day →" = "Geen taken. Tik nogmaals om de dag te openen →";
+"No title" = "Zonder titel";
 "Not enough space: %@ needed, %@ free. Nothing was copied." = "Niet genoeg ruimte: %@ nodig, %@ vrij. Er is niets gekopieerd.";
 "Not now" = "Nu niet";
 "Not restored" = "Niet teruggezet";
@@ -292,6 +302,7 @@
 "Remove from entry" = "Uit de aantekening halen";
 "Remove from the page" = "Van de pagina halen";
 "Remove from the page?" = "Van de pagina halen?";
+"Remove from this day’s plan" = "Weghalen uit het plan van deze dag";
 "Remove the photo from the entry?" = "Foto uit de aantekening halen?";
 "Removed from the page. The file could not be deleted — it stays in the folder." = "Van de pagina gehaald. Het bestand kon niet worden verwijderd — het blijft in de map.";
 "Removed from the page. The file is still used on %@, so it stays in the folder." = "Van de pagina gehaald. Het bestand wordt nog gebruikt op %@ en blijft in de map.";
@@ -386,6 +397,7 @@
 "This day is still downloading from iCloud. It will appear here as soon as it arrives." = "Deze dag wordt nog uit iCloud gedownload. Hij verschijnt hier zodra hij er is.";
 "This day is still empty — nothing to make a PDF from." = "Deze dag is nog leeg — er is niets voor een PDF.";
 "This entry is still downloading from iCloud. You can edit it once it arrives." = "Deze aantekening wordt nog uit iCloud gedownload. Zodra hij er is, kun je hem bewerken.";
+"This event is no longer in Calendar." = "Deze afspraak staat niet meer in Agenda.";
 "This is a repeating task" = "Dit is een terugkerende taak";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "Dit is de eigen map van de app — de iPhone verwijdert hem samen met de app. Kies ‘iCloud Drive’ of maak een nieuwe map in ‘Op mijn iPhone’.";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "Dit is de archiefmap zelf of een map erin. De reservekopie moet ergens anders staan.";
@@ -487,6 +499,7 @@
 "hide" = "verbergen";
 "high" = "hoog";
 "hot" = "heet";
+"iPhone Calendar events" = "Afspraken uit iPhone-agenda";
 "in the diary " = "in het dagboek ";
 "in the plan " = "in het plan ";
 "in two days" = "overmorgen";
@@ -519,6 +532,7 @@
 "satellite" = "satelliet";
 "save to diary" = "bewaren in het dagboek";
 "save to plan" = "bewaren in het plan";
+"show" = "tonen";
 "sleet" = "natte sneeuw";
 "smaller" = "kleiner";
 "snow" = "sneeuw";
@@ -541,6 +555,7 @@
 "“Directions”" = "‘Route’";
 "“How did it go?”" = "‘Hoe ging het?’";
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "‘Van de pagina halen’ laat het bestand in de map. ‘Uit de opslag verwijderen’ legt het 30 dagen in de prullenmand: je kunt het terugzetten via Instellingen → Prullenmand; daarna wordt het voorgoed gewist.";
+"“Remove” keeps the event in Calendar and only takes it off this day’s plan. Deleting from Calendar cannot be undone here." = "„Weghalen” laat de afspraak in Agenda staan en haalt hem alleen uit het plan van deze dag. Wat uit Agenda is verwijderd, kan hier niet ongedaan worden.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "‘Дневник’ wordt ‘Diary’, ‘Фотографии’ — ‘Photos’ enzovoort; ";
 "” folder" = "’";
 "” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "’, voor 30 dagen. Foto’s en spraakmemo’s blijven waar ze zijn. Terugzetten via Instellingen → Prullenmand.";

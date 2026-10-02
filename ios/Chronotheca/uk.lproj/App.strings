@@ -49,6 +49,7 @@
 "A new day starts at" = "Новий день починається о";
 "About" = "Про застосунок";
 "About 60 MB a minute. Smaller clips stay as they are" = "Хвилина ~60 МБ. Ролики, менші за 1080p, — як є";
+"Above your tasks, by time; Calendar itself rings." = "Над справами, за часом; дзвонить сам Календар.";
 "Add" = "Додати";
 "Address, route, cost, with whom…" = "Адреса, дорога, вартість, з ким…";
 "All places as a list" = "Усі місця списком";
@@ -71,6 +72,9 @@
 "Backup" = "Резервна копія";
 "Backup place" = "Місце копії";
 "Calendar" = "Календар";
+"Calendar access" = "Доступ до Календаря";
+"Calendar did not let the event be deleted: " = "Календар не дав видалити подію: ";
+"Calendar event" = "Подія Календаря";
 "Calendar menu" = "Меню календаря";
 "Cancel" = "Скасувати";
 "Cancelled — nothing was copied." = "Скасовано — нічого не скопійовано.";
@@ -113,6 +117,9 @@
 "Degrees" = "Градуси";
 "Delete" = "Видалити";
 "Delete forever" = "Видалити назавжди";
+"Delete from Calendar: this and all following" = "Видалити з Календаря: цю й усі наступні";
+"Delete from Calendar: this one only" = "Видалити з Календаря: лише цю";
+"Delete from iPhone Calendar" = "Видалити з Календаря iPhone";
 "Delete from storage" = "Видалити зі сховища";
 "Delete place" = "Видалити точку";
 "Delete the app, and the iPhone erases them with it, for good." = "Видаліть застосунок — iPhone зітре їх разом із ним, без повернення.";
@@ -168,6 +175,7 @@
 "Go back ›" = "Повернути ›";
 "HOW DID IT GO?" = "ЯК МИНУЛО?";
 "Hide ▾" = "Сховати ▾";
+"Holidays and birthdays" = "Свята й дні народження";
 "How did it go?" = "Як минуло?";
 "Icon: " = "Значок: ";
 "Import from Day One and Apple Journal" = "Перенесення з Day One і «Щоденника» Apple";
@@ -222,6 +230,7 @@
 "New task" = "Нова справа";
 "Next month" = "Наступний місяць";
 "Next year" = "Наступний рік";
+"No access to Calendar — allow it in iPhone Settings." = "Немає доступу до Календаря — дозвольте в Параметрах iPhone.";
 "No entries %@match “%@”." = "Записів %@за запитом «%@» немає.";
 "No entries here. The app can make a new folder:\n\n" = "Записів тут не знайшлося. Застосунок може створити нову теку:\n\n";
 "No entries in this period" = "За цей строк записів немає";
@@ -231,6 +240,7 @@
 "No reminder" = "Нагадування не призначено";
 "No tasks on this day." = "Справ на цей день немає.";
 "No tasks. Tap again to open the day →" = "Справ немає. Натисніть ще раз, щоб відкрити день →";
+"No title" = "Без назви";
 "Not enough space: %@ needed, %@ free. Nothing was copied." = "Бракує місця: потрібно %@, вільно %@. Нічого не скопійовано.";
 "Not now" = "Не зараз";
 "Not restored" = "Не повернулося";
@@ -292,6 +302,7 @@
 "Remove from entry" = "Прибрати із запису";
 "Remove from the page" = "Прибрати зі сторінки";
 "Remove from the page?" = "Прибрати зі сторінки?";
+"Remove from this day’s plan" = "Прибрати з плану цього дня";
 "Remove the photo from the entry?" = "Прибрати фотографію із запису?";
 "Removed from the page. The file could not be deleted — it stays in the folder." = "Прибрано зі сторінки. Файл видалити не вдалося — він залишився в теці.";
 "Removed from the page. The file is still used on %@, so it stays in the folder." = "Прибрано зі сторінки. Файл потрібен ще в записі за %@ — він залишився в теці.";
@@ -386,6 +397,7 @@
 "This day is still downloading from iCloud. It will appear here as soon as it arrives." = "Запис цього дня ще завантажується з iCloud. Щойно надійде, він з’явиться тут.";
 "This day is still empty — nothing to make a PDF from." = "У цьому дні поки порожньо — PDF нема з чого зібрати.";
 "This entry is still downloading from iCloud. You can edit it once it arrives." = "Запис ще завантажується з iCloud. Щойно надійде — його можна буде правити.";
+"This event is no longer in Calendar." = "Цієї події вже немає в Календарі.";
 "This is a repeating task" = "Це повторювана справа";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "Це тека самого застосунку — iPhone видалить її разом із ним. Виберіть «iCloud Drive» або створіть нову теку в «На iPhone».";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "Це та сама тека, що й архів, або тека всередині нього. Копія має лежати деінде.";
@@ -487,6 +499,7 @@
 "hide" = "прибрати";
 "high" = "високе";
 "hot" = "спека";
+"iPhone Calendar events" = "Події Календаря iPhone";
 "in the diary " = "у щоденнику ";
 "in the plan " = "у плані ";
 "in two days" = "післязавтра";
@@ -519,6 +532,7 @@
 "satellite" = "супутник";
 "save to diary" = "зберегти в щоденник";
 "save to plan" = "зберегти в план";
+"show" = "показувати";
 "sleet" = "мокрий сніг";
 "smaller" = "дрібніше";
 "snow" = "сніг";
@@ -541,6 +555,7 @@
 "“Directions”" = "«У навігатор»";
 "“How did it go?”" = "«Як минуло?»";
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "«Прибрати зі сторінки» — файл залишиться в теці. «Видалити зі сховища» — файл піде в кошик на 30 днів: повернути його можна в Налаштування → Кошик, потім він зітреться назавжди.";
+"“Remove” keeps the event in Calendar and only takes it off this day’s plan. Deleting from Calendar cannot be undone here." = "«Прибрати» — подія лишиться в Календарі, зникне лише з плану цього дня. Видалене з Календаря кроком назад не повернути.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "«Дневник» стане «Diary», «Фотографии» — «Photos» і так далі; ";
 "” folder" = "»";
 "” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "» на 30 днів. Знімки й голос залишаться на місці. Повернути можна в Налаштування → Кошик.";

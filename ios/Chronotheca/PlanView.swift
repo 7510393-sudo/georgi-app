@@ -1,3 +1,4 @@
+import EventKit
 import SwiftUI
 import UIKit
 import CoreLocation
@@ -24,6 +25,8 @@ struct PlanRowLine: View {
     let row: PlanRow
     var faded = false
     var bellColor: Color = Look.inkFaint
+    /// Событие Календаря (P376): полоска цвета его календаря у номера.
+    var stripe: Color? = nil
 
     var text: Binding<String>?
     var typing = false
@@ -182,6 +185,11 @@ struct PlanRowLine: View {
             .foregroundStyle(Look.inkSoft)
             .frame(width: PlanRowLine.badgeWidth, height: PlanRowLine.badgeWidth)
             .modifier(Panel())
+            .overlay(alignment: .leading) {
+                if let stripe {
+                    Capsule().fill(stripe).frame(width: 3, height: 16).padding(.leading, 2.5)
+                }
+            }
     }
 
     private var time: some View {
@@ -522,6 +530,29 @@ struct PlanView: View {
     /// расступившимся, ищется место — иначе строки дрожали бы под пальцем.
     @State private var lineSpots: [UUID: CGRect] = [:]
 
+    /// События Календаря этого дня (P376).
+    @State private var events: [DayEvents.Item] = []
+    /// Событие, поднятое долгим нажатием, и как его ведут.
+    @State private var liftedEvent: String?
+    @State private var eventAxis: Axis?
+    @State private var eventSlide: CGFloat = 0
+    @State private var eventDrag: CGFloat = 0
+    /// Куда среди дел встанет событие, если отпустить, — ниже блока
+    /// событий; выше — никуда.
+    @State private var eventTo: Int?
+    @State private var eventHeight: CGFloat = 0
+    @State private var eventStart: CGFloat = 0
+    @State private var eventBlockEnd: CGFloat = 0
+    @State private var eventSpots: [UUID: CGRect] = [:]
+    /// Событие, о котором спрашиваем: убрать из плана или удалить.
+    @State private var askingEvent: DayEvents.Shown?
+    @State private var openedEvent: OpenedEvent?
+
+    struct OpenedEvent: Identifiable {
+        let id = UUID()
+        let event: EKEvent
+    }
+
     /// Сколько отвести дело вбок, чтобы отпущенное оно удалилось или
     /// отметилось.
     static let swipe: CGFloat = 90
@@ -556,9 +587,10 @@ struct PlanView: View {
                          onTakePhoto: store.canEditPlan
                              ? { store.returnPlanPhoto($0) } : nil,
                          home: shell.freshStart) {
-                if store.tasks.isEmpty {
+                if store.tasks.isEmpty && shownEvents.isEmpty {
                     PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
                 } else {
+                    eventBlock
                     list
                 }
                 // Касание по пустому месту убирает клавиатуру и крестик у
@@ -580,6 +612,31 @@ struct PlanView: View {
         .onChange(of: store.date) { _, _ in
             typingIn = nil
             armedLine = nil
+            reloadEvents()
+        }
+        // События Календаря (P376): при появлении, после правки в
+        // Календаре и при возвращении в приложение.
+        .onAppear(perform: startEvents)
+        .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in
+            reloadEvents()
+        }
+        .confirmationDialog(T("Событие Календаря", "Calendar event"),
+                            isPresented: Binding(get: { askingEvent != nil },
+                                                 set: { if !$0 { askingEvent = nil } }),
+                            titleVisibility: .visible, presenting: askingEvent) { e in
+            eventChoices(e)
+        } message: { _ in
+            Text(T("«Убрать» — событие останется в Календаре, уйдёт только из плана этого дня. "
+                   + "Удалённое из Календаря шагом назад не вернуть.",
+                   "“Remove” keeps the event in Calendar and only takes it off this day’s plan. "
+                   + "Deleting from Calendar cannot be undone here."))
+        }
+        .sheet(item: $openedEvent) { o in
+            EventSheet(event: o.event) {
+                openedEvent = nil
+                reloadEvents()
+            }
+            .ignoresSafeArea()
         }
         .onChange(of: typingIn) { _, now in if now != nil { armedLine = nil } }
         // Дело из серии поправили или убирают — только здесь или дальше
@@ -606,8 +663,8 @@ struct PlanView: View {
                     Rectangle().fill(Look.ruleSoft).frame(height: 1)
                 }
                 .modifier(Zone(id: id))
-                .offset(y: lineShift(id))
-                .animation(.easeOut(duration: 0.16), value: lineShift(id))
+                .offset(y: lineShift(id) + eventShift(id))
+                .animation(.easeOut(duration: 0.16), value: lineShift(id) + eventShift(id))
                 .zIndex(dragged == id || lifted == id ? 1 : 0)
             } else if let line = row.wrappedValue.verbatim {
                 PlanExtraLine(line: line, resolve: store.photoURL,
@@ -631,8 +688,8 @@ struct PlanView: View {
                                   withAnimation(.easeOut(duration: 0.15)) { armedLine = on ? id : nil }
                               })
                 .modifier(Zone(id: id))
-                .offset(y: lineShift(id))
-                .animation(.easeOut(duration: 0.16), value: lineShift(id))
+                .offset(y: lineShift(id) + eventShift(id))
+                .animation(.easeOut(duration: 0.16), value: lineShift(id) + eventShift(id))
                 .zIndex(lineDrag == id ? 1 : 0)
             }
         }
@@ -640,12 +697,15 @@ struct PlanView: View {
     }
 
     private var stat: some View {
-        PlanStat(planned: store.tasks.count, done: store.doneCount)
+        let events = shownEvents
+        return PlanStat(planned: store.tasks.count + events.count,
+                        done: store.doneCount + events.filter(\.row.done).count)
     }
 
     private func taskRow(_ row: Binding<PlanRow>) -> some View {
         let id = row.wrappedValue.id
-        let shown = number(of: id) + (dragged == id ? carried : displaced(id))
+        // События Календаря стоят первыми — дела считаются после них.
+        let shown = shownEvents.count + number(of: id) + (dragged == id ? carried : displaced(id))
         let up = lifted == id
 
         return PlanRowLine(
@@ -709,26 +769,30 @@ struct PlanView: View {
     /// корзина, слева — зелёная галочка (как в почте iPhone, P362).
     @ViewBuilder private func underneath(_ id: UUID, done: Bool) -> some View {
         if lifted == id, slide != 0 {
-            let far = abs(slide) >= Self.swipe
-            HStack(spacing: 0) {
-                if slide > 0 {
-                    Image(systemName: done ? "arrow.uturn.backward" : "checkmark")
-                        .frame(width: slide)
-                        .frame(maxHeight: .infinity)
-                        .background(Color.green.opacity(far ? 0.85 : 0.4))
-                    Spacer(minLength: 0)
-                } else {
-                    Spacer(minLength: 0)
-                    Image(systemName: "trash")
-                        .frame(width: -slide)
-                        .frame(maxHeight: .infinity)
-                        .background(Color.red.opacity(far ? 0.85 : 0.4))
-                }
-            }
-            .font(.system(size: 19, weight: .semibold))
-            .foregroundStyle(.white)
-            .allowsHitTesting(false)
+            Self.swipeBack(slide, done: done)
         }
+    }
+
+    static func swipeBack(_ slide: CGFloat, done: Bool) -> some View {
+        let far = abs(slide) >= Self.swipe
+        return HStack(spacing: 0) {
+            if slide > 0 {
+                Image(systemName: done ? "arrow.uturn.backward" : "checkmark")
+                    .frame(width: slide)
+                    .frame(maxHeight: .infinity)
+                    .background(Color.green.opacity(far ? 0.85 : 0.4))
+                Spacer(minLength: 0)
+            } else {
+                Spacer(minLength: 0)
+                Image(systemName: "trash")
+                    .frame(width: -slide)
+                    .frame(maxHeight: .infinity)
+                    .background(Color.red.opacity(far ? 0.85 : 0.4))
+            }
+        }
+        .font(.system(size: 19, weight: .semibold))
+        .foregroundStyle(.white)
+        .allowsHitTesting(false)
     }
 
     /// Дело подняли долгим нажатием и ведут (P362). Первый заметный ход
@@ -855,6 +919,206 @@ struct PlanView: View {
         if lineTo > lineFrom, mine > lineFrom, mine <= lineTo { return -lineHeight }
         if lineTo < lineFrom, mine < lineFrom, mine >= lineTo { return lineHeight }
         return 0
+    }
+
+    // MARK: - События Календаря (P376)
+
+    private var shownEvents: [DayEvents.Shown] {
+        DayEvents.shown(events, marks: DayEvents.marks(in: store.planRows))
+    }
+
+    private func startEvents() {
+        if DayEvents.on, !Vault.isPreview, DayEvents.status == .notDetermined {
+            DayEvents.ask { _ in reloadEvents() }
+        } else {
+            reloadEvents()
+        }
+    }
+
+    private func reloadEvents() {
+        events = DayEvents.items(for: store.date)
+    }
+
+    /// События — каждое своим блоком, как дело, над делами (P376).
+    @ViewBuilder private var eventBlock: some View {
+        let list = shownEvents
+        ForEach(Array(list.enumerated()), id: \.element.key) { i, e in
+            eventRow(e, number: i + 1)
+        }
+    }
+
+    private func eventRow(_ e: DayEvents.Shown, number: Int) -> some View {
+        let up = liftedEvent == e.key
+        return VStack(spacing: 0) {
+            PlanRowLine(number: number,
+                        row: e.row,
+                        faded: store.isPast && !store.editing(.plan),
+                        bellColor: Ru.dayColor(store.date),
+                        stripe: e.color,
+                        onTime: { open(e) },
+                        onBell: { open(e) },
+                        onDetails: { open(e) },
+                        onLift: { eventLift(e, $0) },
+                        lifted: up)
+            Rectangle().fill(Look.ruleSoft).frame(height: 1)
+        }
+        .background(GeometryReader { geo in
+            let frame = geo.frame(in: .global)
+            Color.clear
+                .onAppear { PlanZones.events[e.key] = frame }
+                .onChange(of: frame) { _, now in PlanZones.events[e.key] = now }
+                .onDisappear { PlanZones.events[e.key] = nil }
+        })
+        .offset(x: up ? eventSlide : 0, y: up ? eventDrag : 0)
+        .background {
+            if up, eventSlide != 0 { Self.swipeBack(eventSlide, done: e.row.done) }
+        }
+        .shadow(color: .black.opacity(up && eventDrag != 0 ? 0.18 : 0), radius: 8, y: 3)
+        .zIndex(up ? 1 : 0)
+        .contentShape(Rectangle())
+        .onTapGesture { open(e) }
+    }
+
+    /// Событие в окне Календаря: посмотреть, поправить, напоминание.
+    private func open(_ e: DayEvents.Shown) {
+        guard let event = DayEvents.event(e.key, on: store.date) else {
+            return shell.say(T("Этого события уже нет в Календаре.", "This event is no longer in Calendar."))
+        }
+        hideKeyboard()
+        openedEvent = OpenedEvent(event: event)
+    }
+
+    /// Событие подняли долгим нажатием (P376) — как дело: вправо — сделано
+    /// (затенить), влево — убрать или удалить, вниз под блок событий — в
+    /// свои дела, на то место, где расступились строки.
+    private func eventLift(_ e: DayEvents.Shown, _ phase: Lift) {
+        switch phase {
+        case .began:
+            guard store.canEditPlan else { return shell.say(store.closedReason) }
+            if typingIn != nil {
+                hideKeyboard()
+                typingIn = nil
+            }
+            Feel.lift()
+            eventAxis = nil
+            eventSlide = 0
+            eventDrag = 0
+            eventTo = nil
+            armedLine = nil
+            eventSpots = PlanZones.rows
+            let frame = PlanZones.events[e.key]
+            eventHeight = frame?.height ?? PlanRowLine.height
+            eventStart = frame?.midY ?? 0
+            eventBlockEnd = PlanZones.events.values.map(\.maxY).max() ?? 0
+            withAnimation(.easeOut(duration: 0.12)) { liftedEvent = e.key }
+        case .moved(let way):
+            guard liftedEvent == e.key else { return }
+            if eventAxis == nil {
+                if abs(way.width) > 14, abs(way.width) > abs(way.height) * 1.2 {
+                    eventAxis = .horizontal
+                } else if abs(way.height) > 10 {
+                    eventAxis = .vertical
+                }
+            }
+            switch eventAxis {
+            case .vertical:
+                eventDrag = way.height
+                let y = eventStart + way.height
+                var to: Int?
+                if y > eventBlockEnd {
+                    to = store.tasks.filter { (eventSpots[$0.id]?.midY ?? .infinity) < y }.count
+                }
+                if to != eventTo {
+                    eventTo = to
+                    if to != nil { Feel.tick() }
+                }
+            case .horizontal:
+                let was = abs(eventSlide) >= Self.swipe
+                eventSlide = way.width
+                if (abs(eventSlide) >= Self.swipe) != was { Feel.tick() }
+            case nil:
+                break
+            }
+        case .ended, .cancelled:
+            guard liftedEvent == e.key else { return }
+            let axis = eventAxis
+            let by = eventSlide
+            let to = eventTo
+            let real: Bool
+            if case .ended = phase { real = true } else { real = false }
+            eventAxis = nil
+            withAnimation(.easeOut(duration: 0.2)) {
+                liftedEvent = nil
+                eventSlide = 0
+                eventDrag = 0
+                eventTo = nil
+            }
+            guard real else { return }
+            if axis == .horizontal {
+                if by >= Self.swipe {
+                    markEvent(e) { $0.done.toggle() }
+                    if !e.row.done { Feel.done() } else { Feel.light() }
+                } else if by <= -Self.swipe {
+                    askingEvent = e
+                }
+            } else if axis == .vertical, let to {
+                var row = PlanRow.task(time: e.row.time, e.row.text)
+                row.done = e.row.done
+                withAnimation(.easeOut(duration: 0.2)) {
+                    store.insertTask(row, beforeTask: to)
+                    markEvent(e) { $0.hidden = true }
+                }
+                Feel.thud()
+            }
+        }
+    }
+
+    /// На сколько сдвинута строка, пока событие несут к делам.
+    private func eventShift(_ id: UUID) -> CGFloat {
+        guard let to = eventTo else { return 0 }
+        let list = store.tasks
+        guard to < list.count, let anchor = store.index(of: list[to].id),
+              let mine = store.index(of: id) else { return 0 }
+        return mine >= anchor ? eventHeight : 0
+    }
+
+    /// Поправить отметку события в файле плана.
+    private func markEvent(_ e: DayEvents.Shown, _ change: (inout DayEvents.Mark) -> Void) {
+        var mark = DayEvents.marks(in: store.planRows).first { $0.key == e.key }
+            ?? DayEvents.Mark(key: e.key, time: e.row.time, title: e.row.text)
+        mark.time = e.row.time
+        mark.title = e.row.text
+        change(&mark)
+        store.setMark(mark)
+    }
+
+    @ViewBuilder private func eventChoices(_ e: DayEvents.Shown) -> some View {
+        Button(T("Убрать из плана этого дня", "Remove from this day’s plan")) {
+            withAnimation(.easeOut(duration: 0.2)) { markEvent(e) { $0.hidden = true } }
+        }
+        if let event = DayEvents.event(e.key, on: store.date), event.calendar.allowsContentModifications {
+            if event.hasRecurrenceRules {
+                Button(T("Удалить из Календаря: только это", "Delete from Calendar: this one only"),
+                       role: .destructive) { remove(event, .thisEvent) }
+                Button(T("Удалить из Календаря: это и все следующие", "Delete from Calendar: this and all following"),
+                       role: .destructive) { remove(event, .futureEvents) }
+            } else {
+                Button(T("Удалить из Календаря iPhone", "Delete from iPhone Calendar"),
+                       role: .destructive) { remove(event, .thisEvent) }
+            }
+        }
+        Button(T("Отмена", "Cancel"), role: .cancel) { }
+    }
+
+    private func remove(_ event: EKEvent, _ span: EKSpan) {
+        do {
+            try DayEvents.store.remove(event, span: span, commit: true)
+            Feel.light()
+        } catch {
+            shell.say(T("Календарь не дал удалить событие: ", "Calendar did not let the event be deleted: ")
+                      + error.localizedDescription)
+        }
+        reloadEvents()
     }
 
     /// Дело отпустили: оно встаёт туда, куда его донесли.
@@ -1082,6 +1346,8 @@ private struct SeriesQuestion: ViewModifier {
 /// по ним ищется, куда встанет несомая точка (P374).
 enum PlanZones {
     static var rows: [UUID: CGRect] = [:]
+    /// События Календаря (P376) — по их ключам.
+    static var events: [String: CGRect] = [:]
 }
 
 /// Записать, где строка на экране.

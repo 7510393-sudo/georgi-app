@@ -4,3 +4,4 @@
 "NSCameraUsageDescription" = "Om een foto direct in de aantekening van de dag te maken. De foto wordt in je map ‘Photos’ bewaard.";
 "NSPhotoLibraryUsageDescription" = "Om de foto’s van de dag direct op de pagina te tonen. De foto die je kiest, wordt naar je map ‘Photos’ gekopieerd; de rest gaat nergens heen.";
 "NSFaceIDUsageDescription" = "Om je aantekeningen te vergrendelen: zonder je gezicht of code kan niemand ze openen.";
+"NSCalendarsFullAccessUsageDescription" = "Om de afspraken uit je iPhone-agenda in het dagplan te tonen, op tijd en met hun herinneringen. Er wordt niets uit Agenda gekopieerd tenzij je erom vraagt.";

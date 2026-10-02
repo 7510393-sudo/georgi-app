@@ -49,6 +49,7 @@
 "A new day starts at" = "新しい日の始まり";
 "About" = "このアプリについて";
 "About 60 MB a minute. Smaller clips stay as they are" = "1分で約60MB。1080pより小さいクリップはそのまま";
+"Above your tasks, by time; Calendar itself rings." = "タスクの上に時刻順で表示。通知はカレンダー自身が行います。";
 "Add" = "追加";
 "Address, route, cost, with whom…" = "住所、道順、費用、同行者…";
 "All places as a list" = "すべての場所を一覧で";
@@ -71,6 +72,9 @@
 "Backup" = "バックアップ";
 "Backup place" = "バックアップ先";
 "Calendar" = "カレンダー";
+"Calendar access" = "カレンダーへのアクセス";
+"Calendar did not let the event be deleted: " = "カレンダーが予定の削除を許可しませんでした：";
+"Calendar event" = "カレンダーの予定";
 "Calendar menu" = "カレンダーメニュー";
 "Cancel" = "キャンセル";
 "Cancelled — nothing was copied." = "キャンセルしました — 何もコピーしていません。";
@@ -113,6 +117,9 @@
 "Degrees" = "温度";
 "Delete" = "削除";
 "Delete forever" = "完全に削除";
+"Delete from Calendar: this and all following" = "カレンダーから削除：これ以降すべて";
+"Delete from Calendar: this one only" = "カレンダーから削除：この予定のみ";
+"Delete from iPhone Calendar" = "iPhone のカレンダーから削除";
 "Delete from storage" = "保存場所から削除";
 "Delete place" = "場所を削除";
 "Delete the app, and the iPhone erases them with it, for good." = "アプリを削除すると、iPhoneは記録も一緒に完全に消去します。";
@@ -168,6 +175,7 @@
 "Go back ›" = "戻る ›";
 "HOW DID IT GO?" = "どうでしたか？";
 "Hide ▾" = "隠す ▾";
+"Holidays and birthdays" = "祝日と誕生日";
 "How did it go?" = "どうでしたか？";
 "Icon: " = "アイコン: ";
 "Import from Day One and Apple Journal" = "Day One と Appleの「ジャーナル」からの読み込み";
@@ -222,6 +230,7 @@
 "New task" = "新しい予定";
 "Next month" = "次の月";
 "Next year" = "次の年";
+"No access to Calendar — allow it in iPhone Settings." = "カレンダーにアクセスできません — iPhone の設定で許可してください。";
 "No entries %@match “%@”." = "%@「%@」に一致する記録はありません。";
 "No entries here. The app can make a new folder:\n\n" = "ここには記録がありません。アプリは新しいフォルダを作成できます:\n\n";
 "No entries in this period" = "この期間の記録はありません";
@@ -231,6 +240,7 @@
 "No reminder" = "通知なし";
 "No tasks on this day." = "この日の予定はありません。";
 "No tasks. Tap again to open the day →" = "予定はありません。もう一度タップすると日を開きます →";
+"No title" = "タイトルなし";
 "Not enough space: %@ needed, %@ free. Nothing was copied." = "空き容量が足りません：必要 %@、空き %@。何もコピーしていません。";
 "Not now" = "今はしない";
 "Not restored" = "元に戻せませんでした";
@@ -292,6 +302,7 @@
 "Remove from entry" = "記録から外す";
 "Remove from the page" = "ページから外す";
 "Remove from the page?" = "ページから外しますか？";
+"Remove from this day’s plan" = "この日の予定から外す";
 "Remove the photo from the entry?" = "記録から写真を外しますか？";
 "Removed from the page. The file could not be deleted — it stays in the folder." = "ページから外しました。ファイルを削除できなかったため、フォルダに残っています。";
 "Removed from the page. The file is still used on %@, so it stays in the folder." = "ページから外しました。このファイルは%@の記録でも使われているため、フォルダに残しました。";
@@ -386,6 +397,7 @@
 "This day is still downloading from iCloud. It will appear here as soon as it arrives." = "この日はまだiCloudからダウンロード中です。届きしだいここに表示されます。";
 "This day is still empty — nothing to make a PDF from." = "この日はまだ空です。PDFにするものがありません。";
 "This entry is still downloading from iCloud. You can edit it once it arrives." = "この記録はまだiCloudからダウンロード中です。届きしだい編集できます。";
+"This event is no longer in Calendar." = "この予定はもうカレンダーにありません。";
 "This is a repeating task" = "これは繰り返しの予定です";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "これはアプリ自身のフォルダです。iPhoneはアプリと一緒にこれを削除します。「iCloud Drive」を選ぶか、「このiPhone内」に新しいフォルダを作ってください。";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "これはアーカイブのフォルダそのもの、またはその中のフォルダです。バックアップは別の場所に置いてください。";
@@ -487,6 +499,7 @@
 "hide" = "隠す";
 "high" = "高";
 "hot" = "暑い";
+"iPhone Calendar events" = "iPhone カレンダーの予定";
 "in the diary " = "日記で";
 "in the plan " = "計画で";
 "in two days" = "明後日";
@@ -519,6 +532,7 @@
 "satellite" = "航空写真";
 "save to diary" = "日記に保存";
 "save to plan" = "計画に保存";
+"show" = "表示";
 "sleet" = "みぞれ";
 "smaller" = "小さめ";
 "snow" = "雪";
@@ -541,6 +555,7 @@
 "“Directions”" = "「経路」";
 "“How did it go?”" = "「どうでしたか？」";
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "「ページから外す」ではファイルはフォルダに残ります。「保存場所から削除」ではファイルは30日間ゴミ箱に入り、設定 → ゴミ箱 から戻せます。その後は完全に消去されます。";
+"“Remove” keeps the event in Calendar and only takes it off this day’s plan. Deleting from Calendar cannot be undone here." = "「外す」は予定をカレンダーに残し、この日の予定からだけ外します。カレンダーから削除したものはここでは元に戻せません。";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "「Дневник」は「Diary」に、「Фотографии」は「Photos」に、というように変わります。";
 "” folder" = "」フォルダに保存しました";
 "” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "」フォルダに30日間移ります。写真とボイスメモはそのまま残ります。設定 → ゴミ箱 から戻せます。";

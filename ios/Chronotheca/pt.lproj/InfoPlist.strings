@@ -4,3 +4,4 @@
 "NSCameraUsageDescription" = "Para tirar uma foto direto na anotação do dia. A foto é salva na sua pasta “Photos”.";
 "NSPhotoLibraryUsageDescription" = "Para mostrar as fotos do dia direto na página. A foto que você escolher é copiada para a sua pasta “Photos”; as outras não vão para lugar nenhum.";
 "NSFaceIDUsageDescription" = "Para bloquear suas anotações: sem o seu rosto ou código, ninguém consegue abri-las.";
+"NSCalendarsFullAccessUsageDescription" = "Para mostrar os eventos do Calendário do iPhone no plano do dia, por horário e com os seus alertas. Nada é copiado do Calendário a menos que você peça.";

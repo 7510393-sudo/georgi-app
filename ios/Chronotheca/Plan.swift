@@ -81,6 +81,9 @@ enum Plan {
     }
 
     private static func parseTask(_ line: String) -> PlanRow? {
+        // Отметка события Календаря (P376) — не наше дело: остаётся
+        // строкой файла как есть.
+        if DayEvents.Mark.parse(line) != nil { return nil }
         let trimmed = line.drop(while: { $0 == " " || $0 == "\t" })
         guard trimmed.hasPrefix("- [") else { return nil }
 

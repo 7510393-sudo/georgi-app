@@ -4,3 +4,4 @@
 "NSCameraUsageDescription" = "Para hacer una foto directamente en la entrada del día. La foto se guarda en tu carpeta «Photos».";
 "NSPhotoLibraryUsageDescription" = "Para mostrar las fotos del día en la propia página. La foto que elijas se copia en tu carpeta «Photos»; las demás no van a ningún sitio.";
 "NSFaceIDUsageDescription" = "Para bloquear tus entradas: sin tu cara o tu código nadie puede abrirlas.";
+"NSCalendarsFullAccessUsageDescription" = "Para mostrar los eventos del Calendario del iPhone en el plan del día, por hora y con sus avisos. No se copia nada del Calendario a menos que lo pidas.";

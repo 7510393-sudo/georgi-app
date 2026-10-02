@@ -4,3 +4,4 @@
 "NSCameraUsageDescription" = "Per scattare una foto direttamente nella nota del giorno. La foto viene salvata nella tua cartella «Photos».";
 "NSPhotoLibraryUsageDescription" = "Per mostrare le foto del giorno direttamente sulla pagina. La foto che scegli viene copiata nella tua cartella «Photos»; le altre non vanno da nessuna parte.";
 "NSFaceIDUsageDescription" = "Per bloccare le tue note: senza il tuo volto o il tuo codice nessuno può aprirle.";
+"NSCalendarsFullAccessUsageDescription" = "Per mostrare gli eventi del Calendario di iPhone nel piano del giorno, per orario e con i loro promemoria. Nulla viene copiato dal Calendario se non lo chiedi tu.";

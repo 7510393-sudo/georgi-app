@@ -49,6 +49,7 @@
 "A new day starts at" = "Um novo dia começa às";
 "About" = "Sobre";
 "About 60 MB a minute. Smaller clips stay as they are" = "Cerca de 60 MB por minuto. Clipes menores ficam como estão";
+"Above your tasks, by time; Calendar itself rings." = "Acima das suas tarefas, por horário; quem avisa é o próprio Calendário.";
 "Add" = "Adicionar";
 "Address, route, cost, with whom…" = "Endereço, caminho, custo, com quem…";
 "All places as a list" = "Todos os lugares em lista";
@@ -71,6 +72,9 @@
 "Backup" = "Cópia de segurança";
 "Backup place" = "Local do backup";
 "Calendar" = "Calendário";
+"Calendar access" = "Acesso ao Calendário";
+"Calendar did not let the event be deleted: " = "O Calendário não deixou apagar o evento: ";
+"Calendar event" = "Evento do Calendário";
 "Calendar menu" = "Menu do calendário";
 "Cancel" = "Cancelar";
 "Cancelled — nothing was copied." = "Cancelado — nada foi copiado.";
@@ -113,6 +117,9 @@
 "Degrees" = "Graus";
 "Delete" = "Apagar";
 "Delete forever" = "Apagar para sempre";
+"Delete from Calendar: this and all following" = "Apagar do Calendário: este e os seguintes";
+"Delete from Calendar: this one only" = "Apagar do Calendário: só este";
+"Delete from iPhone Calendar" = "Apagar do Calendário do iPhone";
 "Delete from storage" = "Apagar do armazenamento";
 "Delete place" = "Apagar lugar";
 "Delete the app, and the iPhone erases them with it, for good." = "Apague o app, e o iPhone as apaga junto, para sempre.";
@@ -168,6 +175,7 @@
 "Go back ›" = "Voltar ›";
 "HOW DID IT GO?" = "COMO FOI?";
 "Hide ▾" = "Ocultar ▾";
+"Holidays and birthdays" = "Feriados e aniversários";
 "How did it go?" = "Como foi?";
 "Icon: " = "Ícone: ";
 "Import from Day One and Apple Journal" = "Importar do Day One e do Diário da Apple";
@@ -222,6 +230,7 @@
 "New task" = "Nova tarefa";
 "Next month" = "Próximo mês";
 "Next year" = "Próximo ano";
+"No access to Calendar — allow it in iPhone Settings." = "Sem acesso ao Calendário — permita nos Ajustes do iPhone.";
 "No entries %@match “%@”." = "Nenhuma anotação %@corresponde a “%@”.";
 "No entries here. The app can make a new folder:\n\n" = "Não há anotações aqui. O app pode criar uma pasta nova:\n\n";
 "No entries in this period" = "Nenhuma anotação neste período";
@@ -231,6 +240,7 @@
 "No reminder" = "Sem lembrete";
 "No tasks on this day." = "Nenhuma tarefa neste dia.";
 "No tasks. Tap again to open the day →" = "Nenhuma tarefa. Toque de novo para abrir o dia →";
+"No title" = "Sem título";
 "Not enough space: %@ needed, %@ free. Nothing was copied." = "Espaço insuficiente: são necessários %@, há %@ livres. Nada foi copiado.";
 "Not now" = "Agora não";
 "Not restored" = "Não restaurado";
@@ -292,6 +302,7 @@
 "Remove from entry" = "Tirar da anotação";
 "Remove from the page" = "Tirar da página";
 "Remove from the page?" = "Tirar da página?";
+"Remove from this day’s plan" = "Remover do plano deste dia";
 "Remove the photo from the entry?" = "Tirar a foto da anotação?";
 "Removed from the page. The file could not be deleted — it stays in the folder." = "Tirado da página. Não foi possível apagar o arquivo — ele continua na pasta.";
 "Removed from the page. The file is still used on %@, so it stays in the folder." = "Tirado da página. O arquivo ainda é usado em %@, então continua na pasta.";
@@ -386,6 +397,7 @@
 "This day is still downloading from iCloud. It will appear here as soon as it arrives." = "Este dia ainda está sendo baixado do iCloud. Ele aparecerá aqui assim que chegar.";
 "This day is still empty — nothing to make a PDF from." = "Este dia ainda está vazio — não há nada para um PDF.";
 "This entry is still downloading from iCloud. You can edit it once it arrives." = "Esta anotação ainda está sendo baixada do iCloud. Você poderá editá-la assim que chegar.";
+"This event is no longer in Calendar." = "Este evento já não está no Calendário.";
 "This is a repeating task" = "Esta é uma tarefa que se repete";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "Esta é a pasta do próprio app — o iPhone a apaga junto com ele. Escolha “iCloud Drive” ou crie uma pasta nova em “No Meu iPhone”.";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "É a própria pasta do arquivo ou uma pasta dentro dela. A cópia precisa ficar em outro lugar.";
@@ -487,6 +499,7 @@
 "hide" = "ocultar";
 "high" = "alta";
 "hot" = "calor";
+"iPhone Calendar events" = "Eventos do Calendário do iPhone";
 "in the diary " = "do diário ";
 "in the plan " = "do plano ";
 "in two days" = "depois de amanhã";
@@ -519,6 +532,7 @@
 "satellite" = "satélite";
 "save to diary" = "salvar no diário";
 "save to plan" = "salvar no plano";
+"show" = "mostrar";
 "sleet" = "chuva com neve";
 "smaller" = "menor";
 "snow" = "neve";
@@ -541,6 +555,7 @@
 "“Directions”" = "“Rotas”";
 "“How did it go?”" = "“Como foi?”";
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "“Tirar da página” mantém o arquivo na pasta. “Apagar do armazenamento” leva-o para o lixo por 30 dias: você pode restaurá-lo em Ajustes → Lixo; depois ele é apagado de vez.";
+"“Remove” keeps the event in Calendar and only takes it off this day’s plan. Deleting from Calendar cannot be undone here." = "“Remover” mantém o evento no Calendário e só o tira do plano deste dia. O que for apagado do Calendário não pode ser desfeito aqui.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "“Дневник” vira “Diary”, “Фотографии” — “Photos” e assim por diante; ";
 "” folder" = "”";
 "” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "” por 30 dias. Fotos e notas de voz ficam onde estão. Você pode restaurar em Ajustes → Lixo.";

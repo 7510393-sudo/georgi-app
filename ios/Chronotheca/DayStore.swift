@@ -224,6 +224,41 @@ final class DayStore: ObservableObject {
         return row.id
     }
 
+    // MARK: - События Календаря (P376)
+
+    /// Записать отметку события: сделано или убрано из плана этого дня.
+    /// Строка с тем же ключом заменяется, иначе добавляется в конец.
+    func setMark(_ mark: DayEvents.Mark) {
+        guard canEditPlan else { return }
+        if let i = planRows.firstIndex(where: { $0.verbatim.flatMap(DayEvents.Mark.parse)?.key == mark.key }) {
+            planRows[i].verbatim = mark.line
+        } else {
+            planRows.append(.verbatim(mark.line))
+        }
+        save()
+    }
+
+    /// Событие Календаря становится своим делом — на место `index` среди
+    /// дел (в конец, если дальше дел нет).
+    func insertTask(_ row: PlanRow, beforeTask index: Int) {
+        guard canEditPlan else { return }
+        let list = tasks
+        if index < list.count, let at = self.index(of: list[index].id) {
+            planRows.insert(row, at: at)
+        } else if let last = list.last, var at = self.index(of: last.id) {
+            // После последнего дела и строк под ним (снимки, точки).
+            at += 1
+            while at < planRows.count, let line = planRows[at].verbatim,
+                  Diary.picture(in: line) != nil || Geo.point(in: line) != nil || Plan.isPhotoRow(line) {
+                at += 1
+            }
+            planRows.insert(row, at: at)
+        } else {
+            planRows.insert(row, at: 0)
+        }
+        save()
+    }
+
     func delete(_ id: UUID) {
         guard canEditPlan, let i = index(of: id) else { return }
         // Дело из серии — спросить: только этот день или и следующие (P359).

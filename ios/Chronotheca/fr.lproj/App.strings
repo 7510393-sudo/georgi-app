@@ -49,6 +49,7 @@
 "A new day starts at" = "Un nouveau jour commence à";
 "About" = "À propos";
 "About 60 MB a minute. Smaller clips stay as they are" = "Environ 60 Mo par minute. Les clips plus petits restent tels quels";
+"Above your tasks, by time; Calendar itself rings." = "Au-dessus de vos tâches, par heure ; c’est le Calendrier qui sonne.";
 "Add" = "Ajouter";
 "Address, route, cost, with whom…" = "Adresse, trajet, coût, avec qui…";
 "All places as a list" = "Tous les lieux en liste";
@@ -71,6 +72,9 @@
 "Backup" = "Sauvegarde";
 "Backup place" = "Emplacement de la sauvegarde";
 "Calendar" = "Calendrier";
+"Calendar access" = "Accès au Calendrier";
+"Calendar did not let the event be deleted: " = "Le Calendrier n’a pas permis de supprimer l’événement : ";
+"Calendar event" = "Événement du Calendrier";
 "Calendar menu" = "Menu du calendrier";
 "Cancel" = "Annuler";
 "Cancelled — nothing was copied." = "Annulé — rien n’a été copié.";
@@ -113,6 +117,9 @@
 "Degrees" = "Degrés";
 "Delete" = "Supprimer";
 "Delete forever" = "Supprimer définitivement";
+"Delete from Calendar: this and all following" = "Supprimer du Calendrier : celui-ci et les suivants";
+"Delete from Calendar: this one only" = "Supprimer du Calendrier : celui-ci seulement";
+"Delete from iPhone Calendar" = "Supprimer du Calendrier de l’iPhone";
 "Delete from storage" = "Supprimer du stockage";
 "Delete place" = "Supprimer le lieu";
 "Delete the app, and the iPhone erases them with it, for good." = "Supprimez l’app, et l’iPhone les efface avec elle, pour de bon.";
@@ -168,6 +175,7 @@
 "Go back ›" = "Revenir ›";
 "HOW DID IT GO?" = "COMMENT ÇA S’EST PASSÉ ?";
 "Hide ▾" = "Masquer ▾";
+"Holidays and birthdays" = "Jours fériés et anniversaires";
 "How did it go?" = "Comment ça s’est passé ?";
 "Icon: " = "Icône : ";
 "Import from Day One and Apple Journal" = "Import depuis Day One et Journal d’Apple";
@@ -222,6 +230,7 @@
 "New task" = "Nouvelle tâche";
 "Next month" = "Mois suivant";
 "Next year" = "Année suivante";
+"No access to Calendar — allow it in iPhone Settings." = "Pas d’accès au Calendrier — autorisez-le dans les Réglages de l’iPhone.";
 "No entries %@match “%@”." = "Aucune note %@ne correspond à « %@ ».";
 "No entries here. The app can make a new folder:\n\n" = "Aucune note ici. L’app peut créer un nouveau dossier :\n\n";
 "No entries in this period" = "Aucune note sur cette période";
@@ -231,6 +240,7 @@
 "No reminder" = "Aucun rappel";
 "No tasks on this day." = "Aucune tâche ce jour-là.";
 "No tasks. Tap again to open the day →" = "Aucune tâche. Touchez encore pour ouvrir le jour →";
+"No title" = "Sans titre";
 "Not enough space: %@ needed, %@ free. Nothing was copied." = "Pas assez d’espace : %@ nécessaires, %@ libres. Rien n’a été copié.";
 "Not now" = "Pas maintenant";
 "Not restored" = "Non restauré";
@@ -292,6 +302,7 @@
 "Remove from entry" = "Retirer de la note";
 "Remove from the page" = "Retirer de la page";
 "Remove from the page?" = "Retirer de la page ?";
+"Remove from this day’s plan" = "Retirer du plan de ce jour";
 "Remove the photo from the entry?" = "Retirer la photo de la note ?";
 "Removed from the page. The file could not be deleted — it stays in the folder." = "Retiré de la page. Le fichier n’a pas pu être supprimé — il reste dans le dossier.";
 "Removed from the page. The file is still used on %@, so it stays in the folder." = "Retiré de la page. Le fichier sert encore le %@ ; il reste dans le dossier.";
@@ -386,6 +397,7 @@
 "This day is still downloading from iCloud. It will appear here as soon as it arrives." = "Ce jour se télécharge encore depuis iCloud. Il apparaîtra ici dès son arrivée.";
 "This day is still empty — nothing to make a PDF from." = "Ce jour est encore vide — rien pour faire un PDF.";
 "This entry is still downloading from iCloud. You can edit it once it arrives." = "Cette note se télécharge encore depuis iCloud. Vous pourrez la modifier dès son arrivée.";
+"This event is no longer in Calendar." = "Cet événement n’est plus dans le Calendrier.";
 "This is a repeating task" = "C’est une tâche répétée";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "C’est le dossier propre de l’app — l’iPhone le supprime avec elle. Choisissez « iCloud Drive » ou créez un nouveau dossier dans « Sur mon iPhone ».";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "C’est le dossier des archives lui-même ou un dossier à l’intérieur. La sauvegarde doit être ailleurs.";
@@ -487,6 +499,7 @@
 "hide" = "masquer";
 "high" = "forte";
 "hot" = "chaud";
+"iPhone Calendar events" = "Événements du Calendrier de l’iPhone";
 "in the diary " = "du journal ";
 "in the plan " = "du plan ";
 "in two days" = "après-demain";
@@ -519,6 +532,7 @@
 "satellite" = "satellite";
 "save to diary" = "enregistrer dans le journal";
 "save to plan" = "enregistrer dans le plan";
+"show" = "afficher";
 "sleet" = "neige mouillée";
 "smaller" = "plus petit";
 "snow" = "neige";
@@ -541,6 +555,7 @@
 "“Directions”" = "« Itinéraire »";
 "“How did it go?”" = "« Comment ça s’est passé ? »";
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "« Retirer de la page » garde le fichier dans le dossier. « Supprimer du stockage » le met à la corbeille pour 30 jours : vous pouvez le restaurer dans Réglages → Corbeille ; ensuite, il est effacé pour de bon.";
+"“Remove” keeps the event in Calendar and only takes it off this day’s plan. Deleting from Calendar cannot be undone here." = "« Retirer » garde l’événement dans le Calendrier et l’enlève seulement du plan de ce jour. Une suppression dans le Calendrier ne peut pas être annulée ici.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "« Дневник » devient « Diary », « Фотографии » — « Photos », etc. ; ";
 "” folder" = " »";
 "” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = " » pour 30 jours. Les photos et notes vocales restent en place. Restaurez-la dans Réglages → Corbeille.";

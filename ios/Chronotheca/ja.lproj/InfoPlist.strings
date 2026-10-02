@@ -4,3 +4,4 @@
 "NSCameraUsageDescription" = "その日の記録に直接写真を撮るためです。写真は「Photos」フォルダに保存されます。";
 "NSPhotoLibraryUsageDescription" = "その日の写真をページに直接表示するためです。選んだ写真は「Photos」フォルダにコピーされ、それ以外はどこにも送られません。";
 "NSFaceIDUsageDescription" = "記録をロックするためです。あなたの顔かパスコードがなければ、誰も開けません。";
+"NSCalendarsFullAccessUsageDescription" = "iPhone のカレンダーの予定を、時刻順に通知とともにその日の予定に表示するためです。あなたが頼まない限り、カレンダーから何もコピーしません。";

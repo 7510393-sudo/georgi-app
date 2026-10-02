@@ -1,3 +1,4 @@
+import EventKit
 import SwiftUI
 
 // MARK: - Меню страницы
@@ -386,6 +387,43 @@ struct SettingsSticker: View {
                 Choice(options: [(false, "°C"), (true, "°F")], selection: $fahrenheit)
             }
         }
+        // События Календаря iPhone в плане (P376).
+        NoteRow(title: T("События Календаря iPhone", "iPhone Calendar events"),
+                detail: eventsDetail, detailColor: eventsDenied ? .orange : Look.inkSoft) {
+            Choice(options: onOff, selection: Binding(get: { calendarEvents }, set: { on in
+                calendarEvents = on
+                if on, DayEvents.status == .notDetermined { DayEvents.ask { _ in } }
+            }))
+        }
+        if calendarEvents && eventsDenied {
+            NoteRow(title: T("Доступ к Календарю", "Calendar access")) {
+                NoteButton(title: T("Открыть ›", "Open ›")) {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
+        }
+        if calendarEvents {
+            NoteRow(title: T("Праздники и дни рождения", "Holidays and birthdays")) {
+                Choice(options: [(true, T("показывать", "show")), (false, T("нет", "hide"))],
+                       selection: $calendarHolidays)
+            }
+        }
+    }
+
+    private var eventsDenied: Bool {
+        DayEvents.status == .denied || DayEvents.status == .restricted || DayEvents.status == .writeOnly
+    }
+
+    private var eventsDetail: String? {
+        guard calendarEvents else { return nil }
+        if eventsDenied {
+            return T("Нет доступа к Календарю — разрешите в Настройках iPhone.",
+                     "No access to Calendar — allow it in iPhone Settings.")
+        }
+        return T("Над делами, по времени; звонит сам Календарь.",
+                 "Above your tasks, by time; Calendar itself rings.")
     }
 
     @ViewBuilder private var lookPart: some View {
@@ -496,6 +534,8 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.noWeather) private var noWeather = false
     @AppStorage(Prefs.fahrenheit) private var fahrenheit = false
     @AppStorage(Prefs.noAsk) private var noAsk = false
+    @AppStorage(DayEvents.onKey) private var calendarEvents = true
+    @AppStorage(DayEvents.holidaysKey) private var calendarHolidays = false
     @AppStorage(Prefs.calendarTint) private var calendarTint = "distance"
     @AppStorage(Prefs.sundayFirst) private var sundayFirst = false
     @AppStorage(Prefs.squeeze) private var squeeze = "high"

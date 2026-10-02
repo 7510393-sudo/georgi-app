@@ -4,3 +4,4 @@
 "NSCameraUsageDescription" = "Pour prendre une photo directement dans la note du jour. La photo est rangée dans votre dossier « Photos ».";
 "NSPhotoLibraryUsageDescription" = "Pour afficher les photos du jour directement sur la page. La photo choisie est copiée dans votre dossier « Photos » ; les autres ne vont nulle part.";
 "NSFaceIDUsageDescription" = "Pour verrouiller vos notes : sans votre visage ou votre code, personne ne peut les ouvrir.";
+"NSCalendarsFullAccessUsageDescription" = "Pour afficher les événements du Calendrier de l’iPhone dans le plan du jour, par heure et avec leurs rappels. Rien n’est copié hors du Calendrier sans votre demande.";
