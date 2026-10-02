@@ -197,6 +197,7 @@
 "Import from Day One" = "Importar do Day One";
 "Import from Day One and Apple Journal" = "Importar do Day One e do Diário da Apple";
 "Imported entries: %@, days: %@, photos and files: %@." = "Entradas importadas: %@, dias: %@, fotos e arquivos: %@.";
+"In a row: %@ · this month: %@ of %@" = "Seguidas: %@ · este mês: %@ de %@";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "No iCloud Drive suas anotações ficam também no iPad e no Mac. No iPhone — “No Meu iPhone”, ";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "Na janela, escolha “No Meu iPhone”, toque no ícone de pasta nova, dê um nome, por exemplo “Meu diário”, abra-a e toque em “Abrir”. Não precisa de espaço no iCloud, mas suas anotações ficarão só neste iPhone — faça cópias de segurança.";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "Na janela, escolha “iCloud Drive” e toque em “Abrir” no canto superior direito. Suas anotações ficarão também no iPad e no Mac; elas usam seu espaço no iCloud (5 GB grátis).";
@@ -516,6 +517,7 @@
 "drizzle" = "garoa";
 "entries are most likely one level up — in “%@”. " = "anotações anteriores provavelmente estão um nível acima — em “%@”. ";
 "erased in %@ days" = "será apagado em %@ dias";
+"every day" = "todo dia";
 "every month" = "todo mês";
 "every week" = "toda semana";
 "every year" = "todo ano";

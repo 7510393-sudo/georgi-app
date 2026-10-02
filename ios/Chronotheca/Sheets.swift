@@ -848,10 +848,25 @@ struct RollerSheet: View {
             Text(T("Повторять", "Repeat"))
                 .font(Look.sans(12, weight: .semibold))
                 .foregroundStyle(Look.inkSoft)
-            HStack(spacing: 6) {
-                repeatChip(nil, T("нет", "no"))
-                ForEach(Repeat.Every.allCases, id: \.self) { kind in
-                    repeatChip(kind, kind.title)
+            // Пять кнопок в ряд на узком телефоне не помещаются — тогда
+            // в два ряда (P378: добавилось «каждый день»).
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    repeatChip(nil, T("нет", "no"))
+                    ForEach(Repeat.Every.allCases, id: \.self) { kind in
+                        repeatChip(kind, kind.title)
+                    }
+                }
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        repeatChip(nil, T("нет", "no"))
+                        repeatChip(.day, Repeat.Every.day.title)
+                    }
+                    HStack(spacing: 6) {
+                        ForEach([Repeat.Every.week, .month, .year], id: \.self) { kind in
+                            repeatChip(kind, kind.title)
+                        }
+                    }
                 }
             }
         }
@@ -1054,6 +1069,7 @@ enum Clock {
 struct DetailsDrawer: View {
 
     @EnvironmentObject private var store: DayStore
+    @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
     @State private var keyboard: CGFloat = 0
 
@@ -1128,6 +1144,45 @@ struct DetailsDrawer: View {
         .accessibilityLabel(T("Закрыть", "Close"))
     }
 
+    /// Привычка (P378): сколько раз подряд и сколько в этом месяце.
+    @ViewBuilder private func habit(_ series: String) -> some View {
+        let stats = habitStats(series)
+        if stats.monthAll > 0 || stats.streak > 0 {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(T("Подряд: \(stats.streak) · в этом месяце: \(stats.monthDone) из \(stats.monthAll)",
+                       "In a row: \(stats.streak) · this month: \(stats.monthDone) of \(stats.monthAll)"))
+                    .font(Look.sans(12.5, weight: .medium))
+                    .foregroundStyle(Look.accent)
+                HStack(spacing: 4) {
+                    ForEach(Array(stats.recent.enumerated()), id: \.offset) { _, done in
+                        Circle()
+                            .fill(done ? Look.accent : Color.clear)
+                            .overlay(Circle().strokeBorder(Look.accent.opacity(0.6), lineWidth: 1))
+                            .frame(width: 10, height: 10)
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
+        }
+    }
+
+    private func habitStats(_ series: String) -> HabitStats {
+        var days: [Date: Bool] = [:]
+        for day in archive.days.values {
+            if let row = day.tasks.first(where: { $0.repeats?.series == series }) {
+                days[Calendar.current.startOfDay(for: day.date)] = row.done
+            }
+        }
+        // Открытый день — как он сейчас на экране, а не как в описи.
+        if let row = store.planRows.first(where: { $0.repeats?.series == series }) {
+            days[Calendar.current.startOfDay(for: store.date)] = row.done
+        }
+        return HabitStats.count(days, today: DayStore.today())
+    }
+
     @ViewBuilder private func body(at i: Int) -> some View {
         Text(store.planRows[i].text.isEmpty ? T("Без названия", "Untitled") : store.planRows[i].text)
             .font(Look.sans(14.5))
@@ -1136,6 +1191,8 @@ struct DetailsDrawer: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.bottom, 10)
+
+        if let series = store.planRows[i].repeats?.series { habit(series) }
 
         editor(at: i)
             .frame(maxHeight: .infinity)

@@ -197,6 +197,7 @@
 "Import from Day One" = "Day One から読み込む";
 "Import from Day One and Apple Journal" = "Day One と Appleの「ジャーナル」からの読み込み";
 "Imported entries: %@, days: %@, photos and files: %@." = "読み込んだ記録：%@ 件、日数：%@、写真とファイル：%@ 件。";
+"In a row: %@ · this month: %@ of %@" = "連続：%@ · 今月：%@ / %@";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "iCloud Driveなら、記録はiPadやMacにも入ります。iPhoneの場合は「このiPhone内」で、";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "表示された画面で「このiPhone内」を選び、新規フォルダのアイコンをタップして「マイ日記」などと名前をつけ、そのフォルダに入って「開く」をタップします。iCloudの容量は使いませんが、記録はこのiPhoneにだけ残ります。バックアップを取ってください。";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "表示された画面で「iCloud Drive」を選び、右上の「開く」をタップします。記録はiPadやMacにも入り、iCloudの容量（無料で5GB）を使います。";
@@ -516,6 +517,7 @@
 "drizzle" = "霧雨";
 "entries are most likely one level up — in “%@”. " = "記録はおそらく1つ上の階層「%@」にあります。";
 "erased in %@ days" = "あと%@日で消去";
+"every day" = "毎日";
 "every month" = "毎月";
 "every week" = "毎週";
 "every year" = "毎年";

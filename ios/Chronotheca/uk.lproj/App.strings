@@ -197,6 +197,7 @@
 "Import from Day One" = "Перенесення з Day One";
 "Import from Day One and Apple Journal" = "Перенесення з Day One і «Щоденника» Apple";
 "Imported entries: %@, days: %@, photos and files: %@." = "Перенесено записів: %@, днів: %@, знімків і файлів: %@.";
+"In a row: %@ · this month: %@ of %@" = "Поспіль: %@ · цього місяця: %@ з %@";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "В iCloud Drive записи будуть і на iPad, і на Mac. На iPhone — «На iPhone», ";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "У вікні виберіть «На iPhone», натисніть значок нової теки, назвіть її, наприклад, «Мої записи», зайдіть у неї й натисніть «Відкрити». Місця в iCloud не потрібно, але записи будуть лише на цьому iPhone — робіть резервні копії.";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "У вікні виберіть «iCloud Drive» і натисніть «Відкрити» вгорі праворуч. Записи будуть і на iPad, і на Mac; місце береться з вашого iCloud (безкоштовно — 5 ГБ).";
@@ -516,6 +517,7 @@
 "drizzle" = "мряка";
 "entries are most likely one level up — in “%@”. " = "записи, найімовірніше, лежать рівнем вище — у «%@». ";
 "erased in %@ days" = "зітреться через %@ дн.";
+"every day" = "щодня";
 "every month" = "щомісяця";
 "every week" = "щотижня";
 "every year" = "щороку";

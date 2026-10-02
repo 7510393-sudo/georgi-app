@@ -3,11 +3,13 @@ import Foundation
 /// Пометка серии в строке дела (P359).
 struct Repeat: Equatable {
     enum Every: String, CaseIterable {
-        case week, month, year
+        // «Каждый день» — для привычек (P378).
+        case day, week, month, year
 
         /// Как это сказать на кнопке.
         var title: String {
             switch self {
+            case .day:   return T("каждый день", "every day")
             case .week:  return T("каждую неделю", "every week")
             case .month: return T("каждый месяц", "every month")
             case .year:  return T("каждый год", "every year")
@@ -56,6 +58,11 @@ enum Repeats {
     /// На сколько дней вперёд вписываются повторы.
     static let horizon = 365
 
+    /// Ежедневное дело — на месяц вперёд, а не на год: иначе одна привычка
+    /// заводила бы 365 файлов. Месяц дописывается, пока приложением
+    /// пользуются (P378).
+    static func horizon(for kind: Repeat.Every) -> Int { kind == .day ? 31 : horizon }
+
     // MARK: - Список серий
 
     private static func url(_ vault: Vault) -> URL? {
@@ -98,6 +105,7 @@ enum Repeats {
         while k < 2000 {
             let next: Date?
             switch every {
+            case .day:   next = cal.date(byAdding: .day, value: k, to: start)
             case .week:  next = cal.date(byAdding: .day, value: 7 * k, to: start)
             case .month: next = cal.date(byAdding: .month, value: k, to: start)
             case .year:  next = cal.date(byAdding: .year, value: k, to: start)
@@ -180,10 +188,11 @@ enum Repeats {
     static func extendAll(vault: Vault, open: Date?) {
         var list = load(vault)
         guard !list.isEmpty else { return }
-        let horizonDay = Calendar.current.date(byAdding: .day, value: horizon,
-                                               to: Calendar.current.startOfDay(for: Date())) ?? Date()
+        let today = Calendar.current.startOfDay(for: Date())
         let before = list
         for k in list.indices {
+            let horizonDay = Calendar.current.date(byAdding: .day, value: horizon(for: list[k].kind),
+                                                   to: today) ?? Date()
             extend(&list[k], through: horizonDay, vault: vault, open: open)
         }
         if list != before { save(list, vault) }
@@ -194,5 +203,42 @@ enum Repeats {
         guard let anchor = Vault.date(from: s.anchor),
               let until = Vault.date(from: s.until) else { return [] }
         return dates(s.kind, anchor: anchor, after: date, through: until)
+    }
+}
+
+/// Учёт привычки (P378): повторяющееся дело — это и есть привычка. Сколько
+/// раз подряд оно сделано и сколько из положенных в этом месяце. Считается
+/// по файлам дней — сверх них ничего не хранится.
+struct HabitStats: Equatable {
+    var streak = 0
+    var monthDone = 0
+    var monthAll = 0
+    /// Последние повторы, от давних к свежим: сделано или нет — для ряда
+    /// кружков.
+    var recent: [Bool] = []
+
+    /// `days` — день → сделано ли дело серии в этот день (дни, где его нет,
+    /// не передаются). Сегодня, если ещё не сделано, серию не обрывает.
+    static func count(_ days: [Date: Bool], today: Date) -> HabitStats {
+        let cal = Calendar.current
+        let now = cal.startOfDay(for: today)
+        let past = days.filter { $0.key <= now }.sorted { $0.key > $1.key }
+        var out = HabitStats()
+        for (k, (day, done)) in past.enumerated() {
+            if done {
+                out.streak += 1
+            } else if k == 0 && day == now {
+                continue
+            } else {
+                break
+            }
+        }
+        let month = cal.dateComponents([.year, .month], from: now)
+        for (day, done) in past where cal.dateComponents([.year, .month], from: day) == month {
+            out.monthAll += 1
+            if done { out.monthDone += 1 }
+        }
+        out.recent = Array(past.prefix(14).reversed().map(\.value))
+        return out
     }
 }

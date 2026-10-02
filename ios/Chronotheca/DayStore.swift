@@ -291,10 +291,10 @@ final class DayStore: ObservableObject {
 
     /// Дальний край: на год вперёд от сегодня или от открытого дня, что
     /// позже.
-    private var seriesHorizon: Date {
+    private func seriesHorizon(_ every: Repeat.Every) -> Date {
         let cal = Calendar.current
         let base = max(cal.startOfDay(for: Date()), date)
-        return cal.date(byAdding: .day, value: Repeats.horizon, to: base) ?? base
+        return cal.date(byAdding: .day, value: Repeats.horizon(for: every), to: base) ?? base
     }
 
     /// Поставить делу повтор: оно само встанет в файлы будущих дней на год
@@ -311,7 +311,7 @@ final class DayStore: ObservableObject {
         var s = Series(id: series, every: every.rawValue, anchor: Vault.stamp(date),
                        until: Vault.stamp(date), time: row.time, bell: row.bell,
                        text: row.text, missed: nil)
-        Repeats.extend(&s, through: seriesHorizon, vault: vault, open: date)
+        Repeats.extend(&s, through: seriesHorizon(every), vault: vault, open: date)
         Repeats.save(Repeats.load(vault) + [s], vault)
         noteSeries()
         syncUpcomingReminders()

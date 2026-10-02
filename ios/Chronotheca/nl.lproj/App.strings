@@ -197,6 +197,7 @@
 "Import from Day One" = "Importeren uit Day One";
 "Import from Day One and Apple Journal" = "Importeren uit Day One en Apple Dagboek";
 "Imported entries: %@, days: %@, photos and files: %@." = "Geïmporteerde items: %@, dagen: %@, foto’s en bestanden: %@.";
+"In a row: %@ · this month: %@ of %@" = "Op rij: %@ · deze maand: %@ van %@";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "In iCloud Drive staan je aantekeningen ook op je iPad en Mac. Op de iPhone — ‘Op mijn iPhone’, ";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "Kies in het venster ‘Op mijn iPhone’, tik op het symbool voor een nieuwe map, noem hem bijvoorbeeld ‘Mijn dagboek’, open hem en tik op ‘Open’. Geen iCloud-ruimte nodig, maar je aantekeningen staan alleen op deze iPhone — maak reservekopieën.";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "Kies in het venster ‘iCloud Drive’ en tik rechtsboven op ‘Open’. Je aantekeningen staan dan ook op je iPad en Mac; ze gebruiken je iCloud-ruimte (5 GB gratis).";
@@ -516,6 +517,7 @@
 "drizzle" = "motregen";
 "entries are most likely one level up — in “%@”. " = "aantekeningen staan waarschijnlijk een niveau hoger — in ‘%@’. ";
 "erased in %@ days" = "gewist over %@ dagen";
+"every day" = "elke dag";
 "every month" = "elke maand";
 "every week" = "elke week";
 "every year" = "elk jaar";

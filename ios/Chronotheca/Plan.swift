@@ -113,7 +113,7 @@ enum Plan {
         // Пометка серии стоит последней: «… (remind 18:30) (every week #k3f9)»
         // (P359).
         var repeats: Repeat?
-        if let range = rest.range(of: #"\s*\(every (week|month|year) #[a-z0-9]{4,12}\)$"#,
+        if let range = rest.range(of: #"\s*\(every (day|week|month|year) #[a-z0-9]{4,12}\)$"#,
                                   options: .regularExpression) {
             let inside = String(rest[range]).trimmingCharacters(in: .whitespaces)
                 .dropFirst(7).dropLast()

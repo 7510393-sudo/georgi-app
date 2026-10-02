@@ -44,3 +44,34 @@ final class ImportTests: XCTestCase {
         XCTAssertThrowsError(try DayOneImport.entries(from: Data("{}".utf8)))
     }
 }
+
+/// P378: привычка — повторяющееся дело; подряд и за месяц.
+final class HabitTests: XCTestCase {
+
+    func testПодрядИЗаМесяц() {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        func ago(_ n: Int) -> Date { cal.date(byAdding: .day, value: -n, to: today)! }
+        // Сегодня ещё не сделано — серию не обрывает; вчера, позавчера — да;
+        // три дня назад — нет.
+        let days: [Date: Bool] = [today: false, ago(1): true, ago(2): true, ago(3): false, ago(4): true]
+        let s = HabitStats.count(days, today: today)
+        XCTAssertEqual(s.streak, 2)
+        XCTAssertEqual(s.recent, [true, false, true, true, false])
+    }
+
+    func testЕжедневноеНаМесяцВперёд() {
+        XCTAssertEqual(Repeats.horizon(for: .day), 31)
+        XCTAssertEqual(Repeats.horizon(for: .week), 365)
+        let cal = Calendar.current
+        let a = cal.startOfDay(for: Date())
+        let d = Repeats.dates(.day, anchor: a, after: a, through: cal.date(byAdding: .day, value: 3, to: a)!)
+        XCTAssertEqual(d.count, 3)
+    }
+
+    func testПометкаЕжедневногоДелаЧитается() {
+        let rows = Plan.rows(from: "- [ ] Зарядка (every day #abc123)")
+        XCTAssertEqual(rows.first?.repeats?.every, .day)
+        XCTAssertEqual(rows.first?.text, "Зарядка")
+    }
+}
