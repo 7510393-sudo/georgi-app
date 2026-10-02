@@ -93,8 +93,8 @@ struct DayPage: View {
                 GeometryReader { geo in
                     if live, store.editing(shell.tab), let anchor {
                         FolderOutline(tab: geo[anchor], radius: 10, inset: 1.5)
-                            .stroke(Look.glow, style: StrokeStyle(lineWidth: 3, lineJoin: .round))
-                            .shadow(color: Look.glow.opacity(0.8), radius: 6)
+                            .stroke(Look.glow, style: StrokeStyle(lineWidth: 3.9, lineJoin: .round))
+                            .shadow(color: Look.glow.opacity(1), radius: 7)
                             .allowsHitTesting(false)
                     }
                 }

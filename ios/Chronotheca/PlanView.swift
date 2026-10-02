@@ -44,6 +44,9 @@ struct PlanRowLine: View {
     /// долгим, а не когда палец убрали (P361).
     var onLift: ((Lift) -> Void)?
 
+    /// Дело поднято (P362): контур синий и ярче (P374).
+    var lifted = false
+
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
 
@@ -81,7 +84,7 @@ struct PlanRowLine: View {
     /// оборвался сам, — тогда дело опускается на место.
     @GestureState private var holding = false
     /// Подъём уже объявлен — второй раз не объявлять.
-    @State private var lifted = false
+    @State private var told = false
 
     var body: some View {
         HStack(alignment: .top, spacing: Self.gap) {
@@ -98,7 +101,22 @@ struct PlanRowLine: View {
         .padding(.leading, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Каждое дело в своём контуре (P374) — том же, что у поднятого,
+        // только тонком. Справа он уходит под корешок «Детали»: корешок
+        // лежит сверху и черту не пересекает.
+        .background { contour }
         .opacity(row.done ? 0.42 : 1)
+    }
+
+    private var contour: some View {
+        RoundedRectangle(cornerRadius: 9)
+            .strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(0.75),
+                          lineWidth: lifted ? 3.25 : 1)
+            .shadow(color: Look.glow.opacity(lifted ? 0.9 : 0), radius: 5)
+            .padding(.leading, 4)
+            .padding(.trailing, 14)
+            .padding(.vertical, 3)
+            .allowsHitTesting(false)
     }
 
     /// Долгое нажатие на номер и ход пальца после него (P362) — то же,
@@ -114,15 +132,15 @@ struct PlanRowLine: View {
             }
             .onChanged { value in
                 guard case .second(true, let drag) = value else { return }
-                if !lifted {
-                    lifted = true
+                if !told {
+                    told = true
                     onLift?(.began)
                 }
                 if let drag { onLift?(.moved(drag.translation)) }
             }
             .onEnded { value in
-                guard lifted, case .second(true, let drag) = value else { return }
-                lifted = false
+                guard told, case .second(true, let drag) = value else { return }
+                told = false
                 onLift?(.ended(drag?.translation ?? .zero))
             }
     }
@@ -151,8 +169,8 @@ struct PlanRowLine: View {
         .onChange(of: holding) { _, now in
             guard !now else { return }
             DispatchQueue.main.async {
-                guard lifted else { return }
-                lifted = false
+                guard told else { return }
+                told = false
                 onLift?(.cancelled)
             }
         }
@@ -163,36 +181,27 @@ struct PlanRowLine: View {
             .font(Look.mono(14))
             .foregroundStyle(Look.inkSoft)
             .frame(width: PlanRowLine.badgeWidth, height: PlanRowLine.badgeWidth)
-            .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
-            // Контур — заметной чертой, как у вкладок и корешка «Детали»:
-            // прежний, цвета линовки, на бумаге было не разглядеть (P364).
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.inkFaint, lineWidth: 1))
-            .shadow(color: .black.opacity(0.06), radius: 1, y: 1)
+            .modifier(Panel())
     }
 
     private var time: some View {
         Button { onTime?() } label: {
             Text(row.time ?? "--:--")
-                .font(Look.mono(18.5))
-                .tracking(row.time == nil ? 0.7 : 0)
+                .font(Look.mono(17))
+                .tracking(row.time == nil ? 0.6 : 0)
                 // Время — всегда одна строка. «--:--» с разрядкой не
                 // умещалось в отведённую ширину и переносилось надвое:
                 // на странице оставался висеть один прочерк.
                 .lineLimit(1)
-                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.8)
                 .foregroundStyle(row.time == nil || faded ? Look.inkFaint : Look.inkSoft)
-                // Черта рисуется всегда, а не только там, где по ней можно
-                // нажать: вид строки не должен зависеть от того, открытая
-                // это страница или соседняя.
-                .overlay(alignment: .bottom) {
-                    Line().stroke(Look.inkFaint,
-                                  style: StrokeStyle(lineWidth: 1, dash: [1.5, 2]))
-                        .frame(height: 1)
-                        .offset(y: 3)
-                }
-                // Ширина задана числом: по ней считается отступ названия,
-                // и она не должна зависеть от того, назначено время или нет.
-                .frame(width: PlanRowLine.timeWidth, alignment: .leading)
+                // Время — на такой же панельке, как номер (P374), вместо
+                // прежней пунктирной черты. Ширина задана числом: по ней
+                // считается отступ названия, и она не должна зависеть от
+                // того, назначено время или нет.
+                .frame(width: PlanRowLine.timeWidth, height: PlanRowLine.badgeWidth)
+                .modifier(Panel())
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
         }
         .buttonStyle(.plain)
         // Не .disabled: система рисует выключенную кнопку бледнее, и время
@@ -215,6 +224,10 @@ struct PlanRowLine: View {
                             .offset(x: 5, y: 3)
                     }
                 }
+                // Колокольчик — на панельке, как номер (P374); площадка
+                // для пальца вокруг неё прежняя.
+                .frame(width: PlanRowLine.bellWidth - 4, height: PlanRowLine.badgeWidth)
+                .modifier(Panel())
                 .frame(width: PlanRowLine.bellWidth, height: 38)
                 .contentShape(Rectangle())
                 // Площадка колокольчика вдвое выше квадратика номера, но
@@ -264,6 +277,18 @@ struct PlanRowLine: View {
         .buttonStyle(.plain)
         .allowsHitTesting(onDetails != nil)
         .accessibilityLabel(T("Подробности", "Details"))
+    }
+}
+
+/// Выпуклая панелька номера, времени и колокольчика (P364, P374). Контур —
+/// заметной чертой, как у вкладок и корешка «Детали»: прежний, цвета
+/// линовки, на бумаге было не разглядеть.
+struct Panel: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.inkFaint, lineWidth: 1))
+            .shadow(color: .black.opacity(0.06), radius: 1, y: 1)
     }
 }
 
@@ -487,6 +512,15 @@ struct PlanView: View {
     @State private var slide: CGFloat = 0
     /// Точка в плане, у которой после долгого нажатия виден крестик.
     @State private var armedLine: UUID?
+    /// Точка, которую несут пальцем (P374), откуда и куда: места — в
+    /// порядке видимых строк. Строки между ними расступаются на её высоту.
+    @State private var lineDrag: UUID?
+    @State private var lineFrom = 0
+    @State private var lineTo = 0
+    @State private var lineHeight: CGFloat = 0
+    /// Где стояли строки, когда точку подняли: по ним, а не по
+    /// расступившимся, ищется место — иначе строки дрожали бы под пальцем.
+    @State private var lineSpots: [UUID: CGRect] = [:]
 
     /// Сколько отвести дело вбок, чтобы отпущенное оно удалилось или
     /// отметилось.
@@ -563,11 +597,19 @@ struct PlanView: View {
 
     @ViewBuilder private var list: some View {
         ForEach($store.planRows) { row in
+            let id = row.wrappedValue.id
             if row.wrappedValue.isTask {
-                taskRow(row)
-                Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                // Дело и черта под ним — одним куском: пока несут точку,
+                // они расступаются вместе (P374).
+                VStack(spacing: 0) {
+                    taskRow(row)
+                    Rectangle().fill(Look.ruleSoft).frame(height: 1)
+                }
+                .modifier(Zone(id: id))
+                .offset(y: lineShift(id))
+                .animation(.easeOut(duration: 0.16), value: lineShift(id))
+                .zIndex(dragged == id || lifted == id ? 1 : 0)
             } else if let line = row.wrappedValue.verbatim {
-                let id = row.wrappedValue.id
                 PlanExtraLine(line: line, resolve: store.photoURL,
                               open: { url in
                                   shell.openedPhoto = .init(tab: .plan, index: 0, url: url)
@@ -576,23 +618,22 @@ struct PlanView: View {
                                   store.noteLeaving(fromToday: true)
                                   shell.showPoint($0)
                               },
-                              onMove: store.canEditPlan
-                                  ? { store.moveLine(id, by: $0) } : nil,
+                              onCarry: store.canEditPlan
+                                  ? { carryLine(id, $0, at: $1) } : nil,
                               onDelete: store.canEditPlan
                                   ? {
                                       armedLine = nil
                                       withAnimation(.easeOut(duration: 0.2)) { store.delete(id) }
                                   } : nil,
                               armed: armedLine == id,
+                              carried: lineDrag == id,
                               onArm: { on in
                                   withAnimation(.easeOut(duration: 0.15)) { armedLine = on ? id : nil }
-                              },
-                              onInto: store.canEditPlan
-                                  ? { spot in
-                                      guard let task = PlanZones.task(at: spot) else { return false }
-                                      store.putPointIntoTask(id, task: task)
-                                      return true
-                                  } : nil)
+                              })
+                .modifier(Zone(id: id))
+                .offset(y: lineShift(id))
+                .animation(.easeOut(duration: 0.16), value: lineShift(id))
+                .zIndex(lineDrag == id ? 1 : 0)
             }
         }
         stat
@@ -629,27 +670,10 @@ struct PlanView: View {
                 store.checkSeries(id)
             },
             onNext: { next(after: id) },
-            onLift: { lift(row, $0) })
+            onLift: { lift(row, $0) },
             // Поднятое дело обведено синим — тем же, что и всё, что можно
             // взять пальцем (P203, P362).
-            .overlay {
-                if up {
-                    RoundedRectangle(cornerRadius: 9)
-                        .strokeBorder(Look.glow, lineWidth: 2.5)
-                        .shadow(color: Look.glow.opacity(0.7), radius: 5)
-                        .padding(.horizontal, 3)
-                        .padding(.vertical, 2)
-                        .allowsHitTesting(false)
-                }
-            }
-            // Где дело на экране — на его середину бросают точку (P358).
-            .background(GeometryReader { geo in
-                let frame = geo.frame(in: .global)
-                Color.clear
-                    .onAppear { PlanZones.rows[id] = frame }
-                    .onChange(of: frame) { _, now in PlanZones.rows[id] = now }
-                    .onDisappear { PlanZones.rows[id] = nil }
-            })
+            lifted: up)
             // Снимок из полоски или из-под другого дела — под это дело, в
             // ряд с теми, что уже там (P358).
             .onDrop(of: store.canEditPlan ? [UTType.plainText] : [],
@@ -770,6 +794,67 @@ struct PlanView: View {
                 toggle(row)
             }
         }
+    }
+
+    /// Точку подержали и несут (P374). Подержали — сразу крупнее и с
+    /// крестиком, с толчком; повели — крестик уходит, строки под пальцем
+    /// расступаются, и видно, куда она встанет. Встаёт она только своей
+    /// строкой между делами: в название дела — нет.
+    private func carryLine(_ id: UUID, _ phase: Lift, at spot: CGPoint) {
+        switch phase {
+        case .began:
+            if typingIn != nil {
+                hideKeyboard()
+                typingIn = nil
+            }
+            Feel.lift()
+            lineDrag = nil
+            withAnimation(.easeOut(duration: 0.15)) { armedLine = id }
+        case .moved:
+            let order = store.shownRowIDs
+            if lineDrag == nil {
+                guard let from = order.firstIndex(of: id) else { return }
+                lineSpots = PlanZones.rows
+                lineFrom = from
+                lineTo = from
+                lineHeight = lineSpots[id]?.height ?? 41
+                withAnimation(.easeOut(duration: 0.15)) { armedLine = nil }
+                lineDrag = id
+            }
+            // Место — сколько прочих строк выше пальца. Над первым делом
+            // точке не стоять: она всегда под каким-нибудь делом.
+            let others = order.filter { $0 != id }
+            var to = others.filter { (lineSpots[$0]?.midY ?? .infinity) < spot.y }.count
+            if let first = others.first, store.planRows.first(where: { $0.id == first })?.isTask == true {
+                to = max(to, 1)
+            }
+            if to != lineTo {
+                lineTo = to
+                Feel.tick()
+            }
+        case .ended:
+            PlanHold.ended = Date()
+            guard lineDrag == id else { return }
+            let by = lineTo - lineFrom
+            lineDrag = nil
+            if by != 0 {
+                store.moveLine(id, by: by)
+                Feel.thud()
+            }
+        case .cancelled:
+            PlanHold.ended = Date()
+            lineDrag = nil
+        }
+    }
+
+    /// На сколько сдвинута строка, пока над ней несут точку.
+    private func lineShift(_ id: UUID) -> CGFloat {
+        guard let lineDrag, lineDrag != id, lineTo != lineFrom,
+              let mine = store.shownRowIDs.firstIndex(of: id)
+        else { return 0 }
+        if lineTo > lineFrom, mine > lineFrom, mine <= lineTo { return -lineHeight }
+        if lineTo < lineFrom, mine < lineFrom, mine >= lineTo { return lineHeight }
+        return 0
     }
 
     /// Дело отпустили: оно встаёт туда, куда его донесли.
@@ -910,41 +995,46 @@ struct PlanExtraLine: View {
     var open: ((URL?) -> Void)?
     /// Касание по точке — карта на ней. Пусто — на соседних страницах.
     var openPoint: ((GeoPoint) -> Void)?
-    /// Строку цепляют долгим нажатием и тащат к нужному делу; она встаёт
-    /// на столько строк, на сколько её протащили (P226, P241, P362).
-    var onMove: ((Int) -> Void)?
+    /// Точку цепляют долгим нажатием и несут к нужному делу (P226, P241,
+    /// P362, P374): ход пальца и где он на экране.
+    var onCarry: ((Lift, CGPoint) -> Void)?
     /// Крестик у точки — строка уходит из плана (P352). Запомненное место
     /// остаётся на карте: из плана уходит только ссылка на него.
     var onDelete: (() -> Void)?
     /// Точку подержали и отпустили, не сдвинув: она крупнее, у неё крестик
     /// (P362). Касание по ней — крестик убрать.
     var armed = false
+    /// Точку несут пальцем — она обведена синим.
+    var carried = false
     var onArm: ((Bool) -> Void)?
-    /// Точку отпустили на середине дела — она уходит в его название
-    /// (P358). Получает место пальца на экране; `true` — взяло.
-    var onInto: ((CGPoint) -> Bool)?
-
-    @State private var dragged: CGFloat = 0
 
     var body: some View {
         if Plan.isPhotoRow(line) {
             // Снимки под делом — в ряд; каждый несут пальцем под другое
             // дело или назад в полоску (P358, P362).
             PlanPhotoRow(links: Diary.links(in: line), resolve: resolve, open: open,
-                         carry: onMove != nil)
+                         carry: onCarry != nil)
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         } else if let point = Geo.point(in: line) {
-            PlanPointLine(point: point, open: tapPoint, armed: armed, onDelete: onDelete)
-                .modifier(Carry(on: onMove != nil, dragged: $dragged, move: onMove, into: onInto,
-                                arm: onDelete == nil ? nil : onArm))
-            Rectangle().fill(Look.ruleSoft).frame(height: 1)
+            // Точка и черта под ней едут вместе.
+            VStack(spacing: 0) {
+                PlanPointLine(point: point, open: tapPoint, armed: armed, glowing: armed || carried,
+                              onDelete: onDelete)
+                Rectangle().fill(Look.ruleSoft).frame(height: 1)
+            }
+            .modifier(Carry(report: onCarry))
         }
     }
 
     /// Касание по точке: с крестиком — убрать крестик, без него — карта.
+    /// Касание, которое на деле было концом долгого нажатия, — ни то ни
+    /// другое: прежде после него открывалась карта (P374).
     private var tapPoint: ((GeoPoint) -> Void)? {
-        guard armed else { return openPoint }
-        return { _ in onArm?(false) }
+        guard let openPoint else { return nil }
+        return { point in
+            guard Date().timeIntervalSince(PlanHold.ended) > 0.4 else { return }
+            if armed { onArm?(false) } else { openPoint(point) }
+        }
     }
 }
 
@@ -988,69 +1078,90 @@ private struct SeriesQuestion: ViewModifier {
     }
 }
 
-/// Где на экране строки дел открытой страницы — чтобы точку, отпущенную
-/// на середине дела, положить в его название (P358).
+/// Где на экране строки открытой страницы плана — дела, снимки и точки:
+/// по ним ищется, куда встанет несомая точка (P374).
 enum PlanZones {
     static var rows: [UUID: CGRect] = [:]
+}
 
-    /// Дело, на середине которого палец: верхняя и нижняя четверть строки —
-    /// это граница между делами, там точка встаёт своей строкой.
-    static func task(at spot: CGPoint) -> UUID? {
-        rows.first { _, frame in
-            frame.insetBy(dx: 0, dy: frame.height * 0.25).contains(spot)
-        }?.key
+/// Записать, где строка на экране.
+private struct Zone: ViewModifier {
+    let id: UUID
+
+    func body(content: Content) -> some View {
+        content.background(GeometryReader { geo in
+            let frame = geo.frame(in: .global)
+            Color.clear
+                .onAppear { PlanZones.rows[id] = frame }
+                .onChange(of: frame) { _, now in PlanZones.rows[id] = now }
+                .onDisappear { PlanZones.rows[id] = nil }
+        })
     }
 }
 
-/// Строку плана цепляют долгим нажатием и тащат вверх-вниз.
-private struct Carry: ViewModifier {
-    let on: Bool
-    @Binding var dragged: CGFloat
-    let move: ((Int) -> Void)?
-    var into: ((CGPoint) -> Bool)? = nil
-    /// Подержали и отпустили, не сдвинув, — показать крестик (P362).
-    var arm: ((Bool) -> Void)? = nil
+/// Когда кончилось последнее долгое нажатие на точку: касание сразу после
+/// него — это тот же палец, а не просьба открыть карту (P374).
+enum PlanHold {
+    static var ended = Date.distantPast
+}
 
-    /// Подъём уже отмечен толчком.
+/// Точку в плане цепляют долгим нажатием и несут вверх-вниз (P374).
+/// Толчок и отклик — в тот миг, когда нажатие стало долгим, а не когда
+/// палец убрали. Точка едет за пальцем; куда она встанет, решает план.
+private struct Carry: ViewModifier {
+    let report: ((Lift, CGPoint) -> Void)?
+
+    /// Подъём уже объявлен.
     @State private var lifted = false
+    /// Палец повёл — это перенос, а не просьба о крестике.
+    @State private var moved = false
+    @State private var dragged: CGFloat = 0
+    /// Жест жив. Оборвался сам (палец увела прокрутка) — точка встаёт на
+    /// место.
+    @GestureState private var holding = false
 
     func body(content: Content) -> some View {
-        if on {
+        if let report {
             content
                 .offset(y: dragged)
-                .zIndex(dragged == 0 ? 0 : 1)
                 .shadow(color: .black.opacity(dragged == 0 ? 0 : 0.18), radius: 8, y: 3)
                 .gesture(LongPressGesture(minimumDuration: 0.3)
                     .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                    .updating($holding) { value, state, _ in
+                        if case .second(true, _) = value { state = true }
+                    }
                     .onChanged { value in
                         guard case .second(true, let drag) = value else { return }
                         if !lifted {
                             lifted = true
-                            Feel.lift()
+                            moved = false
+                            report(.began, .zero)
                         }
-                        if let drag { dragged = drag.translation.height }
+                        guard let drag else { return }
+                        if !moved, abs(drag.translation.height) > 10 || abs(drag.translation.width) > 10 {
+                            moved = true
+                        }
+                        guard moved else { return }
+                        dragged = drag.translation.height
+                        report(.moved(drag.translation), drag.location)
                     }
                     .onEnded { value in
+                        guard lifted else { return }
                         lifted = false
-                        guard case .second(true, let found) = value else { dragged = 0; return }
-                        // Подержали, не сдвинув, — крупнее и с крестиком.
-                        guard let drag = found,
-                              abs(drag.translation.height) > 8 || abs(drag.translation.width) > 8
-                        else {
-                            dragged = 0
-                            arm?(true)
-                            return
-                        }
-                        arm?(false)
-                        let steps = Int((drag.translation.height / PlanRowLine.height).rounded())
                         dragged = 0
-                        // На середине дела — внутрь него, в название (P358).
-                        if let into, into(drag.location) {
-                            Feel.light()
-                            return
-                        }
-                        if steps != 0 { move?(steps) }
+                        var way = CGSize.zero
+                        if case .second(true, let drag) = value, let drag { way = drag.translation }
+                        report(.ended(way), .zero)
                     })
+                .onChange(of: holding) { _, now in
+                    guard !now else { return }
+                    DispatchQueue.main.async {
+                        guard lifted else { return }
+                        lifted = false
+                        dragged = 0
+                        report(.cancelled, .zero)
+                    }
+                }
                 .accessibilityHint(T("Долгое нажатие — перетащить к другому делу", "Long press to drag next to another task"))
         } else {
             content
@@ -1065,11 +1176,22 @@ struct PlanPointLine: View {
     let point: GeoPoint
     var open: ((GeoPoint) -> Void)?
     var armed = false
+    /// Синий контур: точку несут или у неё крестик (P374).
+    var glowing = false
     var onDelete: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 0) {
             PointChipView(point: point)
+                .overlay {
+                    if glowing {
+                        Capsule()
+                            .strokeBorder(Look.glow, lineWidth: 2)
+                            .shadow(color: Look.glow.opacity(0.8), radius: 4)
+                            .padding(-2)
+                            .allowsHitTesting(false)
+                    }
+                }
                 .scaleEffect(armed ? 1.3 : 1, anchor: .leading)
                 .overlay(alignment: .topTrailing) {
                     if armed, let onDelete {

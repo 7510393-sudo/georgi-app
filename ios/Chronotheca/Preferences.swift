@@ -93,7 +93,8 @@ enum Prefs {
 
     /// Граница суток из настроек — применить к расчёту «сегодня».
     static func applyBoundary() {
-        let hour = UserDefaults.standard.object(forKey: boundary) as? Int ?? 4
+        // По умолчанию день начинается в полночь (P374; прежде в 4:00).
+        let hour = UserDefaults.standard.object(forKey: boundary) as? Int ?? 0
         DayStore.boundaryHour = min(max(hour, 0), 6)
     }
 }

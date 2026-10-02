@@ -75,7 +75,7 @@ final class DayStore: ObservableObject {
     }
 
     /// Граница суток: до этого часа день считается вчерашним (решение P17).
-    static var boundaryHour = 4
+    static var boundaryHour = 0
 
     /// Через столько без правки дневник ставит новую отметку времени.
     static let stampGap: TimeInterval = 60 * 60
@@ -359,13 +359,21 @@ final class DayStore: ObservableObject {
     /// Переставить строку-точку или снимок между делами — на столько
     /// видимых строк, на сколько её протащили (P226). Невидимые строки
     /// файла остаются, где были.
-    func moveLine(_ id: UUID, by steps: Int) {
-        guard canEditPlan, steps != 0, let i = index(of: id) else { return }
-        let shown = planRows.indices.filter { k in
+    /// Строки плана, которые видно на странице и между которыми ходят
+    /// точки и снимки: дела, снимки и точки — по порядку.
+    var shownRowIDs: [UUID] { shownIndices.map { planRows[$0].id } }
+
+    private var shownIndices: [Int] {
+        planRows.indices.filter { k in
             planRows[k].isTask || planRows[k].verbatim.map {
                 Diary.picture(in: $0) != nil || Geo.point(in: $0) != nil
             } ?? false
         }
+    }
+
+    func moveLine(_ id: UUID, by steps: Int) {
+        guard canEditPlan, steps != 0, let i = index(of: id) else { return }
+        let shown = shownIndices
         guard let p = shown.firstIndex(of: i) else { return }
         let q = min(max(p + steps, 0), shown.count - 1)
         guard q != p else { return }

@@ -180,7 +180,9 @@ enum Look {
     static let chrome    = Color(light: 0xF4F4F1, dark: 0x191F26)
     static let planBg    = Color(light: 0xFDFDFB, dark: 0x14191F)
     /// Свет из-под превью в режиме изменений: их можно взять (P203).
-    static let glow      = Color(light: 0x5E9BF0, dark: 0x7FB2FF)
+    /// На 30% насыщеннее прежнего 0x5E9BF0 (P374): контур поднятого дела,
+    /// метки и правки виден сразу.
+    static let glow      = Color(light: 0x2F7BEB, dark: 0x5C9EFF)
     /// Булавка точки на карте в тексте — заметная, красная, как булавка
     /// на картах (P358).
     static let pin       = Color(light: 0xD8433A, dark: 0xFF7A6E)

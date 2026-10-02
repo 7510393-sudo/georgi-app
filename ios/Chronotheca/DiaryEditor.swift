@@ -96,6 +96,11 @@ struct DiaryEditor: UIViewRepresentable {
         if grows { view.inputAccessoryView = KeyboardBar.view }
         // Превью из полоски бросают прямо в текст (решение P204).
         view.textDropDelegate = context.coordinator
+        // Своё перетаскивание поля выключено (P374): оно перехватывало
+        // долгое нажатие на снимок или точку, поднимало свою копию и, не
+        // найдя, куда её положить, возвращало назад. Переносит только своё
+        // долгое нажатие — с раздвиганием текста.
+        view.textDragInteraction?.isEnabled = false
         context.coordinator.view = view
         // Касание по снимку или точке в тексте открывает их, а не ставит
         // курсор рядом (P213, P216).
@@ -144,7 +149,10 @@ struct DiaryEditor: UIViewRepresentable {
         // диктовка, система держит в поле свой временный знак; переписать
         // из-за него поле — вырвать знак у неё из рук, и он остаётся в
         // тексте «OBJ» (решение P197).
-        if DiaryEditor.plain(view.attributedText) != text || view.attributedText.length == 0 {
+        if context.coordinator.previewing {
+            // Идёт перенос — в поле показано, как ляжет взятое; запись
+            // поменяется, когда палец отпустят.
+        } else if DiaryEditor.plain(view.attributedText) != text || view.attributedText.length == 0 {
             let selection = view.selectedRange
             view.attributedText = Self.styled(text, size: size, serif: serif, stamped: stamped,
                                               resolve: resolve)
@@ -661,6 +669,10 @@ struct DiaryEditor: UIViewRepresentable {
             veil.addTarget(self, action: #selector(disarm), for: .touchDown)
             let chip = UIImageView(image: picture)
             chip.center = CGPoint(x: place.midX, y: place.midY)
+            // Синяя кромка — та же, что у поднятого дела (P374).
+            chip.layer.borderColor = UIColor(Look.glow).cgColor
+            chip.layer.borderWidth = 2
+            chip.layer.cornerRadius = picture.size.height / 2
             chip.layer.shadowOpacity = 0.25
             chip.layer.shadowRadius = 6
             chip.layer.shadowOffset = CGSize(width: 0, height: 2)
@@ -754,6 +766,16 @@ struct DiaryEditor: UIViewRepresentable {
 
         /// Где палец взял снимок или точку — в окне.
         private var takenAt: CGPoint = .zero
+        /// Когда отпустили долгое нажатие — касание в тот же миг не считается.
+        private var heldEnded = Date.distantPast
+        /// Идёт перенос: в поле уже показано, как ляжет взятое (P374).
+        fileprivate(set) var previewing = false
+        /// Поле до переноса — чтобы вернуть его, если перенос отменили.
+        private var before: NSAttributedString?
+        /// Где взятое стоит сейчас — в показанном поле.
+        private var now: Int?
+        /// Запись, как она станет после переноса.
+        private var result: String?
 
         @objc func carried(_ g: UILongPressGestureRecognizer) {
             guard let view, let i = taken else { return }
@@ -769,48 +791,43 @@ struct DiaryEditor: UIViewRepresentable {
                     other.isEnabled = false
                     other.isEnabled = true
                 }
-                let picture = (view.textStorage.attribute(.attachment, at: i, effectiveRange: nil)
-                               as? NSTextAttachment)?.image
-                let shadow = UIImageView(image: picture)
-                shadow.alpha = 0.9
-                shadow.layer.shadowOpacity = 0.3
-                shadow.layer.shadowRadius = 8
-                // Точка — маленькая кнопочка: над пальцем она крупнее, чтобы
-                // её было видно (P349).
-                let small = (picture?.size.height ?? 0) < 40
-                shadow.transform = CGAffineTransform(scaleX: small ? 1.8 : 1.1, y: small ? 1.8 : 1.1)
-                // Тень снимка — поверх всего окна: её можно донести и до
-                // полоски внизу, за край страницы (P272).
-                let host: UIView = view.window ?? view
-                let spot = g.location(in: host)
-                shadow.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
-                host.addSubview(shadow)
-                ghost = shadow
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                // Точка — сразу крупнее и с крестиком, ещё под пальцем
+                // (P374): «удалить» видно, не отпуская. Повели — крестик
+                // уходит, точка идёт за пальцем.
+                if takenIsPoint(at: i, in: view) { arm(i, in: view) } else { lift(i, g, in: view) }
             case .changed:
-                let spot = g.location(in: ghost?.superview ?? view)
-                ghost?.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
+                let spot = g.location(in: nil)
+                if ghost == nil {
+                    guard hypot(spot.x - takenAt.x, spot.y - takenAt.y) >= 10 else { return }
+                    disarm()
+                    lift(i, g, in: view)
+                }
+                let local = g.location(in: ghost?.superview ?? view)
+                ghost?.center = CGPoint(x: local.x, y: local.y - Self.lift)
                 // Над полоской снимок бледнеет — видно, что отпустить здесь
                 // значит вернуть его вниз; над заголовком — то же для точки.
                 let away = overStrip(g, in: view) || overTitle(g, in: view)
                 ghost?.alpha = away ? 0.5 : 0.9
-                showMark(at: at, in: view, hidden: away)
+                if away { restore(view) } else { preview(at, in: view) }
             case .ended:
+                heldEnded = Date()
                 let back = overStrip(g, in: view)
                 let up = overTitle(g, in: view)
-                let spot = g.location(in: nil)
-                let still = hypot(spot.x - takenAt.x, spot.y - takenAt.y) < 10
+                let moved = ghost != nil
                 ghost?.removeFromSuperview()
                 ghost = nil
                 mark?.removeFromSuperview()
                 mark = nil
-                taken = nil
-                // Точку подержали и отпустили, не сдвинув, — она крупнее и
-                // с крестиком «удалить» (P362).
-                if still {
-                    if takenIsPoint(at: i, in: view) { arm(i, in: view) }
+                // Подержали и отпустили, не сдвинув: точка так и стоит
+                // крупнее, с крестиком; снимок — на месте.
+                guard moved else {
+                    taken = nil
                     return
                 }
+                let done = result
+                restore(view)
+                taken = nil
                 // Точку отпустили над заголовком дня — она уходит туда (P358).
                 if up, let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
                                                              effectiveRange: nil) as? String,
@@ -829,17 +846,82 @@ struct DiaryEditor: UIViewRepresentable {
                     giveBack(link)
                     return
                 }
-                if let position = view.closestPosition(to: at) {
-                    move(from: i, to: view.offset(from: view.beginningOfDocument, to: position),
-                         in: view)
+                // Встаёт туда, где его только что показывали.
+                if let done {
+                    Feel.light()
+                    show(done, in: view)
+                    parent.text = done
                 }
             default:
+                heldEnded = Date()
                 ghost?.removeFromSuperview()
                 ghost = nil
                 mark?.removeFromSuperview()
                 mark = nil
+                restore(view)
                 taken = nil
             }
+        }
+
+        /// Поднять взятое над пальцем — с синей кромкой (P374).
+        private func lift(_ i: Int, _ g: UIGestureRecognizer, in view: UITextView) {
+            let picture = (view.textStorage.attribute(.attachment, at: i, effectiveRange: nil)
+                           as? NSTextAttachment)?.image
+            let shadow = UIImageView(image: picture)
+            shadow.alpha = 0.9
+            shadow.layer.shadowOpacity = 0.3
+            shadow.layer.shadowRadius = 8
+            shadow.layer.borderColor = UIColor(Look.glow).cgColor
+            shadow.layer.borderWidth = 2.6
+            shadow.layer.cornerRadius = min(8, (picture?.size.height ?? 0) / 2)
+            // Точка — маленькая кнопочка: над пальцем она крупнее, чтобы
+            // её было видно (P349).
+            let small = (picture?.size.height ?? 0) < 40
+            shadow.transform = CGAffineTransform(scaleX: small ? 1.8 : 1.1, y: small ? 1.8 : 1.1)
+            // Тень снимка — поверх всего окна: её можно донести и до
+            // полоски внизу, за край страницы (P272).
+            let host: UIView = view.window ?? view
+            let spot = g.location(in: host)
+            shadow.center = CGPoint(x: spot.x, y: spot.y - Self.lift)
+            host.addSubview(shadow)
+            ghost = shadow
+            before = view.attributedText.copy() as? NSAttributedString
+            now = i
+            result = nil
+            previewing = true
+        }
+
+        /// Показать в поле, как ляжет взятое, если отпустить палец здесь:
+        /// текст раздвигается, строки расходятся (P374).
+        private func preview(_ at: CGPoint, in view: UITextView) {
+            guard let current = now, let position = view.closestPosition(to: at) else { return }
+            let drop = view.offset(from: view.beginningOfDocument, to: position)
+            guard let next = placed(from: current, to: drop, in: view.textStorage),
+                  next.0 != result
+            else { return }
+            result = next.0
+            show(next.0, in: view)
+            now = DiaryEditor.viewOffset(plain: next.1, in: view.attributedText)
+        }
+
+        /// Вернуть поле, каким оно было до переноса.
+        private func restore(_ view: UITextView) {
+            if let before, result != nil {
+                view.attributedText = before
+                view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+                loadPhotos()
+            }
+            before = nil
+            result = nil
+            now = taken
+            previewing = false
+        }
+
+        private func show(_ text: String, in view: UITextView) {
+            view.attributedText = DiaryEditor.styled(text, size: parent.size, serif: parent.serif,
+                                                     stamped: parent.stamped, resolve: resolve)
+            view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+            loadPhotos()
         }
 
         /// Убрать точку из текста — вместе с пробелом рядом, а если она
@@ -868,12 +950,17 @@ struct DiaryEditor: UIViewRepresentable {
             parent.text = result
         }
 
-        /// Переставить строку снимка или точки: она встаёт своей строкой в
-        /// конец абзаца, над которым её отпустили, — как превью из полоски
-        /// (P204). Правится текст записи, а поле перерисовывается по нему.
-        private func move(from i: Int, to drop: Int, in view: UITextView) {
-            let storage = view.textStorage
+        /// Куда ляжет снимок или точка, если отпустить их здесь: запись после
+        /// переноса и где в ней (в буквах записи) стоит взятое. `nil` — с
+        /// места не сдвинется.
+        ///
+        /// Точка — значок в строке: встаёт ровно туда, где отпустили, посреди
+        /// текста (P259). Снимок встаёт своей строкой в конец абзаца — или
+        /// рядом со снимками, если над ними (P204, P348, P357).
+        private func placed(from i: Int, to drop: Int,
+                            in storage: NSAttributedString) -> (String, Int)? {
             let ns = storage.string as NSString
+            guard i < storage.length else { return nil }
             func plainLength(_ upTo: Int) -> Int {
                 (DiaryEditor.plain(storage.attributedSubstring(
                     from: NSRange(location: 0, length: upTo))) as NSString).length
@@ -882,14 +969,10 @@ struct DiaryEditor: UIViewRepresentable {
                 from: NSRange(location: i, length: 1)))
             let text = DiaryEditor.plain(storage) as NSString
 
-            // Точка — значок в строке: встаёт ровно туда, где отпустили,
-            // посреди текста, а не своей строкой (P259). Снимок так не
-            // переносится никогда, даже если у него оказалась и метка
-            // точки: он всегда встаёт своей строкой (P357).
             if storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil,
                storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil {
                 let spot = min(drop, ns.length)
-                guard spot != i, spot != i + 1 else { return }
+                guard spot != i, spot != i + 1 else { return nil }
                 var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
                 if NSMaxRange(cut) < text.length, text.character(at: NSMaxRange(cut)) == 32 {
                     cut.length += 1
@@ -904,20 +987,18 @@ struct DiaryEditor: UIViewRepresentable {
                     target = cut.location
                 }
                 let rest = text.replacingCharacters(in: cut, with: "")
-                let (result, _) = DayStore.insert(piece, into: rest,
-                                                  at: min(target, (rest as NSString).length))
-                view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
-                                                         stamped: parent.stamped, resolve: resolve)
-                view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
-                loadPhotos()
-                parent.text = result
-                return
+                let into = min(target, (rest as NSString).length)
+                let (out, _) = DayStore.insert(piece, into: rest, at: into)
+                let found = (out as NSString).range(of: piece, options: [],
+                                                    range: NSRange(location: max(0, into - 1),
+                                                                   length: (out as NSString).length - max(0, into - 1)))
+                return (out, found.location == NSNotFound ? into : found.location)
             }
 
             let para = ns.paragraphRange(for: NSRange(location: min(drop, ns.length), length: 0))
             var j = para.location + para.length
             if j > para.location, ns.character(at: j - 1) == 10 { j -= 1 }
-            guard j != i, j != i + 1 else { return }
+            guard j != i, j != i + 1 else { return nil }
             var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
             var target = plainLength(j)
             let after = NSMaxRange(cut) < text.length ? text.character(at: NSMaxRange(cut)) : 10
@@ -950,20 +1031,20 @@ struct DiaryEditor: UIViewRepresentable {
                 : ""
             let beside = !Diary.links(in: above).isEmpty
                 && Diary.links(in: above).allSatisfy { Diary.kind(of: $0) == .photo }
-            let result = rest.replacingCharacters(in: NSRange(location: target, length: 0),
-                                                  with: (target == 0 ? "" : (beside ? " " : "\n")) + piece
-                                                      + (target == 0 && rest.length > 0 ? "\n" : ""))
-            view.attributedText = DiaryEditor.styled(result, size: parent.size, serif: parent.serif,
-                                                     stamped: parent.stamped, resolve: resolve)
-            view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
-            loadPhotos()
-            parent.text = result
+            let lead = target == 0 ? "" : (beside ? " " : "\n")
+            let out = rest.replacingCharacters(in: NSRange(location: target, length: 0),
+                                               with: lead + piece
+                                                   + (target == 0 && rest.length > 0 ? "\n" : ""))
+            return (out, target + (lead as NSString).length)
         }
 
         @objc func tapped(_ g: UITapGestureRecognizer) {
             // Метка касания не снимается здесь: поле может спросить
             // разрешения писать уже после этого — и должно получить отказ.
             guard g.state == .ended, let got = pressed else { return }
+            // Это было долгое нажатие, а не касание: точка с крестиком
+            // остаётся на экране, карта не открывается (P374).
+            guard Date().timeIntervalSince(heldEnded) > 0.4, taken == nil, cover == nil else { return }
             if let link = got.photo { parent.onOpenPhoto?(link) }
             if let point = got.point { parent.onOpenPoint?(point) }
         }

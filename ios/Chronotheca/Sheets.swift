@@ -485,7 +485,7 @@ struct SettingsSticker: View {
 
     @State private var undone = false
     @AppStorage(Prefs.lock) private var locked = false
-    @AppStorage(Prefs.boundary) private var boundary = 4
+    @AppStorage(Prefs.boundary) private var boundary = 0
     @AppStorage(Prefs.startTab) private var startTab = "plan"
     @AppStorage(Prefs.theme) private var theme = "system"
     @AppStorage(Prefs.navigator) private var navigator = "apple"
