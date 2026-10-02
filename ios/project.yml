@@ -47,6 +47,12 @@ targets:
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "To turn your voice notes into text in the diary. The recording stays as it is; where your language allows, recognition happens on the iPhone itself."
         # «Здоровье» (P378): только читать шаги, сон и тренировки.
         INFOPLIST_KEY_NSHealthShareUsageDescription: "To show the day’s steps, sleep and workouts above your diary. The data stays in Health; it goes into your entry only when you tap it."
+        # Apple требует и строку о записи в «Здоровье», раз есть право на
+        # него, хотя приложение туда не пишет (ошибка 90683 при выгрузке 79-й).
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Chronotheca does not write anything to Health. It only reads the day’s steps, sleep and workouts to show them above your diary."
+        # Прежняя строка Календаря — для систем, которые спрашивают по-старому.
+        INFOPLIST_KEY_NSCalendarsWriteOnlyAccessUsageDescription: "Only when you edit or delete a Calendar event yourself from the day’s plan."
+        INFOPLIST_KEY_NSCalendarsUsageDescription: "To show your iPhone Calendar events in the day’s plan, by time, with their reminders. Nothing is copied out of Calendar unless you ask."
         INFOPLIST_KEY_NSFaceIDUsageDescription: "To lock your entries: without your face or passcode no one can open them."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
