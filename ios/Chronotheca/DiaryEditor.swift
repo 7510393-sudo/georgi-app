@@ -679,7 +679,7 @@ struct DiaryEditor: UIViewRepresentable {
         /// Место в тексте поля, где лежит взятое.
         private var taken: Int?
         /// Картинка взятого, которая идёт за пальцем.
-        private var ghost: UIImageView?
+        private var ghost: UIView?
 
         /// Снимок или точка под пальцем — их место в тексте поля.
         private func attachment(at at: CGPoint, in view: UITextView) -> Int? {
