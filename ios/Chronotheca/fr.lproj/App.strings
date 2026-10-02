@@ -12,8 +12,11 @@
 "\n\nMove them here:\n\n" = "\n\nLes déplacer ici :\n\n";
 "\n\nPlan:\n" = "\n\nPlan :\n";
 "\n\nPrevious folder:\n\n" = "\n\nDossier précédent :\n\n";
+" Already imported before: %@." = " Déjà importées : %@.";
 " Could not copy: %@." = " Copie impossible : %@.";
+" Files missing from the export: %@." = " Fichiers absents de l’export : %@.";
 " It goes wherever you choose; the app never copies anything by itself." = " Elle va où vous le décidez ; l’app ne copie jamais rien d’elle-même.";
+" Not imported because the day is still in iCloud: %@ — try again later." = " Non importées car le jour est encore dans iCloud : %@ — réessayez plus tard.";
 " Still in iCloud and not copied: %@ — try again later." = " Encore dans iCloud et non copiés : %@ — réessayez plus tard.";
 " The previous folder is still there, but it has no entries any more." = " Le dossier précédent est toujours là, mais ne contient plus de notes.";
 " is in the trash. Restore it in Settings → Trash." = " est dans la corbeille. Restaurez-le dans Réglages → Corbeille.";
@@ -37,9 +40,12 @@
 ". Long press for today" = ". Appui long pour aujourd’hui";
 ". They work as before; you can run the renaming again." = ". Ils fonctionnent comme avant ; vous pouvez relancer le renommage.";
 "1 hour before" = "1 heure avant";
+"1. In Day One: Settings → Import/Export → Export → JSON. Save the archive to Files." = "1. Dans Day One : Réglages → Importer/Exporter → Exporter → JSON. Enregistrez l’archive dans Fichiers.";
 "10 minutes before" = "10 minutes avant";
 "1600 px, about 0.2–0.4 MB a photo. Softer when zoomed in" = "1600 px, environ 0,2–0,4 Mo par photo. Plus douce en zoomant";
+"2. In Files, tap the archive — it unpacks into a folder." = "2. Dans Fichiers, touchez l’archive — elle se décompresse dans un dossier.";
 "2560 px, about 0.5–1 MB a photo. Looks the same as the original on screen" = "2560 px, environ 0,5–1 Mo par photo. À l’écran, comme l’original";
+"3. Here — “Choose the export folder” and that folder." = "3. Ici — « Choisir le dossier d’export » et ce dossier.";
 "A MONTH AGO" = "IL Y A UN MOIS";
 "A WEEK AGO" = "IL Y A UNE SEMAINE";
 "A YEAR AGO" = "IL Y A UN AN";
@@ -87,6 +93,7 @@
 "Choose a folder…" = "Choisir un dossier…";
 "Choose a place…" = "Choisir un emplacement…";
 "Choose another place…" = "Choisir un autre emplacement…";
+"Choose the export folder…" = "Choisir le dossier d’export…";
 "Choose ›" = "Choisir ›";
 "Chronotheca" = "Chronotheca";
 "Chronotheca " = "Chronotheca ";
@@ -115,6 +122,7 @@
 "Day" = "Jour";
 "Day colours in the calendar" = "Couleur des jours dans le calendrier";
 "Days with entries: %@" = "Jours avec notes : %@";
+"Days: %@ of %@" = "Jours : %@ sur %@";
 "Degrees" = "Degrés";
 "Delete" = "Supprimer";
 "Delete forever" = "Supprimer définitivement";
@@ -180,7 +188,9 @@
 "Holidays and birthdays" = "Jours fériés et anniversaires";
 "How did it go?" = "Comment ça s’est passé ?";
 "Icon: " = "Icône : ";
+"Import from Day One" = "Importer depuis Day One";
 "Import from Day One and Apple Journal" = "Import depuis Day One et Journal d’Apple";
+"Imported entries: %@, days: %@, photos and files: %@." = "Entrées importées : %@, jours : %@, photos et fichiers : %@.";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "Dans iCloud Drive, vos notes sont aussi sur votre iPad et votre Mac. Sur l’iPhone — « Sur mon iPhone », ";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "Dans la fenêtre, choisissez « Sur mon iPhone », touchez l’icône de nouveau dossier, nommez-le par exemple « Mon journal », ouvrez-le et touchez « Ouvrir ». Pas besoin d’espace iCloud, mais vos notes ne seront que sur cet iPhone — faites des sauvegardes.";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "Dans la fenêtre, choisissez « iCloud Drive » et touchez « Ouvrir » en haut à droite. Vos notes seront aussi sur votre iPad et votre Mac ; elles utilisent votre espace iCloud (5 Go gratuits).";
@@ -251,6 +261,7 @@
 "Note inside the backup" = "Note dans la sauvegarde";
 "Nothing found." = "Rien trouvé.";
 "Nothing found. Try other words or paste coordinates." = "Rien trouvé. Essayez d’autres mots ou collez des coordonnées.";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Day One —”. Importing again does not duplicate anything." = "Rien n’est écrit par-dessus vos entrées : si un jour contient déjà quelque chose, l’import va à la fin sous « — Day One — ». Importer à nouveau ne crée pas de doublons.";
 "Nothing new — the backup was already up to date." = "Rien de nouveau — la sauvegarde était déjà à jour.";
 "Nothing planned for this day." = "Rien de prévu ce jour-là.";
 "Nothing to remove here." = "Rien à retirer ici.";
@@ -364,6 +375,7 @@
 "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”." = "La couverture indique la période et le contenu ; chaque jour commence sur une nouvelle page. Le fichier va dans votre dossier de notes, dans « PDF ».";
 "The entry" = "La note";
 "The entry changed elsewhere" = "La note a changé ailleurs";
+"The export could not be read: " = "L’export n’a pas pu être lu : ";
 "The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files." = "Le fichier est revenu dans son dossier, mais n’a pas pu être remis sur la page du jour — le jour est encore dans iCloud ou a été modifié ailleurs. Ajoutez-le de nouveau depuis Fichiers.";
 "The file is in the trash for 30 days. Restore it in Settings → Trash." = "Le fichier est dans la corbeille pour 30 jours. Restaurez-le dans Réglages → Corbeille.";
 "The file itself stays in the folder — you can delete it in Files." = "Le fichier reste dans le dossier — vous pouvez le supprimer dans Fichiers.";
@@ -394,6 +406,7 @@
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "La corbeille est vide. Un jour va à la corbeille depuis le menu de la page — les trois points. Tout reste 30 jours dans la corbeille, puis est effacé.";
 "Theme" = "Thème";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "Il y a déjà une nouvelle note pour ce jour. Le fichier est resté dans la corbeille — reprenez ce qu’il vous faut à la main dans Fichiers.";
+"There is no Day One export in this folder. Choose the folder with the .json file and the photos folder." = "Ce dossier ne contient pas d’export Day One. Choisissez le dossier avec le fichier .json et le dossier photos.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Aucune sauvegarde de vos notes pour l’instant — cela ne prend que quelques minutes.";
 "This day has not come yet." = "Ce jour n’est pas encore arrivé.";
 "This day is closed. To change it, use “Edit this day” in the page menu." = "Ce jour est clos. Pour le modifier : « Modifier ce jour » dans le menu de la page.";
@@ -404,6 +417,7 @@
 "This is a repeating task" = "C’est une tâche répétée";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "C’est le dossier propre de l’app — l’iPhone le supprime avec elle. Choisissez « iCloud Drive » ou créez un nouveau dossier dans « Sur mon iPhone ».";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "C’est le dossier des archives lui-même ou un dossier à l’intérieur. La sauvegarde doit être ailleurs.";
+"This is the archive itself. Tap it in Files — it unpacks into a folder — and choose that." = "C’est l’archive elle-même. Touchez-la dans Fichiers — elle se décompresse dans un dossier — et choisissez celui-ci.";
 "This is the current month" = "C’est le mois en cours";
 "This is the current year" = "C’est l’année en cours";
 "This is the same iCloud your entries are in: such a backup will not help if something happens to iCloud, and it takes twice the space there. A USB stick or another cloud is better." = "C’est le même iCloud que celui de vos notes : une telle sauvegarde n’aidera pas en cas de problème avec iCloud et y prendra deux fois plus de place. Mieux vaut une clé USB ou un autre cloud.";
@@ -455,6 +469,7 @@
 "Yesterday" = "Hier";
 "You have no places on the map yet." = "Vous n’avez encore aucun lieu sur la carte.";
 "You renamed or moved it. The app followed it and now writes here:" = "Vous l’avez renommé ou déplacé. L’app l’a suivi et écrit désormais ici :";
+"Your Day One entries arrive here as ordinary files by day — with time, place, tags, photos, voice and video. Nothing is taken out of Day One." = "Vos entrées Day One arrivent ici sous forme de fichiers ordinaires par jour — avec l’heure, le lieu, les tags, les photos, la voix et les vidéos. Day One ne perd rien.";
 "Your data is not protected" = "Vos données ne sont pas protégées";
 "Your data is safe" = "Vos données sont en sécurité";
 "Your entries are inside Chronotheca itself, on this iPhone. " = "Vos notes sont dans Chronotheca même, sur cet iPhone. ";

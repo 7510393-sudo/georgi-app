@@ -223,6 +223,9 @@ struct SettingsSticker: View {
         .sheet(isPresented: $showingBackup, onDismiss: measureStorage) {
             BackupSheet().environmentObject(vault)
         }
+        .sheet(isPresented: $showingImport, onDismiss: { archive.reload() }) {
+            ImportSheet().environmentObject(vault).environmentObject(store)
+        }
         .sheet(isPresented: $showingTrash) {
             TrashSheet(vault: vault, save: { store.save() }) {
                 store.load()
@@ -284,6 +287,10 @@ struct SettingsSticker: View {
         NoteRow(title: T("Резервная копия", "Backup"), detail: Backup.summary(size: storageBytes),
                 detailColor: Backup.healthy ? Look.inkSoft : .orange) {
             NoteButton(title: T("Сделать", "Make"), main: true) { showingBackup = true }
+        }
+        // Перенос из других дневников — бесплатно всегда (M14, P378).
+        NoteRow(title: T("Перенос из Day One", "Import from Day One")) {
+            NoteButton(title: T("Открыть ›", "Open ›")) { showingImport = true }
         }
         // Папки с прежними, русскими, именами — перевести (P353).
         if vault.hasRussianNames {
@@ -543,6 +550,7 @@ struct SettingsSticker: View {
     @State private var showingTrash = false
     @State private var showingPDF = false
     @State private var showingBackup = false
+    @State private var showingImport = false
     @AppStorage(Lang.key) private var language = "en"
 
     private var onOff: [(Bool, String)] { [(true, T("вкл", "on")), (false, T("выкл", "off"))] }

@@ -12,8 +12,11 @@
 "\n\nMove them here:\n\n" = "\n\nHierheen verplaatsen:\n\n";
 "\n\nPlan:\n" = "\n\nPlan:\n";
 "\n\nPrevious folder:\n\n" = "\n\nVorige map:\n\n";
+" Already imported before: %@." = " Eerder al geïmporteerd: %@.";
 " Could not copy: %@." = " Niet gekopieerd: %@.";
+" Files missing from the export: %@." = " Bestanden die in de export ontbreken: %@.";
 " It goes wherever you choose; the app never copies anything by itself." = " Hij komt waar jij wilt; de app kopieert nooit iets uit zichzelf.";
+" Not imported because the day is still in iCloud: %@ — try again later." = " Niet geïmporteerd omdat de dag nog in iCloud staat: %@ — probeer het later opnieuw.";
 " Still in iCloud and not copied: %@ — try again later." = " Nog in iCloud en niet gekopieerd: %@ — probeer het later nog eens.";
 " The previous folder is still there, but it has no entries any more." = " De vorige map staat er nog, maar bevat geen aantekeningen meer.";
 " is in the trash. Restore it in Settings → Trash." = " staat in de prullenmand. Terugzetten: Instellingen → Prullenmand.";
@@ -37,9 +40,12 @@
 ". Long press for today" = ". Lang drukken voor vandaag";
 ". They work as before; you can run the renaming again." = ". Ze werken zoals voorheen; je kunt het hernoemen opnieuw starten.";
 "1 hour before" = "1 uur van tevoren";
+"1. In Day One: Settings → Import/Export → Export → JSON. Save the archive to Files." = "1. In Day One: Instellingen → Importeren/Exporteren → Exporteer → JSON. Bewaar het archief in Bestanden.";
 "10 minutes before" = "10 minuten van tevoren";
 "1600 px, about 0.2–0.4 MB a photo. Softer when zoomed in" = "1600 px, ongeveer 0,2–0,4 MB per foto. Zachter bij inzoomen";
+"2. In Files, tap the archive — it unpacks into a folder." = "2. Tik in Bestanden op het archief — het wordt uitgepakt in een map.";
 "2560 px, about 0.5–1 MB a photo. Looks the same as the original on screen" = "2560 px, ongeveer 0,5–1 MB per foto. Op het scherm gelijk aan het origineel";
+"3. Here — “Choose the export folder” and that folder." = "3. Hier — „Kies de exportmap” en die map.";
 "A MONTH AGO" = "EEN MAAND GELEDEN";
 "A WEEK AGO" = "EEN WEEK GELEDEN";
 "A YEAR AGO" = "EEN JAAR GELEDEN";
@@ -87,6 +93,7 @@
 "Choose a folder…" = "Kies een map…";
 "Choose a place…" = "Kies een plek…";
 "Choose another place…" = "Kies een andere plek…";
+"Choose the export folder…" = "Kies de exportmap…";
 "Choose ›" = "Kies ›";
 "Chronotheca" = "Chronotheca";
 "Chronotheca " = "Chronotheca ";
@@ -115,6 +122,7 @@
 "Day" = "Dag";
 "Day colours in the calendar" = "Kleur van de dagen in de agenda";
 "Days with entries: %@" = "Dagen met aantekeningen: %@";
+"Days: %@ of %@" = "Dagen: %@ van %@";
 "Degrees" = "Graden";
 "Delete" = "Verwijder";
 "Delete forever" = "Definitief verwijderen";
@@ -180,7 +188,9 @@
 "Holidays and birthdays" = "Feestdagen en verjaardagen";
 "How did it go?" = "Hoe ging het?";
 "Icon: " = "Symbool: ";
+"Import from Day One" = "Importeren uit Day One";
 "Import from Day One and Apple Journal" = "Importeren uit Day One en Apple Dagboek";
+"Imported entries: %@, days: %@, photos and files: %@." = "Geïmporteerde items: %@, dagen: %@, foto’s en bestanden: %@.";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "In iCloud Drive staan je aantekeningen ook op je iPad en Mac. Op de iPhone — ‘Op mijn iPhone’, ";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "Kies in het venster ‘Op mijn iPhone’, tik op het symbool voor een nieuwe map, noem hem bijvoorbeeld ‘Mijn dagboek’, open hem en tik op ‘Open’. Geen iCloud-ruimte nodig, maar je aantekeningen staan alleen op deze iPhone — maak reservekopieën.";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "Kies in het venster ‘iCloud Drive’ en tik rechtsboven op ‘Open’. Je aantekeningen staan dan ook op je iPad en Mac; ze gebruiken je iCloud-ruimte (5 GB gratis).";
@@ -251,6 +261,7 @@
 "Note inside the backup" = "Notitie in de kopie";
 "Nothing found." = "Niets gevonden.";
 "Nothing found. Try other words or paste coordinates." = "Niets gevonden. Probeer andere woorden of plak coördinaten.";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Day One —”. Importing again does not duplicate anything." = "Er wordt niets over je items heen geschreven: staat er al iets in een dag, dan komt de import aan het eind onder „— Day One —”. Opnieuw importeren verdubbelt niets.";
 "Nothing new — the backup was already up to date." = "Niets nieuws — de kopie was al bijgewerkt.";
 "Nothing planned for this day." = "Niets gepland voor deze dag.";
 "Nothing to remove here." = "Hier valt niets weg te halen.";
@@ -364,6 +375,7 @@
 "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”." = "Op de omslag staan de periode en de inhoud; elke dag begint op een nieuwe pagina. Het bestand komt in je aantekeningenmap, bij ‘PDF’.";
 "The entry" = "De aantekening";
 "The entry changed elsewhere" = "De aantekening is elders gewijzigd";
+"The export could not be read: " = "De export kon niet worden gelezen: ";
 "The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files." = "Het bestand staat weer in zijn map, maar kon niet terug op de pagina van de dag — de dag staat nog in iCloud of is elders gewijzigd. Voeg het opnieuw toe vanuit Bestanden.";
 "The file is in the trash for 30 days. Restore it in Settings → Trash." = "Het bestand ligt 30 dagen in de prullenmand. Terugzetten: Instellingen → Prullenmand.";
 "The file itself stays in the folder — you can delete it in Files." = "Het bestand zelf blijft in de map — je kunt het verwijderen in Bestanden.";
@@ -394,6 +406,7 @@
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "De prullenmand is leeg. Een dag gaat naar de prullenmand via het paginamenu — de drie puntjes. Alles blijft 30 dagen in de prullenmand en wordt daarna gewist.";
 "Theme" = "Thema";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "Voor deze dag is er al een nieuwe aantekening. Het bestand blijft in de prullenmand — neem met de hand over wat je nodig hebt in Bestanden.";
+"There is no Day One export in this folder. Choose the folder with the .json file and the photos folder." = "In deze map staat geen Day One-export. Kies de map met het .json-bestand en de map photos.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Er is nog geen reservekopie van je aantekeningen — dat duurt maar een paar minuten.";
 "This day has not come yet." = "Deze dag is nog niet aangebroken.";
 "This day is closed. To change it, use “Edit this day” in the page menu." = "Deze dag is gesloten. Wijzigen: ‘Deze dag bewerken’ in het paginamenu.";
@@ -404,6 +417,7 @@
 "This is a repeating task" = "Dit is een terugkerende taak";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "Dit is de eigen map van de app — de iPhone verwijdert hem samen met de app. Kies ‘iCloud Drive’ of maak een nieuwe map in ‘Op mijn iPhone’.";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "Dit is de archiefmap zelf of een map erin. De reservekopie moet ergens anders staan.";
+"This is the archive itself. Tap it in Files — it unpacks into a folder — and choose that." = "Dit is het archief zelf. Tik erop in Bestanden — het wordt uitgepakt in een map — en kies die map.";
 "This is the current month" = "Dit is de huidige maand";
 "This is the current year" = "Dit is het huidige jaar";
 "This is the same iCloud your entries are in: such a backup will not help if something happens to iCloud, and it takes twice the space there. A USB stick or another cloud is better." = "Dit is dezelfde iCloud waarin je aantekeningen staan: zo’n reservekopie helpt niet als er iets met iCloud gebeurt, en neemt daar twee keer zoveel ruimte in. Beter een usb-stick of een andere cloud.";
@@ -455,6 +469,7 @@
 "Yesterday" = "Gisteren";
 "You have no places on the map yet." = "Je hebt nog geen plekken op de kaart.";
 "You renamed or moved it. The app followed it and now writes here:" = "Je hebt hem hernoemd of verplaatst. De app is hem gevolgd en schrijft nu hierheen:";
+"Your Day One entries arrive here as ordinary files by day — with time, place, tags, photos, voice and video. Nothing is taken out of Day One." = "Je Day One-items komen hier als gewone bestanden per dag — met tijd, plaats, tags, foto’s, spraak en video. Day One verliest niets.";
 "Your data is not protected" = "Je gegevens zijn niet beschermd";
 "Your data is safe" = "Je gegevens zijn veilig";
 "Your entries are inside Chronotheca itself, on this iPhone. " = "Je aantekeningen staan in Chronotheca zelf, op deze iPhone. ";

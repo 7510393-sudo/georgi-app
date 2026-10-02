@@ -12,8 +12,11 @@
 "\n\nMove them here:\n\n" = "\n\nПеренести їх сюди:\n\n";
 "\n\nPlan:\n" = "\n\nПлан:\n";
 "\n\nPrevious folder:\n\n" = "\n\nПопередня тека:\n\n";
+" Already imported before: %@." = " Уже перенесено раніше: %@.";
 " Could not copy: %@." = " Не скопіювалися: %@.";
+" Files missing from the export: %@." = " Не знайшлося у вивантаженні файлів: %@.";
 " It goes wherever you choose; the app never copies anything by itself." = " Копія ляже туди, куди ви скажете; застосунок сам нічого не копіює.";
+" Not imported because the day is still in iCloud: %@ — try again later." = " Не перенесено, бо день ще в iCloud: %@ — повторіть пізніше.";
 " Still in iCloud and not copied: %@ — try again later." = " Ще в iCloud і не скопійовані: %@ — спробуйте пізніше.";
 " The previous folder is still there, but it has no entries any more." = " Попередня тека залишилася на місці, але записів у ній більше немає.";
 " is in the trash. Restore it in Settings → Trash." = " у кошику. Повернути — Налаштування → Кошик.";
@@ -37,9 +40,12 @@
 ". Long press for today" = ". Довге натискання — до сьогоднішнього дня";
 ". They work as before; you can run the renaming again." = ". Вони працюють як раніше; переклад можна запустити ще раз.";
 "1 hour before" = "за 1 годину";
+"1. In Day One: Settings → Import/Export → Export → JSON. Save the archive to Files." = "1. У Day One: Налаштування → Імпорт/експорт → Експорт → JSON. Збережіть архів у «Файли».";
 "10 minutes before" = "за 10 хвилин";
 "1600 px, about 0.2–0.4 MB a photo. Softer when zoomed in" = "1600 точок, знімок ~0,2–0,4 МБ. При збільшенні м’якше";
+"2. In Files, tap the archive — it unpacks into a folder." = "2. У «Файлах» торкніться архіву — він розпакується в папку.";
 "2560 px, about 0.5–1 MB a photo. Looks the same as the original on screen" = "2560 точок, знімок ~0,5–1 МБ. На екрані не відрізнити від оригіналу";
+"3. Here — “Choose the export folder” and that folder." = "3. Тут — «Вибрати папку вивантаження» і цю папку.";
 "A MONTH AGO" = "МІСЯЦЬ ТОМУ";
 "A WEEK AGO" = "ТИЖДЕНЬ ТОМУ";
 "A YEAR AGO" = "РІК ТОМУ";
@@ -87,6 +93,7 @@
 "Choose a folder…" = "Вибрати теку…";
 "Choose a place…" = "Вибрати місце…";
 "Choose another place…" = "Вибрати інше місце…";
+"Choose the export folder…" = "Вибрати папку вивантаження…";
 "Choose ›" = "Вибрати ›";
 "Chronotheca" = "Хронотека";
 "Chronotheca " = "Хронотека ";
@@ -115,6 +122,7 @@
 "Day" = "День";
 "Day colours in the calendar" = "Колір днів у календарі";
 "Days with entries: %@" = "Днів із записами: %@";
+"Days: %@ of %@" = "Днів: %@ з %@";
 "Degrees" = "Градуси";
 "Delete" = "Видалити";
 "Delete forever" = "Видалити назавжди";
@@ -180,7 +188,9 @@
 "Holidays and birthdays" = "Свята й дні народження";
 "How did it go?" = "Як минуло?";
 "Icon: " = "Значок: ";
+"Import from Day One" = "Перенесення з Day One";
 "Import from Day One and Apple Journal" = "Перенесення з Day One і «Щоденника» Apple";
+"Imported entries: %@, days: %@, photos and files: %@." = "Перенесено записів: %@, днів: %@, знімків і файлів: %@.";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "В iCloud Drive записи будуть і на iPad, і на Mac. На iPhone — «На iPhone», ";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "У вікні виберіть «На iPhone», натисніть значок нової теки, назвіть її, наприклад, «Мої записи», зайдіть у неї й натисніть «Відкрити». Місця в iCloud не потрібно, але записи будуть лише на цьому iPhone — робіть резервні копії.";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "У вікні виберіть «iCloud Drive» і натисніть «Відкрити» вгорі праворуч. Записи будуть і на iPad, і на Mac; місце береться з вашого iCloud (безкоштовно — 5 ГБ).";
@@ -251,6 +261,7 @@
 "Note inside the backup" = "Опис у самій копії";
 "Nothing found." = "Нічого не знайшлося.";
 "Nothing found. Try other words or paste coordinates." = "Нічого не знайшлося. Спробуйте інакше або вставте координати.";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Day One —”. Importing again does not duplicate anything." = "Поверх ваших записів нічого не пишеться: якщо в дні вже щось є, перенесене стане в кінець під рядком «— Day One —». Повторне перенесення нічого не подвоїть.";
 "Nothing new — the backup was already up to date." = "Нового немає — копія й так свіжа.";
 "Nothing planned for this day." = "На цей день нічого не заплановано.";
 "Nothing to remove here." = "Тут нічого прибирати.";
@@ -364,6 +375,7 @@
 "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”." = "На обкладинці — строк і що всередині; кожен день з нової сторінки. Файл ляже в теку записів, у «PDF».";
 "The entry" = "Запис";
 "The entry changed elsewhere" = "Запис змінився деінде";
+"The export could not be read: " = "Вивантаження не вдалося прочитати: ";
 "The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files." = "Файл повернувся в теку, але поставити його на сторінку дня не вдалося — день ще в iCloud або змінився деінде. Додайте його знову з «Файлів».";
 "The file is in the trash for 30 days. Restore it in Settings → Trash." = "Файл у кошику на 30 днів. Повернути — Налаштування → Кошик.";
 "The file itself stays in the folder — you can delete it in Files." = "Сам файл залишиться в теці — видалити його можна в «Файлах».";
@@ -394,6 +406,7 @@
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "Кошик порожній. День прибирають у кошик із меню сторінки — три крапки. Усе в кошику зберігається 30 днів, потім стирається.";
 "Theme" = "Тема";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "На місці цього дня вже є новий запис. Файл залишився в кошику — перенесіть потрібне вручну у «Файлах».";
+"There is no Day One export in this folder. Choose the folder with the .json file and the photos folder." = "У цій папці немає вивантаження Day One. Виберіть папку, де лежить файл .json і папка photos.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Копії записів ще немає — зробіть її, це кілька хвилин.";
 "This day has not come yet." = "Цей день ще не настав.";
 "This day is closed. To change it, use “Edit this day” in the page menu." = "День закритий. Правити — «Правити цей день» у меню сторінки.";
@@ -404,6 +417,7 @@
 "This is a repeating task" = "Це повторювана справа";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "Це тека самого застосунку — iPhone видалить її разом із ним. Виберіть «iCloud Drive» або створіть нову теку в «На iPhone».";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "Це та сама тека, що й архів, або тека всередині нього. Копія має лежати деінде.";
+"This is the archive itself. Tap it in Files — it unpacks into a folder — and choose that." = "Це сам архів. Торкніться його у «Файлах» — він розпакується в папку — і виберіть її.";
 "This is the current month" = "Це і є поточний місяць";
 "This is the current year" = "Це і є поточний рік";
 "This is the same iCloud your entries are in: such a backup will not help if something happens to iCloud, and it takes twice the space there. A USB stick or another cloud is better." = "Це той самий iCloud, де лежать записи: від біди з iCloud така копія не врятує й займе там удвічі більше місця. Краще флешка або інша хмара.";
@@ -455,6 +469,7 @@
 "Yesterday" = "Учора";
 "You have no places on the map yet." = "Своїх місць на мапі поки немає.";
 "You renamed or moved it. The app followed it and now writes here:" = "Ви її перейменували або перемістили. Застосунок пішов слідом і тепер пише сюди:";
+"Your Day One entries arrive here as ordinary files by day — with time, place, tags, photos, voice and video. Nothing is taken out of Day One." = "Записи з Day One ляжуть сюди звичайними файлами по днях — з часом, місцем, мітками, знімками, голосом і відео. Day One при цьому нічого не втрачає.";
 "Your data is not protected" = "Дані не захищені";
 "Your data is safe" = "Дані в безпеці";
 "Your entries are inside Chronotheca itself, on this iPhone. " = "Записи лежать усередині самої «Хронотеки», на цьому iPhone. ";

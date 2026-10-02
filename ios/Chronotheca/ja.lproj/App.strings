@@ -12,8 +12,11 @@
 "\n\nMove them here:\n\n" = "\n\nここへ移動:\n\n";
 "\n\nPlan:\n" = "\n\n計画:\n";
 "\n\nPrevious folder:\n\n" = "\n\n以前のフォルダ:\n\n";
+" Already imported before: %@." = " 以前に読み込み済み：%@ 件。";
 " Could not copy: %@." = " コピーできなかったもの: %@。";
+" Files missing from the export: %@." = " 書き出しに見つからなかったファイル：%@ 件。";
 " It goes wherever you choose; the app never copies anything by itself." = " コピー先はあなたが決めます。アプリが勝手にコピーすることはありません。";
+" Not imported because the day is still in iCloud: %@ — try again later." = " その日がまだ iCloud にあるため読み込めなかった記録：%@ 件 — 後でもう一度お試しください。";
 " Still in iCloud and not copied: %@ — try again later." = " まだiCloudにありコピーされていないもの: %@。あとでもう一度お試しください。";
 " The previous folder is still there, but it has no entries any more." = " 以前のフォルダは残っていますが、記録はもうありません。";
 " is in the trash. Restore it in Settings → Trash." = "はゴミ箱に入りました。設定 → ゴミ箱 から戻せます。";
@@ -37,9 +40,12 @@
 ". Long press for today" = "。長押しで今日へ";
 ". They work as before; you can run the renaming again." = "。これまでどおり使えます。名前の変更はもう一度実行できます。";
 "1 hour before" = "1時間前";
+"1. In Day One: Settings → Import/Export → Export → JSON. Save the archive to Files." = "1. Day One で：設定 → 読み込み/書き出し → 書き出す → JSON。アーカイブを「ファイル」に保存します。";
 "10 minutes before" = "10分前";
 "1600 px, about 0.2–0.4 MB a photo. Softer when zoomed in" = "1600ピクセル、1枚約0.2〜0.4MB。拡大するとやわらかくなります";
+"2. In Files, tap the archive — it unpacks into a folder." = "2. 「ファイル」でアーカイブをタップすると、フォルダに展開されます。";
 "2560 px, about 0.5–1 MB a photo. Looks the same as the original on screen" = "2560ピクセル、1枚約0.5〜1MB。画面では元の写真と見分けがつきません";
+"3. Here — “Choose the export folder” and that folder." = "3. ここで「書き出しフォルダを選ぶ」からそのフォルダを選びます。";
 "A MONTH AGO" = "1か月前";
 "A WEEK AGO" = "1週間前";
 "A YEAR AGO" = "1年前";
@@ -87,6 +93,7 @@
 "Choose a folder…" = "フォルダを選ぶ…";
 "Choose a place…" = "場所を選ぶ…";
 "Choose another place…" = "別の場所を選ぶ…";
+"Choose the export folder…" = "書き出しフォルダを選ぶ…";
 "Choose ›" = "選ぶ ›";
 "Chronotheca" = "Chronotheca";
 "Chronotheca " = "Chronotheca ";
@@ -115,6 +122,7 @@
 "Day" = "日";
 "Day colours in the calendar" = "カレンダーの日の色";
 "Days with entries: %@" = "記録のある日: %@";
+"Days: %@ of %@" = "日数：%@ / %@";
 "Degrees" = "温度";
 "Delete" = "削除";
 "Delete forever" = "完全に削除";
@@ -180,7 +188,9 @@
 "Holidays and birthdays" = "祝日と誕生日";
 "How did it go?" = "どうでしたか？";
 "Icon: " = "アイコン: ";
+"Import from Day One" = "Day One から読み込む";
 "Import from Day One and Apple Journal" = "Day One と Appleの「ジャーナル」からの読み込み";
+"Imported entries: %@, days: %@, photos and files: %@." = "読み込んだ記録：%@ 件、日数：%@、写真とファイル：%@ 件。";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "iCloud Driveなら、記録はiPadやMacにも入ります。iPhoneの場合は「このiPhone内」で、";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "表示された画面で「このiPhone内」を選び、新規フォルダのアイコンをタップして「マイ日記」などと名前をつけ、そのフォルダに入って「開く」をタップします。iCloudの容量は使いませんが、記録はこのiPhoneにだけ残ります。バックアップを取ってください。";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "表示された画面で「iCloud Drive」を選び、右上の「開く」をタップします。記録はiPadやMacにも入り、iCloudの容量（無料で5GB）を使います。";
@@ -251,6 +261,7 @@
 "Note inside the backup" = "バックアップ内のメモ";
 "Nothing found." = "見つかりませんでした。";
 "Nothing found. Try other words or paste coordinates." = "見つかりませんでした。別の言葉で試すか、座標を貼り付けてください。";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Day One —”. Importing again does not duplicate anything." = "あなたの記録の上には何も書き込みません。その日にすでに記録があれば、読み込んだ分は「— Day One —」の下、末尾に入ります。もう一度読み込んでも重複しません。";
 "Nothing new — the backup was already up to date." = "新しいものはありません — バックアップは最新です。";
 "Nothing planned for this day." = "この日の予定はありません。";
 "Nothing to remove here." = "ここには外すものがありません。";
@@ -364,6 +375,7 @@
 "The cover shows the period and what is inside; each day starts a new page. The file goes to your entries folder, in “PDF”." = "表紙には期間と内容が入り、各日は新しいページから始まります。ファイルは記録フォルダの「PDF」に保存されます。";
 "The entry" = "この日の記録";
 "The entry changed elsewhere" = "記録が別の場所で変更されました";
+"The export could not be read: " = "書き出しを読み込めませんでした：";
 "The file is back in its folder, but it could not be put back on the day’s page — the day is still in iCloud or was changed elsewhere. Add it again from Files." = "ファイルはフォルダに戻りましたが、その日のページには戻せませんでした。その日はまだiCloudにあるか、別の場所で変更されています。「ファイル」からもう一度追加してください。";
 "The file is in the trash for 30 days. Restore it in Settings → Trash." = "ファイルは30日間ゴミ箱に入ります。設定 → ゴミ箱 から戻せます。";
 "The file itself stays in the folder — you can delete it in Files." = "ファイル自体はフォルダに残ります。「ファイル」で削除できます。";
@@ -394,6 +406,7 @@
 "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "ゴミ箱は空です。日はページメニュー（3つの点）からゴミ箱に入れられます。ゴミ箱の中身は30日間保管され、その後消去されます。";
 "Theme" = "テーマ";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "この日にはすでに新しい記録があります。ファイルはゴミ箱に残っているので、「ファイル」で必要な部分を手で移してください。";
+"There is no Day One export in this folder. Choose the folder with the .json file and the photos folder." = "このフォルダには Day One の書き出しがありません。.json ファイルと photos フォルダがあるフォルダを選んでください。";
 "There is no backup of your entries yet — making one takes a few minutes." = "記録のバックアップはまだありません。数分で作れます。";
 "This day has not come yet." = "この日はまだ来ていません。";
 "This day is closed. To change it, use “Edit this day” in the page menu." = "この日は締め切られています。変更するにはページメニューの「この日を編集」を使ってください。";
@@ -404,6 +417,7 @@
 "This is a repeating task" = "これは繰り返しの予定です";
 "This is the app’s own folder — the iPhone deletes it with the app. Choose “iCloud Drive” or make a new folder in “On My iPhone”." = "これはアプリ自身のフォルダです。iPhoneはアプリと一緒にこれを削除します。「iCloud Drive」を選ぶか、「このiPhone内」に新しいフォルダを作ってください。";
 "This is the archive folder itself or a folder inside it. The backup must be somewhere else." = "これはアーカイブのフォルダそのもの、またはその中のフォルダです。バックアップは別の場所に置いてください。";
+"This is the archive itself. Tap it in Files — it unpacks into a folder — and choose that." = "これはアーカイブそのものです。「ファイル」でタップしてフォルダに展開し、そのフォルダを選んでください。";
 "This is the current month" = "今月です";
 "This is the current year" = "今年です";
 "This is the same iCloud your entries are in: such a backup will not help if something happens to iCloud, and it takes twice the space there. A USB stick or another cloud is better." = "記録と同じiCloudです。このバックアップはiCloudに問題が起きたときに役立たず、容量も2倍使います。USBメモリか別のクラウドをおすすめします。";
@@ -455,6 +469,7 @@
 "Yesterday" = "昨日";
 "You have no places on the map yet." = "地図にはまだ自分の場所がありません。";
 "You renamed or moved it. The app followed it and now writes here:" = "名前の変更または移動がありました。アプリはそれを追いかけ、今はここに書き込みます:";
+"Your Day One entries arrive here as ordinary files by day — with time, place, tags, photos, voice and video. Nothing is taken out of Day One." = "Day One の記録が、日付ごとの普通のファイルとしてここに入ります — 時刻、場所、タグ、写真、音声、ビデオも一緒に。Day One からは何もなくなりません。";
 "Your data is not protected" = "データは保護されていません";
 "Your data is safe" = "データは安全です";
 "Your entries are inside Chronotheca itself, on this iPhone. " = "記録はこのiPhoneの Chronotheca の中にあります。";
