@@ -347,6 +347,7 @@
 "The system did not give access to this folder." = "Het systeem gaf geen toegang tot deze map.";
 "The system did not let the app remember this folder." = "Het systeem liet de app deze map niet onthouden.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "De prullenmand is leeg. Een dag gaat naar de prullenmand via het paginamenu — de drie puntjes.";
+"The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "De prullenmand is leeg. Een dag gaat naar de prullenmand via het paginamenu — de drie puntjes. Alles blijft 30 dagen in de prullenmand en wordt daarna gewist.";
 "Theme" = "Thema";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "Voor deze dag is er al een nieuwe aantekening. Het bestand blijft in de prullenmand — neem met de hand over wat je nodig hebt in Bestanden.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Er is nog geen reservekopie van je aantekeningen — dat duurt maar een paar minuten.";
@@ -507,6 +508,7 @@
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "‘Van de pagina halen’ laat het bestand in de map. ‘Uit de opslag verwijderen’ legt het 30 dagen in de prullenmand: je kunt het terugzetten via Instellingen → Prullenmand; daarna wordt het voorgoed gewist.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "‘Дневник’ wordt ‘Diary’, ‘Фотографии’ — ‘Photos’ enzovoort; ";
 "” folder" = "’";
+"” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "’, voor 30 dagen. Foto’s en spraakmemo’s blijven waar ze zijn. Terugzetten via Instellingen → Prullenmand.";
 "” folder." = "’.";
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = "’. Foto’s en spraakmemo’s blijven waar ze zijn. Terugzetten kan in Instellingen.";
 "” folder: %@" = "’: %@";

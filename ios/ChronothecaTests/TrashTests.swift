@@ -57,6 +57,19 @@ final class TrashTests: XCTestCase {
         XCTAssertEqual(Trash.items(in: vault).count, 1)
     }
 
+    /// Всё в корзине — 30 дней, потом стирается (P373); дни без отметки
+    /// (убранные до правила) получают её сейчас, а не стираются сразу.
+    func testДеньСтираетсяЧерезТридцатьДней() {
+        let day = DayStore.today()
+        write("Туман.", .diary, day)
+        XCTAssertTrue(Trash.put(day, parts: Trash.allParts, in: vault))
+        XCTAssertEqual(Trash.items(in: vault).first?.daysLeft(), 30)
+        Trash.purgeOld(vault, now: Date().addingTimeInterval(29 * 86_400))
+        XCTAssertEqual(Trash.items(in: vault).count, 1, "29 дней — ещё лежит")
+        Trash.purgeOld(vault, now: Date().addingTimeInterval(31 * 86_400))
+        XCTAssertTrue(Trash.items(in: vault).isEmpty, "31 день — стёрт")
+    }
+
     /// Убирают только открытую вкладку — другая остаётся на месте (P300).
     func testУбираетсяТолькоОднаВкладка() {
         let day = DayStore.today()

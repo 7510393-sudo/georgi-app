@@ -347,6 +347,7 @@
 "The system did not give access to this folder." = "Система не дала доступу до цієї теки.";
 "The system did not let the app remember this folder." = "Система не дала запам’ятати цю теку.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "Кошик порожній. День прибирають у кошик із меню сторінки — три крапки.";
+"The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "Кошик порожній. День прибирають у кошик із меню сторінки — три крапки. Усе в кошику зберігається 30 днів, потім стирається.";
 "Theme" = "Тема";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "На місці цього дня вже є новий запис. Файл залишився в кошику — перенесіть потрібне вручну у «Файлах».";
 "There is no backup of your entries yet — making one takes a few minutes." = "Копії записів ще немає — зробіть її, це кілька хвилин.";
@@ -507,6 +508,7 @@
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "«Прибрати зі сторінки» — файл залишиться в теці. «Видалити зі сховища» — файл піде в кошик на 30 днів: повернути його можна в Налаштування → Кошик, потім він зітреться назавжди.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "«Дневник» стане «Diary», «Фотографии» — «Photos» і так далі; ";
 "” folder" = "»";
+"” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "» на 30 днів. Знімки й голос залишаться на місці. Повернути можна в Налаштування → Кошик.";
 "” folder." = "».";
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = "». Знімки й голос залишаться на місці. Повернути можна в налаштуваннях.";
 "” folder: %@" = "»: %@";

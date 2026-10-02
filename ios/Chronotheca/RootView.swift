@@ -91,8 +91,8 @@ struct RootView: View {
     private var trashMessage: String {
         let what = shell.tab == .diary ? T("Запись", "The entry") : T("План", "The plan")
         return what + T(" этого дня переедет в папку «", " of this day will move to the “") + trashFolder
-            + T("». Снимки и голос останутся на месте. Вернуть можно в настройках.",
-                "” folder. Photos and voice notes stay where they are. You can restore it in Settings.")
+            + T("» на 30 дней. Снимки и голос останутся на месте. Вернуть можно в Настройки → Корзина.",
+                "” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash.")
     }
 
     fileprivate static func renameText(_ r: Rename.Report) -> String {

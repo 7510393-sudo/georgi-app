@@ -347,6 +347,7 @@
 "The system did not give access to this folder." = "Il sistema non ha dato accesso a questa cartella.";
 "The system did not let the app remember this folder." = "Il sistema non ha permesso di ricordare questa cartella.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "Il cestino è vuoto. Un giorno va nel cestino dal menu della pagina: i tre puntini.";
+"The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "Il cestino è vuoto. Un giorno va nel cestino dal menu della pagina: i tre puntini. Tutto resta nel cestino 30 giorni, poi viene cancellato.";
 "Theme" = "Tema";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "Per questo giorno c’è già una nuova nota. Il file è rimasto nel cestino: riporta a mano ciò che ti serve in File.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Non c’è ancora un backup delle tue note: farlo richiede pochi minuti.";
@@ -507,6 +508,7 @@
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "«Togli dalla pagina» lascia il file nella cartella. «Elimina dall’archivio» lo sposta nel cestino per 30 giorni: puoi ripristinarlo in Impostazioni → Cestino; dopo viene cancellato per sempre.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "«Дневник» diventa «Diary», «Фотографии» «Photos» e così via; ";
 "” folder" = "»";
+"” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "» per 30 giorni. Foto e note vocali restano dove sono. Puoi ripristinarla in Impostazioni → Cestino.";
 "” folder." = "».";
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = "». Foto e note vocali restano dove sono. Puoi ripristinarla nelle impostazioni.";
 "” folder: %@" = "»: %@";

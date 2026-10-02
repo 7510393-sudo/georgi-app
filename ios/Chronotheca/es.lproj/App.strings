@@ -347,6 +347,7 @@
 "The system did not give access to this folder." = "El sistema no dio acceso a esta carpeta.";
 "The system did not let the app remember this folder." = "El sistema no permitió recordar esta carpeta.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "La papelera está vacía. Un día va a la papelera desde el menú de la página: los tres puntos.";
+"The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "La papelera está vacía. Un día va a la papelera desde el menú de la página: los tres puntos. Todo se guarda 30 días en la papelera y luego se borra.";
 "Theme" = "Tema";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "Ya hay una entrada nueva para este día. El archivo sigue en la papelera; pasa lo que necesites a mano en Archivos.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Aún no hay copia de tus entradas; hacerla lleva unos minutos.";
@@ -507,6 +508,7 @@
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "«Quitar de la página» deja el archivo en la carpeta. «Eliminar del almacenamiento» lo lleva a la papelera durante 30 días: puedes restaurarlo en Ajustes → Papelera; después se borra para siempre.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "«Дневник» pasa a ser «Diary», «Фотографии», «Photos», etc.; ";
 "” folder" = "»";
+"” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "» durante 30 días. Las fotos y notas de voz se quedan donde están. Puedes restaurarla en Ajustes → Papelera.";
 "” folder." = "».";
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = "». Las fotos y notas de voz se quedan donde están. Puedes restaurarla en Ajustes.";
 "” folder: %@" = "»: %@";

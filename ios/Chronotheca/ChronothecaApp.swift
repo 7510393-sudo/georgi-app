@@ -60,6 +60,7 @@ struct ChronothecaApp: App {
                 Repeats.extendAll(vault: vault, open: store.date)
                 // Файлы, пролежавшие в корзине 30 дней, — стереть (P371).
                 FileTrash.purgeOld(vault)
+                Trash.purgeOld(vault)
                 archive.reload()
                 store.syncUpcomingReminders()
                 store.fetchWeatherIfNeeded()

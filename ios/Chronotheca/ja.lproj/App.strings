@@ -347,6 +347,7 @@
 "The system did not give access to this folder." = "システムがこのフォルダへのアクセスを許可しませんでした。";
 "The system did not let the app remember this folder." = "システムがこのフォルダの記憶を許可しませんでした。";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "ゴミ箱は空です。日はページメニュー（3つの点）からゴミ箱に入れられます。";
+"The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "ゴミ箱は空です。日はページメニュー（3つの点）からゴミ箱に入れられます。ゴミ箱の中身は30日間保管され、その後消去されます。";
 "Theme" = "テーマ";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "この日にはすでに新しい記録があります。ファイルはゴミ箱に残っているので、「ファイル」で必要な部分を手で移してください。";
 "There is no backup of your entries yet — making one takes a few minutes." = "記録のバックアップはまだありません。数分で作れます。";
@@ -507,6 +508,7 @@
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "「ページから外す」ではファイルはフォルダに残ります。「保存場所から削除」ではファイルは30日間ゴミ箱に入り、設定 → ゴミ箱 から戻せます。その後は完全に消去されます。";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "「Дневник」は「Diary」に、「Фотографии」は「Photos」に、というように変わります。";
 "” folder" = "」フォルダに保存しました";
+"” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "」フォルダに30日間移ります。写真とボイスメモはそのまま残ります。設定 → ゴミ箱 から戻せます。";
 "” folder." = "」フォルダから削除されます。";
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = "」フォルダに移ります。写真とボイスメモはそのまま残ります。設定から元に戻せます。";
 "” folder: %@" = "」フォルダに保存しました: %@";

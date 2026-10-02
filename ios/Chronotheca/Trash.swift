@@ -18,8 +18,23 @@ enum Trash {
         let url: URL
         /// Первые слова записи или первое дело — чтобы узнать день.
         let preview: String
+        /// Когда день убрали в корзину — от этого считаются 30 дней (P373).
+        var deleted: Date?
         var id: String { stamp }
+
+        /// Сколько дней осталось до того, как день сотрётся.
+        func daysLeft(now: Date = Date()) -> Int {
+            let from = deleted ?? Calendar.current.startOfDay(for: now)
+            let gone = Calendar.current.date(byAdding: .day, value: Trash.days, to: from) ?? from
+            return max(0, Calendar.current.dateComponents(
+                [.day], from: Calendar.current.startOfDay(for: now), to: gone).day ?? 0)
+        }
     }
+
+    /// Сколько лежит в корзине, прежде чем стереться (P373) — как файлы.
+    static let days = 30
+    /// Отметка дня удаления внутри папки дня в корзине.
+    private static let markName = ".deleted"
 
     /// Обе стороны дня — для возврата, показа и удаления навсегда: там
     /// берётся то, что нашлось, какую вкладку тогда ни убирали (P300).
@@ -49,7 +64,34 @@ enum Trash {
             try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
             if move(from, to: dir.appendingPathComponent(from.lastPathComponent)) { moved = true }
         }
+        if moved { mark(day, Date()) }
         return moved
+    }
+
+    private static func mark(_ day: URL, _ date: Date) {
+        try? Data(Vault.stamp(date).utf8).write(to: day.appendingPathComponent(markName))
+    }
+
+    private static func deletedOn(_ day: URL) -> Date? {
+        guard let text = try? String(contentsOf: day.appendingPathComponent(markName), encoding: .utf8)
+        else { return nil }
+        return Vault.date(from: text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// Стереть дни, пролежавшие в корзине 30 дней, — при каждом
+    /// возвращении в приложение (P373). Дни, убранные до этого правила,
+    /// без отметки, получают её сегодня: их 30 дней начинаются сейчас, а не
+    /// задним числом.
+    static func purgeOld(_ vault: Vault, now: Date = Date()) {
+        let limit = Calendar.current.date(byAdding: .day, value: -days,
+                                          to: Calendar.current.startOfDay(for: now)) ?? now
+        for item in items(in: vault) {
+            guard let when = item.deleted else {
+                mark(item.url, now)
+                continue
+            }
+            if when <= limit { purge(item) }
+        }
     }
 
     /// Что лежит в корзине — свежие дни сверху.
@@ -61,7 +103,8 @@ enum Trash {
             let stamp = String(name.prefix(10))
             guard let date = Vault.date(from: stamp) else { return nil }
             let url = base.appendingPathComponent(name)
-            return Item(stamp: name, date: date, url: url, preview: preview(url, stamp: stamp))
+            return Item(stamp: name, date: date, url: url, preview: preview(url, stamp: stamp),
+                        deleted: deletedOn(url))
         }
         .sorted { $0.stamp > $1.stamp }
     }
@@ -150,8 +193,8 @@ struct TrashSheet: View {
                     }
                 }
                 if items.isEmpty && files.isEmpty {
-                    Text(T("Корзина пуста. День убирают в корзину из меню страницы — три точки.",
-                           "The trash is empty. A day goes to the trash from the page menu — the three dots."))
+                    Text(T("Корзина пуста. День убирают в корзину из меню страницы — три точки. Всё в корзине хранится 30 дней, потом стирается.",
+                           "The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased."))
                         .font(Look.sans(14))
                         .foregroundStyle(Look.inkSoft)
                 }
@@ -163,6 +206,9 @@ struct TrashSheet: View {
                             .font(Look.serif(13.5))
                             .foregroundStyle(Look.inkSoft)
                             .lineLimit(2)
+                        Text(T("сотрётся через \(item.daysLeft()) дн.", "erased in \(item.daysLeft()) days"))
+                            .font(Look.sans(12.5))
+                            .foregroundStyle(Look.inkSoft)
                         HStack(spacing: 18) {
                             Button(T("Вернуть", "Restore")) {
                                 if Trash.restore(item, in: vault) {

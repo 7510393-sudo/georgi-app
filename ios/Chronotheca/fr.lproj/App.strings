@@ -347,6 +347,7 @@
 "The system did not give access to this folder." = "Le système n’a pas donné accès à ce dossier.";
 "The system did not let the app remember this folder." = "Le système n’a pas permis de mémoriser ce dossier.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "La corbeille est vide. Un jour va à la corbeille depuis le menu de la page — les trois points.";
+"The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "La corbeille est vide. Un jour va à la corbeille depuis le menu de la page — les trois points. Tout reste 30 jours dans la corbeille, puis est effacé.";
 "Theme" = "Thème";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "Il y a déjà une nouvelle note pour ce jour. Le fichier est resté dans la corbeille — reprenez ce qu’il vous faut à la main dans Fichiers.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Aucune sauvegarde de vos notes pour l’instant — cela ne prend que quelques minutes.";
@@ -507,6 +508,7 @@
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "« Retirer de la page » garde le fichier dans le dossier. « Supprimer du stockage » le met à la corbeille pour 30 jours : vous pouvez le restaurer dans Réglages → Corbeille ; ensuite, il est effacé pour de bon.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "« Дневник » devient « Diary », « Фотографии » — « Photos », etc. ; ";
 "” folder" = " »";
+"” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = " » pour 30 jours. Les photos et notes vocales restent en place. Restaurez-la dans Réglages → Corbeille.";
 "” folder." = " ».";
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = " ». Les photos et notes vocales restent en place. Vous pourrez la restaurer dans les réglages.";
 "” folder: %@" = " » : %@";

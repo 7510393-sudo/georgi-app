@@ -347,6 +347,7 @@
 "The system did not give access to this folder." = "Das System hat keinen Zugriff auf diesen Ordner gegeben.";
 "The system did not let the app remember this folder." = "Das System hat nicht erlaubt, sich diesen Ordner zu merken.";
 "The trash is empty. A day goes to the trash from the page menu — the three dots." = "Der Papierkorb ist leer. Ein Tag kommt über das Seitenmenü – die drei Punkte – in den Papierkorb.";
+"The trash is empty. A day goes to the trash from the page menu — the three dots. Everything stays in the trash for 30 days, then it is erased." = "Der Papierkorb ist leer. Ein Tag kommt über das Seitenmenü – die drei Punkte – in den Papierkorb. Alles bleibt dort 30 Tage und wird dann gelöscht.";
 "Theme" = "Design";
 "There is already a new entry for this day. The file stayed in the trash — move what you need by hand in Files." = "Für diesen Tag gibt es schon einen neuen Eintrag. Die Datei bleibt im Papierkorb – übernimm, was du brauchst, von Hand in „Dateien“.";
 "There is no backup of your entries yet — making one takes a few minutes." = "Es gibt noch keine Sicherung deiner Einträge – sie dauert nur ein paar Minuten.";
@@ -507,6 +508,7 @@
 "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good." = "„Von der Seite entfernen“ lässt die Datei im Ordner. „Aus dem Speicher löschen“ legt sie für 30 Tage in den Papierkorb: Du kannst sie unter Einstellungen → Papierkorb wiederherstellen; danach wird sie endgültig gelöscht.";
 "“Дневник” becomes “Diary”, “Фотографии” — “Photos” and so on; " = "„Дневник“ wird zu „Diary“, „Фотографии“ zu „Photos“ und so weiter; ";
 "” folder" = "“";
+"” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash." = "“ – für 30 Tage. Fotos und Sprachnotizen bleiben, wo sie sind. Wiederherstellen: Einstellungen → Papierkorb.";
 "” folder." = "“.";
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = "“. Fotos und Sprachnotizen bleiben, wo sie sind. Wiederherstellen kannst du ihn in den Einstellungen.";
 "” folder: %@" = "“: %@";
