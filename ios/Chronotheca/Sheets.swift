@@ -280,7 +280,8 @@ struct SettingsSticker: View {
         safety
         // Резервная копия (P368): когда была и кнопка — единственная
         // главная кнопка на записке.
-        NoteRow(title: T("Резервная копия", "Backup"), detail: Backup.summary(size: storageBytes)) {
+        NoteRow(title: T("Резервная копия", "Backup"), detail: Backup.summary(size: storageBytes),
+                detailColor: Backup.healthy ? Look.inkSoft : .orange) {
             NoteButton(title: T("Сделать", "Make"), main: true) { showingBackup = true }
         }
         // Папки с прежними, русскими, именами — перевести (P353).

@@ -62,6 +62,37 @@ final class BackupTests: XCTestCase {
         XCTAssertNotNil(Backup.last)
     }
 
+    /// Пять ступеней (P375): копия сверяется с описью, в ней лежит опись
+    /// для человека, временных и пробных файлов не остаётся.
+    func testСверкаИОписьВКопии() {
+        put("Diary/2026/2026-10-02.md", "ясно")
+        put("Photos/2026/b.heic", "снимок")
+        XCTAssertNil(Backup.choose(place))
+        XCTAssertEqual(run()?.complete, true)
+        XCTAssertTrue(Backup.lastComplete)
+        let target = place.appendingPathComponent(Backup.folderName)
+        let note = try? String(contentsOf: target.appendingPathComponent(Backup.noteName), encoding: .utf8)
+        XCTAssertNotNil(note, "опись лежит в самой копии")
+
+        let names = (fm.enumerator(atPath: target.path)?.allObjects as? [String]) ?? []
+        XCTAssertFalse(names.contains { ($0 as NSString).lastPathComponent.hasPrefix(".") },
+                       "ни временных, ни пробных файлов")
+
+        // Файл в копии испортился — сверка это видит, следующая копия чинит.
+        try? Data("x".utf8).write(to: target.appendingPathComponent("Photos/2026/b.heic"))
+        XCTAssertEqual(Backup.verify(Backup.inventory(archive), in: target), ["Photos/2026/b.heic"])
+        XCTAssertEqual(run()?.copied, 1)
+        XCTAssertEqual(copied("Photos/2026/b.heic"), "снимок")
+    }
+
+    func testФайлыСравниваютсяБайтВБайт() {
+        put("a.txt", "один")
+        put("b.txt", "один")
+        put("c.txt", "одна")
+        XCTAssertTrue(Backup.same(archive.appendingPathComponent("a.txt"), archive.appendingPathComponent("b.txt")))
+        XCTAssertFalse(Backup.same(archive.appendingPathComponent("a.txt"), archive.appendingPathComponent("c.txt")))
+    }
+
     func testВСамАрхивКопияНеЛожится() {
         XCTAssertNotNil(Backup.trouble(with: archive, archive: archive))
         XCTAssertNotNil(Backup.trouble(with: archive.appendingPathComponent("Diary"), archive: archive))
