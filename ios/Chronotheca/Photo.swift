@@ -412,24 +412,78 @@ struct PlanPhotoRow: View {
     let links: [String]
     var resolve: ((String) -> URL?)?
     var open: ((URL?) -> Void)?
-    var carry = false
+    /// Снимок несут пальцем под другое дело или назад в полоску (P377):
+    /// своим жестом, а не системным перетаскиванием, — чтобы строки
+    /// расступались там, куда он встанет. Ход и место пальца на экране.
+    var onCarry: ((String, Lift, CGPoint) -> Void)?
+    /// Снимок, который сейчас несут, — на своём месте он бледный.
+    var carried: String?
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(links, id: \.self) { link in
                     PlanPhotoThumb(url: resolve?(link)) { open?(resolve?(link)) }
-                        .modifier(Carried(on: carry, text: Diary.line(link), start: {}))
+                        .opacity(carried == link ? 0.25 : 1)
+                        .modifier(ThumbCarry(report: report(link)))
                 }
             }
             .padding(.horizontal, 14)
         }
-        .scrollDisabled(links.count < 4)
+        .scrollDisabled(links.count < 4 || carried != nil)
         .frame(height: PlanPhotoLine.height)
+    }
+    private func report(_ link: String) -> ((Lift, CGPoint) -> Void)? {
+        guard let onCarry else { return nil }
+        return { phase, spot in onCarry(link, phase, spot) }
     }
 }
 
-/// Один снимок под делом — той же величины, что снимок в тексте записи.
+/// Снимок под делом берут долгим нажатием и ведут (P377). Сам он остаётся
+/// на месте — за пальцем идёт его копия, нарисованная планом поверх всего.
+struct ThumbCarry: ViewModifier {
+    let report: ((Lift, CGPoint) -> Void)?
+
+    @State private var lifted = false
+    @GestureState private var holding = false
+
+    func body(content: Content) -> some View {
+        if let report {
+            content
+                .gesture(LongPressGesture(minimumDuration: 0.3)
+                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                    .updating($holding) { value, state, _ in
+                        if case .second(true, _) = value { state = true }
+                    }
+                    .onChanged { value in
+                        guard case .second(true, let drag) = value else { return }
+                        if !lifted {
+                            lifted = true
+                            report(.began, drag?.location ?? .zero)
+                        }
+                        if let drag { report(.moved(drag.translation), drag.location) }
+                    }
+                    .onEnded { value in
+                        guard lifted else { return }
+                        lifted = false
+                        var spot = CGPoint.zero
+                        if case .second(true, let drag) = value, let drag { spot = drag.location }
+                        report(.ended(.zero), spot)
+                    })
+                .onChange(of: holding) { _, now in
+                    guard !now else { return }
+                    DispatchQueue.main.async {
+                        guard lifted else { return }
+                        lifted = false
+                        report(.cancelled, .zero)
+                    }
+                }
+        } else {
+            content
+        }
+    }
+}
+
 struct PlanPhotoThumb: View {
     let url: URL?
     var onOpen: (() -> Void)?

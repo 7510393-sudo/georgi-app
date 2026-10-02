@@ -401,6 +401,12 @@ struct PlanScaffold<Content: View>: View {
             if !photos.isEmpty || takesBack {
                 PhotoStrip(photos: photos, onOpen: onOpenPhoto,
                            drag: drag, onMove: onMovePhoto, onTake: onTakePhoto)
+                    .background(GeometryReader { geo in
+                        let frame = geo.frame(in: .global)
+                        Color.clear
+                            .onAppear { PlanZones.strip = frame }
+                            .onChange(of: frame) { _, now in PlanZones.strip = now }
+                    })
             }
         }
         .keyboardHeight($keyboard)
@@ -530,6 +536,19 @@ struct PlanView: View {
     /// расступившимся, ищется место — иначе строки дрожали бы под пальцем.
     @State private var lineSpots: [UUID: CGRect] = [:]
 
+    /// Снимок из ряда под делом, который несут пальцем (P377): что, откуда,
+    /// где палец и куда ляжет — под дело или назад в полоску.
+    struct PhotoCarry: Equatable {
+        let link: String
+        let from: UUID
+    }
+    @State private var photoCarry: PhotoCarry?
+    @State private var photoSpot: CGPoint = .zero
+    @State private var photoTo: UUID?
+    @State private var photoBack = false
+    @State private var photoSpots: [UUID: CGRect] = [:]
+    @State private var photoStripTop: CGFloat = .infinity
+
     /// События Календаря этого дня (P376).
     @State private var events: [DayEvents.Item] = []
     /// Событие, поднятое долгим нажатием, и как его ведут.
@@ -638,6 +657,20 @@ struct PlanView: View {
             }
             .ignoresSafeArea()
         }
+        // Копия несомого снимка — над пальцем, в синей рамке (P377).
+        .overlay {
+            if let c = photoCarry, photoSpot != .zero {
+                GeometryReader { g in
+                    let o = g.frame(in: .global).origin
+                    PlanPhotoThumb(url: store.photoURL(c.link))
+                        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Look.glow, lineWidth: 2.6))
+                        .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+                        .scaleEffect(1.08)
+                        .position(x: photoSpot.x - o.x, y: photoSpot.y - o.y - 48)
+                }
+                .allowsHitTesting(false)
+            }
+        }
         .onChange(of: typingIn) { _, now in if now != nil { armedLine = nil } }
         // Дело из серии поправили или убирают — только здесь или дальше
         // тоже (P359).
@@ -663,8 +696,8 @@ struct PlanView: View {
                     Rectangle().fill(Look.ruleSoft).frame(height: 1)
                 }
                 .modifier(Zone(id: id))
-                .offset(y: lineShift(id) + eventShift(id))
-                .animation(.easeOut(duration: 0.16), value: lineShift(id) + eventShift(id))
+                .offset(y: lineShift(id) + eventShift(id) + photoShift(id))
+                .animation(.easeOut(duration: 0.16), value: lineShift(id) + eventShift(id) + photoShift(id))
                 .zIndex(dragged == id || lifted == id ? 1 : 0)
             } else if let line = row.wrappedValue.verbatim {
                 PlanExtraLine(line: line, resolve: store.photoURL,
@@ -686,10 +719,13 @@ struct PlanView: View {
                               carried: lineDrag == id,
                               onArm: { on in
                                   withAnimation(.easeOut(duration: 0.15)) { armedLine = on ? id : nil }
-                              })
+                              },
+                              onPhoto: store.canEditPlan
+                                  ? { carryPhoto($0, from: id, $1, at: $2) } : nil,
+                              carriedPhoto: photoCarry?.from == id ? photoCarry?.link : nil)
                 .modifier(Zone(id: id))
-                .offset(y: lineShift(id) + eventShift(id))
-                .animation(.easeOut(duration: 0.16), value: lineShift(id) + eventShift(id))
+                .offset(y: lineShift(id) + eventShift(id) + photoShift(id))
+                .animation(.easeOut(duration: 0.16), value: lineShift(id) + eventShift(id) + photoShift(id))
                 .zIndex(lineDrag == id ? 1 : 0)
             }
         }
@@ -732,8 +768,9 @@ struct PlanView: View {
             onNext: { next(after: id) },
             onLift: { lift(row, $0) },
             // Поднятое дело обведено синим — тем же, что и всё, что можно
-            // взять пальцем (P203, P362).
-            lifted: up)
+            // взять пальцем (P203, P362); и дело, под которое ляжет
+            // несомый снимок (P377).
+            lifted: up || photoTo == id)
             // Снимок из полоски или из-под другого дела — под это дело, в
             // ряд с теми, что уже там (P358).
             .onDrop(of: store.canEditPlan ? [UTType.plainText] : [],
@@ -1073,6 +1110,84 @@ struct PlanView: View {
         }
     }
 
+    // MARK: - Снимки под делами (P377)
+
+    /// Снимок из ряда под делом подняли и ведут: под какое дело он ляжет —
+    /// то, чей верх выше пальца; ниже всех строк, над полоской, — назад в
+    /// полоску. Строки под выбранным делом расступаются под новый ряд.
+    private func carryPhoto(_ link: String, from row: UUID, _ phase: Lift, at spot: CGPoint) {
+        switch phase {
+        case .began:
+            guard store.canEditPlan else { return shell.say(store.closedReason) }
+            if typingIn != nil {
+                hideKeyboard()
+                typingIn = nil
+            }
+            Feel.lift()
+            armedLine = nil
+            photoSpots = PlanZones.rows
+            photoStripTop = PlanZones.strip?.minY ?? .infinity
+            photoTo = nil
+            photoBack = false
+            photoSpot = spot
+            photoCarry = PhotoCarry(link: link, from: row)
+        case .moved:
+            guard photoCarry?.link == link else { return }
+            photoSpot = spot
+            let back = spot.y >= photoStripTop - 8
+            var to: UUID?
+            if !back {
+                let list = store.tasks
+                to = list.last { (photoSpots[$0.id]?.minY ?? .infinity) < spot.y }?.id ?? list.first?.id
+                if to == owner(of: row) { to = nil }
+            }
+            if to != photoTo || back != photoBack {
+                withAnimation(.easeOut(duration: 0.16)) {
+                    photoTo = to
+                    photoBack = back
+                }
+                if to != nil || back { Feel.tick() }
+            }
+        case .ended, .cancelled:
+            guard photoCarry?.link == link else { return }
+            let to = photoTo
+            let back = photoBack
+            let real: Bool
+            if case .ended = phase { real = true } else { real = false }
+            withAnimation(.easeOut(duration: 0.2)) {
+                photoCarry = nil
+                photoTo = nil
+                photoBack = false
+                photoSpot = .zero
+                guard real else { return }
+                if back {
+                    store.returnPlanPhoto(link)
+                } else if let to {
+                    store.putPlanPhoto(link, under: to)
+                }
+            }
+            if real, back || to != nil { Feel.thud() }
+        }
+    }
+
+    /// Дело, под которым стоит строка.
+    private func owner(of row: UUID) -> UUID? {
+        guard let i = store.index(of: row) else { return nil }
+        return store.planRows[..<i].last { $0.isTask }?.id
+    }
+
+    /// На сколько сдвинута строка, пока несут снимок: под выбранным делом
+    /// открывается место под новый ряд — если ряда снимков там ещё нет.
+    private func photoShift(_ id: UUID) -> CGFloat {
+        guard photoCarry != nil, let to = photoTo, let t = store.index(of: to),
+              let mine = store.index(of: id), mine > t else { return 0 }
+        let next = t + 1
+        if next < store.planRows.count, store.planRows[next].verbatim.map(Plan.isPhotoRow) == true {
+            return 0
+        }
+        return PlanPhotoLine.height + 1
+    }
+
     /// На сколько сдвинута строка, пока событие несут к делам.
     private func eventShift(_ id: UUID) -> CGFloat {
         guard let to = eventTo else { return 0 }
@@ -1271,13 +1386,16 @@ struct PlanExtraLine: View {
     /// Точку несут пальцем — она обведена синим.
     var carried = false
     var onArm: ((Bool) -> Void)?
+    /// Снимок из ряда под делом несут пальцем (P377).
+    var onPhoto: ((String, Lift, CGPoint) -> Void)? = nil
+    var carriedPhoto: String? = nil
 
     var body: some View {
         if Plan.isPhotoRow(line) {
             // Снимки под делом — в ряд; каждый несут пальцем под другое
             // дело или назад в полоску (P358, P362).
             PlanPhotoRow(links: Diary.links(in: line), resolve: resolve, open: open,
-                         carry: onCarry != nil)
+                         onCarry: onPhoto, carried: carriedPhoto)
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
         } else if let point = Geo.point(in: line) {
             // Точка и черта под ней едут вместе.
@@ -1348,6 +1466,8 @@ enum PlanZones {
     static var rows: [UUID: CGRect] = [:]
     /// События Календаря (P376) — по их ключам.
     static var events: [String: CGRect] = [:]
+    /// Полоска снимков внизу — туда снимок возвращают (P377).
+    static var strip: CGRect?
 }
 
 /// Записать, где строка на экране.
