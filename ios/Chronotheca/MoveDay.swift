@@ -23,40 +23,34 @@ struct MoveDaySticker: View {
 
     /// Какой месяц показан.
     @State private var month = Date()
-    /// Выбранный в сетке день — переносится только по кнопке под сеткой.
+    /// День, которого коснулись, — обведён, пока листок уходит.
     @State private var chosen: Date?
 
     private var cal: Calendar { Prefs.calendar }
 
     var body: some View {
         Sticker(side: .trailing, title: T("На другой день", "To another day"),
-                width: min(340, UIScreen.main.bounds.width - 40), close: close) {
-            VStack(alignment: .leading, spacing: 10) {
+                // Небольшой листок поверх страницы, как меню страницы, а не
+                // экран во всю ширину (P395).
+                width: min(280, UIScreen.main.bounds.width - 60), close: close) {
+            VStack(alignment: .leading, spacing: 7) {
                 if !task.title.isEmpty {
                     Text("«\(task.title)»")
-                        .font(Look.serif(15))
+                        .font(Look.serif(13.5))
                         .foregroundStyle(Look.inkSoft)
-                        .lineLimit(2)
+                        .lineLimit(1)
                 }
-                Flow(spacing: 6) {
+                Flow(spacing: 5) {
                     ForEach(quick, id: \.0) { item in
                         NoteButton(title: item.0) { move(to: item.1) }
                     }
                 }
                 monthHead
                 grid
-                NoteButton(title: chosen.map { T("Перенести на ", "Move to ") + Ru.shortDate($0) }
-                                  ?? T("Выберите день", "Choose a day"),
-                           main: chosen != nil) {
-                    if let chosen { move(to: chosen) }
-                }
-                .opacity(chosen == nil ? 0.5 : 1)
-                .disabled(chosen == nil)
-                .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 8)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 10)
+            .padding(.top, 6)
+            .padding(.bottom, 10)
         }
         .onAppear {
             month = store.date < DayStore.today() ? DayStore.today() : store.date
@@ -68,55 +62,57 @@ struct MoveDaySticker: View {
     private var monthHead: some View {
         HStack {
             Button { shift(-1) } label: {
-                Image(systemName: "chevron.left").font(.system(size: 15, weight: .bold))
-                    .frame(width: 36, height: 30)
+                Image(systemName: "chevron.left").font(.system(size: 13, weight: .bold))
+                    .frame(width: 32, height: 26)
             }
             Spacer()
             Text(Ru.monthTitle(month))
-                .font(Look.serif(17, weight: .semibold))
+                .font(Look.serif(15, weight: .semibold))
                 .foregroundStyle(Look.ink)
             Spacer()
             Button { shift(1) } label: {
-                Image(systemName: "chevron.right").font(.system(size: 15, weight: .bold))
-                    .frame(width: 36, height: 30)
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold))
+                    .frame(width: 32, height: 26)
             }
         }
         .buttonStyle(.plain)
         .foregroundStyle(Look.accent)
-        .padding(.top, 4)
+        .padding(.top, 2)
     }
 
     private var grid: some View {
         let cells = MonthGrid.cells(of: month, calendar: cal, firstWeekday: cal.firstWeekday)
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 7),
-                         spacing: 3) {
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
+                         spacing: 2) {
             ForEach(Array(header.enumerated()), id: \.offset) { _, name in
                 Text(name.uppercased())
-                    .font(Look.sans(9.5, weight: .semibold))
+                    .font(Look.sans(8.5, weight: .semibold))
                     .foregroundStyle(Look.inkFaint)
             }
             ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
-                if let day { cell(day) } else { Color.clear.frame(height: 30) }
+                if let day { cell(day) } else { Color.clear.frame(height: 26) }
             }
         }
     }
 
     /// Клетка дня — того же цвета, что в «Календаре»; сегодняшний — крупнее
-    /// и жирнее, день самого дела обведён пунктиром и не нажимается,
-    /// выбранный — синим ободком.
+    /// и жирнее, день самого дела обведён пунктиром и не нажимается.
+    /// Касание по дню сразу переносит дело — как «Завтра» и прочие ответы
+    /// над сеткой (P395; прежде день выбирали, а переносили кнопкой под
+    /// сеткой — листок выходил большим).
     private func cell(_ day: Date) -> some View {
         let isToday = cal.isDate(day, inSameDayAs: DayStore.today())
         let isFrom = cal.isDate(day, inSameDayAs: store.date)
         let isChosen = chosen.map { cal.isDate($0, inSameDayAs: day) } ?? false
         return Button {
-            Feel.tick()
             chosen = day
+            move(to: day)
         } label: {
             Text("\(cal.component(.day, from: day))")
-                .font(Look.sans(isToday ? 16 : 13.5, weight: isToday ? .bold : .medium))
+                .font(Look.sans(isToday ? 14.5 : 12.5, weight: isToday ? .bold : .medium))
                 .foregroundStyle(Look.ink)
                 .frame(maxWidth: .infinity)
-                .frame(height: 30)
+                .frame(height: 26)
                 .background(tint(day), in: RoundedRectangle(cornerRadius: 6))
                 .overlay {
                     if isChosen {
