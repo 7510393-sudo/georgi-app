@@ -74,6 +74,7 @@
 "As the iPhone took it, about 2–5 MB a photo" = "Come l’ha scattata l’iPhone, circa 2–5 MB per foto";
 "As the iPhone took it: a minute of 4K is about 170–400 MB" = "Come l’ha girato l’iPhone: un minuto in 4K è circa 170–400 MB";
 "Attachments" = "Allegati";
+"Back 15 seconds" = "Indietro di 15 secondi";
 "Back to the day page" = "Torna alla pagina del giorno";
 "Back to the previous folder" = "Torna alla cartella precedente";
 "Back to this month" = "Di nuovo in questo mese";
@@ -94,6 +95,7 @@
 "Change this day only" = "Modifica solo questo giorno";
 "Checking that the place can be written to…" = "Verifico che si possa scrivere lì…";
 "Checking the backup" = "Verifica del backup";
+"Choose a day" = "Scegli un giorno";
 "Choose a folder…" = "Scegli una cartella…";
 "Choose a place…" = "Scegli un posto…";
 "Choose another place…" = "Scegli un altro posto…";
@@ -120,11 +122,13 @@
 "Could not find where you are — allow location for the app in iPhone Settings." = "Impossibile sapere dove sei — consenti la posizione all’app nelle Impostazioni di iPhone.";
 "Could not find where you are. Check that the app may use Location." = "Impossibile sapere dove sei. Controlla che l’app possa usare la posizione.";
 "Could not make the backup folder: " = "Impossibile creare la cartella del backup: ";
+"Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "Impossibile spostare: il file di quel giorno non è ancora scaricato da iCloud o viene modificato altrove. Riprova.";
 "Could not open the previous folder. The entries in it are safe — " = "Impossibile aprire la cartella precedente. Le note al suo interno sono al sicuro: ";
 "Could not take from Photos: %@" = "Impossibile prendere da Foto: %@";
 "Custom" = "Periodo a scelta";
 "DETAILS" = "DETTAGLI";
 "Day" = "Giorno";
+"Day after tomorrow" = "Dopodomani";
 "Day colours in the calendar" = "Colore dei giorni nel calendario";
 "Days with entries: %@" = "Giorni con note: %@";
 "Days: %@ of %@" = "Giorni: %@ di %@";
@@ -186,6 +190,7 @@
 "Folders renamed" = "Cartelle rinominate";
 "Folders renamed: %@. Entries updated: %@." = "Cartelle rinominate: %@. Note aggiornate: %@.";
 "For this language the iPhone recognises via Apple." = "Per questa lingua l’iPhone riconosce tramite Apple.";
+"Forward 15 seconds" = "Avanti di 15 secondi";
 "From" = "Dal";
 "From: " = "Da: ";
 "Frost on the railings" = "Brina sulla ringhiera";
@@ -201,6 +206,7 @@
 "Import from Day One and Apple Journal" = "Importazione da Day One e Diario di Apple";
 "Imported entries: %@, days: %@, photos and files: %@." = "Voci importate: %@, giorni: %@, foto e file: %@.";
 "In a row: %@ · this month: %@ of %@" = "Di fila: %@ · questo mese: %@ su %@";
+"In a week" = "Tra una settimana";
 "In iCloud Drive your entries are on your iPad and Mac too. On the iPhone — “On My iPhone”, " = "In iCloud Drive le tue note sono anche su iPad e Mac. Sull’iPhone: «Sul mio iPhone», ";
 "In the window choose “On My iPhone”, tap the new folder icon, name it, say, “My Journal”, open it and tap “Open”. No iCloud space needed, but your entries will only be on this iPhone — make backups." = "Nella finestra scegli «Sul mio iPhone», tocca l’icona di nuova cartella, chiamala ad esempio «Il mio diario», aprila e tocca «Apri». Non serve spazio iCloud, ma le tue note saranno solo su questo iPhone: fai dei backup.";
 "In the window choose “iCloud Drive” and tap “Open” at the top right. Your entries will be on your iPad and Mac too; they use your iCloud space (5 GB free)." = "Nella finestra scegli «iCloud Drive» e tocca «Apri» in alto a destra. Le tue note saranno anche su iPad e Mac; usano il tuo spazio iCloud (5 GB gratis).";
@@ -240,6 +246,7 @@
 "Move the archive and write elsewhere" = "Sposta l’archivio e scrivi altrove";
 "Move the archive elsewhere" = "Sposta l’archivio altrove";
 "Move this day’s %@ to the trash?" = "Spostare «%@» di questo giorno nel cestino?";
+"Move to " = "Sposta al ";
 "Move to trash" = "Sposta nel cestino";
 "Move your entries?" = "Spostare le tue note?";
 "Move “" = "Sposta «";
@@ -248,6 +255,7 @@
 "My place" = "Il mio luogo";
 "My places" = "I miei luoghi";
 "NO ›" = "NO ›";
+"Name" = "Nome";
 "Name it" = "Dai un nome";
 "Name or note" = "Nome o nota";
 "New task" = "Nuova attività";
@@ -299,7 +307,7 @@
 "Photo" = "Foto";
 "Photo %@" = "Foto %@";
 "Photo compression" = "Compressione foto";
-"Photo from Photos" = "Foto da Foto";
+"Photo from Photos" = "Foto dall’app Foto";
 "Photo moved back to the strip" = "La foto è tornata nella striscia";
 "Photo saved to the “" = "Foto salvata nella cartella «";
 "Photos" = "Foto";
@@ -331,6 +339,7 @@
 "Remove from the page" = "Togli dalla pagina";
 "Remove from the page?" = "Togliere dalla pagina?";
 "Remove from this day’s plan" = "Togli dal piano di questo giorno";
+"Remove photo from text" = "Togli la foto dal testo";
 "Remove the photo from the entry?" = "Togliere la foto dalla nota?";
 "Removed from the page. The file could not be deleted — it stays in the folder." = "Tolto dalla pagina. Impossibile eliminare il file: resta nella cartella.";
 "Removed from the page. The file is still used on %@, so it stays in the folder." = "Tolto dalla pagina. Il file serve ancora il %@, quindi resta nella cartella.";
@@ -378,7 +387,10 @@
 "Tap to add to the diary" = "Tocca per aggiungere al diario";
 "Tap “+” to add a task." = "Tocca «+» per aggiungere un’attività.";
 "Tap “Move the archive” and choose “%@” itself: " = "Tocca «Sposta l’archivio» e scegli «%@» stessa: ";
+"Task %@" = "Attività %@";
+"Task %@: done" = "Attività %@: fatta";
 "Task at %@" = "Attività alle %@";
+"Task moved to " = "Attività spostata al ";
 "Task time" = "Ora dell’attività";
 "Terms ›" = "Condizioni ›";
 "Text size" = "Dimensione del testo";
@@ -449,6 +461,7 @@
 "Time to make a backup" = "È ora di fare un backup";
 "Title of the day" = "Titolo del giorno";
 "To" = "Al";
+"To another day" = "A un altro giorno";
 "To restore: copy this folder to your iPhone (in Files) and choose it in Chronotheca as the folder for entries. Nothing is ever deleted from a backup: old files stay even after you delete them in the app." = "Per ripristinare: copia questa cartella sull’iPhone (in File) e sceglila in Chronotheca come cartella delle voci. Da un backup non si cancella mai nulla: i file vecchi restano anche dopo che li hai eliminati nell’app.";
 "To the diary" = "Nel diario";
 "To the plan" = "Nel piano";
@@ -466,7 +479,7 @@
 "Version" = "Versione";
 "Video" = "Video";
 "Video compression" = "Compressione video";
-"Video from Photos" = "Video da Foto";
+"Video from Photos" = "Video dall’app Foto";
 "Video saved to the “" = "Video salvato nella cartella «";
 "Videos" = "Video";
 "Voice" = "Voce";
@@ -593,6 +606,7 @@
 "two days ago" = "l’altro ieri";
 "voice" = "voce";
 "what was written here." = "ciò che è stato scritto qui.";
+"where I left" = "dove ero";
 "will recognise its archive." = "riconoscerà il suo archivio.";
 "windy" = "ventoso";
 "workouts " = "allenamenti ";
@@ -608,19 +622,5 @@
 "” folder. Photos and voice notes stay where they are. You can restore it in Settings." = "». Foto e note vocali restano dove sono. Puoi ripristinarla nelle impostazioni.";
 "” folder: %@" = "»: %@";
 "” to the trash" = "» nel cestino";
-"✓ yes ›" = "✓ sì ›";
-"Move to " = "Sposta al ";
-"To another day" = "A un altro giorno";
-"Day after tomorrow" = "Dopodomani";
-"In a week" = "Tra una settimana";
-"Task %@: done" = "Attività %@: fatta";
-"Task %@" = "Attività %@";
-"Task moved to " = "Attività spostata al ";
-"Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "Impossibile spostare: il file di quel giorno non è ancora scaricato da iCloud o viene modificato altrove. Riprova.";
-"Choose a day" = "Scegli un giorno";
-"Remove photo from text" = "Togli la foto dal testo";
-"Back 15 seconds" = "Indietro di 15 secondi";
-"Forward 15 seconds" = "Avanti di 15 secondi";
 "…remember?" = "…ti ricordi?";
-"where I left" = "dove ero";
-"Name" = "Nome";
+"✓ yes ›" = "✓ sì ›";
