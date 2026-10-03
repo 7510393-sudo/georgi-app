@@ -659,31 +659,58 @@ struct PhotoViewer: View {
             }
     }
 
+    /// Кнопки над снимком — каждая на тёмной полупрозрачной подложке
+    /// (P390): белые значки прямо на снимке пропадали на светлом — на
+    /// снимке экрана, бумаге, небе.
     private var bar: some View {
-        HStack {
-            Button(T("Готово", "Done"), action: close)
-                .fontWeight(.semibold)
+        HStack(spacing: 10) {
+            Button(action: close) {
+                Text(T("Готово", "Done"))
+                    .fontWeight(.semibold)
+                    .modifier(OverPhoto())
+            }
             Spacer()
             if let url {
-                ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
+                ShareLink(item: url) {
+                    Image(systemName: "square.and.arrow.up").modifier(OverPhoto(round: true))
+                }
             }
             if let onReturn {
                 Button(action: onReturn) {
                     Label(T("В полоску", "To the strip"), systemImage: "arrow.down.to.line")
                         .font(.system(size: 15))
+                        .modifier(OverPhoto())
                 }
-                .padding(.leading, 18)
                 .accessibilityLabel(T("Вернуть в полоску внизу страницы", "Move back to the strip at the bottom"))
             }
             if onRemove != nil {
-                Button { asking = true } label: { Image(systemName: "trash") }
-                    .padding(.leading, 18)
-                    .accessibilityLabel(T("Убрать из записи", "Remove from entry"))
+                Button { asking = true } label: {
+                    Image(systemName: "trash").modifier(OverPhoto(round: true))
+                }
+                .accessibilityLabel(T("Убрать из записи", "Remove from entry"))
             }
         }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 18)
+        .buttonStyle(.plain)
+        .padding(.horizontal, 14)
         .padding(.top, 10)
+    }
+}
+
+/// Подложка кнопки над снимком (P390): тёмная полупрозрачная, с тонкой
+/// светлой кромкой — видна и на светлом снимке, и на тёмном.
+struct OverPhoto: ViewModifier {
+    var round = false
+
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, round ? 0 : 14)
+            .frame(minWidth: 40, minHeight: 40)
+            .background(Capsule().fill(Color.black.opacity(0.55)))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 0.8))
+            .shadow(color: .black.opacity(0.3), radius: 4, y: 1)
+            .contentShape(Capsule())
     }
 }
 
