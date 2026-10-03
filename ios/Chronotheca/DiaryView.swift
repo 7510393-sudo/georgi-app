@@ -345,8 +345,22 @@ struct DiaryPage: View {
         .padding(.bottom, 12)
     }
 
+    /// Название дела в «Как прошло?» — в одну строку, не шире шести
+    /// десятых строки; длиннее — обрезано многоточием (P23, P36). Заголовок
+    /// и три дела — четыре строки, сколько бы ни было в названиях (P397:
+    /// длинное название переносилось, и блок вырастал до семи строк).
+    static func short(_ text: String, width: CGFloat) -> String {
+        let font = AskLine.font
+        func wide(_ s: String) -> CGFloat { (s as NSString).size(withAttributes: [.font: font]).width }
+        guard wide(text + ":") > width else { return text + ":" }
+        var cut = text
+        while !cut.isEmpty, wide(cut + "…:") > width { cut.removeLast() }
+        return cut.trimmingCharacters(in: .whitespaces) + "…:"
+    }
+
     private func askRow(_ task: PlanRow) -> some View {
-        AskLine(label: Geo.stripped(task.text) + ":",
+        AskLine(label: Self.short(Geo.stripped(task.text),
+                                  width: (UIScreen.main.bounds.width - 40) * 0.6),
                 answer: Binding(get: { answer(task.text) },
                                 set: { setAnswer?(task.text, $0) }),
                 editable: editable && setAnswer != nil,

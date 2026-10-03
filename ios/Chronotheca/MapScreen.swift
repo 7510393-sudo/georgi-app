@@ -514,12 +514,12 @@ struct MapSearch: View {
                 Button { choose(found) } label: {
                     HStack(spacing: 10) {
                         Group {
-                            if let mark = found.mark, Glyph.isEmoji(mark) {
-                                Text(Glyph.image(mark)).font(.system(size: 13))
+                            if let mark = found.mark {
+                                GlyphIcon(name: mark, size: 12)
                             } else {
-                                Image(systemName: found.mark.map(Glyph.image) ?? "mappin")
+                                Image(systemName: "mappin")
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(found.mark == nil ? Look.inkSoft : .white)
+                                    .foregroundStyle(Look.inkSoft)
                             }
                         }
                         .frame(width: 24, height: 24)
@@ -729,12 +729,7 @@ struct PlacesList: View {
                 Button { pick(place) } label: {
                     HStack(spacing: 12) {
                         Group {
-                            if Glyph.isEmoji(place.mark) {
-                                Text(Glyph.image(place.mark)).font(.system(size: 14))
-                            } else {
-                                Image(systemName: Glyph.image(place.mark))
-                                    .foregroundStyle(.white)
-                            }
+                            GlyphIcon(name: place.mark, size: 14)
                         }
                         .frame(width: 26, height: 26)
                         .background(Look.inkSoft, in: Circle())
@@ -927,7 +922,10 @@ struct NativeMap: UIViewRepresentable {
                 // (P234).
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "место")
                 let picture = PlaceLabel.draw(mark.place.name, symbol: Glyph.image(mark.place.mark),
-                                              emoji: Glyph.isEmoji(mark.place.mark))
+                                              emoji: Glyph.isEmoji(mark.place.mark),
+                                              tint: Glyph.color(mark.place.mark),
+                                              halo: Glyph.halo(mark.place.mark),
+                                              hollow: mark.place.mark == Glyph.hollow)
                 view.image = picture
                 view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
                 view.displayPriority = .required
@@ -1004,7 +1002,9 @@ final class PlaceMark: NSObject, MKAnnotation {
 enum PlaceLabel {
     static let dot: CGFloat = 24
 
-    static func draw(_ name: String, symbol: String, emoji: Bool = false) -> UIImage {
+    static func draw(_ name: String, symbol: String, emoji: Bool = false,
+                     tint: UIColor = .white, halo: UIColor = UIColor(white: 0.1, alpha: 0.9),
+                     hollow: Bool = false) -> UIImage {
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
         let text = (name as NSString)
@@ -1017,15 +1017,23 @@ enum PlaceLabel {
             // Кружок значка — полупрозрачный: карта под отметкой видна
             // (P361; ещё на 20% прозрачнее — P372). Значок на нём — белый,
             // с тёмной обводкой, чтобы читался на любой карте.
-            ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
-                                    color: UIColor.black.withAlphaComponent(0.15).cgColor)
-            UIColor(Look.inkSoft).withAlphaComponent(0.48).setFill()
-            UIBezierPath(ovalIn: circle).fill()
-            ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            // «Пустой кружок» (P397) — без заливки: одно белое кольцо с
+            // тёмным ореолом, карта под ним видна насквозь.
+            if !hollow {
+                ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
+                                        color: UIColor.black.withAlphaComponent(0.15).cgColor)
+                UIColor(Look.inkSoft).withAlphaComponent(0.48).setFill()
+                UIBezierPath(ovalIn: circle).fill()
+                ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            } else {
+                ctx.cgContext.setShadow(offset: .zero, blur: 1.5,
+                                        color: UIColor.black.withAlphaComponent(0.8).cgColor)
+            }
             UIColor.white.setStroke()
             let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1, dy: 1))
-            ring.lineWidth = 1.5
+            ring.lineWidth = hollow ? 2.5 : 1.5
             ring.stroke()
+            ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             // «Пираты» — эмодзи-флаг, не системный рисунок: рисуется
             // текстом на месте значка, своих цветов не меняет (P336).
             if emoji {
@@ -1038,7 +1046,7 @@ enum PlaceLabel {
                 mark.draw(at: CGPoint(x: circle.midX - markSize.width / 2,
                                       y: circle.midY - markSize.height / 2), withAttributes: markAttrs)
                 ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
-            } else if let shape = UIImage(systemName: symbol,
+            } else if !hollow, let shape = UIImage(systemName: symbol,
                                           withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)) {
                 let g = shape.size
                 let at = CGRect(x: circle.midX - g.width / 2, y: circle.midY - g.height / 2,
@@ -1046,14 +1054,15 @@ enum PlaceLabel {
                 // Обводка (P372): тот же знак тёмным, сдвинутый на полточки
                 // во все стороны, — а сверху белый. Знак читается и на
                 // светлой карте сквозь прозрачный кружок.
-                let outline = shape.withTintColor(UIColor(white: 0.1, alpha: 0.9), renderingMode: .alwaysOriginal)
+                let outline = shape.withTintColor(halo, renderingMode: .alwaysOriginal)
                 let step: CGFloat = 0.8
                 for dx in [-step, 0, step] {
                     for dy in [-step, 0, step] where dx != 0 || dy != 0 {
                         outline.draw(in: at.offsetBy(dx: dx, dy: dy))
                     }
                 }
-                shape.withTintColor(.white, renderingMode: .alwaysOriginal).draw(in: at)
+                // Свой цвет значка (P397).
+                shape.withTintColor(tint, renderingMode: .alwaysOriginal).draw(in: at)
             }
             let box = CGRect(x: mid - plate.width / 2, y: dot + 4, width: plate.width, height: plate.height)
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
@@ -1132,36 +1141,27 @@ struct PointPanel: View {
     @FocusState private var focused: Field?
     @State private var copied = false
 
-    /// Шесть в ряд — те же по счёту, что помещались одной строкой
-    /// прежде (P338).
-    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 6)
+    /// Восемь значков — одним рядом (P397; прежде двенадцать в два ряда, P338).
+    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 8)
 
     var body: some View {
         VStack(spacing: 8) {
             // Сверху значки, ниже название, ещё ниже запись (P238).
-            // Каким значком отметить точку (P234). Значков набралось
-            // больше, чем в одну строку, — сетка в два ряда (P338).
+            // Каким значком отметить точку (P234) — восемь в ряд (P397).
             LazyVGrid(columns: Self.iconColumns, spacing: 6) {
                 ForEach(Glyph.all.indices, id: \.self) { i in
                     let glyph = Glyph.all[i]
                     Button {
                         place.mark = glyph.name
                     } label: {
-                        Group {
-                            // «Пираты» и «призраки» — эмодзи, не системный
-                            // рисунок: рисуются текстом, своих цветов не
-                            // меняют (P336).
-                            if glyph.emoji {
-                                Text(glyph.symbol).font(.system(size: 15))
-                            } else {
-                                Image(systemName: glyph.symbol)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(place.mark == glyph.name ? .white : Look.inkSoft)
-                            }
-                        }
-                        .frame(width: 32, height: 32)
-                        .background(place.mark == glyph.name ? Look.inkSoft : Look.planBg.opacity(0.85),
-                                    in: Circle())
+                        // Каждый значок своего цвета, как на карте (P397);
+                        // выбранный — в синем кольце, а не на тёмном
+                        // кружке: на тёмном пропал бы чёрный человек.
+                        GlyphIcon(name: glyph.name, size: 14)
+                            .frame(width: 32, height: 32)
+                            .background(Look.inkSoft.opacity(0.45), in: Circle())
+                            .overlay(Circle().strokeBorder(place.mark == glyph.name ? Look.accent : .clear,
+                                                           lineWidth: 2.5))
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)

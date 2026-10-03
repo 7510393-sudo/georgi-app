@@ -1,5 +1,7 @@
 import Foundation
 import CoreLocation
+import SwiftUI
+import UIKit
 
 /// Место на своей карте человека.
 ///
@@ -68,42 +70,64 @@ struct Place: Identifiable, Equatable {
 }
 
 /// Значки мест на карте. В файле — словом («дом»), на экране — рисунком
-/// (P234). Спокойные, одного цвета: место отмечено, но не кричит.
+/// (P234), каждый своего цвета (P397).
 enum Glyph {
     static let standard = "точка"
 
-    /// По порядку — так они стоят в панели выбора (P335, список автора).
-    /// `emoji` — «значок» на деле не имя системного рисунка, а буквально
-    /// символ юникода: рисованного черепа со скрещенными костями в system
-    /// symbols нет, а флаг с черепом — эмодзи «🏴‍☠️» (P336).
+    /// По порядку — так они стоят в панели выбора. Восемь, список автора
+    /// после 83-й (P397; прежде двенадцать — P335, P336, P338). `emoji` —
+    /// «значок» на деле не имя системного рисунка, а символ юникода: флага
+    /// с черепом в системном наборе нет, есть эмодзи «🏴‍☠️» (P336).
     static let all: [(name: String, symbol: String, emoji: Bool)] = [
-        ("здоровье", "cross.case.fill", false),
+        ("точка", "circle.fill", false),
+        ("кружок", "circle", false),
+        ("сердце", "heart.fill", false),
         ("человек", "person.fill", false),
-        ("вокзал", "tram.fill", false),
-        ("покупки", "bag.fill", false),
-        ("хорошее место", "hand.thumbsup.fill", false),
-        ("плохое место", "hand.thumbsdown.fill", false),
-        ("пираты", "🏴‍☠️", true),
-        ("личное", "lock.fill", false),
-        ("опасность", "exclamationmark.triangle.fill", false),
+        ("звезда", "star.fill", false),
+        ("огонь", "flame.fill", false),
         ("вдохновение", "lightbulb.fill", false),
-        // Призраков в системном наборе нет, как и пиратского черепа (P336).
-        ("призраки", "👻", true),
-        ("везение", "sparkles", false),
+        ("пираты", "🏴‍☠️", true),
     ]
 
-    /// Прежние значки (P234): в панели выбора их больше нет, но места,
-    /// которые ими уже отмечены, рисуются по-прежнему и при сохранении
-    /// значок в файле не теряют (P340).
+    /// Свой цвет значка (P397): белая точка, красные сердце и огонь, жёлтые
+    /// звезда и лампочка, чёрный человек. Без цвета — белый, как прежде.
+    static let tint: [String: UIColor] = [
+        "точка": .white,
+        "сердце": UIColor(red: 0.93, green: 0.12, blue: 0.14, alpha: 1),
+        "огонь": UIColor(red: 0.93, green: 0.12, blue: 0.14, alpha: 1),
+        "звезда": UIColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1),
+        "вдохновение": UIColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1),
+        "человек": .black,
+    ]
+
+    /// «Пустой кружок»: отметка без заливки — одно белое кольцо, карта под
+    /// ним видна насквозь (P397).
+    static let hollow = "кружок"
+
+    static func color(_ name: String) -> UIColor { tint[name] ?? .white }
+
+    /// Обводка вокруг значка — контрастная к нему: у чёрного светлая, у
+    /// прочих тёмная.
+    static func halo(_ name: String) -> UIColor {
+        name == "человек" ? UIColor(white: 1, alpha: 0.9) : UIColor(white: 0.1, alpha: 0.9)
+    }
+
+    /// Прежние значки (P234, P335–P338): в панели выбора их больше нет, но
+    /// места, которые ими уже отмечены, рисуются по-прежнему и при
+    /// сохранении значок в файле не теряют (P340).
     private static let former: [String: String] = [
-        "точка": "circle.fill", "дом": "house.fill", "сердце": "heart.fill",
-        "флаг": "flag.fill", "звезда": "star.fill", "кафе": "cup.and.saucer.fill",
+        "дом": "house.fill", "флаг": "flag.fill", "кафе": "cup.and.saucer.fill",
         "природа": "leaf.fill", "снимок": "camera.fill",
+        "здоровье": "cross.case.fill", "вокзал": "tram.fill", "покупки": "bag.fill",
+        "хорошее место": "hand.thumbsup.fill", "плохое место": "hand.thumbsdown.fill",
+        "личное": "lock.fill", "опасность": "exclamationmark.triangle.fill",
+        // Призраков в системном наборе нет, как и пиратского черепа (P336).
+        "призраки": "👻", "везение": "sparkles",
     ]
 
     static let symbol: [String: String] = former.merging(all.map { ($0.name, $0.symbol) },
                                                          uniquingKeysWith: { _, new in new })
-    private static let emojiNames: Set<String> = Set(all.filter(\.emoji).map(\.name))
+    private static let emojiNames: Set<String> = Set(all.filter(\.emoji).map(\.name)).union(["призраки"])
 
     /// Значок в файле — английским словом (P353): «личное» ложится как
     /// `private`. На экране и в коде — по-прежнему русским.
@@ -114,7 +138,7 @@ enum Glyph {
         "покупки": "shopping", "хорошее место": "good place",
         "плохое место": "bad place", "пираты": "pirates", "личное": "private",
         "опасность": "danger", "вдохновение": "inspiration", "призраки": "ghosts",
-        "везение": "luck",
+        "везение": "luck", "огонь": "fire", "кружок": "ring",
     ]
     private static let russian: [String: String] =
         Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
@@ -338,5 +362,30 @@ final class Locator: NSObject, CLLocationManagerDelegate {
         let all = waiting
         waiting = []
         all.forEach { $0(location) }
+    }
+}
+
+/// Значок места для списков и панели выбора (P397): свой цвет, контрастная
+/// обводка; «пустой кружок» — одно кольцо; флаг — эмодзи как есть.
+struct GlyphIcon: View {
+    let name: String
+    var size: CGFloat = 13
+
+    var body: some View {
+        if Glyph.isEmoji(name) {
+            Text(Glyph.image(name)).font(.system(size: size + 2))
+        } else if name == Glyph.hollow {
+            Circle()
+                .strokeBorder(Color.white, lineWidth: 2)
+                .frame(width: size + 3, height: size + 3)
+                .shadow(color: .black.opacity(0.7), radius: 0.8)
+        } else {
+            let halo = Color(uiColor: Glyph.halo(name))
+            Image(systemName: Glyph.image(name))
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(Color(uiColor: Glyph.color(name)))
+                .shadow(color: halo, radius: 0.6)
+                .shadow(color: halo, radius: 0.6)
+        }
     }
 }
