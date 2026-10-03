@@ -576,14 +576,22 @@ final class DayStore: ObservableObject {
         if body.isEmpty || stale || stampPending {
             let wanted = body.isEmpty ? "" : body + "\n\n"
             let changed = diaryText != wanted
-            if changed { diaryText = wanted }
+            if changed { quietly(wanted) }
             stampPending = true
             return changed || always
         }
         guard always else { return false }
         let wanted = body + "\n"
-        if diaryText != wanted { diaryText = wanted }
+        if diaryText != wanted { quietly(wanted) }
         return true
+    }
+
+    /// Пустая строка под записью — не правка человека: в историю «шага
+    /// назад» она не идёт, и стрелка не загорается сама (P403).
+    private func quietly(_ text: String) {
+        quietDiary = true
+        diaryText = text
+        quietDiary = false
     }
 
     /// Отметка времени для первой буквы новой строки — один раз (P403).
