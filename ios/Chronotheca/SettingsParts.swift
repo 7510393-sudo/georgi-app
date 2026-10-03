@@ -15,16 +15,15 @@ struct NoteSection: View {
     let title: String
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(Look.serif(15.5, weight: .semibold))
-                .foregroundStyle(Look.accent)
-                .fixedSize()
-            Rectangle().fill(Look.accent.opacity(0.3)).frame(height: 1)
-        }
-        .padding(.horizontal, 14)
-        .padding(.top, 16)
-        .padding(.bottom, 2)
+        // Заголовок раздела — крупнее и без черты до края (P381): разделы
+        // отделены воздухом и плашками строк, а не линиями.
+        Text(title)
+            .font(Look.serif(19, weight: .semibold))
+            .foregroundStyle(Look.accent)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
+            .padding(.bottom, 6)
     }
 }
 
@@ -49,22 +48,24 @@ struct NoteRow<Trailing: View>: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Look.noteEdge).frame(height: 1).padding(.horizontal, 14)
-        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        // Каждая строка — своя плашка, без линий под ней (P381).
+        .background(Look.planBg.opacity(0.75), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Look.noteEdge.opacity(0.6), lineWidth: 0.8))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
     }
 
     private var label: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(Look.sans(14.5))
+                .font(Look.sans(16))
                 .foregroundStyle(Look.ink)
                 .fixedSize(horizontal: false, vertical: true)
             if let detail {
                 Text(detail)
-                    .font(Look.sans(11.5))
+                    .font(Look.sans(12.5))
                     .foregroundStyle(detailColor)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -88,7 +89,7 @@ struct Choice<Value: Hashable>: View {
                     selection = value
                 } label: {
                     Text(name)
-                        .font(Look.sans(12.5, weight: on ? .semibold : .regular))
+                        .font(Look.sans(13.5, weight: on ? .semibold : .regular))
                         .lineLimit(1)
                         .fixedSize()
                         .foregroundStyle(on ? Look.note : Look.accent)
@@ -114,7 +115,7 @@ struct NoteButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(Look.sans(12.5, weight: .semibold))
+                .font(Look.sans(13.5, weight: .semibold))
                 .lineLimit(1)
                 .fixedSize()
                 .foregroundStyle(main ? Look.note : Look.accent)

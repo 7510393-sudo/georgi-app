@@ -15,10 +15,10 @@ final class DayStore: ObservableObject {
     var isFuture: Bool { date > DayStore.today() }
     var isToday: Bool { date == DayStore.today() }
 
-    /// План живёт вперёд: на сегодня и на любой будущий день дела заводятся
-    /// свободно — ради этого планировщик и нужен. Прошедший день закрыт:
-    /// задним числом план не переписывают, кроме как в режиме изменений.
-    var canEditPlan: Bool { (!isPast || editing(.plan)) && !away.contains(.planner) }
+    /// План правится в любой день — и в прошедший тоже, теми же жестами,
+    /// что сегодняшний (P381: «Править этот день» убрано). Нельзя только,
+    /// пока файл плана не скачан из iCloud.
+    var canEditPlan: Bool { !away.contains(.planner) }
 
     /// Дневник живёт назад: вчерашнее дописывают и через неделю (решение P63).
     /// А вот дня, который ещё не наступил, в дневнике не бывает.
@@ -56,9 +56,7 @@ final class DayStore: ObservableObject {
             return T("Запись ещё загружается из iCloud. Как только придёт — её можно будет править.",
                      "This entry is still downloading from iCloud. You can edit it once it arrives.")
         }
-        return isPast ? T("День закрыт. Править — «Править этот день» в меню страницы.",
-                          "This day is closed. To change it, use “Edit this day” in the page menu.")
-                      : T("Этот день ещё не наступил.", "This day has not come yet.")
+        return T("Этот день ещё не наступил.", "This day has not come yet.")
     }
 
     /// Заголовок дня: ближние дни зовутся по имени, дальние — днём недели.

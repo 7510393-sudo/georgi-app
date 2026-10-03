@@ -117,6 +117,7 @@
 "Copy without them" = "Ohne sie kopieren";
 "Copying" = "Kopieren";
 "Copying: %@ of %@ · %@ of %@" = "Kopiere: %@ von %@ · %@ von %@";
+"Could not find where you are — allow location for the app in iPhone Settings." = "Dein Standort ließ sich nicht bestimmen — erlaube der App den Standort in den iPhone-Einstellungen.";
 "Could not find where you are. Check that the app may use Location." = "Dein Standort ließ sich nicht ermitteln. Prüfe, ob die App den Standort verwenden darf.";
 "Could not make the backup folder: " = "Der Sicherungsordner ließ sich nicht anlegen: ";
 "Could not open the previous folder. The entries in it are safe — " = "Der vorherige Ordner ließ sich nicht öffnen. Die Einträge darin sind sicher – ";
@@ -159,6 +160,7 @@
 "Entries" = "Einträge";
 "Entries are locked" = "Einträge gesperrt";
 "Entries are ordinary files: diary and plan are text (.md); photos, voice and video are as they were. Any app can open them." = "Einträge sind normale Dateien: Tagebuch und Plan sind Text (.md), Fotos, Sprachaufnahmen und Videos bleiben, wie sie waren. Jede App kann sie öffnen.";
+"Entries arrive as ordinary files by day; nothing disappears from the other app. Importing is always free." = "Einträge kommen als normale Dateien nach Tagen an; in der anderen App verschwindet nichts. Der Import ist immer kostenlos.";
 "Entries left in the previous folder: %@.\n\n" = "Im vorherigen Ordner verbliebene Einträge: %@.\n\n";
 "Entry files: %@" = "Eintragsdateien: %@";
 "Entry font" = "Schrift der Einträge";
@@ -194,6 +196,7 @@
 "Holidays and birthdays" = "Feiertage und Geburtstage";
 "How did it go?" = "Wie war es?";
 "Icon: " = "Symbol: ";
+"Import from %@ is still being made." = "Der Import aus %@ entsteht noch.";
 "Import from Day One" = "Import aus Day One";
 "Import from Day One and Apple Journal" = "Import aus Day One und Apple Journal";
 "Imported entries: %@, days: %@, photos and files: %@." = "Importierte Einträge: %@, Tage: %@, Fotos und Dateien: %@.";
@@ -301,6 +304,7 @@
 "Photo saved to the “" = "Foto gespeichert im Ordner „";
 "Photos" = "Fotos";
 "Place" = "Ort";
+"Place noted" = "Ort notiert";
 "Place noted in the diary" = "Ort im Tagebuch eingetragen";
 "Place noted in the plan" = "Ort im Plan eingetragen";
 "Place on the map: " = "Ort auf der Karte: ";
@@ -366,6 +370,7 @@
 "Stop recording" = "Aufnahme beenden";
 "Storage" = "Speicherort";
 "Sunday" = "Sonntag";
+"Switch from another app" = "Von einer anderen App wechseln";
 "Tap a date to see its tasks." = "Tippe auf ein Datum, um die Aufgaben dieses Tages zu sehen.";
 "Tap again to go back to this month" = "Nochmals tippen, um zum aktuellen Monat zurückzukehren";
 "Tap again to go back to this year" = "Nochmals tippen, um zum aktuellen Jahr zurückzukehren";
@@ -468,6 +473,7 @@
 "Voice note" = "Sprachnotiz";
 "Voice note saved to the “" = "Sprachnotiz gespeichert im Ordner „";
 "Wait longer" = "Länger warten";
+"We only import what will later open without our app: plain text, photos, voice. We first check how %@ exports entries — and only then build it. If you need this import, write to us." = "Wir importieren nur, was sich später ohne unsere App öffnen lässt: Text, Fotos, Sprache. Erst prüfen wir, wie %@ Einträge exportiert — dann bauen wir es. Wenn du genau diesen Import brauchst, schreib uns.";
 "Weather" = "Wetter";
 "Weather — Apple Weather" = "Wetter – Apple Wetter";
 "Week starts on" = "Woche beginnt am";
@@ -559,6 +565,7 @@
 "photo" = "Foto";
 "photo links in your entries are updated after that. Files are not copied " = "Fotolinks in deinen Einträgen werden danach angepasst. Dateien werden nicht kopiert ";
 "photos" = "Fotos";
+"place" = "Ort";
 "plan" = "Plan";
 "plan tasks" = "Aufgaben im Plan";
 "point to that place again." = "gib diesen Ort erneut an.";
@@ -571,6 +578,7 @@
 "sleet" = "Schneeregen";
 "smaller" = "kleiner";
 "snow" = "Schnee";
+"soon" = "bald";
 "steps " = "Schritte ";
 "storage and iCloud. The entries are safe: they are where you " = "und iCloud verschoben wurde. Die Einträge sind sicher: Sie liegen dort, wohin du ";
 "the app will recognise the archive and offer to move there " = "Die App erkennt das Archiv und bietet an, dorthin zu verschieben, ";

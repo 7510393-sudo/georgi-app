@@ -79,17 +79,8 @@ struct MenuSticker: View {
 
     private var dayMenu: some View {
         Sticker(side: .trailing, title: T("Меню страницы", "Page menu"), close: close) {
-            // Режима изменений больше нет: всё делается долгим нажатием
-            // (P362). Осталось одно — открыть для правки прошедший день
-            // плана; в остальные дни строки нет вовсе.
-            if shell.tab == .plan, store.isPast {
-                StickerItem(title: T("Править этот день", "Edit this day"),
-                            note: store.editing(.plan) ? T("включено", "on") : T("выключено", "off"),
-                            active: store.editing(.plan)) {
-                    store.setEditing(.plan, !store.editing(.plan))
-                    close()
-                }
-            }
+            // Режима изменений нет совсем: всё — долгим нажатием, и
+            // прошедший день правится так же, как сегодняшний (P362, P381).
             StickerItem(title: T("Показать файл этого дня", "Show this day’s file")) {
                 close()
                 shell.showingFile = true
@@ -290,7 +281,7 @@ struct SettingsSticker: View {
             NoteButton(title: T("Сделать", "Make"), main: true) { showingBackup = true }
         }
         // Перенос из других дневников — бесплатно всегда (M14, P378).
-        NoteRow(title: T("Перенос из Day One", "Import from Day One")) {
+        NoteRow(title: T("Переход из другого приложения", "Switch from another app")) {
             NoteButton(title: T("Открыть ›", "Open ›")) { showingImport = true }
         }
         // Папки с прежними, русскими, именами — перевести (P353).

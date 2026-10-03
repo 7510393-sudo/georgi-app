@@ -117,6 +117,7 @@
 "Copy without them" = "それらを除いてコピー";
 "Copying" = "コピー";
 "Copying: %@ of %@ · %@ of %@" = "コピー中：%@ / %@ · %@ / %@";
+"Could not find where you are — allow location for the app in iPhone Settings." = "現在地がわかりませんでした — iPhone の設定でこのアプリに位置情報を許可してください。";
 "Could not find where you are. Check that the app may use Location." = "現在地がわかりませんでした。アプリが位置情報を使えるか確認してください。";
 "Could not make the backup folder: " = "バックアップ用フォルダを作成できませんでした: ";
 "Could not open the previous folder. The entries in it are safe — " = "以前のフォルダを開けませんでした。中の記録は無事です。";
@@ -159,6 +160,7 @@
 "Entries" = "記録";
 "Entries are locked" = "記録はロックされています";
 "Entries are ordinary files: diary and plan are text (.md); photos, voice and video are as they were. Any app can open them." = "記録は普通のファイルです。日記と予定はテキスト（.md）、写真・音声・ビデオはそのままです。どのアプリでも開けます。";
+"Entries arrive as ordinary files by day; nothing disappears from the other app. Importing is always free." = "記録は日付ごとの普通のファイルとして入ります。元のアプリからは何も消えません。読み込みはいつでも無料です。";
 "Entries left in the previous folder: %@.\n\n" = "以前のフォルダに残っている記録: %@。\n\n";
 "Entry files: %@" = "記録ファイル: %@";
 "Entry font" = "記録のフォント";
@@ -194,6 +196,7 @@
 "Holidays and birthdays" = "祝日と誕生日";
 "How did it go?" = "どうでしたか？";
 "Icon: " = "アイコン: ";
+"Import from %@ is still being made." = "%@ からの読み込みは準備中です。";
 "Import from Day One" = "Day One から読み込む";
 "Import from Day One and Apple Journal" = "Day One と Appleの「ジャーナル」からの読み込み";
 "Imported entries: %@, days: %@, photos and files: %@." = "読み込んだ記録：%@ 件、日数：%@、写真とファイル：%@ 件。";
@@ -301,6 +304,7 @@
 "Photo saved to the “" = "写真を「";
 "Photos" = "写真";
 "Place" = "場所";
+"Place noted" = "場所を記録しました";
 "Place noted in the diary" = "場所を日記に記入しました";
 "Place noted in the plan" = "場所を計画に記入しました";
 "Place on the map: " = "地図上の場所: ";
@@ -366,6 +370,7 @@
 "Stop recording" = "録音を終了";
 "Storage" = "保存場所";
 "Sunday" = "日曜日";
+"Switch from another app" = "他のアプリから移行";
 "Tap a date to see its tasks." = "日付をタップするとその日の予定が見られます。";
 "Tap again to go back to this month" = "もう一度タップすると今月に戻ります";
 "Tap again to go back to this year" = "もう一度タップすると今年に戻ります";
@@ -468,6 +473,7 @@
 "Voice note" = "ボイスメモ";
 "Voice note saved to the “" = "ボイスメモを「";
 "Wait longer" = "もう少し待つ";
+"We only import what will later open without our app: plain text, photos, voice. We first check how %@ exports entries — and only then build it. If you need this import, write to us." = "あとで当アプリなしでも開けるもの（テキスト・写真・音声）だけを読み込みます。まず %@ がどんな形で書き出すかを確かめてから作ります。この読み込みが必要なら、ご連絡ください。";
 "Weather" = "天気";
 "Weather — Apple Weather" = "天気 — Apple天気";
 "Week starts on" = "週の始まり";
@@ -559,6 +565,7 @@
 "photo" = "写真";
 "photo links in your entries are updated after that. Files are not copied " = "その後、記録の中の写真へのリンクも更新します。ファイルはコピーも";
 "photos" = "写真";
+"place" = "場所";
 "plan" = "計画";
 "plan tasks" = "計画の予定";
 "point to that place again." = "その場所をもう一度指定してください。";
@@ -571,6 +578,7 @@
 "sleet" = "みぞれ";
 "smaller" = "小さめ";
 "snow" = "雪";
+"soon" = "近日";
 "steps " = "歩数 ";
 "storage and iCloud. The entries are safe: they are where you " = "移動されたことが原因です。記録は無事で、移動先に";
 "the app will recognise the archive and offer to move there " = "アプリがアーカイブを認識し、ここで書いたものを";

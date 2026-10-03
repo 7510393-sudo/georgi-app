@@ -117,6 +117,7 @@
 "Copy without them" = "Copia senza di loro";
 "Copying" = "Copia";
 "Copying: %@ of %@ · %@ of %@" = "Copio: %@ di %@ · %@ di %@";
+"Could not find where you are — allow location for the app in iPhone Settings." = "Impossibile sapere dove sei — consenti la posizione all’app nelle Impostazioni di iPhone.";
 "Could not find where you are. Check that the app may use Location." = "Impossibile sapere dove sei. Controlla che l’app possa usare la posizione.";
 "Could not make the backup folder: " = "Impossibile creare la cartella del backup: ";
 "Could not open the previous folder. The entries in it are safe — " = "Impossibile aprire la cartella precedente. Le note al suo interno sono al sicuro: ";
@@ -159,6 +160,7 @@
 "Entries" = "Note";
 "Entries are locked" = "Le note sono bloccate";
 "Entries are ordinary files: diary and plan are text (.md); photos, voice and video are as they were. Any app can open them." = "Le voci sono file normali: diario e piano sono testo (.md), foto, voce e video restano come sono. Qualsiasi app può aprirli.";
+"Entries arrive as ordinary files by day; nothing disappears from the other app. Importing is always free." = "Le voci arrivano come normali file per giorno; nell’altra app non sparisce nulla. L’importazione è sempre gratuita.";
 "Entries left in the previous folder: %@.\n\n" = "Note rimaste nella cartella precedente: %@.\n\n";
 "Entry files: %@" = "File di note: %@";
 "Entry font" = "Font delle note";
@@ -194,6 +196,7 @@
 "Holidays and birthdays" = "Festività e compleanni";
 "How did it go?" = "Com’è andata?";
 "Icon: " = "Icona: ";
+"Import from %@ is still being made." = "L’importazione da %@ è ancora in preparazione.";
 "Import from Day One" = "Importa da Day One";
 "Import from Day One and Apple Journal" = "Importazione da Day One e Diario di Apple";
 "Imported entries: %@, days: %@, photos and files: %@." = "Voci importate: %@, giorni: %@, foto e file: %@.";
@@ -301,6 +304,7 @@
 "Photo saved to the “" = "Foto salvata nella cartella «";
 "Photos" = "Foto";
 "Place" = "Luogo";
+"Place noted" = "Luogo annotato";
 "Place noted in the diary" = "Luogo annotato nel diario";
 "Place noted in the plan" = "Luogo annotato nel piano";
 "Place on the map: " = "Luogo sulla mappa: ";
@@ -366,6 +370,7 @@
 "Stop recording" = "Termina registrazione";
 "Storage" = "Archivio";
 "Sunday" = "domenica";
+"Switch from another app" = "Passa da un’altra app";
 "Tap a date to see its tasks." = "Tocca una data per vederne le attività.";
 "Tap again to go back to this month" = "Tocca di nuovo per tornare a questo mese";
 "Tap again to go back to this year" = "Tocca di nuovo per tornare a quest’anno";
@@ -468,6 +473,7 @@
 "Voice note" = "Nota vocale";
 "Voice note saved to the “" = "Nota vocale salvata nella cartella «";
 "Wait longer" = "Aspetta ancora";
+"We only import what will later open without our app: plain text, photos, voice. We first check how %@ exports entries — and only then build it. If you need this import, write to us." = "Importiamo solo ciò che poi si aprirà senza la nostra app: testo, foto, voce. Prima verifichiamo come %@ esporta le voci, poi la realizziamo. Se ti serve proprio questa importazione, scrivici.";
 "Weather" = "Meteo";
 "Weather — Apple Weather" = "Meteo — Meteo di Apple";
 "Week starts on" = "La settimana inizia di";
@@ -559,6 +565,7 @@
 "photo" = "foto";
 "photo links in your entries are updated after that. Files are not copied " = "i link alle foto nelle tue note vengono aggiornati dopo. I file non vengono copiati ";
 "photos" = "foto";
+"place" = "luogo";
 "plan" = "piano";
 "plan tasks" = "attività del piano";
 "point to that place again." = "indica di nuovo quel posto.";
@@ -571,6 +578,7 @@
 "sleet" = "nevischio";
 "smaller" = "più piccolo";
 "snow" = "neve";
+"soon" = "presto";
 "steps " = "passi ";
 "storage and iCloud. The entries are safe: they are where you " = "del telefono e iCloud. Le note sono al sicuro: sono dove ";
 "the app will recognise the archive and offer to move there " = "l’app riconoscerà l’archivio e ti proporrà di spostarvi ";

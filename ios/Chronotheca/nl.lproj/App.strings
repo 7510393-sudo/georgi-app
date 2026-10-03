@@ -117,6 +117,7 @@
 "Copy without them" = "Kopiëren zonder deze";
 "Copying" = "Kopiëren";
 "Copying: %@ of %@ · %@ of %@" = "Kopiëren: %@ van %@ · %@ van %@";
+"Could not find where you are — allow location for the app in iPhone Settings." = "Je locatie kon niet worden bepaald — sta locatie toe voor de app in de iPhone-instellingen.";
 "Could not find where you are. Check that the app may use Location." = "Kon niet vaststellen waar je bent. Controleer of de app je locatie mag gebruiken.";
 "Could not make the backup folder: " = "Kon de map voor de reservekopie niet aanmaken: ";
 "Could not open the previous folder. The entries in it are safe — " = "Kon de vorige map niet openen. De aantekeningen erin zijn veilig — ";
@@ -159,6 +160,7 @@
 "Entries" = "Aantekeningen";
 "Entries are locked" = "Aantekeningen vergrendeld";
 "Entries are ordinary files: diary and plan are text (.md); photos, voice and video are as they were. Any app can open them." = "Items zijn gewone bestanden: dagboek en plan zijn tekst (.md); foto’s, spraak en video blijven zoals ze waren. Elke app kan ze openen.";
+"Entries arrive as ordinary files by day; nothing disappears from the other app. Importing is always free." = "Items komen als gewone bestanden per dag; in de andere app verdwijnt niets. Importeren is altijd gratis.";
 "Entries left in the previous folder: %@.\n\n" = "Aantekeningen die in de vorige map zijn gebleven: %@.\n\n";
 "Entry files: %@" = "Aantekeningbestanden: %@";
 "Entry font" = "Lettertype aantekeningen";
@@ -194,6 +196,7 @@
 "Holidays and birthdays" = "Feestdagen en verjaardagen";
 "How did it go?" = "Hoe ging het?";
 "Icon: " = "Symbool: ";
+"Import from %@ is still being made." = "Importeren uit %@ wordt nog gemaakt.";
 "Import from Day One" = "Importeren uit Day One";
 "Import from Day One and Apple Journal" = "Importeren uit Day One en Apple Dagboek";
 "Imported entries: %@, days: %@, photos and files: %@." = "Geïmporteerde items: %@, dagen: %@, foto’s en bestanden: %@.";
@@ -301,6 +304,7 @@
 "Photo saved to the “" = "Foto bewaard in de map ‘";
 "Photos" = "Foto’s";
 "Place" = "Plek";
+"Place noted" = "Plek genoteerd";
 "Place noted in the diary" = "Plek genoteerd in het dagboek";
 "Place noted in the plan" = "Plek genoteerd in het plan";
 "Place on the map: " = "Plek op de kaart: ";
@@ -366,6 +370,7 @@
 "Stop recording" = "Opname stoppen";
 "Storage" = "Opslag";
 "Sunday" = "zondag";
+"Switch from another app" = "Overstappen van een andere app";
 "Tap a date to see its tasks." = "Tik op een datum om de taken te zien.";
 "Tap again to go back to this month" = "Tik nogmaals om terug te gaan naar deze maand";
 "Tap again to go back to this year" = "Tik nogmaals om terug te gaan naar dit jaar";
@@ -468,6 +473,7 @@
 "Voice note" = "Spraakmemo";
 "Voice note saved to the “" = "Spraakmemo bewaard in de map ‘";
 "Wait longer" = "Langer wachten";
+"We only import what will later open without our app: plain text, photos, voice. We first check how %@ exports entries — and only then build it. If you need this import, write to us." = "We importeren alleen wat later zonder onze app opent: tekst, foto’s, spraak. Eerst kijken we hoe %@ items exporteert — pas dan bouwen we het. Heb je precies deze import nodig, schrijf ons.";
 "Weather" = "Weer";
 "Weather — Apple Weather" = "Weer — Apple Weer";
 "Week starts on" = "Week begint op";
@@ -559,6 +565,7 @@
 "photo" = "foto";
 "photo links in your entries are updated after that. Files are not copied " = "fotolinks in je aantekeningen worden daarna bijgewerkt. Bestanden worden niet gekopieerd ";
 "photos" = "foto’s";
+"place" = "plek";
 "plan" = "plan";
 "plan tasks" = "taken uit het plan";
 "point to that place again." = "wijs die plek opnieuw aan.";
@@ -571,6 +578,7 @@
 "sleet" = "natte sneeuw";
 "smaller" = "kleiner";
 "snow" = "sneeuw";
+"soon" = "binnenkort";
 "steps " = "stappen ";
 "storage and iCloud. The entries are safe: they are where you " = "van de telefoon en iCloud. De aantekeningen zijn veilig: ze staan waar je ";
 "the app will recognise the archive and offer to move there " = "de app herkent het archief en biedt aan om daarheen te verplaatsen ";

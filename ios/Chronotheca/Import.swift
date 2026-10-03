@@ -302,8 +302,88 @@ enum DayOneImport {
     }
 }
 
-/// Окно переноса из Day One: как выгрузить, выбрать папку, ход и итог.
+/// Переход из другого приложения (P381): список дневников, откуда можно
+/// перенести записи. Работает пока перенос из Day One; у остальных сказано
+/// честно, что их перенос ещё делается.
 struct ImportSheet: View {
+
+    @EnvironmentObject private var vault: Vault
+    @EnvironmentObject private var store: DayStore
+    @Environment(\.dismiss) private var dismiss
+
+    /// Как в Diarium: самые частые дневники, по алфавиту.
+    static let apps = ["Apple Journal", "Day One", "Daybook", "Daylio", "Diarly", "Diaro",
+                       "Evernote", "Journey", "Memorize"]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(Self.apps, id: \.self) { app in
+                        NavigationLink {
+                            if app == "Day One" {
+                                DayOneImportView()
+                            } else {
+                                SoonImportView(app: app)
+                            }
+                        } label: {
+                            HStack {
+                                Text(app).font(Look.sans(16))
+                                Spacer()
+                                if app != "Day One" {
+                                    Text(T("скоро", "soon"))
+                                        .font(Look.sans(12.5))
+                                        .foregroundStyle(Look.inkFaint)
+                                }
+                            }
+                        }
+                    }
+                } footer: {
+                    Text(T("Записи переносятся обычными файлами по дням; в прежнем приложении ничего не "
+                           + "пропадает. Перенос бесплатен всегда.",
+                           "Entries arrive as ordinary files by day; nothing disappears from the other app. "
+                           + "Importing is always free."))
+                }
+            }
+            .navigationTitle(T("Переход из другого приложения", "Switch from another app"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(T("Закрыть", "Close")) { dismiss() }
+                }
+            }
+        }
+        .environmentObject(vault)
+        .environmentObject(store)
+    }
+}
+
+/// Перенос из приложения, которого мы ещё не умеем читать.
+private struct SoonImportView: View {
+    let app: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(T("Перенос из \(app) ещё делается.", "Import from \(app) is still being made."))
+                .font(Look.sans(17, weight: .semibold))
+            Text(T("Мы переносим только то, что потом откроется без нашего приложения: обычный текст, "
+                   + "снимки, голос. Сначала проверяем, в каком виде \(app) отдаёт записи, — и только "
+                   + "тогда берёмся. Если нужен именно этот перенос, напишите нам.",
+                   "We only import what will later open without our app: plain text, photos, voice. We "
+                   + "first check how \(app) exports entries — and only then build it. If you need this "
+                   + "import, write to us."))
+                .font(Look.sans(15))
+                .foregroundStyle(Look.inkSoft)
+            Spacer()
+        }
+        .padding(20)
+        .navigationTitle(app)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Окно переноса из Day One: как выгрузить, выбрать папку, ход и итог.
+struct DayOneImportView: View {
 
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var store: DayStore
@@ -315,7 +395,7 @@ struct ImportSheet: View {
     @State private var problem: String?
 
     var body: some View {
-        NavigationStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(T("Записи из Day One лягут сюда обычными файлами по дням — с временем, местом, "
@@ -362,13 +442,9 @@ struct ImportSheet: View {
                 .font(Look.sans(15))
                 .padding(20)
             }
-            .navigationTitle(T("Перенос из Day One", "Import from Day One"))
+            .navigationTitle("Day One")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(T("Закрыть", "Close")) { dismiss() }.disabled(progress != nil)
-                }
-            }
+            .navigationBarBackButtonHidden(progress != nil)
             .fileImporter(isPresented: $choosing, allowedContentTypes: [.folder, .zip]) { picked in
                 guard case .success(let url) = picked else { return }
                 start(url)

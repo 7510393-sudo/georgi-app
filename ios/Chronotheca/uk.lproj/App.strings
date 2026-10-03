@@ -117,6 +117,7 @@
 "Copy without them" = "Копіювати без них";
 "Copying" = "Копіювання";
 "Copying: %@ of %@ · %@ of %@" = "Копіюю: %@ з %@ · %@ з %@";
+"Could not find where you are — allow location for the app in iPhone Settings." = "Не вдалося визначити, де ви, — дозвольте застосунку знати місце в Параметрах iPhone.";
 "Could not find where you are. Check that the app may use Location." = "Не вдалося дізнатися, де ви. Перевірте, чи дозволено застосунку місце.";
 "Could not make the backup folder: " = "Не вдалося створити теку копії: ";
 "Could not open the previous folder. The entries in it are safe — " = "Не вдалося відкрити попередню теку. Записи в ній цілі — ";
@@ -159,6 +160,7 @@
 "Entries" = "Записи";
 "Entries are locked" = "Записи закрито";
 "Entries are ordinary files: diary and plan are text (.md); photos, voice and video are as they were. Any app can open them." = "Записи — звичайні файли: щоденник і план — текст (.md), знімки, голос і відео — як є. Їх можна відкрити будь-якою програмою.";
+"Entries arrive as ordinary files by day; nothing disappears from the other app. Importing is always free." = "Записи переносяться звичайними файлами по днях; у попередньому застосунку нічого не зникає. Перенесення завжди безкоштовне.";
 "Entries left in the previous folder: %@.\n\n" = "У попередній теці залишилося записів: %@.\n\n";
 "Entry files: %@" = "Файлів із записами: %@";
 "Entry font" = "Шрифт запису";
@@ -194,6 +196,7 @@
 "Holidays and birthdays" = "Свята й дні народження";
 "How did it go?" = "Як минуло?";
 "Icon: " = "Значок: ";
+"Import from %@ is still being made." = "Перенесення з %@ ще робиться.";
 "Import from Day One" = "Перенесення з Day One";
 "Import from Day One and Apple Journal" = "Перенесення з Day One і «Щоденника» Apple";
 "Imported entries: %@, days: %@, photos and files: %@." = "Перенесено записів: %@, днів: %@, знімків і файлів: %@.";
@@ -301,6 +304,7 @@
 "Photo saved to the “" = "Знімок покладено в теку «";
 "Photos" = "Фотографії";
 "Place" = "Точка";
+"Place noted" = "Місце записано";
 "Place noted in the diary" = "Точку записано в щоденник";
 "Place noted in the plan" = "Точку записано в план";
 "Place on the map: " = "Точка на мапі: ";
@@ -366,6 +370,7 @@
 "Stop recording" = "Закінчити запис";
 "Storage" = "Сховище";
 "Sunday" = "неділі";
+"Switch from another app" = "Перехід з іншого застосунку";
 "Tap a date to see its tasks." = "Натисніть дату, щоб побачити справи цього дня.";
 "Tap again to go back to this month" = "Натисніть ще раз, щоб повернутися до цього місяця";
 "Tap again to go back to this year" = "Натисніть ще раз, щоб повернутися до цього року";
@@ -468,6 +473,7 @@
 "Voice note" = "Голосовий запис";
 "Voice note saved to the “" = "Голос покладено в теку «";
 "Wait longer" = "Почекати ще";
+"We only import what will later open without our app: plain text, photos, voice. We first check how %@ exports entries — and only then build it. If you need this import, write to us." = "Ми переносимо лише те, що потім відкриється без нашого застосунку: звичайний текст, знімки, голос. Спершу перевіряємо, у якому вигляді %@ віддає записи, — і лише тоді беремося. Якщо потрібне саме це перенесення, напишіть нам.";
 "Weather" = "Погода";
 "Weather — Apple Weather" = "Погода — Погода Apple";
 "Week starts on" = "Тиждень з";
@@ -559,6 +565,7 @@
 "photo" = "фото";
 "photo links in your entries are updated after that. Files are not copied " = "посилання на знімки в записах виправляться слідом. Файли не копіюються ";
 "photos" = "фотографії";
+"place" = "місце";
 "plan" = "плані";
 "plan tasks" = "справи плану";
 "point to that place again." = "укажіть це місце заново.";
@@ -571,6 +578,7 @@
 "sleet" = "мокрий сніг";
 "smaller" = "дрібніше";
 "snow" = "сніг";
+"soon" = "скоро";
 "steps " = "кроки ";
 "storage and iCloud. The entries are safe: they are where you " = "телефона й iCloud. Записи цілі: вони лежать там, куди ви ";
 "the app will recognise the archive and offer to move there " = "застосунок упізнає архів і запропонує перенести туди те, ";

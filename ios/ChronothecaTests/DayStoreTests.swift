@@ -38,11 +38,12 @@ final class DayStoreTests: XCTestCase {
         return DayStore(vault: vault, date: date)
     }
 
-    func testПланПрошедшегоДняЗакрыт() {
+    /// P381: прошедший план правится так же, как сегодняшний — без режима.
+    func testПланПрошедшегоДняПравится() {
         let вчера = store(-1)
         XCTAssertTrue(вчера.isPast)
-        XCTAssertFalse(вчера.canEditPlan)
-        XCTAssertTrue(вчера.closedReason.contains(T("День закрыт", "day is closed")))
+        XCTAssertTrue(вчера.canEditPlan)
+        XCTAssertNotNil(вчера.addTask())
     }
 
     func testПланБудущегоДняОткрыт() {
@@ -99,20 +100,6 @@ final class DayStoreTests: XCTestCase {
 }
 
 extension DayStoreTests {
-
-    func testРежимИзмененийОткрываетПрошедшийДень() {
-        let вчера = store(-1)
-        XCTAssertFalse(вчера.canEditPlan)
-        // Режим дневника план не открывает: у каждой вкладки свой (P211).
-        вчера.setEditing(.diary, true)
-        XCTAssertFalse(вчера.canEditPlan)
-        вчера.setEditing(.plan, true)
-        XCTAssertTrue(вчера.canEditPlan)
-        // Уход со дня гасит режим: его нельзя забыть включённым.
-        вчера.move(by: -1)
-        XCTAssertFalse(вчера.editing(.plan))
-        XCTAssertFalse(вчера.editing(.diary))
-    }
 
     func testЗаголовокИОтветыЛожатсяВФайлДневника() {
         let день = store(0)

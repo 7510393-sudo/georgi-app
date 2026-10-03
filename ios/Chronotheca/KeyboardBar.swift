@@ -12,7 +12,7 @@ import UIKit
 /// страницы — она на своём месте в окне, ей их и показывать.
 enum KeyboardBar {
 
-    enum Ask: Equatable { case photo, camera, audio, files }
+    enum Ask: Equatable { case photo, camera, audio, files, place, map }
 
     /// Кто исполняет просьбы — оболочка приложения.
     static var ask: (Ask) -> Void = { _ in }
@@ -64,6 +64,14 @@ struct KeyboardBarView: View {
             key("photo", T("фото", "photo")) { KeyboardBar.ask(.photo) }
             key("waveform", T("аудио", "audio")) { KeyboardBar.ask(.audio) }
             key("doc", T("файлы", "files")) { KeyboardBar.ask(.files) }
+            // «Место»: касание — где вы сейчас, долгое нажатие — карта (P381).
+            BarFace(icon: "mappin.and.ellipse", name: T("место", "place"), tint: Look.stripInk, compact: true)
+                .onTapGesture { KeyboardBar.ask(.place) }
+                .onLongPressGesture(minimumDuration: 0.5) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    KeyboardBar.ask(.map)
+                }
+                .accessibilityAddTraits(.isButton)
             key("keyboard.chevron.compact.down", T("убрать", "hide")) {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                                 to: nil, from: nil, for: nil)

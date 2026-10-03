@@ -79,12 +79,15 @@ struct Sticker<Content: View>: View {
         }
     }
 
+    /// Заголовок листка — крупно и чётко (P381): прежние мелкие бледные
+    /// заглавные буквы читались с трудом.
     private var label: some View {
-        Text(title.uppercased())
-            .font(Look.sans(11.5))
-            .tracking(1.15)
-            .foregroundStyle(Look.inkFaint)
-            .padding(.top, 22)
+        Text(title)
+            .font(Look.serif(21, weight: .semibold))
+            .foregroundStyle(Look.ink)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.top, 16)
             .padding(.horizontal, 14)
     }
 

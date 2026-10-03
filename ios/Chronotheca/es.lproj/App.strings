@@ -117,6 +117,7 @@
 "Copy without them" = "Copiar sin ellos";
 "Copying" = "Copia";
 "Copying: %@ of %@ · %@ of %@" = "Copiando: %@ de %@ · %@ de %@";
+"Could not find where you are — allow location for the app in iPhone Settings." = "No se pudo saber dónde estás — permite la ubicación para la app en los Ajustes del iPhone.";
 "Could not find where you are. Check that the app may use Location." = "No se pudo saber dónde estás. Comprueba que la app puede usar la localización.";
 "Could not make the backup folder: " = "No se pudo crear la carpeta de la copia: ";
 "Could not open the previous folder. The entries in it are safe — " = "No se pudo abrir la carpeta anterior. Las entradas que contiene están a salvo: ";
@@ -159,6 +160,7 @@
 "Entries" = "Entradas";
 "Entries are locked" = "Las entradas están bloqueadas";
 "Entries are ordinary files: diary and plan are text (.md); photos, voice and video are as they were. Any app can open them." = "Las entradas son archivos normales: el diario y el plan son texto (.md); las fotos, la voz y los vídeos quedan tal cual. Cualquier app puede abrirlos.";
+"Entries arrive as ordinary files by day; nothing disappears from the other app. Importing is always free." = "Las entradas llegan como archivos normales por día; en la otra app no desaparece nada. Importar es siempre gratis.";
 "Entries left in the previous folder: %@.\n\n" = "Entradas que quedan en la carpeta anterior: %@.\n\n";
 "Entry files: %@" = "Archivos de entradas: %@";
 "Entry font" = "Fuente de las entradas";
@@ -194,6 +196,7 @@
 "Holidays and birthdays" = "Festivos y cumpleaños";
 "How did it go?" = "¿Qué tal fue?";
 "Icon: " = "Icono: ";
+"Import from %@ is still being made." = "La importación desde %@ todavía se está haciendo.";
 "Import from Day One" = "Importar de Day One";
 "Import from Day One and Apple Journal" = "Importar de Day One y Diario de Apple";
 "Imported entries: %@, days: %@, photos and files: %@." = "Entradas importadas: %@, días: %@, fotos y archivos: %@.";
@@ -301,6 +304,7 @@
 "Photo saved to the “" = "Foto guardada en la carpeta «";
 "Photos" = "Fotos";
 "Place" = "Lugar";
+"Place noted" = "Lugar anotado";
 "Place noted in the diary" = "Lugar anotado en el diario";
 "Place noted in the plan" = "Lugar anotado en el plan";
 "Place on the map: " = "Lugar en el mapa: ";
@@ -366,6 +370,7 @@
 "Stop recording" = "Detener la grabación";
 "Storage" = "Almacenamiento";
 "Sunday" = "domingo";
+"Switch from another app" = "Pasar desde otra app";
 "Tap a date to see its tasks." = "Toca una fecha para ver sus tareas.";
 "Tap again to go back to this month" = "Toca otra vez para volver a este mes";
 "Tap again to go back to this year" = "Toca otra vez para volver a este año";
@@ -468,6 +473,7 @@
 "Voice note" = "Nota de voz";
 "Voice note saved to the “" = "Nota de voz guardada en la carpeta «";
 "Wait longer" = "Esperar más";
+"We only import what will later open without our app: plain text, photos, voice. We first check how %@ exports entries — and only then build it. If you need this import, write to us." = "Solo importamos lo que luego se abrirá sin nuestra app: texto, fotos, voz. Primero comprobamos cómo exporta %@ las entradas y solo entonces lo hacemos. Si necesitas esta importación, escríbenos.";
 "Weather" = "Tiempo";
 "Weather — Apple Weather" = "Tiempo — El Tiempo de Apple";
 "Week starts on" = "La semana empieza el";
@@ -559,6 +565,7 @@
 "photo" = "foto";
 "photo links in your entries are updated after that. Files are not copied " = "los enlaces a fotos en tus entradas se actualizan después. Los archivos no se copian ";
 "photos" = "fotos";
+"place" = "lugar";
 "plan" = "plan";
 "plan tasks" = "tareas del plan";
 "point to that place again." = "indica ese lugar de nuevo.";
@@ -571,6 +578,7 @@
 "sleet" = "aguanieve";
 "smaller" = "más pequeño";
 "snow" = "nieve";
+"soon" = "pronto";
 "steps " = "pasos ";
 "storage and iCloud. The entries are safe: they are where you " = "del teléfono e iCloud. Las entradas están a salvo: están donde ";
 "the app will recognise the archive and offer to move there " = "la app reconocerá el archivo y te ofrecerá mover allí ";

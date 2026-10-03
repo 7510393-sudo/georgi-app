@@ -185,9 +185,11 @@ struct PlanRowLine: View {
             .foregroundStyle(Look.inkSoft)
             .frame(width: PlanRowLine.badgeWidth, height: PlanRowLine.badgeWidth)
             .modifier(Panel())
-            .overlay(alignment: .leading) {
+            // Событие Календаря — подчёркнуто снизу цветом своего
+            // календаря (P381; прежде — полоской слева).
+            .overlay(alignment: .bottom) {
                 if let stripe {
-                    Capsule().fill(stripe).frame(width: 3, height: 16).padding(.leading, 2.5)
+                    Capsule().fill(stripe).frame(width: 16, height: 3).padding(.bottom, 3)
                 }
             }
     }
@@ -444,12 +446,6 @@ struct PlanHead: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            if isPast {
-                Text(T("день закрыт", "day closed"))
-                    .font(Look.mono(11))
-                    .tracking(0.45)
-                    .foregroundStyle(Look.inkFaint)
-            }
             Spacer()
             // Шаг назад и шаг вперёд — слева от «плюса» (P261).
             step("arrow.uturn.backward", undo, T("Шаг назад", "Undo"))
@@ -465,8 +461,7 @@ struct PlanHead: View {
         }
         .padding(.leading, 14)
         .padding(.trailing, 12)
-        .padding(.top, isPast ? 12 : 6)
-        .padding(.bottom, isPast ? 8 : 0)
+        .padding(.top, 6)
     }
 
     private func step(_ icon: String, _ act: (() -> Void)?, _ name: String) -> some View {
@@ -586,7 +581,6 @@ struct PlanView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if store.editing(.plan) { EditBanner() }
             PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
                          add: add,
                          undo: store.planBack.isEmpty || !store.canEditPlan ? nil : { store.undoPlan() },
@@ -677,7 +671,7 @@ struct PlanView: View {
         .modifier(SeriesQuestion())
         // Где курсор в плане — туда встанет точка с карты (P240).
         .onChange(of: typingIn) { _, now in store.planTyping = now }
-        .opacity(store.isPast && !store.editing(.plan) ? 0.58 : 1)
+        // Прошедший день не бледнеет: он правится, как любой (P381).
     }
 
     private func add() {
@@ -747,7 +741,7 @@ struct PlanView: View {
         return PlanRowLine(
             number: shown,
             row: row.wrappedValue,
-            faded: store.isPast && !store.editing(.plan),
+            faded: false,
             bellColor: Ru.dayColor(store.date),
             text: row.text,
             typing: typingIn == id,
@@ -989,7 +983,7 @@ struct PlanView: View {
         return VStack(spacing: 0) {
             PlanRowLine(number: number,
                         row: e.row,
-                        faded: store.isPast && !store.editing(.plan),
+                        faded: false,
                         bellColor: Ru.dayColor(store.date),
                         stripe: e.color,
                         onTime: { open(e) },
@@ -1335,7 +1329,7 @@ struct PlanEmpty: View {
                 Text(T("Как только придёт, он появится здесь.", "It will appear here as soon as it arrives."))
             } else {
                 Text(T("На этот день ничего не запланировано.", "Nothing planned for this day."))
-                if !isPast { Text(T("Нажмите «+», чтобы вписать дело.", "Tap “+” to add a task.")) }
+                Text(T("Нажмите «+», чтобы вписать дело.", "Tap “+” to add a task."))
             }
         }
         .font(Look.sans(14))

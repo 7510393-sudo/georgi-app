@@ -611,15 +611,17 @@ struct AttachBar: View {
             // «Фото» открывает ряд последних снимков галереи над полоской
             // (P273); повторное касание — прячет.
             item("photo", T("фото", "photo"), ready: true) { toggleGallery() }
-            // Строка без клавиатуры — четыре кнопки, «аудио» третья: центр
-            // на 5/8 ширины (P330).
+            // Строка без клавиатуры — пять кнопок, «аудио» третья: центр
+            // посередине (P330, P381).
             item("waveform", T("аудио", "audio"), ready: true) {
-                recordAlign = 0.625
+                recordAlign = 0.5
                 open { recording = true }
             }
             item("doc", T("файлы", "files"), ready: true) { open { browsing = true } }
-            // Кнопки «геоточка» больше нет (P264): место — с карты,
-            // «Запомнить точку».
+            // «Место» — крайней справа (P381): касание — где вы сейчас,
+            // строкой у курсора; долгое нажатие — карта.
+            item("mappin.and.ellipse", T("место", "place"), ready: true,
+                 hold: { openMap() }) { notePlaceHere() }
             if overKeyboard {
                 item("keyboard.chevron.compact.down", T("убрать", "hide"), ready: true) { hideKeyboard() }
             }
@@ -651,12 +653,14 @@ struct AttachBar: View {
             switch ask {
             case .photo: toggleGallery()
             case .camera: open { shooting = true }
-            // Полоска над клавиатурой — пять кнопок, «аудио» третья: центр
-            // ровно посередине (P330).
+            // Полоска над клавиатурой — шесть кнопок, «аудио» третья: центр
+            // на 5/12 ширины (P330, P381).
             case .audio:
-                recordAlign = 0.5
+                recordAlign = 5.0 / 12.0
                 open { recording = true }
             case .files: open { browsing = true }
+            case .place: notePlaceHere()
+            case .map: openMap()
             }
         }
         .onChange(of: store.date) { _, _ in if live { shell.gallery = false } }
@@ -728,6 +732,37 @@ struct AttachBar: View {
         shell.say(kept == urls.count ? T("Положено в папку «", "Saved to the “") + vault.name(.documents)
                                         + T("»: \(kept)", "” folder: \(kept)")
                                      : T("Не удалось положить файлов: \(urls.count - kept)", "Files not saved: \(urls.count - kept)"))
+    }
+
+    /// Вписать место, где человек сейчас, — своей строкой у курсора; в
+    /// плане — под делом, в котором пишут (P381). Место узнаётся только
+    /// по этому нажатию (A9).
+    private func notePlaceHere() {
+        let tab = shell.tab
+        guard store.canEdit(tab) else { return shell.say(store.closedReason) }
+        let caret = store.diaryTyping ? store.diaryCaret : nil
+        let row = store.planTyping
+        Feel.light()
+        Locator.shared.current { location in
+            DispatchQueue.main.async {
+                guard let location else {
+                    return shell.say(T("Место не определилось — разрешите приложению знать, где вы, в Настройках iPhone.",
+                                       "Could not find where you are — allow location for the app in iPhone Settings."))
+                }
+                if store.writePoint(GeoPoint(title: "", at: location.coordinate), to: tab, here: true,
+                                    caret: caret, after: row) {
+                    shell.say(T("Место записано", "Place noted"))
+                }
+            }
+        }
+    }
+
+    /// Долгое нажатие на «место» — карта; точка с неё ляжет туда, где был
+    /// курсор.
+    private func openMap() {
+        hideKeyboard()
+        store.noteLeaving(fromToday: true)
+        shell.screen = .map
     }
 
     private func item(_ icon: String, _ name: String, ready: Bool = false,
@@ -968,7 +1003,9 @@ struct PlanPage: View {
     private var tasks: [PlanRow] { rows.filter(\.isTask) }
 
     var body: some View {
-        PlanScaffold(isPast: isPast, dimmed: isPast, weather: weather, photos: photos,
+        // Прошедший день — как любой: не бледнее и с теми же кнопками,
+        // как на открытой странице (P114, P381).
+        PlanScaffold(isPast: isPast, dimmed: false, weather: weather, photos: photos,
                      takesBack: Plan.hasPhotoRows(rows)) {
             if tasks.isEmpty && events.isEmpty {
                 PlanEmpty(isPast: isPast)
@@ -976,7 +1013,7 @@ struct PlanPage: View {
                 // События Календаря — первыми, тем же кодом, что на
                 // открытой странице (P114, P376).
                 ForEach(Array(events.enumerated()), id: \.element.key) { i, e in
-                    PlanRowLine(number: i + 1, row: e.row, faded: isPast, bellColor: bellColor,
+                    PlanRowLine(number: i + 1, row: e.row, faded: false, bellColor: bellColor,
                                 stripe: e.color)
                     Rectangle().fill(Look.ruleSoft).frame(height: 1)
                 }
@@ -985,7 +1022,7 @@ struct PlanPage: View {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
                     if row.isTask {
                         PlanRowLine(number: events.count + rows[..<i].filter(\.isTask).count + 1,
-                                    row: row, faded: isPast, bellColor: bellColor)
+                                    row: row, faded: false, bellColor: bellColor)
                         Rectangle().fill(Look.ruleSoft).frame(height: 1)
                     } else if let line = row.verbatim {
                         PlanExtraLine(line: line, resolve: resolve)
@@ -995,7 +1032,7 @@ struct PlanPage: View {
                          done: tasks.filter(\.done).count + events.filter(\.row.done).count)
             }
         }
-        .opacity(isPast ? 0.58 : 1)
+
     }
 }
 

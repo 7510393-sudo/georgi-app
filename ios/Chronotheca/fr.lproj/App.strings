@@ -117,6 +117,7 @@
 "Copy without them" = "Copier sans eux";
 "Copying" = "Copie";
 "Copying: %@ of %@ · %@ of %@" = "Copie : %@ sur %@ · %@ sur %@";
+"Could not find where you are — allow location for the app in iPhone Settings." = "Impossible de savoir où vous êtes — autorisez la localisation pour l’app dans les Réglages de l’iPhone.";
 "Could not find where you are. Check that the app may use Location." = "Impossible de savoir où vous êtes. Vérifiez que l’app peut utiliser la position.";
 "Could not make the backup folder: " = "Impossible de créer le dossier de sauvegarde : ";
 "Could not open the previous folder. The entries in it are safe — " = "Impossible d’ouvrir le dossier précédent. Les notes qu’il contient sont intactes — ";
@@ -159,6 +160,7 @@
 "Entries" = "Notes";
 "Entries are locked" = "Les notes sont verrouillées";
 "Entries are ordinary files: diary and plan are text (.md); photos, voice and video are as they were. Any app can open them." = "Les entrées sont des fichiers ordinaires : le journal et le plan sont du texte (.md), les photos, les notes vocales et les vidéos restent telles quelles. N’importe quelle app peut les ouvrir.";
+"Entries arrive as ordinary files by day; nothing disappears from the other app. Importing is always free." = "Les entrées arrivent sous forme de fichiers ordinaires par jour ; rien ne disparaît de l’autre app. L’import est toujours gratuit.";
 "Entries left in the previous folder: %@.\n\n" = "Notes restées dans le dossier précédent : %@.\n\n";
 "Entry files: %@" = "Fichiers de notes : %@";
 "Entry font" = "Police des notes";
@@ -194,6 +196,7 @@
 "Holidays and birthdays" = "Jours fériés et anniversaires";
 "How did it go?" = "Comment ça s’est passé ?";
 "Icon: " = "Icône : ";
+"Import from %@ is still being made." = "L’import depuis %@ est en préparation.";
 "Import from Day One" = "Importer depuis Day One";
 "Import from Day One and Apple Journal" = "Import depuis Day One et Journal d’Apple";
 "Imported entries: %@, days: %@, photos and files: %@." = "Entrées importées : %@, jours : %@, photos et fichiers : %@.";
@@ -301,6 +304,7 @@
 "Photo saved to the “" = "Photo enregistrée dans le dossier « ";
 "Photos" = "Photos";
 "Place" = "Lieu";
+"Place noted" = "Lieu noté";
 "Place noted in the diary" = "Lieu noté dans le journal";
 "Place noted in the plan" = "Lieu noté dans le plan";
 "Place on the map: " = "Lieu sur la carte : ";
@@ -366,6 +370,7 @@
 "Stop recording" = "Arrêter l’enregistrement";
 "Storage" = "Stockage";
 "Sunday" = "dimanche";
+"Switch from another app" = "Venir d’une autre app";
 "Tap a date to see its tasks." = "Touchez une date pour voir ses tâches.";
 "Tap again to go back to this month" = "Touchez encore pour revenir à ce mois";
 "Tap again to go back to this year" = "Touchez encore pour revenir à cette année";
@@ -468,6 +473,7 @@
 "Voice note" = "Note vocale";
 "Voice note saved to the “" = "Note vocale enregistrée dans le dossier « ";
 "Wait longer" = "Attendre encore";
+"We only import what will later open without our app: plain text, photos, voice. We first check how %@ exports entries — and only then build it. If you need this import, write to us." = "Nous n’importons que ce qui s’ouvrira ensuite sans notre app : texte, photos, voix. Nous vérifions d’abord comment %@ exporte les entrées — puis nous le construisons. Si vous avez besoin de cet import, écrivez-nous.";
 "Weather" = "Météo";
 "Weather — Apple Weather" = "Météo — Apple Météo";
 "Week starts on" = "La semaine commence le";
@@ -559,6 +565,7 @@
 "photo" = "photo";
 "photo links in your entries are updated after that. Files are not copied " = "les liens vers les photos dans vos notes sont mis à jour ensuite. Les fichiers ne sont pas copiés ";
 "photos" = "photos";
+"place" = "lieu";
 "plan" = "plan";
 "plan tasks" = "tâches du plan";
 "point to that place again." = "indiquez de nouveau cet endroit.";
@@ -571,6 +578,7 @@
 "sleet" = "neige mouillée";
 "smaller" = "plus petit";
 "snow" = "neige";
+"soon" = "bientôt";
 "steps " = "pas ";
 "storage and iCloud. The entries are safe: they are where you " = "du téléphone et iCloud. Les notes sont intactes : elles sont là où vous ";
 "the app will recognise the archive and offer to move there " = "l’app reconnaîtra l’archive et proposera d’y déplacer ";
