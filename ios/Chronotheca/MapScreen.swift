@@ -1043,11 +1043,13 @@ enum PlaceLabel {
             // текстом на месте значка, своих цветов не меняет (P336).
             if emoji {
                 let mark = symbol as NSString
-                let markAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 13)]
+                let markAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: bare ? 19 : 13)]
                 let markSize = mark.size(withAttributes: markAttrs)
-                // Обводка эмодзи — тёмный ореол вплотную к знаку.
-                ctx.cgContext.setShadow(offset: .zero, blur: 1.2,
-                                        color: UIColor.black.withAlphaComponent(0.85).cgColor)
+                // Обводка эмодзи — ореол вплотную к знаку: на кружке тёмный,
+                // прямо на карте — светлый (P399), иначе тёмный флаг
+                // пропадает на тёмной карте.
+                ctx.cgContext.setShadow(offset: .zero, blur: bare ? 2 : 1.2,
+                                        color: (bare ? halo : UIColor.black.withAlphaComponent(0.85)).cgColor)
                 mark.draw(at: CGPoint(x: circle.midX - markSize.width / 2,
                                       y: circle.midY - markSize.height / 2), withAttributes: markAttrs)
                 ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
@@ -1148,8 +1150,7 @@ struct PointPanel: View {
     @FocusState private var focused: Field?
     @State private var copied = false
 
-    /// Одиннадцать значков — в два ряда по шесть (P398; восемь одним рядом —
-    /// P397).
+    /// Двенадцать значков — два ряда по шесть (P399).
     private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 6)
 
     var body: some View {

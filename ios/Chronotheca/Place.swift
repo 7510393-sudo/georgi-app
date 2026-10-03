@@ -79,34 +79,37 @@ enum Glyph {
     /// «значок» на деле не имя системного рисунка, а символ юникода: флага
     /// с черепом в системном наборе нет, есть эмодзи «🏴‍☠️» (P336).
     static let all: [(name: String, symbol: String, emoji: Bool)] = [
+        // Набор после разбора (P399): точка — «был здесь», пустой кружок —
+        // «хочу побывать», дальше по частоте отметок в дневнике.
         ("точка", "circle.fill", false),
         ("кружок", "circle", false),
         ("сердце", "heart.fill", false),
-        ("человек", "person.fill", false),
         ("звезда", "star.fill", false),
-        ("огонь", "flame.fill", false),
-        ("вдохновение", "lightbulb.fill", false),
-        ("пираты", "🏴‍☠️", true),
-        // Ещё три по просьбе автора (P398): рука, указывающая вниз, и флаг —
-        // без кружка; дом — в полупрозрачном кружке, как прежде.
-        ("указатель", "hand.point.down.fill", false),
         ("дом", "house.fill", false),
-        ("флаг", "flag.fill", false),
+        ("человек", "person.fill", false),
+        ("кафе", "cup.and.saucer.fill", false),
+        ("природа", "tree.fill", false),
+        ("ночлег", "bed.double.fill", false),
+        ("вдохновение", "lightbulb.fill", false),
+        ("указатель", "hand.point.down.fill", false),
+        ("пираты", "🏴‍☠️", true),
     ]
 
-    /// Значки без кружка под ними (P398): белый рисунок с чёрным контуром
-    /// прямо на карте.
-    static let bare: Set<String> = ["указатель", "флаг"]
+    /// Значки без кружка под ними (P398, P399): рука — белая с чёрным
+    /// контуром, пиратский флаг — как есть, со светлым ореолом, прямо на
+    /// карте.
+    static let bare: Set<String> = ["указатель", "пираты"]
 
-    /// Свой цвет значка (P397): белая точка, красные сердце и огонь, жёлтые
-    /// звезда и лампочка, чёрный человек. Без цвета — белый, как прежде.
+    /// Свой цвет значка (P397, P399): красное сердце, жёлтая звезда,
+    /// оранжевая лампочка — чтобы не сливалась со звездой. Остальные —
+    /// белые с тёмным контуром (человек тоже: чёрный на тёмном кружке
+    /// терялся).
     static let tint: [String: UIColor] = [
         "точка": .white,
         "сердце": UIColor(red: 0.93, green: 0.12, blue: 0.14, alpha: 1),
         "огонь": UIColor(red: 0.93, green: 0.12, blue: 0.14, alpha: 1),
         "звезда": UIColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1),
-        "вдохновение": UIColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1),
-        "человек": .black,
+        "вдохновение": UIColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 1),
     ]
 
     /// «Пустой кружок»: отметка без заливки — одно белое кольцо, карта под
@@ -118,15 +121,14 @@ enum Glyph {
     /// Обводка вокруг значка — контрастная к нему: у чёрного светлая, у
     /// прочих тёмная.
     static func halo(_ name: String) -> UIColor {
-        name == "человек" ? UIColor(white: 1, alpha: 0.9) : UIColor(white: 0.1, alpha: 0.9)
+        name == "пираты" ? UIColor(white: 1, alpha: 0.95) : UIColor(white: 0.1, alpha: 0.9)
     }
 
     /// Прежние значки (P234, P335–P338): в панели выбора их больше нет, но
     /// места, которые ими уже отмечены, рисуются по-прежнему и при
     /// сохранении значок в файле не теряют (P340).
     private static let former: [String: String] = [
-        "кафе": "cup.and.saucer.fill",
-        "природа": "leaf.fill", "снимок": "camera.fill",
+        "снимок": "camera.fill", "флаг": "flag.fill", "огонь": "flame.fill",
         "здоровье": "cross.case.fill", "вокзал": "tram.fill", "покупки": "bag.fill",
         "хорошее место": "hand.thumbsup.fill", "плохое место": "hand.thumbsdown.fill",
         "личное": "lock.fill", "опасность": "exclamationmark.triangle.fill",
@@ -147,7 +149,7 @@ enum Glyph {
         "покупки": "shopping", "хорошее место": "good place",
         "плохое место": "bad place", "пираты": "pirates", "личное": "private",
         "опасность": "danger", "вдохновение": "inspiration", "призраки": "ghosts",
-        "везение": "luck", "огонь": "fire", "кружок": "ring", "указатель": "pointer",
+        "везение": "luck", "огонь": "fire", "кружок": "ring", "указатель": "pointer", "ночлег": "lodging",
     ]
     private static let russian: [String: String] =
         Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
