@@ -722,6 +722,10 @@ struct DiaryEditor: UIViewRepresentable {
         /// поднятая над ним картинка не дают увидеть место точно.
         private var mark: UIView?
 
+        /// Синяя рамка по краю самого снимка, пока его держат на месте
+        /// (P391): видно, что взят именно он. Уходит, когда повели.
+        private var outline: UIView?
+
         /// Взята точка, а не снимок.
         private func takenIsPoint(_ view: UITextView) -> Bool {
             guard let i = taken else { return false }
@@ -917,6 +921,10 @@ struct DiaryEditor: UIViewRepresentable {
                 if takenIsPoint(at: i, in: view) { arm(i, in: view) } else { lift(i, g, in: view) }
             case .changed:
                 let spot = g.location(in: nil)
+                if outline != nil, hypot(spot.x - takenAt.x, spot.y - takenAt.y) >= 10 {
+                    outline?.removeFromSuperview()
+                    outline = nil
+                }
                 if ghost == nil {
                     guard hypot(spot.x - takenAt.x, spot.y - takenAt.y) >= 10 else { return }
                     disarm()
@@ -939,6 +947,8 @@ struct DiaryEditor: UIViewRepresentable {
                 ghost = nil
                 mark?.removeFromSuperview()
                 mark = nil
+                outline?.removeFromSuperview()
+                outline = nil
                 // Подержали и отпустили, не сдвинув: точка так и стоит
                 // крупнее, с крестиком; снимок — на месте.
                 guard moved else {
@@ -981,6 +991,8 @@ struct DiaryEditor: UIViewRepresentable {
                 ghost = nil
                 mark?.removeFromSuperview()
                 mark = nil
+                outline?.removeFromSuperview()
+                outline = nil
                 restore(view)
                 taken = nil
             }
@@ -1029,6 +1041,23 @@ struct DiaryEditor: UIViewRepresentable {
                 host.addSubview(shadow)
                 ghost = shadow
                 ghostLine = false
+                // И сам снимок на месте — в синей рамке (P391).
+                if outline == nil,
+                   let start = view.position(from: view.beginningOfDocument, offset: i),
+                   let end = view.position(from: start, offset: 1),
+                   let range = view.textRange(from: start, to: end) {
+                    let frame = UIView(frame: view.firstRect(for: range).insetBy(dx: -2, dy: -2))
+                    frame.isUserInteractionEnabled = false
+                    frame.layer.borderColor = UIColor(Look.glow).cgColor
+                    frame.layer.borderWidth = 3
+                    frame.layer.cornerRadius = 8
+                    frame.layer.shadowColor = UIColor(Look.glow).cgColor
+                    frame.layer.shadowOpacity = 0.8
+                    frame.layer.shadowRadius = 4
+                    frame.layer.shadowOffset = .zero
+                    view.addSubview(frame)
+                    outline = frame
+                }
             }
             before = view.attributedText.copy() as? NSAttributedString
             now = i

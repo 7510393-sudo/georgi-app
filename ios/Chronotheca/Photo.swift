@@ -377,6 +377,12 @@ struct Carried: ViewModifier {
                     return nil
                 }
                 return item
+            } preview: {
+                // Поднятое превью — в синей рамке, как всё, что несут
+                // своим жестом (P391).
+                content
+                    .frame(width: PhotoStrip.side, height: PhotoStrip.side)
+                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.glow, lineWidth: 3))
             }
         } else {
             content
@@ -480,11 +486,25 @@ struct ThumbCarry: ViewModifier {
     let report: ((Lift, CGPoint) -> Void)?
 
     @State private var lifted = false
+    /// Палец ушёл от места — рамка остаётся только у копии над пальцем.
+    @State private var away = false
     @GestureState private var holding = false
 
     func body(content: Content) -> some View {
         if let report {
             content
+                // Подержали — превью сразу в синей рамке и чуть крупнее
+                // (P391), как точка и дело: видно, что взято именно оно.
+                .overlay {
+                    if lifted && !away {
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Look.glow, lineWidth: 3)
+                            .shadow(color: Look.glow.opacity(0.8), radius: 4)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .scaleEffect(lifted && !away ? 1.05 : 1)
+                .animation(.easeOut(duration: 0.12), value: lifted && !away)
                 .gesture(LongPressGesture(minimumDuration: 0.3)
                     .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
                     .updating($holding) { value, state, _ in
@@ -494,13 +514,18 @@ struct ThumbCarry: ViewModifier {
                         guard case .second(true, let drag) = value else { return }
                         if !lifted {
                             lifted = true
+                            away = false
                             report(.began, drag?.location ?? .zero)
                         }
-                        if let drag { report(.moved(drag.translation), drag.location) }
+                        if let drag {
+                            if hypot(drag.translation.width, drag.translation.height) >= 10 { away = true }
+                            report(.moved(drag.translation), drag.location)
+                        }
                     }
                     .onEnded { value in
                         guard lifted else { return }
                         lifted = false
+                        away = false
                         var spot = CGPoint.zero
                         if case .second(true, let drag) = value, let drag { spot = drag.location }
                         report(.ended(.zero), spot)
@@ -510,6 +535,7 @@ struct ThumbCarry: ViewModifier {
                     DispatchQueue.main.async {
                         guard lifted else { return }
                         lifted = false
+                        away = false
                         report(.cancelled, .zero)
                     }
                 }
