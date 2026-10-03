@@ -555,6 +555,49 @@ final class DayStore: ObservableObject {
 
     func touchDiary() { lastEdit = Date() }
 
+    // MARK: - Открыл — пишешь (P403)
+
+    /// Отметка времени ждёт первой буквы новой строки. Сбрасывается, когда
+    /// открывают другой день.
+    private(set) var stampPending = false
+
+    /// Курсор — в начало новой пустой строки под записью; отметки времени
+    /// там ещё нет — она встанет с первой буквой (P403; прежде ставилась
+    /// сразу, как только курсор попадал в запись, P137). Пора новой
+    /// отметки (запись пуста или с правки прошёл час) — под записью пустая
+    /// строка и новая; иначе, если `always` (приложение открыли на
+    /// дневнике), — просто новая строка. `true` — курсор надо перенести в
+    /// конец.
+    func openNewLine(always: Bool) -> Bool {
+        guard canEditDiary else { return false }
+        let body = diaryText.replacingOccurrences(of: "\\s+$", with: "",
+                                                  options: .regularExpression)
+        let stale = lastEdit.map { Date().timeIntervalSince($0) > DayStore.stampGap } ?? true
+        if body.isEmpty || stale || stampPending {
+            let wanted = body.isEmpty ? "" : body + "\n\n"
+            let changed = diaryText != wanted
+            if changed { diaryText = wanted }
+            stampPending = true
+            return changed || always
+        }
+        guard always else { return false }
+        let wanted = body + "\n"
+        if diaryText != wanted { diaryText = wanted }
+        return true
+    }
+
+    /// Отметка времени для первой буквы новой строки — один раз (P403).
+    func takeStamp() -> String? {
+        guard stampPending, canEditDiary else { return nil }
+        stampPending = false
+        lastEdit = Date()
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        // Дописывая прошедший день — с датой, когда писал (P227, P232).
+        f.dateFormat = isToday ? "HH:mm" : "HH:mm dd.MM.yy"
+        return f.string(from: Date()) + " "
+    }
+
     /// Строка «Здоровья» — касанием, в конец записи (P378).
     func addHealthLine(_ line: String) {
         guard canEditDiary else { return }
@@ -983,6 +1026,7 @@ final class DayStore: ObservableObject {
     private var retries = 0
 
     func load() {
+        stampPending = false
         let plan = vault.reading(.planner, for: date)
         let diaryFile = vault.reading(.diary, for: date)
         var gone: Set<Vault.Folder> = []

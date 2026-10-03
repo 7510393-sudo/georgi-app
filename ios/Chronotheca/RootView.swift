@@ -26,6 +26,15 @@ struct RootView: View {
     @AppStorage(Prefs.textSize) private var textSize = 0
     @AppStorage(Prefs.font) private var fontKey = "georgia"
     @State private var locked = UserDefaults.standard.bool(forKey: Prefs.lock)
+    /// Приложение открыли на дневнике, пока стоял замок: поле возьмёт ввод,
+    /// когда замок откроют, — не поверх него (P403).
+    @State private var waitingToWrite = false
+
+    /// Открыли на дневнике — поле записи берёт ввод само (P403).
+    private func startWriting() {
+        guard shell.tab == .diary, shell.screen == .today else { return }
+        shell.writeNow += 1
+    }
 
     private var scheme: ColorScheme? {
         theme == "light" ? .light : theme == "dark" ? .dark : nil
@@ -33,7 +42,11 @@ struct RootView: View {
 
     private func unlock() {
         LockView.check(reason: T("Открыть записи", "Open your entries")) { ok in
-            if ok { locked = false }
+            if ok {
+                locked = false
+                // Замок открыт — теперь и клавиатура (P403).
+                if waitingToWrite { waitingToWrite = false; startWriting() }
+            }
         }
     }
 
@@ -165,6 +178,11 @@ struct RootView: View {
         }
         .onChange(of: phase) { _, now in
             if now == .background && lockOn { locked = true }
+        }
+        // Каждое открытие приложения (и возвращение после паузы, P346) на
+        // дневнике — сразу писать (P403).
+        .onChange(of: shell.freshStart) { _, _ in
+            if lockOn && locked { waitingToWrite = true } else { startWriting() }
         }
         .preferredColorScheme(scheme)
         .fileImporter(isPresented: $shell.picking, allowedContentTypes: [.folder]) { result in

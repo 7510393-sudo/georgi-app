@@ -305,4 +305,26 @@ extension DayStoreTests {
         // На тот же день не переносится.
         XCTAssertFalse(день.moveTask(день.planRows[0].id, to: день.date))
     }
+
+    // P403: открыл — пишешь. Курсор в новой строке, время — только с
+    // первой буквой и один раз.
+    func testОткрылИПишешь() {
+        let день = store(0)
+        день.diaryText = "Утро."
+        день.touchDiary()
+        // Правили только что — новая строка без отметки.
+        XCTAssertTrue(день.openNewLine(always: true))
+        XCTAssertEqual(день.diaryText, "Утро.\n")
+        XCTAssertNil(день.takeStamp())
+
+        // Пустая запись прошедшего дня: строки не прибавляется, отметка ждёт
+        // первой буквы — с датой, когда писали.
+        let вчера = store(-2)
+        XCTAssertFalse(вчера.openNewLine(always: false))
+        XCTAssertEqual(вчера.diaryText, "")
+        let отметка = вчера.takeStamp()
+        XCTAssertNotNil(отметка?.range(of: #"^\d{2}:\d{2} \d{2}\.\d{2}\.\d{2} $"#,
+                                       options: .regularExpression))
+        XCTAssertNil(вчера.takeStamp(), "отметка — один раз")
+    }
 }

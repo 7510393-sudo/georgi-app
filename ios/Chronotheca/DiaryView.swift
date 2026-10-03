@@ -38,7 +38,8 @@ struct DiaryView: View {
             onMovePhoto: { store.movePhoto(from: $0, to: $1, in: .diary) },
             // Брошенный в текст снимок отметку времени не ставит — это
             // знает само поле записи (P362).
-            onFocusText: { store.stampIfNeeded() },
+            onFocusText: { store.openNewLine(always: $0) },
+            takeStamp: { store.takeStamp() },
             onOpenInline: { link in
                 shell.openedPhoto = .init(tab: .diary, index: -1,
                                           url: store.photoURL(link), link: link)
@@ -66,6 +67,7 @@ struct DiaryView: View {
             undo: store.diaryBack.isEmpty || !store.canEditDiary ? nil : { store.undoDiary() },
             redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() },
             home: shell.freshStart,
+            writeNow: shell.writeNow,
             health: health,
             // Касание по строке «Здоровья» — она ложится в запись (P378).
             onHealth: store.canEditDiary ? { line in store.addHealthLine(line) } : nil,
@@ -175,7 +177,10 @@ struct DiaryPage: View {
     var onMovePhoto: ((Int, Int) -> Void)?
     /// Возвращает `true`, если приложение поставило отметку времени: тогда
     /// курсор переезжает за неё.
-    var onFocusText: () -> Bool = { false }
+    /// `true` в ответ — курсор переезжает в конец, в новую строку. Отдаётся,
+    /// открыто ли поле само при открытии приложения (P403).
+    var onFocusText: (Bool) -> Bool = { _ in false }
+    var takeStamp: (() -> String?)? = nil
     /// Касание по снимку посреди текста (P216) и по точке (P213).
     var onOpenInline: ((String) -> Void)?
     var onOpenPoint: ((GeoPoint) -> Void)?
@@ -193,6 +198,9 @@ struct DiaryPage: View {
     /// прокручивается к концу, под ней пять пустых строк: коснулся — и
     /// пишешь (P346). У соседних страниц не меняется.
     var home = 0
+    /// Приложение открыли на дневнике (P403): поле само берёт ввод, курсор —
+    /// в начале новой строки. У соседних страниц не меняется.
+    var writeNow = 0
     /// День из «Здоровья» (P378) — слева в верхней строке, где пусто.
     var health: String? = nil
     var onHealth: ((String) -> Void)? = nil
@@ -203,6 +211,10 @@ struct DiaryPage: View {
 
     /// Для какого открытия запись уже прокручена к концу.
     private static var homed = -1
+    /// Для какого открытия поле уже взяло ввод само (P403).
+    private static var wrote = -1
+    /// Поле берёт ввод по открытию приложения, а не по касанию.
+    @State private var writing = false
     private static var end: String { "дневник-конец" }
 
     private enum Field: Hashable { case title }
@@ -305,13 +317,24 @@ struct DiaryPage: View {
             // Место под клавиатуру: без него страницу некуда поднять, и
             // последние строки записи остаются под ней (решение P175).
             .padding(.bottom, 20 + keyboard)
-            .onAppear { goHome(proxy) }
+            .onAppear { goHome(proxy); startWriting() }
             .onChange(of: home) { _, _ in goHome(proxy) }
+            .onChange(of: writeNow) { _, _ in startWriting() }
           }
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color.clear)
         .keyboardHeight($keyboard)
+    }
+
+    /// Открыли приложение на дневнике — клавиатура поднята, курсор в начале
+    /// новой строки под записью: открыл — и пишешь, без касания (P403).
+    private func startWriting() {
+        guard writeNow > 0, writeNow != Self.wrote, editable else { return }
+        Self.wrote = writeNow
+        writing = true
+        // Страница успевает встать на место, потом поле берёт ввод.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { toText = true }
     }
 
     /// Прокрутить к концу записи — один раз на каждое открытие
@@ -494,14 +517,17 @@ struct DiaryPage: View {
         DiaryEditor(text: $text, size: size, serif: true, stamped: true,
                     editable: editable, caretToEnd: $caretToEnd,
                     startEditing: $toText,
-                    onFocus: { if onFocusText() { caretToEnd = true } },
+                    onFocus: {
+                        if onFocusText(writing) { caretToEnd = true }
+                        writing = false
+                    },
                     // Под записью всегда пять пустых строк — место, куда
                     // коснуться, чтобы продолжить (P346).
                     grows: true, minHeight: 320, room: size * 1.5 * 5, resolve: resolve,
                     onOpenPhoto: onOpenInline, onReturnPhoto: onReturnPhoto,
                     onOpenPoint: onOpenPoint, onPointToTitle: onPointToTitle, onCaret: onCaret,
                     moving: editable, onEditing: onEditing,
-                    placeCaret: placeCaret)
+                    placeCaret: placeCaret, takeStamp: takeStamp)
             // Вдвое меньше, чем было: пробел между заголовком и записью не
             // должен отнимать место у страницы (P311).
             .padding(.top, 8)

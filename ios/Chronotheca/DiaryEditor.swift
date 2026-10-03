@@ -81,6 +81,9 @@ struct DiaryEditor: UIViewRepresentable {
     /// Просьба поставить курсор сюда — отступом в тексте записи. Её подаёт
     /// геоточка, вписанная посреди набора: писать дальше — за точкой (P253).
     var placeCaret: Binding<Int?> = .constant(nil)
+    /// Отметка времени, ждущая первой буквы новой строки (P403): `nil` —
+    /// не ждёт.
+    var takeStamp: (() -> String?)? = nil
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     /// В прошедший день за временем идёт дата, когда писали:
@@ -1464,6 +1467,20 @@ struct DiaryEditor: UIViewRepresentable {
         func textView(_ view: UITextView, shouldChangeTextIn range: NSRange,
                       replacementText text: String) -> Bool {
             if let decided = keepObjectsApart(view, range, text) { return decided }
+            // Первая буква в новой строке под записью — и только тогда
+            // перед ней встаёт время (P403). Буква — заглавная.
+            if range.length == 0, range.location == view.textStorage.length,
+               let first = text.first, !first.isNewline, !text.contains("\u{FFFC}"),
+               let stamp = parent.takeStamp?() {
+                let piece = stamp + String(first).uppercased() + String(text.dropFirst())
+                view.textStorage.replaceCharacters(
+                    in: range,
+                    with: NSAttributedString(string: piece,
+                                             attributes: DiaryEditor.body(parent.size, serif: parent.serif)))
+                view.selectedRange = NSRange(location: range.location + (piece as NSString).length, length: 0)
+                textViewDidChange(view)
+                return false
+            }
             guard parent.stamped,
                   let first = text.first, first.isLowercase else { return true }
             let before = (view.text as NSString).substring(to: range.location)
