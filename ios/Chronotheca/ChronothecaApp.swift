@@ -40,6 +40,14 @@ struct ChronothecaApp: App {
                 .environmentObject(store)
                 .environmentObject(archive)
                 .environmentObject(shell)
+                // Касание по виджету: chronotheca://today/plan или /diary —
+                // открыть сегодняшний день на этой вкладке (P382).
+                .onOpenURL { url in
+                    guard url.scheme == "chronotheca" else { return }
+                    store.go(to: DayStore.today())
+                    shell.screen = .today
+                    shell.tab = url.lastPathComponent == "diary" ? .diary : .plan
+                }
         }
         .onChange(of: phase) { _, now in
             switch now {

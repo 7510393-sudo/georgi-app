@@ -29,6 +29,9 @@ API = "https://api.appstoreconnect.apple.com"
 BUNDLE_ID = "com.kobiashvili.diary"
 CERT_NAME = "Chronotheca CI"
 PROFILE_NAME = "Chronotheca CI App Store"
+# Виджет «Сегодня» (P382) — свой знак и свой профиль.
+WIDGET_ID = BUNDLE_ID + ".widget"
+WIDGET_PROFILE = "Chronotheca CI Widget"
 WORK = "/tmp/signing"
 P12_PASSWORD = "chronotheca-ci"
 KEYCHAIN = os.path.expanduser("~/Library/Keychains/chronotheca-ci-db")
@@ -59,6 +62,50 @@ def api(path, method="GET", body=None, tok=None):
         detail = e.read().decode("utf-8", "replace")
         print(f"  {method} {path} → {e.code}\n  {detail[:800]}", file=sys.stderr)
         raise
+
+
+def bundle_ref_of(identifier, tok):
+    found = api(f"/v1/bundleIds?filter[identifier]={identifier}&limit=200", tok=tok)
+    for b in found.get("data", []):
+        if b["attributes"].get("identifier") == identifier:
+            return b["id"]
+    return None
+
+
+def widget_profile(tok, cert_id):
+    """Знак и профиль виджета (P382). Возвращает пути профиля и прав."""
+    import plistlib
+    ref = bundle_ref_of(WIDGET_ID, tok)
+    if not ref:
+        made = api("/v1/bundleIds", "POST", {
+            "data": {"type": "bundleIds",
+                     "attributes": {"identifier": WIDGET_ID, "name": "Chronotheca Widget",
+                                    "platform": "IOS"}}}, tok)
+        ref = made["data"]["id"]
+        print(f"  заведён знак виджета {WIDGET_ID}")
+    for p in api("/v1/profiles?limit=200", tok=tok).get("data", []):
+        if p["attributes"]["name"] == WIDGET_PROFILE:
+            api(f"/v1/profiles/{p['id']}", "DELETE", tok=tok)
+    prof = api("/v1/profiles", "POST", {
+        "data": {
+            "type": "profiles",
+            "attributes": {"name": WIDGET_PROFILE, "profileType": "IOS_APP_STORE"},
+            "relationships": {
+                "bundleId": {"data": {"id": ref, "type": "bundleIds"}},
+                "certificates": {"data": [{"id": cert_id, "type": "certificates"}]},
+            }}}, tok)["data"]
+    raw = f"{WORK}/widget.mobileprovision"
+    with open(raw, "wb") as f:
+        f.write(base64.b64decode(prof["attributes"]["profileContent"]))
+    decoded = f"{WORK}/widget.plist"
+    subprocess.run(["security", "cms", "-D", "-i", raw, "-o", decoded], check=True)
+    with open(decoded, "rb") as f:
+        entitlements = plistlib.load(f)["Entitlements"]
+    ent = f"{WORK}/widget-entitlements.plist"
+    with open(ent, "wb") as f:
+        plistlib.dump(entitlements, f)
+    print(f"  права виджета: {sorted(entitlements)}")
+    return raw, ent
 
 
 def run(*args, **kw):
@@ -152,11 +199,12 @@ def main():
               KEYCHAIN).stdout.strip())
 
     # 4. Профиль
-    found = api(f"/v1/bundleIds?filter[identifier]={BUNDLE_ID}&limit=1", tok=tok)
-    if not found.get("data"):
+    # Знак ищется точным совпадением: под тем же началом теперь лежит и
+    # знак виджета (P382), а отбор Apple по имени — не точный.
+    bundle_ref = bundle_ref_of(BUNDLE_ID, tok)
+    if not bundle_ref:
         print(f"::error::Опознавательный знак {BUNDLE_ID} не заведён в аккаунте.")
         sys.exit(1)
-    bundle_ref = found["data"][0]["id"]
 
     # Погода Apple (WeatherKit) — право, которое включается у самого знака
     # приложения. Включаем сами; не вышло — не беда: сборка идёт дальше,
@@ -266,7 +314,16 @@ def main():
         sys.exit(1)
     print(f"  подписывать будем как: {identity}")
 
+    # Виджет (P382): не вышло — приложение уходит без него, а не падает.
+    widget_raw, widget_ent = "", ""
+    try:
+        widget_raw, widget_ent = widget_profile(tok, cert_id)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::Профиль виджета получить не удалось ({e}). Сборка идёт без виджета.")
+
     with open(os.environ["GITHUB_ENV"], "a") as f:
+        f.write(f"WIDGET_PROFILE_PATH={widget_raw}\n")
+        f.write(f"WIDGET_ENTITLEMENTS_PATH={widget_ent}\n")
         f.write(f"PROFILE_NAME={PROFILE_NAME}\n")
         f.write(f"SIGNING_KEYCHAIN={KEYCHAIN}\n")
         f.write(f"SIGNING_IDENTITY={identity}\n")

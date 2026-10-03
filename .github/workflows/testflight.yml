@@ -205,6 +205,22 @@ jobs:
           # Профиль кладётся внутрь приложения — именно оттуда его читает iPhone.
           cp "$PROFILE_PATH" "$APP/embedded.mobileprovision"
 
+          # Виджет (P382) — своим профилем и своими правами, до приложения.
+          # Профиля нет — виджет вынимается: приложение уходит без него.
+          WIDGET_APPEX="$APP/PlugIns/ChronothecaWidget.appex"
+          if [ -d "$WIDGET_APPEX" ]; then
+            if [ -n "${WIDGET_PROFILE_PATH:-}" ] && [ -f "$WIDGET_PROFILE_PATH" ]; then
+              cp "$WIDGET_PROFILE_PATH" "$WIDGET_APPEX/embedded.mobileprovision"
+              /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" \
+                --keychain "$SIGNING_KEYCHAIN" --timestamp=none \
+                --entitlements "$WIDGET_ENTITLEMENTS_PATH" "$WIDGET_APPEX"
+              echo "виджет подписан"
+            else
+              echo "::warning::Профиля виджета нет — приложение уходит без виджета."
+              rm -rf "$WIDGET_APPEX"
+            fi
+          fi
+
           # Сначала вложенное (библиотеки Swift), потом само приложение:
           # подпись внешнего рушится, если внутреннее переподписать после.
           if [ -d "$APP/Frameworks" ]; then

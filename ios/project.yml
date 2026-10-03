@@ -15,6 +15,9 @@ targets:
     platform: iOS
     sources:
       - path: Chronotheca
+    # Виджет вкладывается в приложение (P382).
+    dependencies:
+      - target: ChronothecaWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kobiashvili.diary
@@ -59,6 +62,23 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
         SWIFT_EMIT_LOC_STRINGS: YES
+
+  # Виджет «Сегодня» (P382): дата, вход в план и дневник, дела дня, если
+  # есть общая папка группы приложений.
+  ChronothecaWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kobiashvili.diary.widget
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Widget/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Chronotheca
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
 
   ChronothecaTests:
     type: bundle.unit-test

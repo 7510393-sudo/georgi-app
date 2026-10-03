@@ -1044,6 +1044,8 @@ final class DayStore: ObservableObject {
         // Напоминания дня — по тому, что теперь в плане (P260). Недокачанный
         // план не трогаем: пустой список снял бы настоящие напоминания.
         if !away.contains(.planner) { Reminders.sync(day: date, rows: planRows) }
+        // Дела сегодняшнего дня — виджету (P382).
+        if isToday, !away.contains(.planner) { WidgetShare.publish(day: date, rows: planRows) }
     }
 
     /// Расставить напоминания на две недели вперёд — по файлам: колокольчик
