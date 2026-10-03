@@ -618,3 +618,4 @@
 "Task moved to " = "タスクを移動しました: ";
 "Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "移動できませんでした：その日のファイルがまだiCloudからダウンロードされていないか、別の場所で変更中です。もう一度お試しください。";
 "Choose a day" = "日を選択";
+"Remove photo from text" = "写真をテキストから外す";

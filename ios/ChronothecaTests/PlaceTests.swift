@@ -165,4 +165,18 @@ final class PlaceTests: XCTestCase {
         XCTAssertEqual(DiaryEditor.putting(голос, at: 6, into: "Утро.\n\nВечер.").0,
                        "Утро.\n" + голос + "\nВечер.")
     }
+
+    // P392: одно вложение — одна строка. Строка, где кроме вложения
+    // только пробелы, — чистая; с буквами — нет.
+    func testВложениеСвоейСтрокой() {
+        let clean = "Утро.\n\u{FFFC}\nВечер." as NSString
+        XCTAssertFalse(DiaryEditor.Coordinator.mixed(
+            clean, objects: [6], in: clean.paragraphRange(for: NSRange(location: 6, length: 0))))
+        let twoPhotos = "\u{FFFC} \u{FFFC}\n" as NSString
+        XCTAssertFalse(DiaryEditor.Coordinator.mixed(
+            twoPhotos, objects: [0, 2], in: twoPhotos.paragraphRange(for: NSRange(location: 0, length: 0))))
+        let typed = "Утро.\n\u{FFFC}ы\nВечер." as NSString
+        XCTAssertTrue(DiaryEditor.Coordinator.mixed(
+            typed, objects: [6], in: typed.paragraphRange(for: NSRange(location: 6, length: 0))))
+    }
 }

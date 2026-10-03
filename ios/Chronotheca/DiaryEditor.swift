@@ -722,10 +722,6 @@ struct DiaryEditor: UIViewRepresentable {
         /// поднятая над ним картинка не дают увидеть место точно.
         private var mark: UIView?
 
-        /// Синяя рамка по краю самого снимка, пока его держат на месте
-        /// (P391): видно, что взят именно он. Уходит, когда повели.
-        private var outline: UIView?
-
         /// Взята точка, а не снимок.
         private func takenIsPoint(_ view: UITextView) -> Bool {
             guard let i = taken else { return false }
@@ -741,7 +737,12 @@ struct DiaryEditor: UIViewRepresentable {
                 && view.textStorage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) == nil
         }
 
-        // MARK: - Крестик у точки (P362)
+        private func takenIsPhoto(at i: Int, in view: UITextView) -> Bool {
+            i < view.textStorage.length
+                && view.textStorage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) != nil
+        }
+
+        // MARK: - Крестик у точки (P362) и у снимка (P392)
 
         /// Покрывало поверх окна: на нём точка крупнее и крестик. Касание
         /// мимо крестика — покрывало уходит, и всё как было.
@@ -750,9 +751,11 @@ struct DiaryEditor: UIViewRepresentable {
         /// Показать точку крупнее, с крестиком «удалить» на углу — как
         /// значок на экране «Домой», когда его подержали.
         private func arm(_ i: Int, in view: UITextView) {
+            let photo = view.textStorage.attribute(DiaryEditor.photoKey, at: i,
+                                                   effectiveRange: nil) as? String
             guard let window = view.window,
-                  let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
-                                                        effectiveRange: nil) as? String,
+                  let line = photo ?? view.textStorage.attribute(DiaryEditor.lineKey, at: i,
+                                                                 effectiveRange: nil) as? String,
                   let picture = (view.textStorage.attribute(.attachment, at: i, effectiveRange: nil)
                                  as? NSTextAttachment)?.image,
                   let start = view.position(from: view.beginningOfDocument, offset: i),
@@ -779,13 +782,14 @@ struct DiaryEditor: UIViewRepresentable {
             chip.center = CGPoint(x: place.midX, y: place.midY)
             // Синяя кромка — та же, что у поднятого дела (P374).
             chip.layer.borderColor = UIColor(Look.glow).cgColor
-            chip.layer.borderWidth = 2
-            chip.layer.cornerRadius = picture.size.height / 2
+            chip.layer.borderWidth = photo != nil ? 3 : 2
+            chip.layer.cornerRadius = photo != nil ? 8 : picture.size.height / 2
             chip.layer.shadowOpacity = 0.25
             chip.layer.shadowRadius = 6
             chip.layer.shadowOffset = CGSize(width: 0, height: 2)
             veil.addSubview(chip)
-            let grow: CGFloat = 1.4
+            // Снимок и так крупный — он лишь чуть приподнимается (P392).
+            let grow: CGFloat = photo != nil ? 1.05 : 1.4
             let cross = UIButton(type: .custom)
             // Крестик вдвое крупнее прежнего — его видно и пальцем не
             // промахнуться (P380).
@@ -806,19 +810,34 @@ struct DiaryEditor: UIViewRepresentable {
             cross.layer.shadowOpacity = 0.3
             cross.layer.shadowRadius = 3
             cross.layer.shadowOffset = CGSize(width: 0, height: 1)
-            cross.center = CGPoint(x: min(place.midX + picture.size.width * grow / 2 + 22, field.maxX - 10),
-                                   y: place.midY)
-            cross.accessibilityLabel = T("Удалить точку", "Delete place")
+            if photo != nil {
+                // У снимка крестик — на верхнем правом углу, как у значка
+                // на экране «Домой».
+                cross.center = CGPoint(x: min(place.midX + picture.size.width * grow / 2, field.maxX - 10),
+                                       y: place.midY - picture.size.height * grow / 2 + 4)
+                cross.accessibilityLabel = T("Убрать снимок из текста", "Remove photo from text")
+            } else {
+                cross.center = CGPoint(x: min(place.midX + picture.size.width * grow / 2 + 22, field.maxX - 10),
+                                       y: place.midY)
+                cross.accessibilityLabel = T("Удалить точку", "Delete place")
+            }
             cross.addAction(UIAction { [weak self, weak view] _ in
                 guard let self, let view else { return }
                 self.disarm()
-                // Удаляется та самая точка, если она ещё на своём месте.
+                // Удаляется то самое, если оно ещё на своём месте.
                 guard i < view.textStorage.length,
-                      view.textStorage.attribute(DiaryEditor.lineKey, at: i,
-                                                 effectiveRange: nil) as? String == line
+                      (view.textStorage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) as? String
+                        ?? view.textStorage.attribute(DiaryEditor.lineKey, at: i,
+                                                      effectiveRange: nil) as? String) == line
                 else { return }
                 Feel.light()
-                self.remove(at: i, in: view)
+                // Снимок уходит из текста в полоску внизу — файл цел, из
+                // полоски его можно удалить совсем или вернуть (P392).
+                if let link = photo, let giveBack = self.parent.onReturnPhoto {
+                    giveBack(link)
+                } else {
+                    self.remove(at: i, in: view)
+                }
             }, for: .touchUpInside)
             cross.alpha = 0
             veil.addSubview(cross)
@@ -918,13 +937,15 @@ struct DiaryEditor: UIViewRepresentable {
                 // Точка — сразу крупнее и с крестиком, ещё под пальцем
                 // (P374): «удалить» видно, не отпуская. Повели — крестик
                 // уходит, точка идёт за пальцем.
-                if takenIsPoint(at: i, in: view) { arm(i, in: view) } else { lift(i, g, in: view) }
+                // Снимок — так же (P392): рамка и крестик на месте; повели —
+                // крестик уходит, снимок идёт над пальцем.
+                if takenIsPoint(at: i, in: view) || takenIsPhoto(at: i, in: view) {
+                    arm(i, in: view)
+                } else {
+                    lift(i, g, in: view)
+                }
             case .changed:
                 let spot = g.location(in: nil)
-                if outline != nil, hypot(spot.x - takenAt.x, spot.y - takenAt.y) >= 10 {
-                    outline?.removeFromSuperview()
-                    outline = nil
-                }
                 if ghost == nil {
                     guard hypot(spot.x - takenAt.x, spot.y - takenAt.y) >= 10 else { return }
                     disarm()
@@ -947,8 +968,6 @@ struct DiaryEditor: UIViewRepresentable {
                 ghost = nil
                 mark?.removeFromSuperview()
                 mark = nil
-                outline?.removeFromSuperview()
-                outline = nil
                 // Подержали и отпустили, не сдвинув: точка так и стоит
                 // крупнее, с крестиком; снимок — на месте.
                 guard moved else {
@@ -991,8 +1010,6 @@ struct DiaryEditor: UIViewRepresentable {
                 ghost = nil
                 mark?.removeFromSuperview()
                 mark = nil
-                outline?.removeFromSuperview()
-                outline = nil
                 restore(view)
                 taken = nil
             }
@@ -1041,23 +1058,6 @@ struct DiaryEditor: UIViewRepresentable {
                 host.addSubview(shadow)
                 ghost = shadow
                 ghostLine = false
-                // И сам снимок на месте — в синей рамке (P391).
-                if outline == nil,
-                   let start = view.position(from: view.beginningOfDocument, offset: i),
-                   let end = view.position(from: start, offset: 1),
-                   let range = view.textRange(from: start, to: end) {
-                    let frame = UIView(frame: view.firstRect(for: range).insetBy(dx: -2, dy: -2))
-                    frame.isUserInteractionEnabled = false
-                    frame.layer.borderColor = UIColor(Look.glow).cgColor
-                    frame.layer.borderWidth = 3
-                    frame.layer.cornerRadius = 8
-                    frame.layer.shadowColor = UIColor(Look.glow).cgColor
-                    frame.layer.shadowOpacity = 0.8
-                    frame.layer.shadowRadius = 4
-                    frame.layer.shadowOffset = .zero
-                    view.addSubview(frame)
-                    outline = frame
-                }
             }
             before = view.attributedText.copy() as? NSAttributedString
             now = i
@@ -1463,6 +1463,7 @@ struct DiaryEditor: UIViewRepresentable {
         /// первая буква должна вести себя так же.
         func textView(_ view: UITextView, shouldChangeTextIn range: NSRange,
                       replacementText text: String) -> Bool {
+            if let decided = keepObjectsApart(view, range, text) { return decided }
             guard parent.stamped,
                   let first = text.first, first.isLowercase else { return true }
             let before = (view.text as NSString).substring(to: range.location)
@@ -1479,6 +1480,82 @@ struct DiaryEditor: UIViewRepresentable {
             view.selectedRange = NSRange(location: after, length: 0)
             parent.text = DiaryEditor.plain(view.attributedText)
             restyle(view)
+            return false
+        }
+
+        // MARK: - Вложение — своя строка (P392)
+
+        /// Снимок, точка, голос или файл в поле (знак вложения с нашей
+        /// меткой).
+        private func isObject(_ i: Int, in storage: NSTextStorage) -> Bool {
+            guard i >= 0, i < storage.length,
+                  (storage.string as NSString).character(at: i) == 0xFFFC else { return false }
+            return storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) != nil
+                || storage.attribute(DiaryEditor.lineKey, at: i, effectiveRange: nil) != nil
+        }
+
+        /// В строке есть вложение и есть буквы: так быть не должно.
+        static func mixed(_ s: NSString, objects: Set<Int>, in para: NSRange) -> Bool {
+            var object = false, letters = false
+            for i in para.location..<NSMaxRange(para) {
+                if objects.contains(i) { object = true; continue }
+                let c = s.character(at: i)
+                if c != 32, c != 10, c != 13, c != 9, c != 0xA0 { letters = true }
+            }
+            return object && letters
+        }
+
+        /// Одно вложение — одна строка (P392). Вложение не стирается
+        /// клавишей и не заменяется набранным — только крестиком. Буквы,
+        /// набранные в строке вложения, уходят своей строкой — над ним, если
+        /// курсор стоял перед ним, и под ним, если после. Стереть перевод
+        /// строки так, чтобы текст въехал в строку вложения, нельзя. Прежде
+        /// снимок под курсором заменялся набранным, а в строку с точкой можно
+        /// было дописывать — хотя перенесённая точка встаёт своей строкой.
+        /// `nil` — правка обычная, решает поле.
+        private func keepObjectsApart(_ view: UITextView, _ range: NSRange, _ text: String) -> Bool? {
+            // Диктовка ставит свой временный знак — его не трогаем (P197).
+            guard !text.contains("\u{FFFC}") else { return nil }
+            let storage = view.textStorage
+            let old = storage.string as NSString
+            guard NSMaxRange(range) <= old.length else { return nil }
+            var objects = Set<Int>()
+            for i in 0..<old.length where old.character(at: i) == 0xFFFC && isObject(i, in: storage) {
+                objects.insert(i)
+            }
+            guard !objects.isEmpty else { return nil }
+            if objects.contains(where: { NSLocationInRange($0, range) }) { return false }
+            // Строка, где вложение уже стоит посреди слов (записи до этого
+            // правила), правится как раньше — только само вложение не
+            // стирается.
+            if Self.mixed(old, objects: objects, in: old.paragraphRange(for: range)) { return nil }
+            let added = text as NSString
+            let new = old.replacingCharacters(in: range, with: text) as NSString
+            let shift = added.length - range.length
+            let moved = Set(objects.map { $0 >= NSMaxRange(range) ? $0 + shift : $0 })
+            let touched = new.paragraphRange(for: NSRange(location: range.location, length: added.length))
+            guard Self.mixed(new, objects: moved, in: touched) else { return nil }
+            // Стирали — и текст въехал бы в строку вложения: не стираем.
+            guard added.length > 0, range.length == 0 else { return false }
+            let para = old.paragraphRange(for: NSRange(location: range.location, length: 0))
+            let first = objects.filter { NSLocationInRange($0, para) }.min() ?? para.location
+            var end = NSMaxRange(para)
+            if end > para.location, old.character(at: end - 1) == 10 { end -= 1 }
+            let at: Int, piece: String, caret: Int
+            if range.location <= first {
+                at = para.location
+                piece = text + "\n"
+                caret = at + added.length
+            } else {
+                at = end
+                piece = "\n" + text
+                caret = at + 1 + added.length
+            }
+            storage.replaceCharacters(in: NSRange(location: at, length: 0),
+                                      with: NSAttributedString(string: piece,
+                                                               attributes: DiaryEditor.body(parent.size, serif: parent.serif)))
+            view.selectedRange = NSRange(location: min(caret, storage.length), length: 0)
+            textViewDidChange(view)
             return false
         }
 

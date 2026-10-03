@@ -618,3 +618,4 @@
 "Task moved to " = "Attività spostata al ";
 "Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "Impossibile spostare: il file di quel giorno non è ancora scaricato da iCloud o viene modificato altrove. Riprova.";
 "Choose a day" = "Scegli un giorno";
+"Remove photo from text" = "Togli la foto dal testo";

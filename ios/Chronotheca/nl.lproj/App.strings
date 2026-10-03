@@ -618,3 +618,4 @@
 "Task moved to " = "Taak verplaatst naar ";
 "Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "Verplaatsen lukte niet: het bestand van die dag is nog niet uit iCloud gedownload of wordt elders gewijzigd. Probeer het opnieuw.";
 "Choose a day" = "Kies een dag";
+"Remove photo from text" = "Foto uit de tekst halen";
