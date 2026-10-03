@@ -155,6 +155,15 @@ struct PlanRowLine: View {
             }
     }
 
+    /// Номер: подержать — поднять дело, коснуться — сделано (P383). Одним
+    /// жестом, а не двумя (P394): отдельное касание под «главным» долгим
+    /// нажатием до номера не доходило — в 82-й отметка касанием не
+    /// работала. Теперь касание срабатывает, если долгое нажатие не
+    /// состоялось.
+    private var handle: some Gesture {
+        lift.exclusively(before: TapGesture().onEnded { onCheck?() })
+    }
+
     private var head: some View {
         HStack(alignment: .firstTextBaseline, spacing: Self.gap) {
             badge
@@ -172,12 +181,12 @@ struct PlanRowLine: View {
         // Номер — рукоять, а не текст: касание по нему не ставит курсор
         // в строку (решение P167), а отмечает дело сделанным (P383).
         .contentShape(Rectangle())
-        .onTapGesture { onCheck?() }
+        .accessibilityAction { onCheck?() }
         .accessibilityLabel(row.done ? T("Дело \(number): сделано", "Task \(number): done")
                                      : T("Дело \(number)", "Task \(number)"))
         .accessibilityAddTraits(onCheck != nil ? .isButton : [])
         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
-        .highPriorityGesture(onLift != nil ? lift : nil)
+        .highPriorityGesture(onLift != nil ? handle : nil)
         // Жест оборвался сам (палец увела прокрутка) — дело опускается.
         .onChange(of: holding) { _, now in
             guard !now else { return }

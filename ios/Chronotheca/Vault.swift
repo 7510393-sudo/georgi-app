@@ -232,13 +232,13 @@ final class Vault: ObservableObject {
         - [ ] 09:00 Отвезти документы нотариусу
               Малая Бронная 12, второй этаж. Взять оригинал доверенности.
         - [ ] Позвонить в поликлинику
-        - [ ] 15:00 Дописать вторую главу
+        - [x] 15:00 Дописать вторую главу
         - [ ] Забрать посылку до восьми
         """, """
         - [ ] 09:00 Take the papers to the notary
               12 Marylebone Lane, second floor. Bring the original power of attorney.
         - [ ] Call the surgery
-        - [ ] 15:00 Finish the second chapter
+        - [x] 15:00 Finish the second chapter
         - [ ] Collect the parcel before eight
         """))
         plan.set("date", Vault.stamp(today))
