@@ -183,9 +183,13 @@ struct SettingsSticker: View {
     @EnvironmentObject private var shell: Shell
     @State private var askingRename = false
 
+    /// Ширина записки: шире прежних 330, но так, чтобы справа оставалась
+    /// полоска страницы, — по ней видно, где человек остался (P383).
+    static var width: CGFloat { min(360, UIScreen.main.bounds.width - 40) }
+
     var body: some View {
         Sticker(side: .leading, title: T("Настройки", "Settings"),
-                paper: Look.note, edge: Look.noteEdge, width: 330, close: close) {
+                paper: Look.note, edge: Look.noteEdge, width: Self.width, close: close) {
           // Длинная бумажка прокручивается: разделов стало много (P249).
           ScrollView {
            VStack(spacing: 0) {

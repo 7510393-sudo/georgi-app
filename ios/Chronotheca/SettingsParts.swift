@@ -79,7 +79,9 @@ struct Choice<Value: Hashable>: View {
     @Binding var selection: Value
 
     var body: some View {
-        HStack(spacing: 4) {
+        // Не помещаются в строку — переходят на следующую, а не уходят за
+        // край записки (P383).
+        Flow(spacing: 4) {
             ForEach(options.indices, id: \.self) { i in
                 let (value, name) = options[i]
                 let on = value == selection
@@ -126,5 +128,58 @@ struct NoteButton: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Кнопки в ряд; не помещаются — переходят на следующую строку (P383).
+/// Прежде длинные русские варианты («как iPhone», «без сжатия») стояли
+/// одной строкой и уходили за край записки.
+struct Flow: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        let rows = arrange(subviews, width: width)
+        let wide = rows.map(\.width).max() ?? 0
+        let high = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
+        return CGSize(width: wide, height: high)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(subviews, width: bounds.width) {
+            var x = bounds.minX
+            for i in row.items {
+                let size = subviews[i].sizeThatFits(.unspecified)
+                subviews[i].place(at: CGPoint(x: x, y: y + (row.height - size.height) / 2),
+                                  proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private struct Row {
+        var items: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(_ subviews: Subviews, width: CGFloat) -> [Row] {
+        var rows: [Row] = []
+        var row = Row()
+        for i in subviews.indices {
+            let size = subviews[i].sizeThatFits(.unspecified)
+            let need = row.items.isEmpty ? size.width : row.width + spacing + size.width
+            if !row.items.isEmpty, need > width {
+                rows.append(row)
+                row = Row()
+            }
+            row.width = row.items.isEmpty ? size.width : row.width + spacing + size.width
+            row.height = max(row.height, size.height)
+            row.items.append(i)
+        }
+        if !row.items.isEmpty { rows.append(row) }
+        return rows
     }
 }

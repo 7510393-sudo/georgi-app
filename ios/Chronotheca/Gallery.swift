@@ -34,7 +34,10 @@ struct GalleryRow: View {
         var id: String { asset.localIdentifier }
     }
 
-    static let height: CGFloat = PhotoStrip.side + 16
+    /// Ряд галереи над клавиатурой остаётся мелким (прежние 60): крупные
+    /// превью заняли бы пол-экрана над клавиатурой (P383).
+    static let side: CGFloat = 60
+    static let height: CGFloat = side + 16
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -46,7 +49,7 @@ struct GalleryRow: View {
                         Text(T("все фото", "all photos")).font(Look.sans(9.5))
                     }
                     .foregroundStyle(Look.accent)
-                    .frame(width: PhotoStrip.side, height: PhotoStrip.side)
+                    .frame(width: Self.side, height: Self.side)
                     .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
                     .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
                 }
@@ -199,7 +202,7 @@ struct GalleryThumb: View {
                 Look.chrome
             }
         }
-        .frame(width: PhotoStrip.side, height: PhotoStrip.side)
+        .frame(width: GalleryRow.side, height: GalleryRow.side)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
         .onAppear {

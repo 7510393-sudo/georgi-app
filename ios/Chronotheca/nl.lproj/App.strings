@@ -609,3 +609,11 @@
 "” folder: %@" = "’: %@";
 "” to the trash" = "’ naar de prullenmand";
 "✓ yes ›" = "✓ ja ›";
+"Move to " = "Verplaatsen naar ";
+"To another day" = "Naar een andere dag";
+"Day after tomorrow" = "Overmorgen";
+"In a week" = "Over een week";
+"Task %@: done" = "Taak %@: klaar";
+"Task %@" = "Taak %@";
+"Task moved to " = "Taak verplaatst naar ";
+"Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "Verplaatsen lukte niet: het bestand van die dag is nog niet uit iCloud gedownload of wordt elders gewijzigd. Probeer het opnieuw.";

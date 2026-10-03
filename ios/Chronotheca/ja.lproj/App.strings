@@ -609,3 +609,11 @@
 "” folder: %@" = "」フォルダに保存しました: %@";
 "” to the trash" = "」をゴミ箱へ";
 "✓ yes ›" = "✓ はい ›";
+"Move to " = "移動先: ";
+"To another day" = "別の日へ";
+"Day after tomorrow" = "明後日";
+"In a week" = "1週間後";
+"Task %@: done" = "タスク %@：完了";
+"Task %@" = "タスク %@";
+"Task moved to " = "タスクを移動しました: ";
+"Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "移動できませんでした：その日のファイルがまだiCloudからダウンロードされていないか、別の場所で変更中です。もう一度お試しください。";

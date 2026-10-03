@@ -230,8 +230,9 @@ struct PhotoStrip: View {
     /// Превью, которое сейчас несут, — по нему соседи расступаются.
     @State private var carrying: Int?
 
-    /// На 10% крупнее прежних 54 и вплотную, без промежутков (P275).
-    static let side: CGFloat = 60
+    /// Как снимок в тексте — в пять строк дневника (P383; прежде 60,
+    /// P275), вплотную, без промежутков.
+    static let side: CGFloat = DiaryEditor.photoSize.width
     private let gap: CGFloat = 0
 
     var body: some View {

@@ -609,3 +609,11 @@
 "” folder: %@" = "»: %@";
 "” to the trash" = "» a la papelera";
 "✓ yes ›" = "✓ sí ›";
+"Move to " = "Mover al ";
+"To another day" = "A otro día";
+"Day after tomorrow" = "Pasado mañana";
+"In a week" = "En una semana";
+"Task %@: done" = "Tarea %@: hecha";
+"Task %@" = "Tarea %@";
+"Task moved to " = "Tarea movida al ";
+"Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "No se pudo mover: el archivo de ese día aún no se ha descargado de iCloud o se está cambiando en otro lugar. Inténtalo de nuevo.";

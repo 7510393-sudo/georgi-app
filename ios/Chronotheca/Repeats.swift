@@ -131,6 +131,16 @@ enum Repeats {
         }
     }
 
+    /// Дописать строки в конец плана другого дня — дело, перенесённое
+    /// свайпом вправо (P383). `false` — файл того дня не прочитался
+    /// (ещё в iCloud) или изменился, пока его собирали: не пишем.
+    static func add(_ rows: [PlanRow], on date: Date, vault: Vault) -> Bool {
+        change(on: date, vault: vault) { list in
+            list.append(contentsOf: rows)
+            return true
+        }
+    }
+
     /// Поправить в файле дня строку дела серии или убрать её. `false` — не
     /// вышло (файл не прочитался или изменился).
     static func edit(_ id: String, on date: Date, vault: Vault,

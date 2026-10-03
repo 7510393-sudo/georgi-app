@@ -5,7 +5,8 @@ import CoreLocation
 import UniformTypeIdentifiers
 
 /// Дело подняли долгим нажатием и ведут пальцем (P362): вверх-вниз —
-/// переставить, влево — удалить, вправо — сделано, как в почте iPhone.
+/// переставить, влево — удалить, вправо — перенести на другой день (P383;
+/// прежде вправо было «сделано» — теперь это касание по номеру).
 /// Ход пальца — от места, где дело подняли, по экрану.
 enum Lift {
     case began
@@ -37,6 +38,8 @@ struct PlanRowLine: View {
     var onUp: (() -> Void)?
     var onDown: (() -> Void)?
     var onDelete: (() -> Void)?
+    /// Касание по номеру — сделано или снова не сделано (P383).
+    var onCheck: (() -> Void)?
     /// Правка названия кончилась.
     var onDone: () -> Void = {}
     /// «Ввод» в названии: ввод переходит к делу ниже.
@@ -108,8 +111,12 @@ struct PlanRowLine: View {
         // только тонком. Справа он уходит под корешок «Детали»: корешок
         // лежит сверху и черту не пересекает.
         .background { contour }
-        .opacity(row.done ? 0.42 : 1)
     }
+
+    /// Сделанное дело (P383): текст и кнопки бледнеют, а номер остаётся
+    /// ярким и перечёркнут косой чертой — по нему видно, что отмечено и
+    /// куда нажать, чтобы снять отметку.
+    private var dim: Double { row.done ? 0.42 : 1 }
 
     private var contour: some View {
         RoundedRectangle(cornerRadius: 9)
@@ -162,10 +169,13 @@ struct PlanRowLine: View {
     /// долгим нажатием (P362).
     private var badge: some View {
         face
-        // Номер — рукоять, а не текст: касание по нему не должно
-        // ставить курсор в строку (решение P167).
+        // Номер — рукоять, а не текст: касание по нему не ставит курсор
+        // в строку (решение P167), а отмечает дело сделанным (P383).
         .contentShape(Rectangle())
-        .onTapGesture { }
+        .onTapGesture { onCheck?() }
+        .accessibilityLabel(row.done ? T("Дело \(number): сделано", "Task \(number): done")
+                                     : T("Дело \(number)", "Task \(number)"))
+        .accessibilityAddTraits(onCheck != nil ? .isButton : [])
         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
         .highPriorityGesture(onLift != nil ? lift : nil)
         // Жест оборвался сам (палец увела прокрутка) — дело опускается.
@@ -192,6 +202,9 @@ struct PlanRowLine: View {
                     Capsule().fill(stripe).frame(width: 16, height: 3).padding(.bottom, 3)
                 }
             }
+            .overlay {
+                if row.done { Strike().stroke(Look.ink, style: StrokeStyle(lineWidth: 1.8, lineCap: .round)) }
+            }
     }
 
     private var time: some View {
@@ -213,6 +226,7 @@ struct PlanRowLine: View {
                 .modifier(Panel())
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
         }
+        .opacity(dim)
         .buttonStyle(.plain)
         // Не .disabled: система рисует выключенную кнопку бледнее, и время
         // на соседней странице выцветало, а после поворота «загоралось».
@@ -246,6 +260,7 @@ struct PlanRowLine: View {
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 12 }
         }
         .buttonStyle(.plain)
+        .opacity(dim)
         .allowsHitTesting(onBell != nil)
         .accessibilityLabel(row.bell.map { T("Напомнить в \($0)", "Remind at \($0)") }
                                 ?? T("Напоминание не назначено", "No reminder"))
@@ -265,6 +280,7 @@ struct PlanRowLine: View {
                   onDone: onDone,
                   onNext: onNext,
                   onLift: onLift)
+            .opacity(dim)
             .alignmentGuide(.firstTextBaseline) { _ in PlanTitle.baseline }
     }
 
@@ -285,8 +301,21 @@ struct PlanRowLine: View {
                 .padding(.vertical, PlanRowLine.bellRise)
         }
         .buttonStyle(.plain)
+        .opacity(dim)
         .allowsHitTesting(onDetails != nil)
         .accessibilityLabel(T("Подробности", "Details"))
+    }
+}
+
+/// Косая черта через номер сделанного дела (P383): снизу слева вверх
+/// направо, с отступом от краёв панельки.
+struct Strike: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let inset: CGFloat = 5
+        p.move(to: CGPoint(x: r.minX + inset, y: r.maxY - inset))
+        p.addLine(to: CGPoint(x: r.maxX - inset, y: r.minY + inset))
+        return p
     }
 }
 
@@ -561,6 +590,8 @@ struct PlanView: View {
     /// Событие, о котором спрашиваем: убрать из плана или удалить.
     @State private var askingEvent: DayEvents.Shown?
     @State private var openedEvent: OpenedEvent?
+    /// Дело отвели вправо — спрашиваем, на какой день (P383).
+    @State private var movingTask: MovingTask?
 
     struct OpenedEvent: Identifiable {
         let id = UUID()
@@ -643,6 +674,12 @@ struct PlanView: View {
                    + "Удалённое из Календаря шагом назад не вернуть.",
                    "“Remove” keeps the event in Calendar and only takes it off this day’s plan. "
                    + "Deleting from Calendar cannot be undone here."))
+        }
+        .sheet(item: $movingTask) { m in
+            MoveDaySheet(from: store.date, pick: { day in
+                movingTask = nil
+                moveTask(m.id, to: day)
+            }, cancel: { movingTask = nil })
         }
         .sheet(item: $openedEvent) { o in
             EventSheet(event: o.event) {
@@ -751,6 +788,7 @@ struct PlanView: View {
             onUp: { store.move(id, by: -1) },
             onDown: { store.move(id, by: 1) },
             onDelete: { store.delete(id) },
+            onCheck: { toggle(row) },
             // Правку кончила эта самая строка, а не соседняя, которой
             // только что отдали ввод: иначе курсор гас бы сразу после
             // перехода в следующее дело.
@@ -781,14 +819,14 @@ struct PlanView: View {
                     : CGFloat(displaced(id)) * PlanRowLine.height)
             .animation(dragged == id ? nil : .easeOut(duration: 0.16),
                        value: displaced(id))
-            .background { underneath(id, done: row.wrappedValue.done) }
+            .background { underneath(id) }
             .shadow(color: .black.opacity(dragged == id ? 0.18 : 0),
                     radius: 8, y: 3)
             .zIndex(dragged == id || up ? 1 : 0)
             .contentShape(Rectangle())
             // Короткое нажатие ставит курсор в текст дела. Сделано —
-            // сдвигом вправо после долгого нажатия (P362; прежде — самим
-            // долгим нажатием, P156).
+            // касанием по номеру (P383; прежде — сдвигом вправо, P362, а
+            // ещё раньше — самим долгим нажатием, P156).
             .onTapGesture {
                 armedLine = nil
                 guard store.canEditPlan, typingIn != id else { return }
@@ -797,21 +835,21 @@ struct PlanView: View {
     }
 
     /// Что открывается под делом, отведённым вбок: справа — красная
-    /// корзина, слева — зелёная галочка (как в почте iPhone, P362).
-    @ViewBuilder private func underneath(_ id: UUID, done: Bool) -> some View {
+    /// корзина (P362), слева — синий календарик «на другой день» (P383).
+    @ViewBuilder private func underneath(_ id: UUID) -> some View {
         if lifted == id, slide != 0 {
-            Self.swipeBack(slide, done: done)
+            Self.swipeBack(slide)
         }
     }
 
-    static func swipeBack(_ slide: CGFloat, done: Bool) -> some View {
+    static func swipeBack(_ slide: CGFloat) -> some View {
         let far = abs(slide) >= Self.swipe
         return HStack(spacing: 0) {
             if slide > 0 {
-                Image(systemName: done ? "arrow.uturn.backward" : "checkmark")
+                Image(systemName: "calendar.badge.clock")
                     .frame(width: slide)
                     .frame(maxHeight: .infinity)
-                    .background(Color.green.opacity(far ? 0.85 : 0.4))
+                    .background(Look.accent.opacity(far ? 0.9 : 0.45))
                 Spacer(minLength: 0)
             } else {
                 Spacer(minLength: 0)
@@ -827,8 +865,8 @@ struct PlanView: View {
     }
 
     /// Дело подняли долгим нажатием и ведут (P362). Первый заметный ход
-    /// пальца решает, куда: вверх-вниз — переставить, вбок — удалить или
-    /// отметить. Дальше направление не меняется: дело, которое вели вниз,
+    /// пальца решает, куда: вверх-вниз — переставить, влево — удалить,
+    /// вправо — перенести на другой день (P383). Дальше направление не меняется: дело, которое вели вниз,
     /// не удалится от случайного ухода пальца вбок.
     private func lift(_ row: Binding<PlanRow>, _ phase: Lift) {
         let id = row.wrappedValue.id
@@ -886,7 +924,8 @@ struct PlanView: View {
                 withAnimation(.easeOut(duration: 0.2)) { store.delete(id) }
                 Feel.light()
             } else if by >= Self.swipe {
-                toggle(row)
+                Feel.light()
+                movingTask = MovingTask(id: id)
             }
         }
     }
@@ -989,6 +1028,7 @@ struct PlanView: View {
                         onTime: { open(e) },
                         onBell: { open(e) },
                         onDetails: { open(e) },
+                        onCheck: { checkEvent(e) },
                         onLift: { eventLift(e, $0) },
                         lifted: up)
             Rectangle().fill(Look.ruleSoft).frame(height: 1)
@@ -1002,7 +1042,7 @@ struct PlanView: View {
         })
         .offset(x: up ? eventSlide : 0, y: up ? eventDrag : 0)
         .background {
-            if up, eventSlide != 0 { Self.swipeBack(eventSlide, done: e.row.done) }
+            if up, eventSlide < 0 { Self.swipeBack(eventSlide) }
         }
         .shadow(color: .black.opacity(up && eventDrag != 0 ? 0.18 : 0), radius: 8, y: 3)
         .zIndex(up ? 1 : 0)
@@ -1019,9 +1059,18 @@ struct PlanView: View {
         openedEvent = OpenedEvent(event: event)
     }
 
-    /// Событие подняли долгим нажатием (P376) — как дело: вправо — сделано
-    /// (затенить), влево — убрать или удалить, вниз под блок событий — в
-    /// свои дела, на то место, где расступились строки.
+    /// Событие сделано или снова не сделано — касанием по номеру, как
+    /// дело (P383).
+    private func checkEvent(_ e: DayEvents.Shown) {
+        guard store.canEditPlan else { return shell.say(store.closedReason) }
+        markEvent(e) { $0.done.toggle() }
+        if !e.row.done { Feel.done() } else { Feel.light() }
+    }
+
+    /// Событие подняли долгим нажатием (P376) — как дело: влево — убрать
+    /// или удалить, вниз под блок событий — в свои дела, на то место, где
+    /// расступились строки. Вправо событие не ходит: его день назначен в
+    /// Календаре, а сделано — касанием по номеру (P383).
     private func eventLift(_ e: DayEvents.Shown, _ phase: Lift) {
         switch phase {
         case .began:
@@ -1065,7 +1114,7 @@ struct PlanView: View {
                 }
             case .horizontal:
                 let was = abs(eventSlide) >= Self.swipe
-                eventSlide = way.width
+                eventSlide = min(0, way.width)
                 if (abs(eventSlide) >= Self.swipe) != was { Feel.tick() }
             case nil:
                 break
@@ -1086,10 +1135,7 @@ struct PlanView: View {
             }
             guard real else { return }
             if axis == .horizontal {
-                if by >= Self.swipe {
-                    markEvent(e) { $0.done.toggle() }
-                    if !e.row.done { Feel.done() } else { Feel.light() }
-                } else if by <= -Self.swipe {
+                if by <= -Self.swipe {
                     askingEvent = e
                 }
             } else if axis == .vertical, let to {
@@ -1228,6 +1274,19 @@ struct PlanView: View {
                       + error.localizedDescription)
         }
         reloadEvents()
+    }
+
+    /// Дело уходит в план выбранного дня (P383).
+    private func moveTask(_ id: UUID, to day: Date) {
+        var gone = false
+        withAnimation(.easeOut(duration: 0.2)) { gone = store.moveTask(id, to: day) }
+        if gone {
+            Feel.thud()
+            shell.say(T("Дело перенесено на ", "Task moved to ") + Ru.shortDate(day))
+        } else {
+            shell.say(T("Не вышло перенести: файл того дня ещё не скачан из iCloud или его меняют в другом месте. Попробуйте ещё раз.",
+                        "Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again."))
+        }
     }
 
     /// Дело отпустили: оно встаёт туда, куда его донесли.

@@ -280,6 +280,34 @@ final class DayStore: ObservableObject {
         save()
     }
 
+    /// Перенести дело в план другого дня (P383) — вместе со снимками и
+    /// точками под ним. Сперва дело вписывается в файл того дня, и только
+    /// когда запись удалась, уходит отсюда: при сбое дело остаётся на
+    /// месте, а не пропадает. Перенос трогает два файла, поэтому «шаг
+    /// назад» после него начинается заново: иначе он вернул бы дело сюда,
+    /// не убрав его оттуда, — и дело стало бы двумя.
+    func moveTask(_ id: UUID, to day: Date) -> Bool {
+        guard canEditPlan, let i = index(of: id), planRows[i].isTask,
+              !Calendar.current.isDate(day, inSameDayAs: date) else { return false }
+        var end = i + 1
+        while end < planRows.count, let line = planRows[end].verbatim,
+              Diary.picture(in: line) != nil || Geo.point(in: line) != nil || Plan.isPhotoRow(line) {
+            end += 1
+        }
+        var block = Array(planRows[i..<end])
+        // В другой день дело уходит само по себе, без серии: повтор
+        // остаётся в своих днях.
+        block[0].repeats = nil
+        guard Repeats.add(block, on: day, vault: vault) else { return false }
+        quietPlan = true
+        planRows.removeSubrange(i..<end)
+        quietPlan = false
+        planBack = []
+        planAhead = []
+        save()
+        return true
+    }
+
     func delete(_ id: UUID) {
         guard canEditPlan, let i = index(of: id) else { return }
         // Дело из серии — спросить: только этот день или и следующие (P359).

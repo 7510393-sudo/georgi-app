@@ -282,4 +282,27 @@ extension DayStoreTests {
         день.returnToStrip("../../Photos/2026/b.jpg")
         XCTAssertEqual(день.diaryText, "Утро.\nВечер.")
     }
+
+    // P383: свайп вправо — дело уходит в план другого дня вместе со
+    // снимком под ним; здесь его больше нет, и «шаг назад» не вернёт его
+    // вторым экземпляром.
+    func testДелоПереноситсяНаДругойДень() {
+        let день = store(0)
+        день.planRows = [.task(time: "09:00", "Отвезти документы"),
+                         .verbatim("![](../../Photos/2026/a.jpg)"),
+                         .task("Позвонить")]
+        день.save()
+        let через3 = Calendar.current.date(byAdding: .day, value: 3, to: день.date)!
+        XCTAssertTrue(день.moveTask(день.planRows[0].id, to: через3))
+        XCTAssertEqual(день.planRows.map(\.text), ["Позвонить"])
+        XCTAssertTrue(день.planBack.isEmpty)
+
+        let там = store(3)
+        XCTAssertEqual(там.planRows.first?.text, "Отвезти документы")
+        XCTAssertEqual(там.planRows.first?.time, "09:00")
+        XCTAssertTrue(там.planRows.contains { $0.verbatim == "![](../../Photos/2026/a.jpg)" },
+                      "снимок под делом переехал вместе с ним")
+        // На тот же день не переносится.
+        XCTAssertFalse(день.moveTask(день.planRows[0].id, to: день.date))
+    }
 }
