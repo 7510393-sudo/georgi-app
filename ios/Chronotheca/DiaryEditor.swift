@@ -774,11 +774,22 @@ struct DiaryEditor: UIViewRepresentable {
             // Крестик вдвое крупнее прежнего — его видно и пальцем не
             // промахнуться (P380).
             let symbol = UIImage(systemName: "xmark.circle.fill",
-                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 36)
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 36, weight: .bold)
                                      .applying(UIImage.SymbolConfiguration(
                                         paletteColors: [.white, UIColor(Look.pin)])))
             cross.setImage(symbol, for: .normal)
             cross.frame = CGRect(x: 0, y: 0, width: 56, height: 56)
+            // Как крестик в плане (P386): белая кайма и тень.
+            let rim = UIView(frame: CGRect(x: 0, y: 0, width: 47, height: 47))
+            rim.backgroundColor = .white
+            rim.layer.cornerRadius = 23.5
+            rim.isUserInteractionEnabled = false
+            rim.center = CGPoint(x: 28, y: 28)
+            cross.insertSubview(rim, at: 0)
+            cross.layer.shadowColor = UIColor.black.cgColor
+            cross.layer.shadowOpacity = 0.3
+            cross.layer.shadowRadius = 3
+            cross.layer.shadowOffset = CGSize(width: 0, height: 1)
             cross.center = CGPoint(x: min(place.midX + picture.size.width * grow / 2 + 22, field.maxX - 10),
                                    y: place.midY)
             cross.accessibilityLabel = T("Удалить точку", "Delete place")

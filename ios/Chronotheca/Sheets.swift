@@ -1131,11 +1131,7 @@ struct DetailsDrawer: View {
 
     private var closeButton: some View {
         Button { close() } label: {
-            Text("✕")
-                .font(.system(size: 17))
-                .foregroundStyle(Look.inkSoft)
-                .frame(width: 28, height: 28)
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
+            CloseMark()
         }
         .accessibilityLabel(T("Закрыть", "Close"))
     }

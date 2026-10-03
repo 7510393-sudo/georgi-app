@@ -93,13 +93,25 @@ struct Sticker<Content: View>: View {
 
     private var closeButton: some View {
         Button(action: close) {
-            Text("✕")
-                .font(.system(size: 19))
-                .foregroundStyle(Look.inkSoft)
+            CloseMark()
                 .frame(width: 44, height: 38)
         }
         .padding(.top, 12)
         .accessibilityLabel(T("Закрыть", "Close"))
+    }
+}
+
+/// Крестик «закрыть» у настроек, меню страницы и «Подробностей» (P386):
+/// толстый крест в кружке с чертой — прежний тонкий «✕» бледным цветом
+/// терялся на бумаге.
+struct CloseMark: View {
+    var body: some View {
+        Image(systemName: "xmark")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(Look.ink)
+            .frame(width: 32, height: 32)
+            .background(Circle().fill(Look.ink.opacity(0.06)))
+            .overlay(Circle().strokeBorder(Look.inkSoft.opacity(0.6), lineWidth: 1.3))
     }
 }
 

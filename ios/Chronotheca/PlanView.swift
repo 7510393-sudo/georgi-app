@@ -511,12 +511,16 @@ struct StepButton: View {
     static let side: CGFloat = 41
 
     var body: some View {
+        // Выразительнее (P386): стрелка толще и крупнее, кружок — заметной
+        // синей чертой; недоступная — бледнее, но различима (P113: кнопки
+        // не пропадают).
         Image(systemName: icon)
-            .font(.system(size: 17, weight: .medium))
+            .font(.system(size: 19, weight: .bold))
             .foregroundStyle(Look.accent)
             .frame(width: Self.side, height: Self.side)
-            .overlay(Circle().strokeBorder(Look.rule))
-            .opacity(act == nil || dimmed ? 0.3 : 1)
+            .background(Circle().fill(Look.accent.opacity(0.07)))
+            .overlay(Circle().strokeBorder(Look.accent.opacity(0.55), lineWidth: 1.5))
+            .opacity(act == nil || dimmed ? 0.38 : 1)
             .contentShape(Circle())
             .onTapGesture {
                 guard let act else { return }
@@ -1657,10 +1661,14 @@ struct DeleteBadge: View {
 
     var body: some View {
         Button(action: action) {
+            // Выразительнее (P386): крест толще, белая кайма и тень —
+            // отделяют кружок от снимка или бумаги под ним.
             Image(systemName: "xmark.circle.fill")
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(.white, Look.pin)
-                .font(.system(size: 34))
+                .font(.system(size: 34, weight: .bold))
+                .background(Circle().fill(.white).padding(-2.5))
+                .shadow(color: .black.opacity(0.3), radius: 3, y: 1)
                 .frame(width: 48, height: 40)
                 .contentShape(Rectangle())
         }
