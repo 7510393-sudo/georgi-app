@@ -416,6 +416,11 @@ struct DiaryPage: View {
                         .font(Look.serif(16.5, weight: .semibold))
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .title)
+                        // Заголовок взяли в руки — просьба «перейти в
+                        // запись», если вдруг висит, снимается (P389).
+                        .onChange(of: focused) { _, now in
+                            if now == .title { toText = false }
+                        }
                         .submitLabel(.next)
                         // «Ввод» уводит из заголовка в текст записи, а не
                         // просто убирает клавиатуру (решение P40).
