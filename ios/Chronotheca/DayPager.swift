@@ -371,11 +371,13 @@ struct DayPage: View {
         } label: {
             // Качающиеся буквы — того же синего, что и рамка (P341).
             WobblyTitle(text: which.title.uppercased(), wobbling: wobbling,
-                        font: Look.sans(13, weight: on || wobbling ? .semibold : .regular),
+                        // Крупнее прежних 13 (P396); отступы на столько же
+                        // меньше — закладка той же высоты.
+                        font: Look.sans(16, weight: on || wobbling ? .semibold : .regular),
                         color: wobbling ? Look.glow : (on ? Look.ink : Look.inkFaint))
                 .frame(maxWidth: .infinity)
-                .padding(.top, 10)
-                .padding(.bottom, 11)
+                .padding(.top, 8.5)
+                .padding(.bottom, 9.5)
                 .background(page.overlay(PageTexture(tab: which, shift: on ? 1 : 0)))
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10,
                                                   topTrailingRadius: 10))
