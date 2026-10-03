@@ -925,7 +925,8 @@ struct NativeMap: UIViewRepresentable {
                                               emoji: Glyph.isEmoji(mark.place.mark),
                                               tint: Glyph.color(mark.place.mark),
                                               halo: Glyph.halo(mark.place.mark),
-                                              hollow: mark.place.mark == Glyph.hollow)
+                                              hollow: mark.place.mark == Glyph.hollow,
+                                              bare: Glyph.bare.contains(mark.place.mark))
                 view.image = picture
                 view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
                 view.displayPriority = .required
@@ -1004,7 +1005,7 @@ enum PlaceLabel {
 
     static func draw(_ name: String, symbol: String, emoji: Bool = false,
                      tint: UIColor = .white, halo: UIColor = UIColor(white: 0.1, alpha: 0.9),
-                     hollow: Bool = false) -> UIImage {
+                     hollow: Bool = false, bare: Bool = false) -> UIImage {
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
         let text = (name as NSString)
@@ -1019,7 +1020,9 @@ enum PlaceLabel {
             // с тёмной обводкой, чтобы читался на любой карте.
             // «Пустой кружок» (P397) — без заливки: одно белое кольцо с
             // тёмным ореолом, карта под ним видна насквозь.
-            if !hollow {
+            // Без кружка (P398) — ни заливки, ни кольца: один рисунок.
+            if bare {
+            } else if !hollow {
                 ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
                                         color: UIColor.black.withAlphaComponent(0.15).cgColor)
                 UIColor(Look.inkSoft).withAlphaComponent(0.48).setFill()
@@ -1029,10 +1032,12 @@ enum PlaceLabel {
                 ctx.cgContext.setShadow(offset: .zero, blur: 1.5,
                                         color: UIColor.black.withAlphaComponent(0.8).cgColor)
             }
-            UIColor.white.setStroke()
-            let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1, dy: 1))
-            ring.lineWidth = hollow ? 2.5 : 1.5
-            ring.stroke()
+            if !bare {
+                UIColor.white.setStroke()
+                let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1, dy: 1))
+                ring.lineWidth = hollow ? 2.5 : 1.5
+                ring.stroke()
+            }
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             // «Пираты» — эмодзи-флаг, не системный рисунок: рисуется
             // текстом на месте значка, своих цветов не меняет (P336).
@@ -1047,7 +1052,8 @@ enum PlaceLabel {
                                       y: circle.midY - markSize.height / 2), withAttributes: markAttrs)
                 ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             } else if !hollow, let shape = UIImage(systemName: symbol,
-                                          withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)) {
+                                          withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? 17 : 11,
+                                                                                         weight: .semibold)) {
                 let g = shape.size
                 let at = CGRect(x: circle.midX - g.width / 2, y: circle.midY - g.height / 2,
                                 width: g.width, height: g.height)
@@ -1055,7 +1061,8 @@ enum PlaceLabel {
                 // во все стороны, — а сверху белый. Знак читается и на
                 // светлой карте сквозь прозрачный кружок.
                 let outline = shape.withTintColor(halo, renderingMode: .alwaysOriginal)
-                let step: CGFloat = 0.8
+                // Без кружка контур толще — рисунок лежит прямо на карте.
+                let step: CGFloat = bare ? 1.1 : 0.8
                 for dx in [-step, 0, step] {
                     for dy in [-step, 0, step] where dx != 0 || dy != 0 {
                         outline.draw(in: at.offsetBy(dx: dx, dy: dy))
@@ -1141,13 +1148,14 @@ struct PointPanel: View {
     @FocusState private var focused: Field?
     @State private var copied = false
 
-    /// Восемь значков — одним рядом (P397; прежде двенадцать в два ряда, P338).
-    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 8)
+    /// Одиннадцать значков — в два ряда по шесть (P398; восемь одним рядом —
+    /// P397).
+    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 6)
 
     var body: some View {
         VStack(spacing: 8) {
             // Сверху значки, ниже название, ещё ниже запись (P238).
-            // Каким значком отметить точку (P234) — восемь в ряд (P397).
+            // Каким значком отметить точку (P234).
             LazyVGrid(columns: Self.iconColumns, spacing: 6) {
                 ForEach(Glyph.all.indices, id: \.self) { i in
                     let glyph = Glyph.all[i]

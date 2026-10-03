@@ -87,7 +87,16 @@ enum Glyph {
         ("огонь", "flame.fill", false),
         ("вдохновение", "lightbulb.fill", false),
         ("пираты", "🏴‍☠️", true),
+        // Ещё три по просьбе автора (P398): рука, указывающая вниз, и флаг —
+        // без кружка; дом — в полупрозрачном кружке, как прежде.
+        ("указатель", "hand.point.down.fill", false),
+        ("дом", "house.fill", false),
+        ("флаг", "flag.fill", false),
     ]
+
+    /// Значки без кружка под ними (P398): белый рисунок с чёрным контуром
+    /// прямо на карте.
+    static let bare: Set<String> = ["указатель", "флаг"]
 
     /// Свой цвет значка (P397): белая точка, красные сердце и огонь, жёлтые
     /// звезда и лампочка, чёрный человек. Без цвета — белый, как прежде.
@@ -116,7 +125,7 @@ enum Glyph {
     /// места, которые ими уже отмечены, рисуются по-прежнему и при
     /// сохранении значок в файле не теряют (P340).
     private static let former: [String: String] = [
-        "дом": "house.fill", "флаг": "flag.fill", "кафе": "cup.and.saucer.fill",
+        "кафе": "cup.and.saucer.fill",
         "природа": "leaf.fill", "снимок": "camera.fill",
         "здоровье": "cross.case.fill", "вокзал": "tram.fill", "покупки": "bag.fill",
         "хорошее место": "hand.thumbsup.fill", "плохое место": "hand.thumbsdown.fill",
@@ -138,7 +147,7 @@ enum Glyph {
         "покупки": "shopping", "хорошее место": "good place",
         "плохое место": "bad place", "пираты": "pirates", "личное": "private",
         "опасность": "danger", "вдохновение": "inspiration", "призраки": "ghosts",
-        "везение": "luck", "огонь": "fire", "кружок": "ring",
+        "везение": "luck", "огонь": "fire", "кружок": "ring", "указатель": "pointer",
     ]
     private static let russian: [String: String] =
         Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
