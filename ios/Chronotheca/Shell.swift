@@ -86,6 +86,8 @@ final class Shell: ObservableObject {
         screen = .map
     }
     @Published var showingSettings = false
+    /// Дело отвели вправо — листок «На другой день» (P383, P387).
+    @Published var movingTask: MovingTask?
     /// Бумажку тянут за уголок: сколько её ещё за краем, 1 — вся, 0 — на
     /// месте. Пусто — никто не тянет (P233).
     @Published var settingsPull: CGFloat?

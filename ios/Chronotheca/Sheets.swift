@@ -265,11 +265,8 @@ struct SettingsSticker: View {
                 }
             } label: {
                 Text(Lang.name + " ▾")
-                    .font(Look.sans(12.5, weight: .semibold))
-                    .foregroundStyle(Look.note)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Look.accent))
+                    .font(Look.sans(13.5, weight: .semibold))
+                    .modifier(Tag(main: true))
             }
         }
     }
@@ -348,12 +345,8 @@ struct SettingsSticker: View {
                 }
             } label: {
                 Text("\(boundary):00 ▾")
-                    .font(Look.sans(12.5, weight: .semibold))
-                    .foregroundStyle(Look.accent)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Look.planBg))
-                    .overlay(Capsule().strokeBorder(Look.noteEdge, lineWidth: 1.5))
+                    .font(Look.sans(13.5, weight: .semibold))
+                    .modifier(Tag())
             }
         }
         NoteRow(title: T("Открывать на", "Open on")) {

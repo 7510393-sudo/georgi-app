@@ -256,6 +256,10 @@ struct RootView: View {
             corners
 
             if shell.showingMenu { MenuSticker() }
+            if let m = shell.movingTask {
+                MoveDaySticker(task: m)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
             if shell.showingSettings {
                 SettingsSticker().frame(maxWidth: .infinity, alignment: .topLeading)
             }

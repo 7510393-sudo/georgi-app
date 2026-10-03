@@ -596,8 +596,6 @@ struct PlanView: View {
     /// Событие, о котором спрашиваем: убрать из плана или удалить.
     @State private var askingEvent: DayEvents.Shown?
     @State private var openedEvent: OpenedEvent?
-    /// Дело отвели вправо — спрашиваем, на какой день (P383).
-    @State private var movingTask: MovingTask?
 
     struct OpenedEvent: Identifiable {
         let id = UUID()
@@ -680,12 +678,6 @@ struct PlanView: View {
                    + "Удалённое из Календаря шагом назад не вернуть.",
                    "“Remove” keeps the event in Calendar and only takes it off this day’s plan. "
                    + "Deleting from Calendar cannot be undone here."))
-        }
-        .sheet(item: $movingTask) { m in
-            MoveDaySheet(from: store.date, pick: { day in
-                movingTask = nil
-                moveTask(m.id, to: day)
-            }, cancel: { movingTask = nil })
         }
         .sheet(item: $openedEvent) { o in
             EventSheet(event: o.event) {
@@ -930,8 +922,10 @@ struct PlanView: View {
                 withAnimation(.easeOut(duration: 0.2)) { store.delete(id) }
                 Feel.light()
             } else if by >= Self.swipe {
-                Feel.light()
-                movingTask = MovingTask(id: id)
+                Feel.paper()
+                withAnimation(.pull) {
+                    shell.movingTask = MovingTask(id: id, title: row.wrappedValue.text)
+                }
             }
         }
     }
@@ -1280,19 +1274,6 @@ struct PlanView: View {
                       + error.localizedDescription)
         }
         reloadEvents()
-    }
-
-    /// Дело уходит в план выбранного дня (P383).
-    private func moveTask(_ id: UUID, to day: Date) {
-        var gone = false
-        withAnimation(.easeOut(duration: 0.2)) { gone = store.moveTask(id, to: day) }
-        if gone {
-            Feel.thud()
-            shell.say(T("Дело перенесено на ", "Task moved to ") + Ru.shortDate(day))
-        } else {
-            shell.say(T("Не вышло перенести: файл того дня ещё не скачан из iCloud или его меняют в другом месте. Попробуйте ещё раз.",
-                        "Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again."))
-        }
     }
 
     /// Дело отпустили: оно встаёт туда, куда его донесли.

@@ -50,17 +50,21 @@ struct NoteRow<Trailing: View>: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        // Каждая строка — своя плашка, без линий под ней (P381).
-        .background(Look.planBg.opacity(0.75), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Look.noteEdge.opacity(0.6), lineWidth: 0.8))
+        // Каждая строка — листок бумаги на записке (P381, P387): бумага
+        // страницы, тонкий край и лёгкая тень, как у листков на экране, а
+        // не гладкая плашка обычного приложения.
+        .background(Look.planBg, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.noteEdge.opacity(0.7), lineWidth: 0.8))
+        .shadow(color: .black.opacity(0.07), radius: 1.5, y: 1)
         .padding(.horizontal, 10)
         .padding(.vertical, 3)
     }
 
     private var label: some View {
         VStack(alignment: .leading, spacing: 2) {
+            // Название — засечным, как записи и заголовки (P387).
             Text(title)
-                .font(Look.sans(16))
+                .font(Look.serif(16.5))
                 .foregroundStyle(Look.ink)
                 .fixedSize(horizontal: false, vertical: true)
             if let detail {
@@ -94,12 +98,7 @@ struct Choice<Value: Hashable>: View {
                         .font(Look.sans(13.5, weight: on ? .semibold : .regular))
                         .lineLimit(1)
                         .fixedSize()
-                        .foregroundStyle(on ? Look.note : Look.accent)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(on ? Look.accent : Color.clear))
-                        .overlay(Capsule().strokeBorder(Look.accent, lineWidth: 1.5))
-                        .contentShape(Capsule())
+                        .modifier(Tag(main: on))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
@@ -120,12 +119,7 @@ struct NoteButton: View {
                 .font(Look.sans(13.5, weight: .semibold))
                 .lineLimit(1)
                 .fixedSize()
-                .foregroundStyle(main ? Look.note : Look.accent)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(main ? Look.accent : Look.planBg))
-                .overlay(Capsule().strokeBorder(main ? Look.accent : Look.noteEdge, lineWidth: 1.5))
-                .contentShape(Capsule())
+                .modifier(Tag(main: main))
         }
         .buttonStyle(.plain)
     }
@@ -181,5 +175,24 @@ struct Flow: Layout {
         }
         if !row.items.isEmpty { rows.append(row) }
         return rows
+    }
+}
+
+/// Кнопка-ярлычок (P387): выпуклая панелька, как номер, время и
+/// колокольчик у дела в плане (P364, P374), — вместо капсул обычного
+/// приложения. Главная (или выбранный вариант) — залита синим.
+struct Tag: ViewModifier {
+    var main = false
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(main ? Look.note : Look.accent)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 5)
+            .background(main ? Look.accent : Look.chrome, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(main ? Look.accent : Look.inkFaint, lineWidth: 1))
+            .shadow(color: .black.opacity(main ? 0.12 : 0.06), radius: 1, y: 1)
+            .contentShape(RoundedRectangle(cornerRadius: 6))
     }
 }
