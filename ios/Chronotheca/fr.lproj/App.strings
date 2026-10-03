@@ -619,3 +619,5 @@
 "Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "Impossible de déplacer : le fichier de ce jour n’est pas encore téléchargé depuis iCloud ou est modifié ailleurs. Réessayez.";
 "Choose a day" = "Choisissez un jour";
 "Remove photo from text" = "Retirer la photo du texte";
+"Back 15 seconds" = "Reculer de 15 secondes";
+"Forward 15 seconds" = "Avancer de 15 secondes";

@@ -619,3 +619,5 @@
 "Could not move the task: that day’s file is not downloaded from iCloud yet or is being changed elsewhere. Try again." = "Не вдалося перенести: файл того дня ще не завантажено з iCloud або його змінюють деінде. Спробуйте ще раз.";
 "Choose a day" = "Виберіть день";
 "Remove photo from text" = "Прибрати знімок із тексту";
+"Back 15 seconds" = "Назад на 15 секунд";
+"Forward 15 seconds" = "Вперед на 15 секунд";

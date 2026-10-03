@@ -148,6 +148,9 @@ struct AudioPlayerView: View {
     @State private var player: AVAudioPlayer?
     @State private var playing = false
     @State private var failed = false
+    /// Бегунок тянут пальцем (P393): где он сейчас — запись перейдёт туда,
+    /// когда палец отпустят.
+    @State private var dragging: Double?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -156,10 +159,20 @@ struct AudioPlayerView: View {
                 .foregroundStyle(Look.inkSoft)
             TimelineView(.periodic(from: .now, by: 0.25)) { _ in
                 let length = player?.duration ?? 0
-                let at = player?.currentTime ?? 0
+                let at = dragging ?? player?.currentTime ?? 0
                 VStack(spacing: 6) {
-                    ProgressView(value: length > 0 ? at / length : 0)
+                    // Бегунок можно передвинуть вперёд и назад (P393).
+                    Slider(value: Binding(get: { min(at, max(length, 0.1)) },
+                                          set: { dragging = $0 }),
+                           in: 0...max(length, 0.1),
+                           onEditingChanged: { editing in
+                               guard !editing, let to = dragging else { return }
+                               player?.currentTime = to
+                               dragging = nil
+                               Feel.tick()
+                           })
                         .tint(Look.accent)
+                        .disabled(player == nil)
                     HStack {
                         Text(Recorder.clock(at))
                         Spacer()
@@ -171,16 +184,20 @@ struct AudioPlayerView: View {
                 .padding(.horizontal, 32)
                 .onChange(of: player?.isPlaying ?? false) { _, now in playing = now }
             }
-            Button {
-                guard let player else { return }
-                if player.isPlaying { player.pause() } else { player.play() }
-                playing = player.isPlaying
-            } label: {
-                Image(systemName: playing ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 52))
-                    .foregroundStyle(Look.accent)
+            HStack(spacing: 36) {
+                skip(-15)
+                Button {
+                    guard let player else { return }
+                    if player.isPlaying { player.pause() } else { player.play() }
+                    playing = player.isPlaying
+                } label: {
+                    Image(systemName: playing ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(Look.accent)
+                }
+                .buttonStyle(.plain)
+                skip(15)
             }
-            .buttonStyle(.plain)
             if failed {
                 Text(T("Запись не открылась — возможно, она ещё не скачана из iCloud.",
                          "The recording did not open — perhaps it is not downloaded from iCloud yet."))
@@ -197,6 +214,24 @@ struct AudioPlayerView: View {
             player = p
         }
         .onDisappear { player?.stop() }
+    }
+
+    /// Назад или вперёд на 15 секунд (P393).
+    private func skip(_ by: Double) -> some View {
+        Button {
+            guard let player else { return }
+            player.currentTime = min(max(player.currentTime + by, 0), player.duration)
+            Feel.tick()
+        } label: {
+            Image(systemName: by < 0 ? "gobackward.15" : "goforward.15")
+                .font(.system(size: 26, weight: .medium))
+                .foregroundStyle(Look.accent)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .opacity(player == nil ? 0.4 : 1)
+        .accessibilityLabel(by < 0 ? T("Назад на 15 секунд", "Back 15 seconds")
+                                   : T("Вперёд на 15 секунд", "Forward 15 seconds"))
     }
 }
 
