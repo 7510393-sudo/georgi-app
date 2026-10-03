@@ -62,7 +62,7 @@ struct KeyboardBarView: View {
             // место, оно не должно меняться (P310).
             key("camera", T("камера", "camera")) { KeyboardBar.ask(.camera) }
             key("photo", T("фото", "photo")) { KeyboardBar.ask(.photo) }
-            key("waveform", T("аудио", "audio")) { KeyboardBar.ask(.audio) }
+            key("mic", T("аудио", "audio")) { KeyboardBar.ask(.audio) }
             key("doc", T("файлы", "files")) { KeyboardBar.ask(.files) }
             // «Место»: касание — где вы сейчас, долгое нажатие — карта (P381).
             BarFace(icon: "mappin.and.ellipse", name: T("место", "place"), tint: Look.stripInk, compact: true)

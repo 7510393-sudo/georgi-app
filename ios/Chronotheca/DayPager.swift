@@ -615,7 +615,8 @@ struct AttachBar: View {
             item("photo", T("фото", "photo"), ready: true) { toggleGallery() }
             // Строка без клавиатуры — пять кнопок, «аудио» третья: центр
             // посередине (P330, P381).
-            item("waveform", T("аудио", "audio"), ready: true) {
+            // Микрофон, а не волна: волна была безликой (P401).
+            item("mic", T("аудио", "audio"), ready: true) {
                 recordAlign = 0.5
                 open { recording = true }
             }
