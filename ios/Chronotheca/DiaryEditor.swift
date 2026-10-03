@@ -947,8 +947,11 @@ struct DiaryEditor: UIViewRepresentable {
                 } else {
                     lift(i, g, in: view)
                 }
+                finger = g.location(in: nil)
+                startPump()
             case .changed:
                 let spot = g.location(in: nil)
+                finger = spot
                 if ghost == nil {
                     guard hypot(spot.x - takenAt.x, spot.y - takenAt.y) >= 10 else { return }
                     disarm()
@@ -961,8 +964,9 @@ struct DiaryEditor: UIViewRepresentable {
                 // значит вернуть его вниз; над заголовком — то же для точки.
                 let away = overStrip(g, in: view) || overTitle(g, in: view)
                 ghost?.alpha = away ? 0.5 : 0.9
-                if away { restore(view) } else { preview(at, in: view) }
+                if away { restore(view) } else { previewSoon(view) }
             case .ended:
+                stopPump()
                 heldEnded = Date()
                 let back = overStrip(g, in: view)
                 let up = overTitle(g, in: view)
@@ -977,6 +981,9 @@ struct DiaryEditor: UIViewRepresentable {
                     taken = nil
                     return
                 }
+                // Отпустили — ложится ровно под пальцем, даже если наплыв
+                // ещё не успел показать это место (P406).
+                if !back, !up { preview(at, in: view) }
                 let done = result
                 restore(view)
                 taken = nil
@@ -1008,6 +1015,7 @@ struct DiaryEditor: UIViewRepresentable {
                     parent.text = done
                 }
             default:
+                stopPump()
                 heldEnded = Date()
                 ghost?.removeFromSuperview()
                 ghost = nil
@@ -1144,6 +1152,7 @@ struct DiaryEditor: UIViewRepresentable {
             result = nil
             now = taken
             previewing = false
+            shownSpot = nil
         }
 
         private func show(_ text: String, in view: UITextView) {
@@ -1151,6 +1160,85 @@ struct DiaryEditor: UIViewRepresentable {
                                                      stamped: parent.stamped, resolve: resolve)
             view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
             loadPhotos()
+        }
+
+        // MARK: - Перенос мягко (P406)
+
+        /// Где палец — в окне.
+        private var finger: CGPoint = .zero
+        /// Когда поле в последний раз показало, как ляжет взятое.
+        private var shownAt = Date.distantPast
+        /// Где палец был тогда — в поле.
+        private var shownSpot: CGPoint?
+        private var pump: CADisplayLink?
+
+        /// Пока несут — каждый кадр: у краёв страница сама едет к пальцу,
+        /// а поле показывает, как ляжет взятое, не чаще раза в шестую
+        /// долю секунды и мягким наплывом, а не рывком на каждый сдвиг.
+        private func startPump() {
+            stopPump()
+            shownAt = .distantPast
+            shownSpot = nil
+            let link = CADisplayLink(target: self, selector: #selector(tick))
+            link.add(to: .main, forMode: .common)
+            pump = link
+        }
+
+        private func stopPump() {
+            pump?.invalidate()
+            pump = nil
+        }
+
+        @objc private func tick() {
+            guard let view, ghost != nil, taken != nil else { return }
+            if scrollTowardFinger(view) { ghostFollows(view) }
+            previewSoon(view)
+        }
+
+        /// Палец у верхнего или нижнего края страницы — страница едет туда:
+        /// тем быстрее, чем ближе к краю. `true` — уехала.
+        private func scrollTowardFinger(_ view: UITextView) -> Bool {
+            guard let page = page(over: view), let window = view.window else { return false }
+            let seen = page.convert(page.bounds, to: window)
+            let bottom = min(seen.maxY, keyboardTop ?? .infinity)
+            let band: CGFloat = 90
+            var step: CGFloat = 0
+            if finger.y < seen.minY + band {
+                step = -max(0, seen.minY + band - finger.y) / band * 9
+            } else if finger.y > bottom - band {
+                step = max(0, finger.y - (bottom - band)) / band * 9
+            }
+            guard abs(step) > 0.3 else { return false }
+            let lowest = -page.adjustedContentInset.top
+            let highest = max(lowest, page.contentSize.height + page.adjustedContentInset.bottom
+                              - page.bounds.height)
+            let to = min(max(page.contentOffset.y + step, lowest), highest)
+            guard to != page.contentOffset.y else { return false }
+            page.contentOffset.y = to
+            return true
+        }
+
+        /// Страница уехала — несомое остаётся под пальцем.
+        private func ghostFollows(_ view: UITextView) {
+            guard let ghost, let host = ghost.superview else { return }
+            let local = host.convert(finger, from: nil)
+            ghost.center = CGPoint(x: ghostLine ? ghost.center.x : local.x, y: local.y - Self.lift)
+        }
+
+        /// Показать, как ляжет взятое, — но не чаще раза в 0,16 секунды и
+        /// только если палец сдвинулся заметно; сама смена — наплывом.
+        private func previewSoon(_ view: UITextView) {
+            guard previewing || ghost != nil else { return }
+            let local = view.convert(finger, from: nil)
+            let at = CGPoint(x: local.x, y: local.y - Self.lift)
+            if let was = shownSpot, hypot(was.x - at.x, was.y - at.y) < 8 { return }
+            guard Date().timeIntervalSince(shownAt) > 0.16 else { return }
+            shownAt = Date()
+            shownSpot = at
+            UIView.transition(with: view, duration: 0.18,
+                              options: [.transitionCrossDissolve, .allowUserInteraction]) {
+                self.preview(at, in: view)
+            }
         }
 
         /// Убрать точку из текста — вместе с пробелом рядом, а если она

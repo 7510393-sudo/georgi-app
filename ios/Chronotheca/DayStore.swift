@@ -521,8 +521,8 @@ final class DayStore: ObservableObject {
     /// Пустые дела убираются только при уходе со дня: иначе новое дело
     /// исчезает, едва человек коснулся другого места на экране.
     func prune() {
-        planRows.removeAll { $0.isTask && $0.text.trimmingCharacters(in: .whitespaces).isEmpty
-                             && $0.details.isEmpty }
+        // Дело с одним временем или напоминанием — уже дело (P406).
+        planRows.removeAll(where: PlanRow.blank)
     }
 
     // MARK: - Отметка времени в дневнике

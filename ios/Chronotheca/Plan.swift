@@ -39,6 +39,13 @@ struct PlanRow: Identifiable, Equatable {
         PlanRow(verbatim: line)
     }
 
+    /// Дело ничем не заполнено: ни названия, ни времени, ни
+    /// напоминания, ни подробностей (P406).
+    static func blank(_ r: PlanRow) -> Bool {
+        r.isTask && r.text.trimmingCharacters(in: .whitespaces).isEmpty
+            && r.time == nil && r.bell == nil && r.details.isEmpty
+    }
+
     static func == (a: PlanRow, b: PlanRow) -> Bool {
         a.verbatim == b.verbatim && a.done == b.done && a.time == b.time
             && a.bell == b.bell && a.text == b.text && a.details == b.details

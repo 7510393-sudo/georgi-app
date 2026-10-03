@@ -399,10 +399,53 @@ struct DayPage: View {
                     if !on { Rectangle().fill(Look.inkFaint).frame(height: 1) }
                 }
         }
+        // Шаг назад и вперёд — стрелками прямо на корешке, по бокам
+        // названия, без кружков (P406; прежде — кружками над страницей).
+        .overlay { steps(which, on: on) }
         .offset(y: on ? 1 : 0)
         .zIndex(on ? 1 : 0)
         // Где стоит открытая вкладка — по ней рисуется рамка правки (P341).
         .anchorPreference(key: OpenTabKey.self, value: .bounds) { on ? $0 : nil }
+    }
+
+    /// Стрелки шага на корешке. Работают на открытой вкладке открытой
+    /// страницы; на закрытой и на соседних — бледные, касание по ним
+    /// открывает вкладку, как по любому месту корешка.
+    private func steps(_ which: Shell.Tab, on: Bool) -> some View {
+        let plan = which == .plan
+        let editable = plan ? store.canEditPlan : store.canEditDiary
+        let back = live && on && editable && !(plan ? store.planBack : store.diaryBack).isEmpty
+        let ahead = live && on && editable && !(plan ? store.planAhead : store.diaryAhead).isEmpty
+        return HStack(spacing: 0) {
+            stepArrow("arrow.uturn.backward", ready: back, name: T("Шаг назад", "Undo")) {
+                if plan { store.undoPlan() } else { store.undoDiary() }
+            }
+            Spacer(minLength: 0)
+            stepArrow("arrow.uturn.forward", ready: ahead, name: T("Шаг вперёд", "Redo")) {
+                if plan { store.redoPlan() } else { store.redoDiary() }
+            }
+        }
+        .padding(.horizontal, 6)
+        .allowsHitTesting(live && on)
+    }
+
+    private func stepArrow(_ icon: String, ready: Bool, name: String,
+                           act: @escaping () -> Void) -> some View {
+        Button {
+            guard ready else { return }
+            Feel.light()
+            hideKeyboard()
+            act()
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Look.accent)
+                .opacity(ready ? 1 : 0.3)
+                .frame(width: 38, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(name)
     }
 
     // MARK: - Содержимое
@@ -1010,9 +1053,7 @@ struct PlanPage: View {
         // как на открытой странице (P114, P381).
         PlanScaffold(isPast: isPast, dimmed: false, weather: weather, photos: photos,
                      takesBack: Plan.hasPhotoRows(rows)) {
-            if tasks.isEmpty && events.isEmpty {
-                PlanEmpty(isPast: isPast)
-            } else {
+            Group {
                 // События Календаря — первыми, тем же кодом, что на
                 // открытой странице (P114, P376).
                 ForEach(Array(events.enumerated()), id: \.element.key) { i, e in
@@ -1030,6 +1071,13 @@ struct PlanPage: View {
                     } else if let line = row.verbatim {
                         PlanExtraLine(line: line, resolve: resolve)
                     }
+                }
+                // Пустая плашка следующего дела — как на открытой странице
+                // (P114, P406).
+                if !tasks.contains(where: PlanRow.blank) {
+                    PlanRowLine(number: events.count + tasks.count + 1, row: .task(""),
+                                bellColor: bellColor, ghost: true)
+                    Rectangle().fill(Look.ruleSoft).frame(height: 1).opacity(0.4)
                 }
                 PlanStat(planned: tasks.count + events.count,
                          done: tasks.filter(\.done).count + events.filter(\.row.done).count)

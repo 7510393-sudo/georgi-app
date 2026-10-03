@@ -92,7 +92,46 @@ struct AskLine: UIViewRepresentable {
         var parent: AskLine
         private var clamping = false
 
-        init(_ parent: AskLine) { self.parent = parent }
+        init(_ parent: AskLine) {
+            self.parent = parent
+            super.init()
+            let вести = NotificationCenter.default
+            вести.addObserver(self, selector: #selector(keyboardMoved(_:)),
+                              name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+            вести.addObserver(self, selector: #selector(keyboardGone(_:)),
+                              name: UIResponder.keyboardWillHideNotification, object: nil)
+        }
+
+        /// Верх клавиатуры вместе со строкой кнопок над ней — в окне.
+        private var keyboardTop: CGFloat?
+        private weak var view: UITextView?
+
+        @objc private func keyboardMoved(_ note: Notification) {
+            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                  let window = view?.window else { return }
+            keyboardTop = window.convert(frame, from: nil).minY
+        }
+
+        @objc private func keyboardGone(_ note: Notification) { keyboardTop = nil }
+
+        /// Строка, в которой пишут, не уходит под клавиатуру и строку кнопок
+        /// над ней (P406): страница подъезжает ровно настолько, насколько
+        /// курсор зашёл под них, — как у записи ниже (P175).
+        func showCaret() {
+            guard let view, view.isFirstResponder, let window = view.window,
+                  let top = keyboardTop, let end = view.selectedTextRange?.end else { return }
+            let курсор = view.convert(view.caretRect(for: end), to: window)
+            let ниже = курсор.maxY + 16 - top
+            guard ниже > 0 else { return }
+            var выше = view.superview
+            while let здесь = выше, !(здесь is UIScrollView) { выше = здесь.superview }
+            guard let страница = выше as? UIScrollView else { return }
+            let предел = max(0, страница.contentSize.height + страница.adjustedContentInset.bottom
+                             - страница.bounds.height)
+            let куда = min(страница.contentOffset.y + ниже, предел)
+            guard куда > страница.contentOffset.y else { return }
+            страница.setContentOffset(CGPoint(x: страница.contentOffset.x, y: куда), animated: true)
+        }
 
         /// Сколько знаков занимает название с пробелом за ним.
         var prefix: Int { ((parent.label + " ") as NSString).length }
@@ -125,7 +164,9 @@ struct AskLine: UIViewRepresentable {
         }
 
         func textViewDidBeginEditing(_ view: UITextView) {
+            self.view = view
             apply(to: view)   // многоточие уходит, как только начали писать
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.showCaret() }
             view.selectedRange = NSRange(location: (view.text as NSString).length, length: 0)
             parent.onBegin()
         }
@@ -139,6 +180,8 @@ struct AskLine: UIViewRepresentable {
             let всё = view.text as NSString
             parent.answer = всё.length > prefix ? всё.substring(from: prefix) : ""
             view.typingAttributes = AskLine.style(Look.ink)
+            self.view = view
+            DispatchQueue.main.async { [weak self] in self?.showCaret() }
         }
 
         /// Курсор за название не заходит: писать можно только после

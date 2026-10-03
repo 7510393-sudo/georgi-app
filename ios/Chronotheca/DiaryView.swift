@@ -238,66 +238,49 @@ struct DiaryPage: View {
     private let size = DiaryView.size
 
     var body: some View {
-        VStack(spacing: 0) {
-            head
-            page
-            // Фотографии дневника — полоской внизу, над кнопками вложений,
-            // как в Diarium; прокрутке страницы они не мешают (P203).
-            if !photos.isEmpty {
-                PhotoStrip(photos: photos, onOpen: onOpenPhoto,
-                           drag: editable && photoLinks.count == photos.count
-                               ? { Diary.line(photoLinks[$0]) } : nil,
-                           onMove: editable ? onMovePhoto : nil,
-                           anyKind: true,
-                           onCarry: editable ? onStripCarry : nil,
-                           carried: stripCarried)
-                    .background(GeometryReader { geo in
-                        let frame = geo.frame(in: .global)
-                        Color.clear
-                            .onAppear { if editable { StripZones.strip = frame } }
-                            .onChange(of: frame) { _, now in if editable { StripZones.strip = now } }
-                    })
-            }
-        }
+        // Верхней строки больше нет (P406): стрелки шага — на корешке
+        // «Дневник», погоды в дневнике нет, «Здоровье» и вложения — внизу
+        // страницы и едут вместе с ней.
+        page
     }
 
-    /// Шаг назад / вперёд — в том же месте, что и над списком дел в плане
-    /// (P312): строка не уезжает со страницей, что бы та ни листала.
-    private var head: some View {
-        HStack(spacing: 8) {
-            // Высота строки задана кнопками шага — строка «Здоровья»,
-            // пришедшая позже, ничего не сдвигает (P113).
-            // Погода и «Здоровье» — в той же строке, слева, где было пусто
-            // (P380); вдвоём — друг под другом, высоту строки задают кнопки.
-            VStack(alignment: .leading, spacing: 2) {
-                if let weather, Prefs.weatherOn {
-                    Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-                if let health {
-                    Label(health, systemImage: "heart")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .contentShape(Rectangle())
-                        .onTapGesture { onHealth?(health) }
-                        .accessibilityHint(T("Касание — записать в дневник", "Tap to add to the diary"))
-                }
-            }
-            .font(Look.sans(12))
-            .foregroundStyle(Look.inkFaint)
-            Spacer()
-            StepButton(icon: "arrow.uturn.backward", act: undo, name: T("Шаг назад", "Undo"))
-            StepButton(icon: "arrow.uturn.forward", act: redo, name: T("Шаг вперёд", "Redo"))
+    /// Низ страницы: «Здоровье» строкой и полоска вложений (P406).
+    @ViewBuilder private var footer: some View {
+        if let health {
+            Label(health, systemImage: "heart")
+                .font(Look.sans(12))
+                .foregroundStyle(Look.inkFaint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .contentShape(Rectangle())
+                .onTapGesture { onHealth?(health) }
+                .accessibilityHint(T("Касание — записать в дневник", "Tap to add to the diary"))
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 12)
-        .padding(.top, 6)
+        if !photos.isEmpty {
+            PhotoStrip(photos: photos, onOpen: onOpenPhoto,
+                       drag: editable && photoLinks.count == photos.count
+                           ? { Diary.line(photoLinks[$0]) } : nil,
+                       onMove: editable ? onMovePhoto : nil,
+                       anyKind: true,
+                       onCarry: editable ? onStripCarry : nil,
+                       carried: stripCarried)
+                .background(GeometryReader { geo in
+                    let frame = geo.frame(in: .global)
+                    Color.clear
+                        .onAppear { if editable { StripZones.strip = frame } }
+                        .onChange(of: frame) { _, now in if editable { StripZones.strip = now } }
+                })
+        }
     }
 
     private var page: some View {
+      GeometryReader { outer in
         ScrollView {
           ScrollViewReader { proxy in
+           VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 if inCloud {
                     Text(T("Запись этого дня ещё загружается из iCloud. Как только придёт, она появится здесь.",
@@ -314,17 +297,25 @@ struct DiaryPage: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
-            // Место под клавиатуру: без него страницу некуда поднять, и
-            // последние строки записи остаются под ней (решение P175).
-            .padding(.bottom, 20 + keyboard)
-            .onAppear { goHome(proxy); startWriting() }
-            .onChange(of: home) { _, _ in goHome(proxy) }
-            .onChange(of: writeNow) { _, _ in startWriting() }
+            .padding(.bottom, 20)
+            // Короткая запись — «Здоровье» и вложения всё равно внизу
+            // экрана; длинная — под ней, и уходят вниз вместе со страницей.
+            Spacer(minLength: 0)
+            footer
+           }
+           .frame(minHeight: outer.size.height, alignment: .top)
+           // Место под клавиатуру: без него страницу некуда поднять, и
+           // последние строки записи остаются под ней (решение P175).
+           .padding(.bottom, keyboard)
+           .onAppear { goHome(proxy); startWriting() }
+           .onChange(of: home) { _, _ in goHome(proxy) }
+           .onChange(of: writeNow) { _, _ in startWriting() }
           }
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color.clear)
-        .keyboardHeight($keyboard)
+      }
+      .keyboardHeight($keyboard)
     }
 
     /// Открыли приложение на дневнике — клавиатура поднята, курсор в начале
@@ -368,8 +359,9 @@ struct DiaryPage: View {
         .padding(.bottom, 12)
     }
 
-    /// Название дела в «Как прошло?» — в одну строку, не шире шести
-    /// десятых строки; длиннее — обрезано многоточием (P23, P36). Заголовок
+    /// Название дела в «Как прошло?» — в одну строку, не шире восьми
+    /// десятых строки (P406; прежде шести десятых — обрывалось на середине);
+    /// длиннее — обрезано многоточием (P23, P36). Заголовок
     /// и три дела — четыре строки, сколько бы ни было в названиях (P397:
     /// длинное название переносилось, и блок вырастал до семи строк).
     static func short(_ text: String, width: CGFloat) -> String {
@@ -383,7 +375,7 @@ struct DiaryPage: View {
 
     private func askRow(_ task: PlanRow) -> some View {
         AskLine(label: Self.short(Geo.stripped(task.text),
-                                  width: (UIScreen.main.bounds.width - 40) * 0.6),
+                                  width: (UIScreen.main.bounds.width - 40) * 0.8),
                 answer: Binding(get: { answer(task.text) },
                                 set: { setAnswer?(task.text, $0) }),
                 editable: editable && setAnswer != nil,

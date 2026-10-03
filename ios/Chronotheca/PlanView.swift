@@ -52,6 +52,9 @@ struct PlanRowLine: View {
 
     /// Дело поднято (P362): контур синий и ярче (P374).
     var lifted = false
+    /// Пустая плашка следующего дела (P406): всё бледное, номер — обычной
+    /// яркости.
+    var ghost = false
 
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
@@ -116,11 +119,11 @@ struct PlanRowLine: View {
     /// Сделанное дело (P383): текст и кнопки бледнеют, а номер остаётся
     /// ярким и перечёркнут косой чертой — по нему видно, что отмечено и
     /// куда нажать, чтобы снять отметку.
-    private var dim: Double { row.done ? 0.42 : 1 }
+    private var dim: Double { ghost ? 0.3 : (row.done ? 0.42 : 1) }
 
     private var contour: some View {
         RoundedRectangle(cornerRadius: 9)
-            .strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(0.75),
+            .strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(ghost ? 0.3 : 0.75),
                           lineWidth: lifted ? 3.25 : 1)
             .shadow(color: Look.glow.opacity(lifted ? 0.9 : 0), radius: 5)
             .padding(.leading, 4)
@@ -382,18 +385,16 @@ struct PlanScaffold<Content: View>: View {
 
     let isPast: Bool
     var dimmed = false
-    var add: (() -> Void)?
-    /// Шаг назад и вперёд (P261). Соседние страницы показывают те же
-    /// кнопки, только погашенными.
-    var undo: (() -> Void)?
-    var redo: (() -> Void)?
-    /// Погода дня — слева в строке с «плюсом» (P277).
+    /// Погода дня — строкой внизу страницы, над вложениями, как в Diarium
+    /// (P406; прежде — в верхней строке, P277).
     var weather: String?
 
     /// Строка, в которую сейчас пишут: её и надо держать на виду.
     var watching: UUID?
 
-    /// Фотографии плана — полоской внизу страницы (P203).
+    /// Фотографии плана — полоской внизу страницы (P203). Полоска и погода
+    /// — часть страницы: тянут страницу — едут вместе с ней, а не стоят
+    /// приколоченными к низу экрана (P406).
     var photos: [URL?] = []
     /// Под делами есть снимки — полоска видна и пустой: в неё их
     /// возвращают (P358). Соседние страницы считают то же самое, чтобы
@@ -416,15 +417,21 @@ struct PlanScaffold<Content: View>: View {
     private static var top: String { "план-верх" }
 
     var body: some View {
-        VStack(spacing: 0) {
-            PlanHead(isPast: isPast, dimmed: dimmed, add: add, undo: undo, redo: redo,
-                     weather: weather)
+        GeometryReader { outer in
             ScrollView {
                 ScrollViewReader { proxy in
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        Color.clear.frame(height: 0).id(Self.top)
-                        content()
+                    VStack(spacing: 0) {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            Color.clear.frame(height: 0).id(Self.top)
+                            content()
+                        }
+                        .padding(.top, 8)
+                        // Короткий список — погода и вложения всё равно
+                        // внизу экрана; длинный — под последним делом.
+                        Spacer(minLength: 0)
+                        footer
                     }
+                    .frame(minHeight: outer.size.height, alignment: .top)
                     // Место под клавиатуру. Без него строка, в которую
                     // пишут, уходит под неё, и человек не видит, что
                     // набирает (решение P166).
@@ -438,18 +445,32 @@ struct PlanScaffold<Content: View>: View {
             // Ход плавный и один: без него страница дёргалась, потому что
             // клавиатура и содержимое ехали вразнобой.
             .animation(.easeOut(duration: 0.25), value: keyboard)
-            if !photos.isEmpty || takesBack {
-                PhotoStrip(photos: photos, onOpen: onOpenPhoto,
-                           drag: drag, onMove: onMovePhoto, onTake: onTakePhoto)
-                    .background(GeometryReader { geo in
-                        let frame = geo.frame(in: .global)
-                        Color.clear
-                            .onAppear { PlanZones.strip = frame }
-                            .onChange(of: frame) { _, now in PlanZones.strip = now }
-                    })
-            }
         }
         .keyboardHeight($keyboard)
+    }
+
+    /// Низ страницы: погода строкой и полоска вложений (P406).
+    @ViewBuilder private var footer: some View {
+        if let weather, Prefs.weatherOn {
+            Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
+                .font(Look.sans(12.5))
+                .foregroundStyle(Look.inkFaint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+        }
+        if !photos.isEmpty || takesBack {
+            PhotoStrip(photos: photos, onOpen: onOpenPhoto,
+                       drag: drag, onMove: onMovePhoto, onTake: onTakePhoto)
+                .background(GeometryReader { geo in
+                    let frame = geo.frame(in: .global)
+                    Color.clear
+                        .onAppear { PlanZones.strip = frame }
+                        .onChange(of: frame) { _, now in PlanZones.strip = now }
+                })
+        }
     }
 
     /// Довести строку до глаз. С задержкой в один оборот: пока клавиатура
@@ -464,86 +485,6 @@ struct PlanScaffold<Content: View>: View {
     }
 }
 
-/// Шапка списка дел: «день закрыт» и кнопка «новое дело».
-struct PlanHead: View {
-
-    let isPast: Bool
-    var dimmed = false
-    var add: (() -> Void)?
-    var undo: (() -> Void)?
-    var redo: (() -> Void)?
-    var weather: String?
-
-    var body: some View {
-        HStack(spacing: 8) {
-            // Погода — слева, в пустом месте строки (P277).
-            if let weather, Prefs.weatherOn {
-                Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
-                    .font(Look.sans(12.5))
-                    .foregroundStyle(Look.inkFaint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            Spacer()
-            // Шаг назад и шаг вперёд — слева от «плюса» (P261).
-            step("arrow.uturn.backward", undo, T("Шаг назад", "Undo"))
-            step("arrow.uturn.forward", redo, T("Шаг вперёд", "Redo"))
-            // «Плюс» — того же вида, что стрелки шага рядом (P386).
-            Image(systemName: "plus")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(Look.accent)
-                .frame(width: StepButton.side, height: StepButton.side)
-                .background(Circle().fill(Look.accent.opacity(0.07)))
-                .overlay(Circle().strokeBorder(Look.accent.opacity(0.55), lineWidth: 1.5))
-                .opacity(dimmed ? 0.38 : 1)
-                .onTapGesture { add?() }
-                .accessibilityLabel(T("Новое дело", "New task"))
-        }
-        .padding(.leading, 14)
-        .padding(.trailing, 12)
-        .padding(.top, 6)
-    }
-
-    private func step(_ icon: String, _ act: (() -> Void)?, _ name: String) -> some View {
-        StepButton(icon: icon, act: act, name: name, dimmed: dimmed)
-    }
-}
-
-/// Кружок «шаг назад» / «шаг вперёд» (P261). Тот же вид — и в дневнике,
-/// в том же месте, что и в плане (P312).
-struct StepButton: View {
-    let icon: String
-    let act: (() -> Void)?
-    let name: String
-    var dimmed = false
-
-    /// Кружок и «плюс» рядом — на 20% крупнее прежних 34 (P356): в мелкий
-    /// пальцем не попасть. После того как их сделали жирнее, — на 10%
-    /// меньше, 37 (P388).
-    static let side: CGFloat = 37
-
-    var body: some View {
-        // Выразительнее (P386): стрелка толще и крупнее, кружок — заметной
-        // синей чертой; недоступная — бледнее, но различима (P113: кнопки
-        // не пропадают).
-        Image(systemName: icon)
-            .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(Look.accent)
-            .frame(width: Self.side, height: Self.side)
-            .background(Circle().fill(Look.accent.opacity(0.07)))
-            .overlay(Circle().strokeBorder(Look.accent.opacity(0.55), lineWidth: 1.5))
-            .opacity(act == nil || dimmed ? 0.38 : 1)
-            .contentShape(Circle())
-            .onTapGesture {
-                guard let act else { return }
-                Feel.light()
-                hideKeyboard()
-                act()
-            }
-            .accessibilityLabel(name)
-            .accessibilityAddTraits(.isButton)
-    }
-}
 
 // MARK: - Открытая страница
 
@@ -627,9 +568,6 @@ struct PlanView: View {
     var body: some View {
         VStack(spacing: 0) {
             PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
-                         add: add,
-                         undo: store.planBack.isEmpty || !store.canEditPlan ? nil : { store.undoPlan() },
-                         redo: store.planAhead.isEmpty || !store.canEditPlan ? nil : { store.redoPlan() },
                          weather: store.weather,
                          watching: typingIn,
                          photos: store.planPhotos.map(store.photoURL),
@@ -645,8 +583,8 @@ struct PlanView: View {
                          onTakePhoto: store.canEditPlan
                              ? { store.returnPlanPhoto($0) } : nil,
                          home: shell.freshStart) {
-                if store.tasks.isEmpty && shownEvents.isEmpty {
-                    PlanEmpty(isPast: store.isPast, inCloud: store.away.contains(.planner))
+                if store.away.contains(.planner) {
+                    PlanEmpty(isPast: store.isPast, inCloud: true)
                 } else {
                     eventBlock
                     list
@@ -719,9 +657,34 @@ struct PlanView: View {
         // Прошедший день не бледнеет: он правится, как любой (P381).
     }
 
-    private func add() {
+    /// Пустая плашка следующего дела (P406): «плюса» больше нет. Касание
+    /// по ней — новое дело и курсор в нём; по времени или колокольчику —
+    /// новое дело и сразу ролик.
+    private func add(then kind: Shell.Roller.Kind? = nil) {
         guard let id = store.addTask() else { return shell.say(store.closedReason) }
-        typingIn = id
+        if let kind { openRoller(id, kind) } else { typingIn = id }
+    }
+
+    /// Пустая плашка видна, пока все дела чем-то заполнены: начали писать в
+    /// новом — под ним появляется следующая (P406).
+    private var ghostShown: Bool {
+        store.canEditPlan && !store.tasks.contains(where: PlanRow.blank)
+    }
+
+    private var ghost: some View {
+        VStack(spacing: 0) {
+            PlanRowLine(number: shownEvents.count + store.tasks.count + 1,
+                        row: .task(""),
+                        bellColor: Ru.dayColor(store.date),
+                        onTime: { add(then: .time) },
+                        onBell: { add(then: .bell) },
+                        onDetails: { add() },
+                        ghost: true)
+            Rectangle().fill(Look.ruleSoft).frame(height: 1).opacity(0.4)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { add() }
+        .accessibilityLabel(T("Новое дело", "New task"))
     }
 
     @ViewBuilder private var list: some View {
@@ -768,6 +731,7 @@ struct PlanView: View {
                 .zIndex(lineDrag == id ? 1 : 0)
             }
         }
+        if ghostShown { ghost }
         stat
     }
 
@@ -1404,6 +1368,11 @@ struct PlanStat: View {
     let done: Int
 
     var body: some View {
+        // Пустой день — без «Запланировано 0»: там одна пустая плашка (P406).
+        if planned > 0 { line }
+    }
+
+    private var line: some View {
         Text(T("Запланировано \(planned) · сделано \(done)", "Planned \(planned) · done \(done)"))
             .font(Look.mono(11.5))
             .tracking(0.35)
