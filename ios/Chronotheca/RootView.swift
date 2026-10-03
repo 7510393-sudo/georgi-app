@@ -349,7 +349,7 @@ struct RootView: View {
             // появляется никогда. Читаем папку сразу при запуске.
             archive.reload()
             // С какой вкладки открывать — из настроек (P249).
-            if UserDefaults.standard.string(forKey: Prefs.startTab) == "diary" { shell.tab = .diary }
+            shell.tab = Prefs.openingTab
             shell.openRequestedScreen(store)
             // Первое открытие: план — сверху, дневник — к концу записи с
             // пустыми строками под ней (P346).

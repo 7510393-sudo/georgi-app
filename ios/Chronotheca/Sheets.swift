@@ -350,7 +350,9 @@ struct SettingsSticker: View {
             }
         }
         NoteRow(title: T("Открывать на", "Open on")) {
-            Choice(options: [("plan", T("плане", "plan")), ("diary", T("дневнике", "diary"))],
+            // Три варианта (P402): где был в прошлый раз, план, дневник.
+            Choice(options: [("last", T("где был", "where I left")), ("plan", T("плане", "plan")),
+                             ("diary", T("дневнике", "diary"))],
                    selection: $startTab)
         }
         // P290.

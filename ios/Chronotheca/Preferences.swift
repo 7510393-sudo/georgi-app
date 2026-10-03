@@ -9,7 +9,8 @@ enum Prefs {
     static let hide = "prefs.hide"
     static let theme = "prefs.theme"            // "system", "light", "dark"
     static let boundary = "prefs.boundary"      // час границы суток, 0…6
-    static let startTab = "prefs.startTab"      // "plan", "diary"
+    static let startTab = "prefs.startTab"      // "last", "plan", "diary"
+    static let lastTab = "prefs.lastTab"        // где был в прошлый раз (P402)
     static let navigator = "prefs.navigator"    // "apple", "google"
     static let quiet = "prefs.quiet"            // true — без звуков (P265)
     static let textSize = "prefs.textSize"      // −1…2, ступени размера (P274)
@@ -62,6 +63,15 @@ enum Prefs {
     }
 
     static var textScale: CGFloat { textSteps[textStep].scale }
+
+    /// С какой вкладки открывать (P249, P402): «где был» — та, что была
+    /// открыта в прошлый раз; иначе — план или дневник.
+    static var openingTab: Shell.Tab {
+        let d = UserDefaults.standard
+        let pick = d.string(forKey: startTab) ?? "plan"
+        let name = pick == "last" ? (d.string(forKey: lastTab) ?? "plan") : pick
+        return name == "diary" ? .diary : .plan
+    }
 
     /// Шрифты записи дневника: названия для настроек.
     static var fonts: [(key: String, name: String)] {

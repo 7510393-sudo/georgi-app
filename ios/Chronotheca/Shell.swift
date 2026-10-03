@@ -35,7 +35,10 @@ final class Shell: ObservableObject {
     /// при смене календаря на поиск сперва уходит одна плашка, потом
     /// опускается другая (решение P202).
     @Published var lowered: Screen = .today
-    @Published var tab: Tab = .plan
+    @Published var tab: Tab = .plan {
+        // Запомнить, где был, — для «Открывать на: где был» (P402).
+        didSet { UserDefaults.standard.set(tab == .diary ? "diary" : "plan", forKey: Prefs.lastTab) }
+    }
 
     /// Дело, чья шторка «Подробности» открыта.
     @Published var drawer: UUID?
@@ -174,7 +177,7 @@ final class Shell: ObservableObject {
             settingsPull = nil
             screen = .today
         }
-        tab = UserDefaults.standard.string(forKey: Prefs.startTab) == "diary" ? .diary : .plan
+        tab = Prefs.openingTab
         if !store.isToday { store.go(to: DayStore.today()) }
         freshStart += 1
     }
