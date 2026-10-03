@@ -692,10 +692,10 @@ struct AttachBar: View {
             .ignoresSafeArea()
         }
         .sheet(isPresented: $browsing) {
-            // Записи на этом iPhone лежат внутри приложения — оттуда
-            // документ не берут; тогда окно откроется, где его оставили.
-            DocumentPicker(start: vault.onPhone ? nil : vault.root?.deletingLastPathComponent(),
-                           pick: keepFiles)
+            // Окно открывается там, где его оставили (P384): папку ему
+            // больше не подсказываем — подсказанная папка уводила со
+            // страницы «Обзор», с которой проще всего дойти до любого файла.
+            DocumentPicker(pick: keepFiles)
         }
     }
 
