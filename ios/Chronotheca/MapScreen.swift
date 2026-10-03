@@ -300,23 +300,16 @@ struct MapScreen: View {
     }
 
     /// «Готово»: точка ложится в папку «Места» и остаётся на карте. Не
-    /// назвали — названием остаются координаты (P228).
+    /// назвали — в файле названием остаются координаты (P228), на карте —
+    /// один значок (P404).
     private func name(_ given: Place) {
         hideKeyboard()
         withAnimation { panel = nil }
         var place = given
         let unnamed = place.name.trimmingCharacters(in: .whitespaces).isEmpty
         if unnamed { place.name = Geo.text(place.coordinate) }
-        // Совсем пустая новая точка — без названия, без записи и без своего
-        // значка — в «Места» не сохраняется (P284): она нужна только для
-        // текста, где ляжет булавкой. Выбран значок или что-то написано —
-        // это уже своё место, оно сохраняется (P340).
-        let bare = place.file == nil && unnamed && place.mark == Glyph.standard
-            && place.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        if bare {
-            selected = place
-            return
-        }
+        // Сохраняется и совсем пустая точка — белый кружок без названия
+        // (P404; прежде такая не сохранялась и пропадала с карты, P284).
         guard let stored = Places.save(place, in: vault) else {
             selected = place
             return shell.say(T("Место не записалось. Проверьте папку в настройках.", "The place was not saved. Check the folder in Settings."))
@@ -523,7 +516,6 @@ struct MapSearch: View {
                             }
                         }
                         .frame(width: 24, height: 24)
-                        .background(found.mark == nil ? Color.clear : Look.inkSoft, in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
                             Text(found.title).font(Look.sans(14.5)).foregroundStyle(Look.ink)
                                 .lineLimit(1)
@@ -732,7 +724,6 @@ struct PlacesList: View {
                             GlyphIcon(name: place.mark, size: 14)
                         }
                         .frame(width: 26, height: 26)
-                        .background(Look.inkSoft, in: Circle())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(place.name).font(Look.sans(15)).foregroundStyle(Look.ink)
                             if !place.text.isEmpty {
@@ -921,12 +912,9 @@ struct NativeMap: UIViewRepresentable {
                 // светлой плашке — его не спутать с подписями самой карты
                 // (P234).
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "место")
-                let picture = PlaceLabel.draw(mark.place.name, symbol: Glyph.image(mark.place.mark),
-                                              emoji: Glyph.isEmoji(mark.place.mark),
-                                              tint: Glyph.color(mark.place.mark),
-                                              halo: Glyph.halo(mark.place.mark),
-                                              hollow: mark.place.mark == Glyph.hollow,
-                                              bare: Glyph.bare.contains(mark.place.mark))
+                // Названием остались координаты — на карте их не пишем (P404).
+                let shown = mark.place.name == Geo.text(mark.place.coordinate) ? "" : mark.place.name
+                let picture = PlaceLabel.draw(shown, mark: mark.place.mark)
                 view.image = picture
                 view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
                 view.displayPriority = .required
@@ -999,88 +987,33 @@ final class PlaceMark: NSObject, MKAnnotation {
     init(_ place: Place) { self.place = place }
 }
 
-/// Метка своего места: кружок со значком, под ним — название на плашке.
+/// Метка своего места: значок, под ним — название на плашке. Без
+/// названия — один значок: координаты на карте только загораживают вид,
+/// они есть внизу плашки ввода (P404).
 enum PlaceLabel {
-    static let dot: CGFloat = 24
+    static let dot: CGFloat = PlaceLabelSize.dot
 
-    static func draw(_ name: String, symbol: String, emoji: Bool = false,
-                     tint: UIColor = .white, halo: UIColor = UIColor(white: 0.1, alpha: 0.9),
-                     hollow: Bool = false, bare: Bool = false) -> UIImage {
+    static func draw(_ name: String, mark: String) -> UIImage {
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
         let text = (name as NSString)
-        let wide = min(text.size(withAttributes: words).width, 150)
-        let plate = CGSize(width: wide + 12, height: font.lineHeight + 6)
-        let size = CGSize(width: max(dot, plate.width) + 4, height: dot + 3 + plate.height + 4)
+        let named = !name.trimmingCharacters(in: .whitespaces).isEmpty
+        let wide = named ? min(text.size(withAttributes: words).width, 150) : 0
+        let plate = named ? CGSize(width: wide + 12, height: font.lineHeight + 6) : .zero
+        let size = CGSize(width: max(dot, plate.width) + 4,
+                          height: named ? dot + 3 + plate.height + 4 : dot + 4)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let mid = size.width / 2
             let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
-            // Кружок значка — полупрозрачный: карта под отметкой видна
-            // (P361; ещё на 20% прозрачнее — P372). Значок на нём — белый,
-            // с тёмной обводкой, чтобы читался на любой карте.
-            // «Пустой кружок» (P397) — без заливки: одно белое кольцо с
-            // тёмным ореолом, карта под ним видна насквозь.
-            // Без кружка (P398) — ни заливки, ни кольца: один рисунок.
-            if bare {
-            } else if !hollow {
-                ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
-                                        color: UIColor.black.withAlphaComponent(0.15).cgColor)
-                UIColor(Look.inkSoft).withAlphaComponent(0.48).setFill()
-                UIBezierPath(ovalIn: circle).fill()
-                ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
-            } else {
-                ctx.cgContext.setShadow(offset: .zero, blur: 1.5,
-                                        color: UIColor.black.withAlphaComponent(0.8).cgColor)
-            }
-            if !bare {
-                UIColor.white.setStroke()
-                let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1, dy: 1))
-                ring.lineWidth = hollow ? 2.5 : 1.5
-                ring.stroke()
-            }
-            ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
-            // «Пираты» — эмодзи-флаг, не системный рисунок: рисуется
-            // текстом на месте значка, своих цветов не меняет (P336).
-            if emoji {
-                let mark = symbol as NSString
-                let markAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: bare ? 19 : 13)]
-                let markSize = mark.size(withAttributes: markAttrs)
-                // Обводка эмодзи — ореол вплотную к знаку: на кружке тёмный,
-                // прямо на карте — светлый (P399), иначе тёмный флаг
-                // пропадает на тёмной карте.
-                ctx.cgContext.setShadow(offset: .zero, blur: bare ? 2 : 1.2,
-                                        color: (bare ? halo : UIColor.black.withAlphaComponent(0.85)).cgColor)
-                mark.draw(at: CGPoint(x: circle.midX - markSize.width / 2,
-                                      y: circle.midY - markSize.height / 2), withAttributes: markAttrs)
-                ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
-            } else if !hollow, let shape = UIImage(systemName: symbol,
-                                          withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? 17 : 11,
-                                                                                         weight: .semibold)) {
-                let g = shape.size
-                let at = CGRect(x: circle.midX - g.width / 2, y: circle.midY - g.height / 2,
-                                width: g.width, height: g.height)
-                // Обводка (P372): тот же знак тёмным, сдвинутый на полточки
-                // во все стороны, — а сверху белый. Знак читается и на
-                // светлой карте сквозь прозрачный кружок.
-                let outline = shape.withTintColor(halo, renderingMode: .alwaysOriginal)
-                // Без кружка контур толще — рисунок лежит прямо на карте.
-                let step: CGFloat = bare ? 1.1 : 0.8
-                for dx in [-step, 0, step] {
-                    for dy in [-step, 0, step] where dx != 0 || dy != 0 {
-                        outline.draw(in: at.offsetBy(dx: dx, dy: dy))
-                    }
-                }
-                // Свой цвет значка (P397).
-                shape.withTintColor(tint, renderingMode: .alwaysOriginal).draw(in: at)
-            }
+            GlyphArt.draw(mark, in: circle, ctx: ctx.cgContext)
+            guard named else { return }
             let box = CGRect(x: mid - plate.width / 2, y: dot + 4, width: plate.width, height: plate.height)
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
                                     color: UIColor.black.withAlphaComponent(0.12).cgColor)
             // Полупрозрачная: много названий рядом не должны закрывать карту
             // (0.34 — P372; 0.42 — P361; 0.62 — P330; почти непрозрачная — P244).
             UIColor(Look.sticker).withAlphaComponent(0.34).setFill()
-            let plateShape = UIBezierPath(roundedRect: box, cornerRadius: 5)
-            plateShape.fill()
+            UIBezierPath(roundedRect: box, cornerRadius: 5).fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             // Кромка — чтобы плашка читалась на пёстрой карте (P244).
             UIColor(Look.inkSoft).withAlphaComponent(0.55).setStroke()
@@ -1150,8 +1083,8 @@ struct PointPanel: View {
     @FocusState private var focused: Field?
     @State private var copied = false
 
-    /// Двенадцать значков — два ряда по шесть (P399).
-    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 6)
+    /// Четырнадцать значков — два ряда по семь (P404).
+    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
     var body: some View {
         VStack(spacing: 8) {
@@ -1166,9 +1099,10 @@ struct PointPanel: View {
                         // Каждый значок своего цвета, как на карте (P397);
                         // выбранный — в синем кольце, а не на тёмном
                         // кружке: на тёмном пропал бы чёрный человек.
+                        // Рисунок — тот же, что на карте, с подложкой или
+                        // без (P404).
                         GlyphIcon(name: glyph.name, size: 14)
                             .frame(width: 32, height: 32)
-                            .background(Look.inkSoft.opacity(0.45), in: Circle())
                             .overlay(Circle().strokeBorder(place.mark == glyph.name ? Look.accent : .clear,
                                                            lineWidth: 2.5))
                     }
@@ -1179,7 +1113,9 @@ struct PointPanel: View {
             }
             // Поля — плотные, чтобы текст читался; прозрачна сама плашка
             // вокруг них (P340).
-            TextField(Geo.text(place.coordinate), text: $place.name)
+            // В пустом поле — «Название», а не координаты: они внизу
+            // плашки (P404).
+            TextField(T("Название", "Name"), text: $place.name)
                 .focused($focused, equals: .name)
                 .submitLabel(.next)
                 .onSubmit { focused = .text }

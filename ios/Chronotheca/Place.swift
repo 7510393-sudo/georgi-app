@@ -79,11 +79,8 @@ enum Glyph {
     /// «значок» на деле не имя системного рисунка, а символ юникода: флага
     /// с черепом в системном наборе нет, есть эмодзи «🏴‍☠️» (P336).
     static let all: [(name: String, symbol: String, emoji: Bool)] = [
-        // Набор после разбора (P399), по частоте отметок в дневнике (P400):
-        // первым — точка, она же ставится сама; дальше дом, кафе, любимое,
-        // природа, люди; реже — лучшее, «хочу побывать», ночлег в поездках;
-        // и самые редкие — мысль, указатель, пираты. Точка — «был здесь»,
-        // пустой кружок — «хочу побывать».
+        // По частоте отметок в дневнике (P400), два ряда по семь (P404).
+        // Точка — «был здесь», пустой кружок — «хочу побывать».
         ("точка", "circle.fill", false),
         ("дом", "house.fill", false),
         ("кафе", "cup.and.saucer.fill", false),
@@ -93,26 +90,26 @@ enum Glyph {
         ("звезда", "star.fill", false),
         ("кружок", "circle", false),
         ("ночлег", "bed.double.fill", false),
+        ("огонь", "flame.fill", false),
         ("вдохновение", "lightbulb.fill", false),
+        ("стрелка", "arrowshape.down.fill", false),
         ("указатель", "hand.point.down.fill", false),
         ("пираты", "🏴‍☠️", true),
     ]
 
-    /// Значки без кружка под ними (P398, P399): рука — белая с чёрным
-    /// контуром, пиратский флаг — как есть, со светлым ореолом, прямо на
-    /// карте.
-    static let bare: Set<String> = ["указатель", "пираты"]
+    /// Значки без серой подложки (P398, P399, P404): рисунок с контуром
+    /// прямо на карте.
+    static let bare: Set<String> = ["указатель", "стрелка", "огонь", "пираты"]
 
-    /// Свой цвет значка (P397, P399): красное сердце, жёлтая звезда,
-    /// оранжевая лампочка — чтобы не сливалась со звездой. Остальные —
-    /// белые с тёмным контуром (человек тоже: чёрный на тёмном кружке
-    /// терялся).
+    /// Свой цвет значка (P397, P399, P404): красные сердце и огонь, жёлтые
+    /// звезда и лампочка, зелёная ёлка (её рисуем сами — `GlyphArt`).
+    /// Остальные — белые с тёмным контуром.
     static let tint: [String: UIColor] = [
         "точка": .white,
         "сердце": UIColor(red: 0.93, green: 0.12, blue: 0.14, alpha: 1),
-        "огонь": UIColor(red: 0.93, green: 0.12, blue: 0.14, alpha: 1),
-        "звезда": UIColor(red: 1.0, green: 0.82, blue: 0.0, alpha: 1),
-        "вдохновение": UIColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 1),
+        "огонь": UIColor(red: 0.95, green: 0.1, blue: 0.08, alpha: 1),
+        "звезда": UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1),
+        "вдохновение": UIColor(red: 1.0, green: 0.88, blue: 0.0, alpha: 1),
     ]
 
     /// «Пустой кружок»: отметка без заливки — одно белое кольцо, карта под
@@ -131,7 +128,7 @@ enum Glyph {
     /// места, которые ими уже отмечены, рисуются по-прежнему и при
     /// сохранении значок в файле не теряют (P340).
     private static let former: [String: String] = [
-        "снимок": "camera.fill", "флаг": "flag.fill", "огонь": "flame.fill",
+        "снимок": "camera.fill", "флаг": "flag.fill",
         "здоровье": "cross.case.fill", "вокзал": "tram.fill", "покупки": "bag.fill",
         "хорошее место": "hand.thumbsup.fill", "плохое место": "hand.thumbsdown.fill",
         "личное": "lock.fill", "опасность": "exclamationmark.triangle.fill",
@@ -152,7 +149,7 @@ enum Glyph {
         "покупки": "shopping", "хорошее место": "good place",
         "плохое место": "bad place", "пираты": "pirates", "личное": "private",
         "опасность": "danger", "вдохновение": "inspiration", "призраки": "ghosts",
-        "везение": "luck", "огонь": "fire", "кружок": "ring", "указатель": "pointer", "ночлег": "lodging",
+        "везение": "luck", "огонь": "fire", "кружок": "ring", "указатель": "pointer", "ночлег": "lodging", "стрелка": "arrow",
     ]
     private static let russian: [String: String] =
         Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
@@ -379,27 +376,148 @@ final class Locator: NSObject, CLLocationManagerDelegate {
     }
 }
 
-/// Значок места для списков и панели выбора (P397): свой цвет, контрастная
-/// обводка; «пустой кружок» — одно кольцо; флаг — эмодзи как есть.
+/// Значок места для списков и панели выбора — тот же рисунок, что на
+/// карте (P404): `GlyphArt`, а не своё подобие.
 struct GlyphIcon: View {
     let name: String
     var size: CGFloat = 13
 
     var body: some View {
-        if Glyph.isEmoji(name) {
-            Text(Glyph.image(name)).font(.system(size: size + 2))
-        } else if name == Glyph.hollow {
-            Circle()
-                .strokeBorder(Color.white, lineWidth: 2)
-                .frame(width: size + 3, height: size + 3)
-                .shadow(color: .black.opacity(0.7), radius: 0.8)
-        } else {
-            let halo = Color(uiColor: Glyph.halo(name))
-            Image(systemName: Glyph.image(name))
-                .font(.system(size: size, weight: .semibold))
-                .foregroundStyle(Color(uiColor: Glyph.color(name)))
-                .shadow(color: halo, radius: 0.6)
-                .shadow(color: halo, radius: 0.6)
-        }
+        Image(uiImage: GlyphArt.image(name))
+            .resizable()
+            .scaledToFit()
+            .frame(width: size * 2, height: size * 2)
     }
+}
+
+/// Рисунок значка места (P404) — один для карты, списков и панели выбора.
+/// Обычный значок — на полупрозрачной серой подложке с белым кольцом;
+/// «голые» — без подложки, с контуром; пустой кружок — белое кольцо с
+/// тёмной каймой снаружи и внутри; ёлка нарисована своя (системное
+/// «дерево» похоже на взрыв); у пиратского флага — чёрный флагшток.
+enum GlyphArt {
+
+    static let cache = NSCache<NSString, UIImage>()
+
+    /// Значок на прозрачном поле 26 × 26.
+    static func image(_ mark: String) -> UIImage {
+        if let ready = cache.object(forKey: mark as NSString) { return ready }
+        let side = PlaceLabelSize.dot + 2
+        let out = UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { ctx in
+            draw(mark, in: CGRect(x: 1, y: 1, width: PlaceLabelSize.dot, height: PlaceLabelSize.dot),
+                 ctx: ctx.cgContext)
+        }
+        cache.setObject(out, forKey: mark as NSString)
+        return out
+    }
+
+    static func draw(_ mark: String, in circle: CGRect, ctx: CGContext) {
+        if mark == Glyph.hollow { return ring(circle) }
+        let bare = Glyph.bare.contains(mark)
+        if !bare {
+            // Подложка полупрозрачная: карта под отметкой видна (P361, P372).
+            ctx.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
+                          color: UIColor.black.withAlphaComponent(0.15).cgColor)
+            UIColor(Look.inkSoft).withAlphaComponent(0.48).setFill()
+            UIBezierPath(ovalIn: circle).fill()
+            ctx.setShadow(offset: .zero, blur: 0, color: nil)
+            UIColor.white.setStroke()
+            let ring = UIBezierPath(ovalIn: circle.insetBy(dx: 1, dy: 1))
+            ring.lineWidth = 1.5
+            ring.stroke()
+        }
+        if Glyph.isEmoji(mark) { return emoji(mark, in: circle, bare: bare, ctx: ctx) }
+        if mark == "природа" { return tree(in: circle.insetBy(dx: 5, dy: 4)) }
+        guard let shape = UIImage(systemName: Glyph.image(mark),
+                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? 17 : 11,
+                                                                                 weight: .semibold))
+        else { return }
+        let g = shape.size
+        let at = CGRect(x: circle.midX - g.width / 2, y: circle.midY - g.height / 2,
+                        width: g.width, height: g.height)
+        // Контур (P372): тот же знак тёмным, сдвинутый во все стороны, —
+        // сверху цветной.
+        let outline = shape.withTintColor(Glyph.halo(mark), renderingMode: .alwaysOriginal)
+        let step: CGFloat = bare ? 1.1 : 0.8
+        for dx in [-step, 0, step] {
+            for dy in [-step, 0, step] where dx != 0 || dy != 0 {
+                outline.draw(in: at.offsetBy(dx: dx, dy: dy))
+            }
+        }
+        shape.withTintColor(Glyph.color(mark), renderingMode: .alwaysOriginal).draw(in: at)
+    }
+
+    /// Пустой кружок: белое кольцо, тёмная кайма снаружи и внутри; внутри
+    /// карта видна насквозь.
+    private static func ring(_ circle: CGRect) {
+        let white = UIBezierPath(ovalIn: circle.insetBy(dx: 2.2, dy: 2.2))
+        white.lineWidth = 2.8
+        UIColor.white.setStroke()
+        white.stroke()
+        UIColor(white: 0.1, alpha: 0.85).setStroke()
+        let outer = UIBezierPath(ovalIn: circle.insetBy(dx: 0.5, dy: 0.5))
+        outer.lineWidth = 0.9
+        outer.stroke()
+        let inner = UIBezierPath(ovalIn: circle.insetBy(dx: 3.9, dy: 3.9))
+        inner.lineWidth = 0.9
+        inner.stroke()
+    }
+
+    /// Ёлка: три яруса и ствол, зелёная с тёмным контуром.
+    private static func tree(in r: CGRect) {
+        let mid = r.midX
+        func tier(_ top: CGFloat, _ base: CGFloat, _ half: CGFloat) -> UIBezierPath {
+            let p = UIBezierPath()
+            p.move(to: CGPoint(x: mid, y: r.minY + r.height * top))
+            p.addLine(to: CGPoint(x: mid + r.width * half, y: r.minY + r.height * base))
+            p.addLine(to: CGPoint(x: mid - r.width * half, y: r.minY + r.height * base))
+            p.close()
+            return p
+        }
+        let tiers = [tier(0, 0.42, 0.28), tier(0.2, 0.66, 0.4), tier(0.42, 0.86, 0.5)]
+        let trunk = UIBezierPath(rect: CGRect(x: mid - 1.3, y: r.minY + r.height * 0.84,
+                                              width: 2.6, height: r.height * 0.16))
+        UIColor(white: 0.08, alpha: 0.9).setStroke()
+        for p in tiers + [trunk] {
+            p.lineWidth = 1.8
+            p.lineJoinStyle = .round
+            p.stroke()
+        }
+        UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1).setFill()
+        trunk.fill()
+        UIColor(red: 0.13, green: 0.66, blue: 0.24, alpha: 1).setFill()
+        for p in tiers { p.fill() }
+    }
+
+    /// Эмодзи-значок. Пиратский флаг — с чёрным флагштоком до самой
+    /// точки места.
+    private static func emoji(_ mark: String, in circle: CGRect, bare: Bool, ctx: CGContext) {
+        let sign = Glyph.image(mark) as NSString
+        let attrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: bare ? 17 : 13)]
+        let size = sign.size(withAttributes: attrs)
+        let spot = CGPoint(x: circle.midX - size.width / 2 + (bare ? 2 : 0),
+                           y: circle.midY - size.height / 2 - (bare ? 2 : 0))
+        if mark == "пираты" {
+            let x = spot.x + size.width * 0.16
+            let pole = UIBezierPath()
+            pole.move(to: CGPoint(x: x, y: spot.y + size.height * 0.12))
+            pole.addLine(to: CGPoint(x: x, y: circle.maxY))
+            pole.lineCapStyle = .round
+            UIColor.white.withAlphaComponent(0.9).setStroke()
+            pole.lineWidth = 3.6
+            pole.stroke()
+            UIColor.black.setStroke()
+            pole.lineWidth = 1.8
+            pole.stroke()
+        }
+        ctx.setShadow(offset: .zero, blur: bare ? 2 : 1.2,
+                      color: (bare ? Glyph.halo(mark) : UIColor.black.withAlphaComponent(0.85)).cgColor)
+        sign.draw(at: spot, withAttributes: attrs)
+        ctx.setShadow(offset: .zero, blur: 0, color: nil)
+    }
+}
+
+/// Размер кружка значка — общий для карты и списков.
+enum PlaceLabelSize {
+    static let dot: CGFloat = 24
 }
