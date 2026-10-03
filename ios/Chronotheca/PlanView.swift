@@ -481,7 +481,7 @@ struct PlanHead: View {
             step("arrow.uturn.forward", redo, T("Шаг вперёд", "Redo"))
             // «Плюс» — того же вида, что стрелки шага рядом (P386).
             Image(systemName: "plus")
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(Look.accent)
                 .frame(width: StepButton.side, height: StepButton.side)
                 .background(Circle().fill(Look.accent.opacity(0.07)))
@@ -509,15 +509,16 @@ struct StepButton: View {
     var dimmed = false
 
     /// Кружок и «плюс» рядом — на 20% крупнее прежних 34 (P356): в мелкий
-    /// пальцем не попасть.
-    static let side: CGFloat = 41
+    /// пальцем не попасть. После того как их сделали жирнее, — на 10%
+    /// меньше, 37 (P388).
+    static let side: CGFloat = 37
 
     var body: some View {
         // Выразительнее (P386): стрелка толще и крупнее, кружок — заметной
         // синей чертой; недоступная — бледнее, но различима (P113: кнопки
         // не пропадают).
         Image(systemName: icon)
-            .font(.system(size: 19, weight: .bold))
+            .font(.system(size: 17, weight: .bold))
             .foregroundStyle(Look.accent)
             .frame(width: Self.side, height: Self.side)
             .background(Circle().fill(Look.accent.opacity(0.07)))
@@ -1649,7 +1650,7 @@ struct DeleteBadge: View {
             Image(systemName: "xmark.circle.fill")
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(.white, Look.pin)
-                .font(.system(size: 34, weight: .bold))
+                .font(.system(size: 31, weight: .bold))
                 .background(Circle().fill(.white).padding(-2.5))
                 .shadow(color: .black.opacity(0.3), radius: 3, y: 1)
                 .frame(width: 48, height: 40)

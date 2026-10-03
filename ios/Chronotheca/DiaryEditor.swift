@@ -774,15 +774,15 @@ struct DiaryEditor: UIViewRepresentable {
             // Крестик вдвое крупнее прежнего — его видно и пальцем не
             // промахнуться (P380).
             let symbol = UIImage(systemName: "xmark.circle.fill",
-                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 36, weight: .bold)
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 32, weight: .bold)
                                      .applying(UIImage.SymbolConfiguration(
                                         paletteColors: [.white, UIColor(Look.pin)])))
             cross.setImage(symbol, for: .normal)
             cross.frame = CGRect(x: 0, y: 0, width: 56, height: 56)
             // Как крестик в плане (P386): белая кайма и тень.
-            let rim = UIView(frame: CGRect(x: 0, y: 0, width: 47, height: 47))
+            let rim = UIView(frame: CGRect(x: 0, y: 0, width: 42, height: 42))
             rim.backgroundColor = .white
-            rim.layer.cornerRadius = 23.5
+            rim.layer.cornerRadius = 21
             rim.isUserInteractionEnabled = false
             rim.center = CGPoint(x: 28, y: 28)
             cross.insertSubview(rim, at: 0)
