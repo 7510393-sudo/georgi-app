@@ -479,12 +479,14 @@ struct PlanHead: View {
             // Шаг назад и шаг вперёд — слева от «плюса» (P261).
             step("arrow.uturn.backward", undo, T("Шаг назад", "Undo"))
             step("arrow.uturn.forward", redo, T("Шаг вперёд", "Redo"))
-            Text("+")
-                .font(.system(size: 25))
+            // «Плюс» — того же вида, что стрелки шага рядом (P386).
+            Image(systemName: "plus")
+                .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Look.accent)
                 .frame(width: StepButton.side, height: StepButton.side)
-                .overlay(Circle().strokeBorder(Look.rule))
-                .opacity(dimmed ? 0.3 : 1)
+                .background(Circle().fill(Look.accent.opacity(0.07)))
+                .overlay(Circle().strokeBorder(Look.accent.opacity(0.55), lineWidth: 1.5))
+                .opacity(dimmed ? 0.38 : 1)
                 .onTapGesture { add?() }
                 .accessibilityLabel(T("Новое дело", "New task"))
         }
