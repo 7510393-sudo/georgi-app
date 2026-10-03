@@ -34,9 +34,9 @@ struct GalleryRow: View {
         var id: String { asset.localIdentifier }
     }
 
-    /// Ряд галереи над клавиатурой остаётся мелким (прежние 60): крупные
-    /// превью заняли бы пол-экрана над клавиатурой (P383).
-    static let side: CGFloat = 60
+    /// Превью в ряду галереи над клавиатурой — того же размера, что все
+    /// превью: в пять строк дневника (P385; прежде 60).
+    static let side: CGFloat = DiaryEditor.photoSize.width
     static let height: CGFloat = side + 16
 
     var body: some View {
@@ -211,7 +211,7 @@ struct GalleryThumb: View {
             options.isNetworkAccessAllowed = true
             options.deliveryMode = .opportunistic
             PHImageManager.default().requestImage(for: asset,
-                                                  targetSize: CGSize(width: 160, height: 160),
+                                                  targetSize: CGSize(width: 360, height: 360),
                                                   contentMode: .aspectFill,
                                                   options: options) { got, _ in
                 if let got { image = got }

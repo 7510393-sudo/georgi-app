@@ -220,6 +220,7 @@ enum Search {
         return "\(c.year ?? 2026) \(Ru.monthNames[(c.month ?? 1) - 1]) \(c.day ?? 1)"
     }
 
-    /// Пять строк текста находки.
-    static let previewSide: CGFloat = 86
+    /// Превью находки — того же размера, что все превью: в пять строк
+    /// дневника (P385; прежде 86 — пять строк мелкого текста находки).
+    static let previewSide: CGFloat = DiaryEditor.photoSize.width
 }
