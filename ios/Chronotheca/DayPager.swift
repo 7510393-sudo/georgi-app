@@ -234,7 +234,8 @@ struct DayPage: View {
                       name: T("Шаг вперёд", "Redo")) { store.redo() }
         }
         .padding(.horizontal, 8)
-        .padding(.top, 8)
+        // В полосе заголовка «ПЛАН» (две клетки) — не наезжают на плашку.
+        .padding(.top, 1)
     }
 
     /// Высота строки заголовка. Одна на всех страницах: шапка не должна
@@ -332,7 +333,7 @@ struct DayPage: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Look.accent)
                 .opacity(ready ? 1 : 0.3)
-                .frame(width: 36, height: 36)
+                .frame(width: 34, height: 34)
                 .background(Circle().fill(Look.chrome.opacity(0.62)))
                 .overlay(Circle().strokeBorder(Look.inkFaint.opacity(0.35), lineWidth: 0.8))
                 .contentShape(Circle())
