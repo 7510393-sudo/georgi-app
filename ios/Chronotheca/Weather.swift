@@ -47,26 +47,56 @@ enum WeatherNote {
     /// Состояние неба на языке приложения (P355): система отвечает на
     /// языке телефона, а запись пишется на языке дневника.
     static func words(_ c: WeatherCondition) -> String {
+        guard let pair = pair(c) else { return c.description.lowercased() }
+        return T(pair.0, pair.1)
+    }
+
+    private static func pair(_ c: WeatherCondition) -> (String, String)? {
         switch c {
-        case .clear: return T("ясно", "clear")
-        case .mostlyClear: return T("почти ясно", "mostly clear")
-        case .partlyCloudy: return T("переменная облачность", "partly cloudy")
-        case .mostlyCloudy, .cloudy: return T("облачно", "cloudy")
-        case .foggy: return T("туман", "fog")
-        case .haze, .smoky: return T("дымка", "haze")
-        case .drizzle: return T("морось", "drizzle")
-        case .rain, .sunShowers: return T("дождь", "rain")
-        case .heavyRain: return T("ливень", "heavy rain")
-        case .snow, .flurries, .sunFlurries: return T("снег", "snow")
-        case .heavySnow, .blizzard, .blowingSnow: return T("метель", "blizzard")
-        case .sleet, .freezingRain, .freezingDrizzle, .wintryMix: return T("мокрый снег", "sleet")
-        case .hail: return T("град", "hail")
+        case .clear: return pairs[0]
+        case .mostlyClear: return pairs[1]
+        case .partlyCloudy: return pairs[2]
+        case .mostlyCloudy, .cloudy: return pairs[3]
+        case .foggy: return pairs[4]
+        case .haze, .smoky: return pairs[5]
+        case .drizzle: return pairs[6]
+        case .rain, .sunShowers: return pairs[7]
+        case .heavyRain: return pairs[8]
+        case .snow, .flurries, .sunFlurries: return pairs[9]
+        case .heavySnow, .blizzard, .blowingSnow: return pairs[10]
+        case .sleet, .freezingRain, .freezingDrizzle, .wintryMix: return pairs[11]
+        case .hail: return pairs[12]
         case .thunderstorms, .isolatedThunderstorms, .scatteredThunderstorms,
-             .strongStorms: return T("гроза", "thunderstorm")
-        case .windy, .breezy: return T("ветрено", "windy")
-        case .hot: return T("жара", "hot")
-        case .frigid: return T("мороз", "frigid")
-        default: return c.description.lowercased()
+             .strongStorms: return pairs[13]
+        case .windy, .breezy: return pairs[14]
+        case .hot: return pairs[15]
+        case .frigid: return pairs[16]
+        default: return nil
         }
+    }
+
+    /// Слова погоды по-русски и по-английски. По ним записанная погода
+    /// показывается на языке приложения, на каком бы её ни записали (P412):
+    /// записанное при английском «cloudy» по-русски видно как «облачно».
+    static let pairs: [(String, String)] = [
+        ("ясно", "clear"), ("почти ясно", "mostly clear"),
+        ("переменная облачность", "partly cloudy"), ("облачно", "cloudy"),
+        ("туман", "fog"), ("дымка", "haze"), ("морось", "drizzle"),
+        ("дождь", "rain"), ("ливень", "heavy rain"), ("снег", "snow"),
+        ("метель", "blizzard"), ("мокрый снег", "sleet"), ("град", "hail"),
+        ("гроза", "thunderstorm"), ("ветрено", "windy"), ("жара", "hot"),
+        ("мороз", "frigid"),
+    ]
+
+    /// Записанная погода — на языке приложения: «+12°, cloudy» →
+    /// «+12°, облачно». Незнакомое слово остаётся как записано.
+    static func shown(_ stored: String) -> String {
+        guard let comma = stored.range(of: ", ") else { return stored }
+        let word = String(stored[comma.upperBound...]).trimmingCharacters(in: .whitespaces)
+        let lower = word.lowercased()
+        guard let pair = pairs.first(where: { lower == $0.0 || lower == $0.1
+                                              || lower == T($0.0, $0.1).lowercased() })
+        else { return stored }
+        return String(stored[..<comma.upperBound]) + T(pair.0, pair.1)
     }
 }

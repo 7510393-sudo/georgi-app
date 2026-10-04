@@ -28,6 +28,7 @@ struct DaySheet<Plan: View, Diary: View>: View {
     @State private var keyboard: CGFloat = 0
 
     private static var top: String { "страница-верх" }
+    static var space: String { "лист" }
 
     var body: some View {
         GeometryReader { outer in
@@ -41,7 +42,7 @@ struct DaySheet<Plan: View, Diary: View>: View {
                         }
                         // Под планом — клетка, она закрывает гладкую бумагу
                         // дневника, лежащую под всей страницей.
-                        .background(Ru.tint(date).overlay(PageTexture(tab: .plan)))
+                        .background(Ru.tint(date).overlay(PageTexture(tab: .plan, space: Self.space)))
                         VStack(alignment: .leading, spacing: 0) {
                             SheetHeading(title: T("Дневник", "Diary"), faint: !diaryOpen)
                             diary()
@@ -51,7 +52,10 @@ struct DaySheet<Plan: View, Diary: View>: View {
                         .frame(maxHeight: .infinity, alignment: .top)
                     }
                     .frame(minHeight: outer.size.height, alignment: .top)
-                    .background(Ru.tint(date).overlay(PageTexture(tab: .diary)))
+                    .background(Ru.tint(date).overlay(PageTexture(tab: .diary, space: Self.space)))
+                    // Клетка и волокно отсчитываются от самого листа, а не
+                    // от экрана: тянешь план — клетка едет с текстом (P412).
+                    .coordinateSpace(name: Self.space)
                     // Место под клавиатуру: без него строку, в которой пишут,
                     // некуда поднять (P166, P175).
                     .padding(.bottom, keyboard)
@@ -88,30 +92,22 @@ private enum SheetMemory {
 }
 
 /// Заголовок части страницы — «План» или «Дневник» (P408): прописными, в
-/// разрядку, как прежние корешки вкладок, с тонкими чертами по бокам.
+/// разрядку, как прежние корешки вкладок; на 15% крупнее и без черт по
+/// бокам (P412).
 struct SheetHeading: View {
     let title: String
     var faint = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            rule
-            Text(title.uppercased())
-                .font(Look.sans(15, weight: .semibold))
-                .tracking(1.56)
-                .foregroundStyle(faint ? Look.inkFaint : Look.inkSoft)
-                .lineLimit(1)
-                .fixedSize()
-            rule
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        .frame(maxWidth: .infinity)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    private var rule: some View {
-        Rectangle().fill(Look.inkFaint.opacity(0.5)).frame(height: 1)
+        Text(title.uppercased())
+            .font(Look.sans(17.25, weight: .semibold))
+            .tracking(1.8)
+            .foregroundStyle(faint ? Look.inkFaint : Look.inkSoft)
+            .lineLimit(1)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity)
+            .accessibilityAddTraits(.isHeader)
     }
 }

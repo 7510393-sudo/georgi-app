@@ -121,9 +121,9 @@ enum Ru {
         let cal = Calendar.current
         let n = cal.dateComponents([.day], from: DayStore.today(),
                                    to: cal.startOfDay(for: date)).day ?? 0
-        if n < 0 { return timeTints[0] }
-        if n > 0 { return timeTints[2] }
-        return timeTints[1]
+        // Будущее — того же цвета, что сегодня (P412): цвет «сегодня»
+        // начинается сегодня и идёт дальше; прошлое — своим цветом.
+        return n < 0 ? timeTints[0] : timeTints[1]
     }
 
     private static let timeTints: [Color] = [
@@ -131,7 +131,6 @@ enum Ru {
         // Бледнее на 15% (P330; было 0xF8E2D0/0x30261E, менее насыщенный
         // цвет прежней шкалы, P321).
         Color(light: 0xF9E6D7, dark: 0x2F2620),   // сегодня
-        Color(light: 0xF0F4ED, dark: 0x181E19),   // будущее, любое
     ]
 
     private static let dayColours: [Color] = [

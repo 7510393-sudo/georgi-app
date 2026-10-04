@@ -34,7 +34,9 @@ enum Prefs {
 
     /// Погода для показа: в файле она всегда в °C, показывается — как
     /// выбрано.
-    static func weatherText(_ stored: String) -> String {
+    static func weatherText(_ written: String) -> String {
+        // Слова — на языке приложения, как бы их ни записали (P412).
+        let stored = WeatherNote.shown(written)
         guard UserDefaults.standard.bool(forKey: fahrenheit) else { return stored }
         let ns = stored as NSString
         guard let re = try? NSRegularExpression(pattern: #"([+-]?\d+)°"#),

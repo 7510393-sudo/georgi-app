@@ -368,6 +368,9 @@ struct PageTexture: View {
     /// Кусок сдвинут при рисовании (открытая вкладка опущена на точку) —
     /// узор сдвигается обратно, чтобы клетка не разошлась.
     var shift: CGFloat = 0
+    /// От чего отсчитывается узор. На листе дня — от самого листа, который
+    /// едет при прокрутке: клетка идёт вместе с текстом (P412).
+    var space: String = PageTexture.space
 
     /// Общая точка отсчёта фактуры — вся страница дня.
     static let space = "страница"
@@ -378,7 +381,7 @@ struct PageTexture: View {
         GeometryReader { geo in
             // Узор сдвигается так, будто он нарисован на всей странице
             // разом, а этот кусок — окно в него.
-            let at = geo.frame(in: .named(PageTexture.space)).origin
+            let at = geo.frame(in: .named(space)).origin
             let dx = at.x.truncatingRemainder(dividingBy: tile.width)
             let dy = (at.y + shift).truncatingRemainder(dividingBy: tile.height)
             Image(uiImage: picture)
