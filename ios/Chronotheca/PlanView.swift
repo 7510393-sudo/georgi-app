@@ -410,6 +410,9 @@ struct PlanView: View {
     @State private var photoBack = false
     @State private var photoSpots: [UUID: CGRect] = [:]
     @State private var photoStripTop: CGFloat = .infinity
+    /// Снимок ведут вдоль своего же ряда — на какое место в ряду он встанет
+    /// (P409): так снимки под делом меняются местами.
+    @State private var photoSlot: Int?
 
     /// События Календаря этого дня (P376).
     @State private var events: [DayEvents.Item] = []
@@ -663,7 +666,7 @@ struct PlanView: View {
             // Поднятое дело обведено синим — тем же, что и всё, что можно
             // взять пальцем (P203, P362); и дело, под которое ляжет
             // несомый снимок (P377).
-            lifted: up || photoTo == id)
+            lifted: up || photoTo == id || shell.planHover?.id == id)
             // Снимок из полоски или из-под другого дела — под это дело, в
             // ряд с теми, что уже там (P358).
             .onDrop(of: store.canEditPlan ? [UTType.plainText] : [],
@@ -1032,14 +1035,21 @@ struct PlanView: View {
             photoStripTop = PlanZones.strip?.minY ?? .infinity
             photoTo = nil
             photoBack = false
+            photoSlot = nil
             photoSpot = spot
             photoCarry = PhotoCarry(link: link, from: row)
         case .moved:
             guard photoCarry?.link == link else { return }
             photoSpot = spot
             let back = spot.y >= photoStripTop - 8
+            // Вдоль своего ряда — переставить в ряду (P409).
+            let slot = back ? nil : slotInRow(row, at: spot)
+            if slot != photoSlot {
+                photoSlot = slot
+                if slot != nil { Feel.tick() }
+            }
             var to: UUID?
-            if !back {
+            if !back, slot == nil {
                 let list = store.tasks
                 to = list.last { (photoSpots[$0.id]?.minY ?? .infinity) < spot.y }?.id ?? list.first?.id
                 if to == owner(of: row) { to = nil }
@@ -1055,22 +1065,39 @@ struct PlanView: View {
             guard photoCarry?.link == link else { return }
             let to = photoTo
             let back = photoBack
+            let slot = photoSlot
             let real: Bool
             if case .ended = phase { real = true } else { real = false }
             withAnimation(.easeOut(duration: 0.2)) {
                 photoCarry = nil
                 photoTo = nil
                 photoBack = false
+                photoSlot = nil
                 photoSpot = .zero
                 guard real else { return }
-                if back {
+                if let slot {
+                    store.reorderPlanPhoto(link, in: row, to: slot)
+                } else if back {
                     store.returnPlanPhoto(link)
                 } else if let to {
                     store.putPlanPhoto(link, under: to)
                 }
             }
-            if real, back || to != nil { Feel.thud() }
+            if real, back || to != nil || slot != nil { Feel.thud() }
         }
+    }
+
+    /// Место в своём ряду снимков под пальцем: перед каким снимком встать.
+    /// `nil` — палец не над этим рядом.
+    private func slotInRow(_ row: UUID, at spot: CGPoint) -> Int? {
+        guard let frame = photoSpots[row], frame.insetBy(dx: 0, dy: -6).contains(spot),
+              let line = store.planRows.first(where: { $0.id == row })?.verbatim
+        else { return nil }
+        let count = Diary.links(in: line).count
+        guard count > 1 else { return nil }
+        let cell = DiaryEditor.photoSize.width + 8
+        let slot = Int(((spot.x - frame.minX - 14) + cell / 2) / cell)
+        return min(max(slot, 0), count)
     }
 
     /// Дело, под которым стоит строка.
@@ -1082,7 +1109,10 @@ struct PlanView: View {
     /// На сколько сдвинута строка, пока несут снимок: под выбранным делом
     /// открывается место под новый ряд — если ряда снимков там ещё нет.
     private func photoShift(_ id: UUID) -> CGFloat {
-        guard photoCarry != nil, let to = photoTo, let t = store.index(of: to),
+        // Свой снимок из-под дела — или снимок из дневника и полоски (P409).
+        let target = photoCarry != nil ? photoTo
+            : (shell.planHover?.photo == true ? shell.planHover?.id : nil)
+        guard let to = target, let t = store.index(of: to),
               let mine = store.index(of: id), mine > t else { return 0 }
         let next = t + 1
         if next < store.planRows.count, store.planRows[next].verbatim.map(Plan.isPhotoRow) == true {
@@ -1369,6 +1399,17 @@ private struct SeriesQuestion: ViewModifier {
 /// по ним ищется, куда встанет несомая точка (P374).
 enum PlanZones {
     static var rows: [UUID: CGRect] = [:]
+
+    /// Дело, под которое встанет принесённое из дневника или полоски
+    /// (P409): последнее дело выше пальца. `nil` — палец не над планом.
+    static func task(at spot: CGPoint, tasks: [PlanRow]) -> UUID? {
+        guard spot != .zero else { return nil }
+        let frames = tasks.compactMap { t in rows[t.id].map { (t.id, $0) } }
+        guard let top = frames.map(\.1.minY).min() else { return nil }
+        let bottom = rows.values.map(\.maxY).max() ?? top
+        guard spot.y >= top - 8, spot.y <= bottom + 24 else { return nil }
+        return frames.last { $0.1.minY < spot.y }?.0 ?? frames.first?.0
+    }
     /// События Календаря (P376) — по их ключам.
     static var events: [String: CGRect] = [:]
     /// Полоска снимков внизу — туда снимок возвращают (P377).

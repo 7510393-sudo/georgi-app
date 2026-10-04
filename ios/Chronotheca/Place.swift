@@ -79,27 +79,32 @@ enum Glyph {
     /// «значок» на деле не имя системного рисунка, а символ юникода: флага
     /// с черепом в системном наборе нет, есть эмодзи «🏴‍☠️» (P336).
     static let all: [(name: String, symbol: String, emoji: Bool)] = [
-        // По частоте отметок в дневнике (P400), два ряда по семь (P404).
-        // Точка — «был здесь», пустой кружок — «хочу побывать».
+        // Два ряда по семь (P404). Сверху — классические чёрно-белые,
+        // снизу — придуманные автором цветные; в каждом ряду — от самых
+        // частых к редким (P409).
         ("точка", "circle.fill", false),
         ("дом", "house.fill", false),
         ("кафе", "cup.and.saucer.fill", false),
+        ("человек", "person.fill", false),
+        ("ночлег", "bed.double.fill", false),
+        ("кружок", "circle", false),
+        ("невидимый", "rectangle.dashed", false),
         ("сердце", "heart.fill", false),
         ("природа", "tree.fill", false),
-        ("человек", "person.fill", false),
         ("звезда", "star.fill", false),
-        ("кружок", "circle", false),
-        ("ночлег", "bed.double.fill", false),
-        ("огонь", "flame.fill", false),
         ("вдохновение", "lightbulb.fill", false),
+        ("огонь", "flame.fill", false),
         ("стрелка", "arrowshape.down.fill", false),
-        ("указатель", "hand.point.down.fill", false),
-        ("пираты", "🏴‍☠️", true),
+        ("пираты", "flag.fill", false),
     ]
 
     /// Значки без серой подложки (P398, P399, P404): рисунок с контуром
-    /// прямо на карте.
-    static let bare: Set<String> = ["указатель", "стрелка", "огонь", "пираты"]
+    /// прямо на карте. Стрелка, огонь и флаг нарисованы свои (P409).
+    static let bare: Set<String> = ["стрелка", "огонь", "пираты"]
+
+    /// «Невидимый» (P409): на карте нет значка — только плашка с названием,
+    /// а без названия — со словом «Место».
+    static let invisible = "невидимый"
 
     /// Свой цвет значка (P397, P399, P404): красные сердце и огонь, жёлтые
     /// звезда и лампочка, зелёная ёлка (её рисуем сами — `GlyphArt`).
@@ -129,6 +134,8 @@ enum Glyph {
     /// сохранении значок в файле не теряют (P340).
     private static let former: [String: String] = [
         "снимок": "camera.fill", "флаг": "flag.fill",
+        // Рука с пальцем (P404) уступила место «невидимому» (P409).
+        "указатель": "hand.point.down.fill",
         "здоровье": "cross.case.fill", "вокзал": "tram.fill", "покупки": "bag.fill",
         "хорошее место": "hand.thumbsup.fill", "плохое место": "hand.thumbsdown.fill",
         "личное": "lock.fill", "опасность": "exclamationmark.triangle.fill",
@@ -150,6 +157,7 @@ enum Glyph {
         "плохое место": "bad place", "пираты": "pirates", "личное": "private",
         "опасность": "danger", "вдохновение": "inspiration", "призраки": "ghosts",
         "везение": "luck", "огонь": "fire", "кружок": "ring", "указатель": "pointer", "ночлег": "lodging", "стрелка": "arrow",
+        "невидимый": "invisible",
     ]
     private static let russian: [String: String] =
         Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
@@ -427,7 +435,16 @@ enum GlyphArt {
             ring.stroke()
         }
         if Glyph.isEmoji(mark) { return emoji(mark, in: circle, bare: bare, ctx: ctx) }
-        if mark == "природа" { return tree(in: circle.insetBy(dx: 5, dy: 4)) }
+        // Свои рисунки (P409): ни чужих значков, ни эмодзи — только то,
+        // что нарисовано здесь.
+        switch mark {
+        case "природа": return tree(in: circle.insetBy(dx: 4, dy: 3))
+        case "стрелка": return arrow(in: circle.insetBy(dx: 2, dy: 1))
+        case "огонь": return fire(in: circle.insetBy(dx: 3, dy: 1))
+        case "пираты": return pirates(in: circle)
+        case Glyph.invisible: return invisible(in: circle)
+        default: break
+        }
         guard let shape = UIImage(systemName: Glyph.image(mark),
                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? 17 : 11,
                                                                                  weight: .semibold))
@@ -463,30 +480,172 @@ enum GlyphArt {
         inner.stroke()
     }
 
-    /// Ёлка: три яруса и ствол, зелёная с тёмным контуром.
+    /// Ёлка: три яруса и ствол, зелёная с тёмным контуром. Ярусы видны
+    /// каждый: нижний рисуется первым, верхний ложится на него, и низ у
+    /// каждого вогнут — ёлка, а не пирамида (P409). Основание на десятую
+    /// уже прежнего.
     private static func tree(in r: CGRect) {
         let mid = r.midX
         func tier(_ top: CGFloat, _ base: CGFloat, _ half: CGFloat) -> UIBezierPath {
             let p = UIBezierPath()
             p.move(to: CGPoint(x: mid, y: r.minY + r.height * top))
             p.addLine(to: CGPoint(x: mid + r.width * half, y: r.minY + r.height * base))
-            p.addLine(to: CGPoint(x: mid - r.width * half, y: r.minY + r.height * base))
+            p.addQuadCurve(to: CGPoint(x: mid - r.width * half, y: r.minY + r.height * base),
+                           controlPoint: CGPoint(x: mid, y: r.minY + r.height * (base - 0.12)))
+            p.close()
+            p.lineWidth = 1.5
+            p.lineJoinStyle = .round
+            return p
+        }
+        let trunk = UIBezierPath(rect: CGRect(x: mid - 1.3, y: r.minY + r.height * 0.8,
+                                              width: 2.6, height: r.height * 0.2))
+        trunk.lineWidth = 1.5
+        UIColor(white: 0.08, alpha: 0.9).setStroke()
+        trunk.stroke()
+        UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1).setFill()
+        trunk.fill()
+        let greens = [UIColor(red: 0.10, green: 0.55, blue: 0.20, alpha: 1),
+                      UIColor(red: 0.13, green: 0.63, blue: 0.24, alpha: 1),
+                      UIColor(red: 0.18, green: 0.72, blue: 0.29, alpha: 1)]
+        let tiers = [tier(0.44, 0.88, 0.405), tier(0.21, 0.66, 0.31), tier(0, 0.42, 0.21)]
+        for (p, green) in zip(tiers, greens) {
+            UIColor(white: 0.08, alpha: 0.9).setStroke()
+            p.stroke()
+            green.setFill()
+            p.fill()
+        }
+    }
+
+    /// Стрелка вниз (P409): своя, на десятую уже системной и с острыми
+    /// углами. Белая с тёмным контуром.
+    private static func arrow(in r: CGRect) {
+        let mid = r.midX
+        let shaft = r.width * 0.15, head = r.width * 0.36
+        let top = r.minY + 1, waist = r.minY + r.height * 0.48, tip = r.maxY - 0.5
+        let p = UIBezierPath()
+        p.move(to: CGPoint(x: mid - shaft, y: top))
+        p.addLine(to: CGPoint(x: mid + shaft, y: top))
+        p.addLine(to: CGPoint(x: mid + shaft, y: waist))
+        p.addLine(to: CGPoint(x: mid + head, y: waist))
+        p.addLine(to: CGPoint(x: mid, y: tip))
+        p.addLine(to: CGPoint(x: mid - head, y: waist))
+        p.addLine(to: CGPoint(x: mid - shaft, y: waist))
+        p.close()
+        p.lineJoinStyle = .miter
+        p.miterLimit = 6
+        p.lineWidth = 2.4
+        UIColor(white: 0.1, alpha: 0.9).setStroke()
+        p.stroke()
+        UIColor.white.setFill()
+        p.fill()
+    }
+
+    /// Огонь (P409): свой — три языка один в другом, красный, оранжевый,
+    /// жёлтый, с тонкой тёмной каймой, чтобы читался на карте.
+    private static func fire(in r: CGRect) {
+        func flame(_ k: CGFloat) -> UIBezierPath {
+            // Точки — доли рамки; меньшие языки — тот же рисунок, сжатый к
+            // середине низа.
+            func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+                CGPoint(x: r.midX + (r.minX + r.width * x - r.midX) * k,
+                        y: r.maxY + (r.minY + r.height * y - r.maxY) * k)
+            }
+            let p = UIBezierPath()
+            p.move(to: pt(0.50, 1.00))
+            p.addCurve(to: pt(0.08, 0.58), controlPoint1: pt(0.20, 1.00), controlPoint2: pt(0.04, 0.80))
+            p.addCurve(to: pt(0.24, 0.22), controlPoint1: pt(0.11, 0.42), controlPoint2: pt(0.20, 0.34))
+            p.addCurve(to: pt(0.40, 0.44), controlPoint1: pt(0.30, 0.34), controlPoint2: pt(0.33, 0.42))
+            p.addCurve(to: pt(0.62, 0.00), controlPoint1: pt(0.38, 0.24), controlPoint2: pt(0.48, 0.08))
+            p.addCurve(to: pt(0.94, 0.62), controlPoint1: pt(0.62, 0.18), controlPoint2: pt(0.94, 0.34))
+            p.addCurve(to: pt(0.50, 1.00), controlPoint1: pt(0.94, 0.86), controlPoint2: pt(0.76, 1.00))
             p.close()
             return p
         }
-        let tiers = [tier(0, 0.42, 0.28), tier(0.2, 0.66, 0.4), tier(0.42, 0.86, 0.5)]
-        let trunk = UIBezierPath(rect: CGRect(x: mid - 1.3, y: r.minY + r.height * 0.84,
-                                              width: 2.6, height: r.height * 0.16))
-        UIColor(white: 0.08, alpha: 0.9).setStroke()
-        for p in tiers + [trunk] {
-            p.lineWidth = 1.8
-            p.lineJoinStyle = .round
-            p.stroke()
+        let outer = flame(1)
+        outer.lineWidth = 1.3
+        outer.lineJoinStyle = .round
+        UIColor(red: 0.42, green: 0.05, blue: 0.02, alpha: 0.85).setStroke()
+        outer.stroke()
+        UIColor(red: 0.93, green: 0.22, blue: 0.08, alpha: 1).setFill()
+        outer.fill()
+        UIColor(red: 1.0, green: 0.55, blue: 0.08, alpha: 1).setFill()
+        flame(0.72).fill()
+        UIColor(red: 1.0, green: 0.86, blue: 0.30, alpha: 1).setFill()
+        flame(0.42).fill()
+    }
+
+    /// Пиратский флаг (P409): свой, а не эмодзи. Чёрное полотнище с белым
+    /// черепом и костями; древко идёт ровно по краю полотнища и ниже —
+    /// до самой точки места, ничего не торчит.
+    private static func pirates(in r: CGRect) {
+        let pole = r.minX + r.width * 0.2
+        let right = r.maxX - 0.8
+        let top = r.minY + r.height * 0.08, bottom = r.minY + r.height * 0.58
+        let w = right - pole
+        let cloth = UIBezierPath()
+        cloth.move(to: CGPoint(x: pole, y: top))
+        cloth.addCurve(to: CGPoint(x: right, y: top + 1),
+                       controlPoint1: CGPoint(x: pole + w * 0.3, y: top - 2),
+                       controlPoint2: CGPoint(x: pole + w * 0.6, y: top + 3))
+        cloth.addLine(to: CGPoint(x: right, y: bottom + 1))
+        cloth.addCurve(to: CGPoint(x: pole, y: bottom),
+                       controlPoint1: CGPoint(x: pole + w * 0.6, y: bottom + 3),
+                       controlPoint2: CGPoint(x: pole + w * 0.3, y: bottom - 2))
+        cloth.close()
+        cloth.lineWidth = 1.6
+        cloth.lineJoinStyle = .round
+        UIColor.white.withAlphaComponent(0.9).setStroke()
+        cloth.stroke()
+        UIColor(white: 0.06, alpha: 1).setFill()
+        cloth.fill()
+        // Череп и кости.
+        let cx = pole + w * 0.52, cy = top + (bottom - top) * 0.36
+        UIColor.white.setStroke()
+        for (a, b) in [(CGPoint(x: cx - 3.4, y: cy + 2.4), CGPoint(x: cx + 3.4, y: cy + 5.2)),
+                       (CGPoint(x: cx - 3.4, y: cy + 5.2), CGPoint(x: cx + 3.4, y: cy + 2.4))] {
+            let bone = UIBezierPath()
+            bone.move(to: a)
+            bone.addLine(to: b)
+            bone.lineWidth = 1.1
+            bone.lineCapStyle = .round
+            bone.stroke()
         }
-        UIColor(red: 0.45, green: 0.28, blue: 0.12, alpha: 1).setFill()
-        trunk.fill()
-        UIColor(red: 0.13, green: 0.66, blue: 0.24, alpha: 1).setFill()
-        for p in tiers { p.fill() }
+        UIColor.white.setFill()
+        UIBezierPath(ovalIn: CGRect(x: cx - 2.3, y: cy - 2.6, width: 4.6, height: 4.4)).fill()
+        UIBezierPath(rect: CGRect(x: cx - 1.3, y: cy + 1.2, width: 2.6, height: 1.3)).fill()
+        UIColor(white: 0.06, alpha: 1).setFill()
+        UIBezierPath(ovalIn: CGRect(x: cx - 1.5, y: cy - 1.1, width: 1.2, height: 1.2)).fill()
+        UIBezierPath(ovalIn: CGRect(x: cx + 0.3, y: cy - 1.1, width: 1.2, height: 1.2)).fill()
+        // Древко — поверх края полотнища, от верха до точки места.
+        let staff = UIBezierPath()
+        staff.move(to: CGPoint(x: pole, y: r.minY + 1.2))
+        staff.addLine(to: CGPoint(x: pole, y: r.maxY))
+        staff.lineCapStyle = .round
+        UIColor.white.withAlphaComponent(0.9).setStroke()
+        staff.lineWidth = 3.4
+        staff.stroke()
+        UIColor(white: 0.06, alpha: 1).setStroke()
+        staff.lineWidth = 1.7
+        staff.stroke()
+    }
+
+    /// «Невидимый» в панели выбора и в списках (P409): пунктирная плашка с
+    /// чертой надписи — на карте будет только она, без значка.
+    private static func invisible(in r: CGRect) {
+        let box = CGRect(x: r.minX + 1.5, y: r.midY - 5.5, width: r.width - 3, height: 11)
+        let plate = UIBezierPath(roundedRect: box, cornerRadius: 3)
+        UIColor.white.withAlphaComponent(0.85).setFill()
+        plate.fill()
+        plate.lineWidth = 1.2
+        plate.setLineDash([2.2, 1.6], count: 2, phase: 0)
+        UIColor(white: 0.15, alpha: 0.9).setStroke()
+        plate.stroke()
+        let words = UIBezierPath()
+        words.move(to: CGPoint(x: box.minX + 4, y: box.midY))
+        words.addLine(to: CGPoint(x: box.maxX - 6, y: box.midY))
+        words.lineWidth = 1.6
+        words.lineCapStyle = .round
+        words.stroke()
     }
 
     /// Эмодзи-значок. Пиратский флаг — с чёрным флагштоком до самой

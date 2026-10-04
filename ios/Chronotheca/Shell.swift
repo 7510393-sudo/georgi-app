@@ -42,6 +42,14 @@ final class Shell: ObservableObject {
 
     /// Дело, чья шторка «Подробности» открыта.
     @Published var drawer: UUID?
+    /// Над каким делом плана несут снимок или точку из дневника или из
+    /// полоски (P409): дело обведено синим, под ним расступается место.
+    struct PlanHover: Equatable {
+        let id: UUID
+        let photo: Bool
+    }
+    @Published var planHover: PlanHover?
+
     /// Снимки для сборки: облачко «…помнишь?» не показывается (P408).
     @Published var hideCloud = false
 

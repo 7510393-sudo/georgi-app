@@ -93,7 +93,11 @@ struct DiaryView: View {
             onAnswering: {
                 store.answerTyping = $0
                 if $0 != nil { shell.tab = .diary }
-            })
+            },
+            planTarget: store.canEditPlan ? { PlanZones.task(at: $0, tasks: store.tasks) } : nil,
+            onPlanHover: { hover($0, photo: $1) },
+            onToPlan: { piece, task in store.textToPlan(piece, under: task) },
+            onDeleteAttachment: { deleteFromText($0) })
         // Взятое из полоски — над пальцем, в синей рамке (P380).
         .overlay {
             if let i = stripCarry, stripSpot != .zero, store.stripLinks.indices.contains(i) {
@@ -130,15 +134,25 @@ extension DiaryView {
         let link = links[i]
         let line = Diary.line(link)
         let overStrip = StripZones.strip.map { spot.y >= $0.minY - 8 } ?? false
-        // Над делом плана — встанет под него, в ряд снимков (P408).
-        let overTask = overStrip ? nil : taskUnder(spot)
+        // Над планом — встанет под дело, в ряд снимков (P408, P409).
+        let overTask = overStrip || Diary.kind(of: link) != .photo || !store.canEditPlan
+            ? nil : PlanZones.task(at: spot, tasks: store.tasks)
+        // У краёв страница едет к пальцу (P409).
+        func follow() {
+            DiaryEditor.active?.followStrip(at: spot) { [self] in
+                carryStrip(i, .moved, stripSpot)
+            }
+        }
         switch phase {
         case .began:
             Feel.lift()
             stripCarry = i
             stripSpot = spot
+            follow()
         case .moved:
             stripSpot = spot
+            follow()
+            hover(overTask, photo: true)
             if overTask != nil {
                 AskLine.carryOutAll()
                 DiaryEditor.active?.carryOut()
@@ -153,6 +167,8 @@ extension DiaryView {
                 DiaryEditor.active?.carryIn(line, at: CGPoint(x: spot.x, y: spot.y))
             }
         case .ended:
+            DiaryEditor.active?.stopFollowingStrip()
+            hover(nil, photo: false)
             if let task = overTask, spot != .zero {
                 AskLine.carryOutAll()
                 DiaryEditor.active?.carryOut()
@@ -185,6 +201,8 @@ extension DiaryView {
             stripCarry = nil
             stripSpot = .zero
         case .cancelled:
+            DiaryEditor.active?.stopFollowingStrip()
+            hover(nil, photo: false)
             AskLine.carryOutAll()
             DiaryEditor.active?.carryOut()
             stripCarry = nil
@@ -192,12 +210,20 @@ extension DiaryView {
         }
     }
 
-    /// Дело плана под пальцем (P408).
-    fileprivate func taskUnder(_ spot: CGPoint) -> UUID? {
-        guard spot != .zero else { return nil }
-        return store.planRows.first { row in
-            row.isTask && (PlanZones.rows[row.id]?.contains(spot) ?? false)
-        }?.id
+    /// Над каким делом несут (P409): план обводит его и раздвигает строки.
+    fileprivate func hover(_ id: UUID?, photo: Bool) {
+        let next = id.map { Shell.PlanHover(id: $0, photo: photo) }
+        guard shell.planHover != next else { return }
+        withAnimation(.easeOut(duration: 0.16)) { shell.planHover = next }
+        if next != nil { Feel.tick() }
+    }
+
+    /// Крестик у снимка в записи → «удалить файл» (P409): снимок уходит из
+    /// записи, а файл — в корзину на 30 дней, как из полоски (P371).
+    fileprivate func deleteFromText(_ link: String) {
+        store.returnToStrip(link)
+        guard let k = store.photos.lastIndex(of: link) else { return }
+        shell.say(store.removeAttachment(at: k, from: .diary, delete: true))
     }
 
     @ViewBuilder fileprivate func stripGhost(_ link: String) -> some View {
@@ -275,6 +301,12 @@ struct DiaryPage: View {
     var stripCarried: Int? = nil
     /// В каком деле «Как прошло?» пишут — туда встаёт «место» (P407).
     var onAnswering: ((String?) -> Void)? = nil
+    /// Снимок или точку из записи несут в план (P409).
+    var planTarget: ((CGPoint) -> UUID?)? = nil
+    var onPlanHover: ((UUID?, Bool) -> Void)? = nil
+    var onToPlan: ((String, UUID) -> Bool)? = nil
+    /// Крестик у снимка в записи → «удалить файл» (P409).
+    var onDeleteAttachment: ((String) -> Void)? = nil
 
     /// Для какого открытия поле уже взяло ввод само (P403).
     private static var wrote = -1
@@ -513,6 +545,8 @@ struct DiaryPage: View {
                 if editable {
                     TextField("", text: titleWords)
                         .font(Look.serif(16.5, weight: .semibold))
+                        // Без строки подсказок над клавиатурой (P409).
+                        .autocorrectionDisabled(true)
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .title)
                         // Заголовок взяли в руки — просьба «перейти в
@@ -589,7 +623,9 @@ struct DiaryPage: View {
                     onOpenPhoto: onOpenInline, onReturnPhoto: onReturnPhoto,
                     onOpenPoint: onOpenPoint, onPointToTitle: onPointToTitle, onCaret: onCaret,
                     moving: editable, onEditing: onEditing,
-                    placeCaret: placeCaret, takeStamp: takeStamp)
+                    placeCaret: placeCaret, takeStamp: takeStamp,
+                    planTarget: planTarget, onPlanHover: onPlanHover, onToPlan: onToPlan,
+                    onDeleteAttachment: onDeleteAttachment)
             // Вдвое меньше, чем было: пробел между заголовком и записью не
             // должен отнимать место у страницы (P311).
             .padding(.top, 8)

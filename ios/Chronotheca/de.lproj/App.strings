@@ -630,3 +630,7 @@
 "The plan and the entry of this day will move to the “" = "Plan und Eintrag dieses Tages wandern in den Ordner „";
 "The day is in the trash. Restore it in Settings → Trash." = "Der Tag liegt im Papierkorb. Wiederherstellen: Einstellungen → Papierkorb.";
 "Move the day to the trash" = "Tag in den Papierkorb";
+
+/* P409: крестик у снимка в записи */
+"Move to the strip below" = "In die Leiste unten legen";
+"Delete the file — trash for 30 days" = "Datei löschen — 30 Tage im Papierkorb";

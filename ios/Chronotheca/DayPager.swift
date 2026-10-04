@@ -135,7 +135,9 @@ struct DayPage: View {
                 remembering = true
             }
             .frame(width: width, height: height)
-            .offset(x: -(12 + half * 0.05),
+            // Левее стрелки «шаг вперёд» у правого края — не накрывает её
+            // (P409).
+            .offset(x: -56,
                     y: height * (0.95 - RememberCloud.tabEdge) + 3)
             .transition(.opacity)
         }
@@ -175,11 +177,7 @@ struct DayPage: View {
             // уголками с шестерёнкой и тремя точками; по бокам — только
             // стрелки, слов «вчера / завтра» рядом больше нет (P229).
             HStack(spacing: 0) {
-                // По краям строки — шаг назад и вперёд по всей странице, плану
-                // и дневнику разом (P408; прежде здесь листали дни — теперь
-                // это свайп и календарь).
-                stepArrow("arrow.uturn.backward", ready: live && store.canUndo,
-                          name: T("Шаг назад", "Undo")) { store.undo() }
+                side(-1)
                 Text(live ? store.title : DayPage.title(for: date))
                     .font(.system(size: 23, weight: .semibold))
                     .tracking(-0.2)
@@ -187,8 +185,7 @@ struct DayPage: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .frame(maxWidth: .infinity)
-                stepArrow("arrow.uturn.forward", ready: live && store.canRedo,
-                          name: T("Шаг вперёд", "Redo")) { store.redo() }
+                side(1)
             }
             .frame(height: DayPage.headLine)
 
@@ -217,16 +214,93 @@ struct DayPage: View {
         // Отступ до вкладок держит шапка, а не вкладки: тогда её нижний край
         // совпадает с верхним краем вкладки, и облачко уходит именно за
         // вкладку, а не за пустую полоску над ней.
-        .padding(.bottom, 14)
+        // Внизу шапки — место под стрелки шага (P409).
+        .padding(.bottom, 22)
         .frame(maxWidth: .infinity)
         .background(Look.chrome)
         .contentShape(Rectangle())
         .onTapGesture { hideKeyboard() }
+        // Шаг назад и вперёд по всей странице, плану и дневнику разом
+        // (P408) — у краёв экрана, под шестерёнкой и под тремя точками
+        // (P409; в 86-й они заняли место стрелок, листающих дни).
+        .overlay(alignment: .bottomLeading) {
+            stepArrow("arrow.uturn.backward", ready: live && store.canUndo,
+                      name: T("Шаг назад", "Undo")) { store.undo() }
+                .padding(.leading, 8)
+                .padding(.bottom, 1)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            stepArrow("arrow.uturn.forward", ready: live && store.canRedo,
+                      name: T("Шаг вперёд", "Redo")) { store.redo() }
+                .padding(.trailing, 8)
+                .padding(.bottom, 1)
+        }
     }
 
     /// Высота строки заголовка. Одна на всех страницах: шапка не должна
     /// менять рост от того, горит стрелка или нет (P113).
     static let headLine: CGFloat = 31
+
+    /// Стрелка к соседнему дню. Слова «вчера / завтра» рядом с ней убраны
+    /// (P229): имя открытого дня и так говорит, где мы.
+    ///
+    /// Горит та стрелка, что показывает дорогу к сегодняшнему дню (P127).
+    /// Размер у обеих одинаковый: разным он менял бы рост строки.
+    private func side(_ step: Int) -> some View {
+        let lit = toward == step
+        let sign = step < 0 ? "‹" : "›"
+        let arrow = Text(sign)
+            .font(.system(size: 21, weight: lit ? .bold : .regular))
+            .foregroundStyle(lit ? Look.accent : Look.inkFaint)
+            .frame(width: 25, height: DayPage.headLine - 4)
+            .background(lit ? Look.accent.opacity(0.12) : .clear,
+                        in: RoundedRectangle(cornerRadius: 7))
+
+        return arrow
+            .frame(width: 34)
+        .contentShape(Rectangle())
+        // Дорога домой одна, какой кнопкой её ни начинай (решение P168).
+        .onLongPressGesture(minimumDuration: 0.4) {
+            guard live, lit else { return }
+            hideKeyboard()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            shell.say(T("Вернулись на сегодня", "Back to today"))
+            shell.goHome = true
+        } onPressingChanged: { _ in }
+        .onTapGesture {
+            guard live else { return }
+            hideKeyboard()
+            // Вперёд — чуть выше тоном, назад — чуть ниже (P330).
+            Sounds.flip(rate: step > 0 ? 1.04 : 0.96)
+            store.move(by: step)
+        }
+        .accessibilityLabel(lit ? neighbour(step) + T(". Долгое нажатие — на сегодня", ". Long press for today")
+                                : neighbour(step))
+    }
+
+    /// В какой стороне сегодняшний день: −1 слева, +1 справа, 0 — мы на нём.
+    private var toward: Int {
+        let today = DayStore.today()
+        if date < today { return 1 }
+        if date > today { return -1 }
+        return 0
+    }
+
+    /// Как зовут соседний день. Дальше послезавтра имён нет — там просто
+    /// прошлое и будущее.
+    private func neighbour(_ step: Int) -> String {
+        let cal = Calendar.current
+        guard let day = cal.date(byAdding: .day, value: step, to: date) else { return "" }
+        let n = cal.dateComponents([.day], from: DayStore.today(), to: day).day ?? 0
+        switch n {
+        case -2: return T("позавчера", "two days ago")
+        case -1: return T("вчера", "yesterday")
+        case  0: return T("сегодня", "today")
+        case  1: return T("завтра", "tomorrow")
+        case  2: return T("послезавтра", "in two days")
+        default: return step < 0 ? T("прошлое", "the past") : T("будущее", "the future")
+        }
+    }
 
     /// Воздух над названием экрана. Один на всех трёх экранах, чтобы
     /// название не прыгало по высоте при переходе между ними.
@@ -258,7 +332,7 @@ struct DayPage: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(Look.accent)
                 .opacity(ready ? 1 : 0.3)
-                .frame(width: 38, height: DayPage.headLine)
+                .frame(width: 42, height: 28)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

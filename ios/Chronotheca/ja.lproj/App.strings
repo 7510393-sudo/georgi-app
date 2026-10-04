@@ -630,3 +630,7 @@
 "The plan and the entry of this day will move to the “" = "この日の予定と日記は「";
 "The day is in the trash. Restore it in Settings → Trash." = "この日はゴミ箱に入りました。設定 → ゴミ箱 から戻せます。";
 "Move the day to the trash" = "この日をゴミ箱へ";
+
+/* P409: крестик у снимка в записи */
+"Move to the strip below" = "下の列に戻す";
+"Delete the file — trash for 30 days" = "ファイルを削除 — 30日間ゴミ箱へ";

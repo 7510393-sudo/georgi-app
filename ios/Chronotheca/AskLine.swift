@@ -56,6 +56,10 @@ struct AskLine: UIViewRepresentable {
         view.textContainer.lineFragmentPadding = 0
         view.autocapitalizationType = .sentences
         view.spellCheckingType = .no
+        // Без строки подсказок слов над клавишами: полоска вложений стоит
+        // вплотную к клавиатуре и не съедает экран (P409).
+        view.autocorrectionType = .no
+        view.inlinePredictionType = .no
         view.allowsEditingTextAttributes = false
         view.isScrollEnabled = false
         view.returnKeyType = .default

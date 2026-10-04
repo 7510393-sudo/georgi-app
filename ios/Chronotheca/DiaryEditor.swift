@@ -84,6 +84,16 @@ struct DiaryEditor: UIViewRepresentable {
     /// Отметка времени, ждущая первой буквы новой строки (P403): `nil` —
     /// не ждёт.
     var takeStamp: (() -> String?)? = nil
+    /// Дело плана под пальцем (P409): снимок или точку из записи несут в
+    /// план. `nil` — палец не над планом.
+    var planTarget: ((CGPoint) -> UUID?)? = nil
+    /// Над каким делом сейчас несут и снимок ли это: план подсвечивает
+    /// дело и раздвигает строки.
+    var onPlanHover: ((UUID?, Bool) -> Void)? = nil
+    /// Отпустили над делом — встать под него. `true` — встало.
+    var onToPlan: ((String, UUID) -> Bool)? = nil
+    /// Крестик у снимка → «удалить файл» (P409): в корзину на 30 дней.
+    var onDeleteAttachment: ((String) -> Void)? = nil
 
     /// Отметка времени в начале строки: «08:15 » и дальше текст.
     /// В прошедший день за временем идёт дата, когда писали:
@@ -121,6 +131,10 @@ struct DiaryEditor: UIViewRepresentable {
         view.textContainer.lineFragmentPadding = 0
         view.autocapitalizationType = .sentences
         view.spellCheckingType = .no
+        // Без строки подсказок слов над клавишами: полоска вложений стоит
+        // вплотную к клавиатуре и не съедает экран (P409).
+        view.autocorrectionType = .no
+        view.inlinePredictionType = .no
         // Вставлять в запись картинки и вложения нельзя: файл должен
         // читаться обычным текстовым редактором. Разрешённое оформление
         // порождает в тексте знак-заместитель, который виден как «OBJ»
@@ -729,6 +743,18 @@ struct DiaryEditor: UIViewRepresentable {
         /// Взятое — строкой, как в файле: его несут и в ответ «Как прошло?»
         /// (P407).
         private var takenPiece: String?
+
+        /// Дело плана под пальцем, если взятое может туда встать: снимок
+        /// или точка (P409).
+        private func planTask(_ g: UIGestureRecognizer) -> UUID? {
+            guard let piece = takenPiece, Self.isPhotoLine(piece) || Geo.point(in: piece) != nil
+            else { return nil }
+            return parent.planTarget?(g.location(in: nil))
+        }
+
+        static func isPhotoLine(_ piece: String) -> Bool {
+            Diary.picture(in: piece).map { Diary.kind(of: $0) == .photo } ?? false
+        }
         /// Картинка взятого, которая идёт за пальцем.
         private var ghost: UIView?
 
@@ -828,26 +854,19 @@ struct DiaryEditor: UIViewRepresentable {
             veil.addSubview(chip)
             // Снимок и так крупный — он лишь чуть приподнимается (P392).
             let grow: CGFloat = photo != nil ? 1.05 : 1.4
-            let cross = UIButton(type: .custom)
-            // Крестик вдвое крупнее прежнего — его видно и пальцем не
-            // промахнуться (P380).
-            let symbol = UIImage(systemName: "xmark.circle.fill",
-                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 32, weight: .bold)
-                                     .applying(UIImage.SymbolConfiguration(
-                                        paletteColors: [.white, UIColor(Look.pin)])))
-            cross.setImage(symbol, for: .normal)
-            cross.frame = CGRect(x: 0, y: 0, width: 56, height: 56)
-            // Как крестик в плане (P386): белая кайма и тень.
-            let rim = UIView(frame: CGRect(x: 0, y: 0, width: 42, height: 42))
-            rim.backgroundColor = .white
-            rim.layer.cornerRadius = 21
-            rim.isUserInteractionEnabled = false
-            rim.center = CGPoint(x: 28, y: 28)
-            cross.insertSubview(rim, at: 0)
+            // Крестик нарисован свой (P409): системный значок с двумя
+            // цветами в кнопке выходил пустым кружком без креста.
+            let cross = UIControl(frame: CGRect(x: 0, y: 0, width: 56, height: 56))
+            let mark = UIImageView(image: Self.crossImage)
+            mark.frame = CGRect(x: 6, y: 6, width: 44, height: 44)
+            mark.isUserInteractionEnabled = false
+            cross.addSubview(mark)
             cross.layer.shadowColor = UIColor.black.cgColor
             cross.layer.shadowOpacity = 0.3
             cross.layer.shadowRadius = 3
             cross.layer.shadowOffset = CGSize(width: 0, height: 1)
+            cross.isAccessibilityElement = true
+            cross.accessibilityTraits = .button
             if photo != nil {
                 // У снимка крестик — на верхнем правом углу, как у значка
                 // на экране «Домой».
@@ -869,10 +888,10 @@ struct DiaryEditor: UIViewRepresentable {
                                                       effectiveRange: nil) as? String) == line
                 else { return }
                 Feel.light()
-                // Снимок уходит из текста в полоску внизу — файл цел, из
-                // полоски его можно удалить совсем или вернуть (P392).
-                if let link = photo, let giveBack = self.parent.onReturnPhoto {
-                    giveBack(link)
+                // Снимок: спросить — в полоску внизу или удалить файл
+                // (P409; прежде крестик молча уводил в полоску, P392).
+                if let link = photo {
+                    self.askAbout(link, in: view)
                 } else {
                     self.remove(at: i, in: view)
                 }
@@ -885,6 +904,41 @@ struct DiaryEditor: UIViewRepresentable {
                 chip.transform = CGAffineTransform(scaleX: grow, y: grow)
                 cross.alpha = 1
             }
+        }
+
+        /// Крестик: белая кайма, красный круг, белый крест.
+        static let crossImage: UIImage = UIGraphicsImageRenderer(size: CGSize(width: 44, height: 44)).image { _ in
+            UIColor.white.setFill()
+            UIBezierPath(ovalIn: CGRect(x: 2, y: 2, width: 40, height: 40)).fill()
+            UIColor(Look.pin).setFill()
+            UIBezierPath(ovalIn: CGRect(x: 6, y: 6, width: 32, height: 32)).fill()
+            let x = UIBezierPath()
+            x.move(to: CGPoint(x: 16, y: 16)); x.addLine(to: CGPoint(x: 28, y: 28))
+            x.move(to: CGPoint(x: 28, y: 16)); x.addLine(to: CGPoint(x: 16, y: 28))
+            x.lineWidth = 3.4
+            x.lineCapStyle = .round
+            UIColor.white.setStroke()
+            x.stroke()
+        }
+
+        /// Что сделать со снимком из текста: убрать в полоску внизу или
+        /// удалить файл — в корзину на 30 дней (P371, P409).
+        private func askAbout(_ link: String, in view: UITextView) {
+            let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+            if let giveBack = parent.onReturnPhoto {
+                sheet.addAction(UIAlertAction(title: T("Убрать в полоску внизу", "Move to the strip below"),
+                                              style: .default) { _ in giveBack(link) })
+            }
+            if let delete = parent.onDeleteAttachment {
+                sheet.addAction(UIAlertAction(title: T("Удалить файл — в корзину на 30 дней",
+                                                       "Delete the file — trash for 30 days"),
+                                              style: .destructive) { _ in delete(link) })
+            }
+            sheet.addAction(UIAlertAction(title: T("Отмена", "Cancel"), style: .cancel))
+            sheet.popoverPresentationController?.sourceView = view
+            var top = view.window?.rootViewController
+            while let next = top?.presentedViewController { top = next }
+            top?.present(sheet, animated: true)
         }
 
         @objc private func disarm() {
@@ -999,18 +1053,27 @@ struct DiaryEditor: UIViewRepresentable {
                                         y: local.y - Self.lift)
                 // Над полоской снимок бледнеет — видно, что отпустить здесь
                 // значит вернуть его вниз; над заголовком — то же для точки.
+                // Над делом плана — встанет под него (P409): план подсвечивает
+                // дело, запись остаётся как была.
+                let toPlan = planTask(g)
+                parent.onPlanHover?(toPlan, takenPiece.map(Self.isPhotoLine) ?? false)
+                if toPlan != nil { AskLine.carryOutAll() }
                 // Над строкой «Как прошло?» — встанет в конец ответа (P407):
                 // ответ показывает это у себя, запись остаётся как была.
-                let intoAnswer = takenPiece.map { AskLine.carry($0, at: g.location(in: nil)) } == true
-                let away = intoAnswer || overStrip(g, in: view) || overTitle(g, in: view)
-                ghost?.alpha = away && !intoAnswer ? 0.5 : 0.9
+                let intoAnswer = toPlan == nil
+                    && takenPiece.map { AskLine.carry($0, at: g.location(in: nil)) } == true
+                let away = toPlan != nil || intoAnswer || overStrip(g, in: view) || overTitle(g, in: view)
+                ghost?.alpha = away && !intoAnswer && toPlan == nil ? 0.5 : 0.9
                 if away { restore(view) } else { previewSoon(view) }
             case .ended:
                 stopPump()
                 heldEnded = Date()
-                let intoAnswer = takenPiece != nil && AskLine.under(g.location(in: nil)) != nil
-                let back = !intoAnswer && overStrip(g, in: view)
-                let up = !intoAnswer && overTitle(g, in: view)
+                let toPlan = planTask(g)
+                parent.onPlanHover?(nil, false)
+                let intoAnswer = toPlan == nil && takenPiece != nil
+                    && AskLine.under(g.location(in: nil)) != nil
+                let back = !intoAnswer && toPlan == nil && overStrip(g, in: view)
+                let up = !intoAnswer && toPlan == nil && overTitle(g, in: view)
                 let moved = ghost != nil
                 ghost?.removeFromSuperview()
                 ghost = nil
@@ -1026,11 +1089,22 @@ struct DiaryEditor: UIViewRepresentable {
                 }
                 // Отпустили — ложится ровно под пальцем, даже если наплыв
                 // ещё не успел показать это место (P406).
-                if !back, !up, !intoAnswer { preview(at, in: view) }
+                if !back, !up, !intoAnswer, toPlan == nil { preview(at, in: view) }
                 let done = result
+                let piece = takenPiece
                 restore(view)
                 taken = nil
                 takenPiece = nil
+                // Отпустили над делом плана — уходит из записи под него
+                // (P409).
+                if let task = toPlan, let piece {
+                    AskLine.carryOutAll()
+                    if parent.onToPlan?(piece, task) == true {
+                        remove(at: i, in: view)
+                        Feel.light()
+                    }
+                    return
+                }
                 // Отпустили над строкой «Как прошло?» — вложение уходит из
                 // записи в конец ответа, в ту же строку (P407).
                 if intoAnswer {
@@ -1070,6 +1144,7 @@ struct DiaryEditor: UIViewRepresentable {
             default:
                 stopPump()
                 AskLine.carryOutAll()
+                parent.onPlanHover?(nil, false)
                 takenPiece = nil
                 heldEnded = Date()
                 ghost?.removeFromSuperview()
@@ -1244,8 +1319,28 @@ struct DiaryEditor: UIViewRepresentable {
             pump = nil
         }
 
+        /// Превью из полоски несут (P409): у верхнего и нижнего края страница
+        /// едет к пальцу, а несущий узнаёт, что под пальцем теперь другое.
+        private var stripFollow: (() -> Void)?
+
+        func followStrip(at global: CGPoint, moved: @escaping () -> Void) {
+            finger = global
+            stripFollow = moved
+            if pump == nil { startPump() }
+        }
+
+        func stopFollowingStrip() {
+            stripFollow = nil
+            if taken == nil { stopPump() }
+        }
+
         @objc private func tick() {
-            guard let view, ghost != nil, taken != nil else { return }
+            guard let view else { return }
+            if let follow = stripFollow {
+                if scrollTowardFinger(view) { follow() }
+                return
+            }
+            guard ghost != nil, taken != nil else { return }
             if scrollTowardFinger(view) { ghostFollows(view) }
             previewSoon(view)
         }
@@ -1346,6 +1441,42 @@ struct DiaryEditor: UIViewRepresentable {
             let para = ns.paragraphRange(for: NSRange(location: min(drop, ns.length), length: 0))
             var j = para.location + para.length
             if j > para.location, ns.character(at: j - 1) == 10 { j -= 1 }
+            // Снимок над рядом снимков — встаёт в ряд туда, куда показали:
+            // так снимки меняются местами (P409; прежде — всегда в конец ряда).
+            if storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) != nil,
+               Self.photoRow(NSRange(location: para.location, length: j - para.location), in: storage) {
+                let spot = min(max(drop, para.location), j)
+                guard spot != i, spot != i + 1 else { return nil }
+                var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
+                let after = NSMaxRange(cut) < text.length ? text.character(at: NSMaxRange(cut)) : 10
+                let before = cut.location > 0 ? text.character(at: cut.location - 1) : 10
+                if before == 32 {
+                    cut.location -= 1
+                    cut.length += 1
+                } else if after == 32 {
+                    cut.length += 1
+                } else if NSMaxRange(cut) < text.length, after == 10 {
+                    cut.length += 1
+                } else if cut.location > 0, before == 10 {
+                    cut.location -= 1
+                    cut.length += 1
+                }
+                var target = plainLength(spot)
+                if target >= NSMaxRange(cut) {
+                    target -= cut.length
+                } else if target > cut.location {
+                    target = cut.location
+                }
+                let rest = text.replacingCharacters(in: cut, with: "") as NSString
+                target = min(max(target, 0), rest.length)
+                let left = target > 0 ? rest.character(at: target - 1) : 10
+                let right = target < rest.length ? rest.character(at: target) : 10
+                let lead = left != 10 && left != 32 ? " " : ""
+                let trail = right != 10 && right != 32 ? " " : ""
+                let out = rest.replacingCharacters(in: NSRange(location: target, length: 0),
+                                                   with: lead + piece + trail)
+                return (out, target + (lead as NSString).length)
+            }
             guard j != i, j != i + 1 else { return nil }
             var cut = NSRange(location: plainLength(i), length: (piece as NSString).length)
             var target = plainLength(j)
@@ -1386,6 +1517,21 @@ struct DiaryEditor: UIViewRepresentable {
                                                with: lead + piece
                                                    + (target == 0 && rest.length > 0 ? "\n" : ""))
             return (out, target + (lead as NSString).length)
+        }
+
+        /// Строка поля — только снимки рядом (и пробелы между ними).
+        static func photoRow(_ range: NSRange, in storage: NSAttributedString) -> Bool {
+            guard range.length > 0, NSMaxRange(range) <= storage.length else { return false }
+            let ns = storage.string as NSString
+            var photos = 0
+            for k in range.location..<NSMaxRange(range) {
+                if storage.attribute(DiaryEditor.photoKey, at: k, effectiveRange: nil) != nil {
+                    photos += 1
+                } else if ns.character(at: k) != 32 {
+                    return false
+                }
+            }
+            return photos > 0
         }
 
         // Долгое нажатие на снимок или точку iPhone сам превращал в меню

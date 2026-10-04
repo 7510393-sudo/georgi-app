@@ -916,7 +916,10 @@ struct NativeMap: UIViewRepresentable {
                 let shown = mark.place.name == Geo.text(mark.place.coordinate) ? "" : mark.place.name
                 let picture = PlaceLabel.draw(shown, mark: mark.place.mark)
                 view.image = picture
-                view.centerOffset = CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
+                // Метка стоит на точке значком; у «невидимой» — плашкой
+                // посередине (P409).
+                view.centerOffset = mark.place.mark == Glyph.invisible ? .zero
+                    : CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
                 view.displayPriority = .required
                 view.collisionMode = .rectangle
                 quick(view)
@@ -996,18 +999,25 @@ enum PlaceLabel {
     static func draw(_ name: String, mark: String) -> UIImage {
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
-        let text = (name as NSString)
-        let named = !name.trimmingCharacters(in: .whitespaces).isEmpty
+        // «Невидимый» (P409): только плашка; без названия — «Место».
+        let invisible = mark == Glyph.invisible
+        let given = name.trimmingCharacters(in: .whitespaces)
+        let text = ((invisible && given.isEmpty ? T("Место", "Place") : name) as NSString)
+        let named = invisible || !given.isEmpty
         let wide = named ? min(text.size(withAttributes: words).width, 150) : 0
         let plate = named ? CGSize(width: wide + 12, height: font.lineHeight + 6) : .zero
-        let size = CGSize(width: max(dot, plate.width) + 4,
-                          height: named ? dot + 3 + plate.height + 4 : dot + 4)
+        let above: CGFloat = invisible ? 0 : dot + 4
+        let size = CGSize(width: max(invisible ? 0 : dot, plate.width) + 4,
+                          height: named ? above + plate.height + 3 : dot + 4)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let mid = size.width / 2
-            let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
-            GlyphArt.draw(mark, in: circle, ctx: ctx.cgContext)
+            if !invisible {
+                let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
+                GlyphArt.draw(mark, in: circle, ctx: ctx.cgContext)
+            }
             guard named else { return }
-            let box = CGRect(x: mid - plate.width / 2, y: dot + 4, width: plate.width, height: plate.height)
+            let box = CGRect(x: mid - plate.width / 2, y: invisible ? 1 : above,
+                             width: plate.width, height: plate.height)
             ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 2,
                                     color: UIColor.black.withAlphaComponent(0.12).cgColor)
             // Полупрозрачная: много названий рядом не должны закрывать карту

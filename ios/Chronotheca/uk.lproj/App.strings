@@ -630,3 +630,7 @@
 "The plan and the entry of this day will move to the “" = "План і запис цього дня переїдуть у теку «";
 "The day is in the trash. Restore it in Settings → Trash." = "День у кошику. Повернути — Налаштування → Кошик.";
 "Move the day to the trash" = "Прибрати день у кошик";
+
+/* P409: крестик у снимка в записи */
+"Move to the strip below" = "Прибрати в смужку внизу";
+"Delete the file — trash for 30 days" = "Видалити файл — у кошик на 30 днів";

@@ -849,10 +849,11 @@ final class DayStore: ObservableObject {
         case .plan:
             // Дело, за которым просили, могли уже удалить — тогда под последним.
             let asked = row.flatMap { index(of: $0) == nil ? nil : $0 }
-            if let anchor = asked, let i = index(of: anchor), planRows[i].isTask {
-                // Курсор стоял в деле — прямо в его название (P259, P276).
-                let title = planRows[i].text.trimmingCharacters(in: .whitespaces)
-                planRows[i].text = title + (title.isEmpty ? "" : " ") + line
+            if let anchor = asked, index(of: anchor) != nil {
+                // Курсор стоял в деле — точка своей строкой под ним, между
+                // плашками, после снимков и точек, что уже там (P409;
+                // прежде — в название дела, P259, P276).
+                planRows.insert(.verbatim(line), at: afterBlock(of: anchor))
             } else if asked == nil {
                 // Курсора нет — своей строкой ниже последней записи плана;
                 // в нужное дело её переносят в режиме изменений (P285).
@@ -875,6 +876,54 @@ final class DayStore: ObservableObject {
             diaryCaret = at
             if diaryTyping { caretRequest = at }
             touchDiary()
+        }
+        save()
+        return true
+    }
+
+    /// Куда встаёт строка под делом: после самого дела и его снимков и
+    /// точек — перед следующим делом (P409).
+    func afterBlock(of task: UUID) -> Int {
+        guard var i = index(of: task) else { return planRows.count }
+        i += 1
+        while i < planRows.count, !planRows[i].isTask,
+              let v = planRows[i].verbatim, !v.trimmingCharacters(in: .whitespaces).isEmpty { i += 1 }
+        return i
+    }
+
+    /// Снимок в ряду под делом — на другое место в том же ряду (P409).
+    /// `slot` — перед каким снимком встать (по ряду до переноса).
+    func reorderPlanPhoto(_ link: String, in row: UUID, to slot: Int) {
+        guard canEditPlan, let r = index(of: row), let line = planRows[r].verbatim else { return }
+        var links = Diary.links(in: line)
+        guard let from = links.firstIndex(of: link) else { return }
+        let to = min(max(slot > from ? slot - 1 : slot, 0), links.count - 1)
+        guard to != from else { return }
+        links.remove(at: from)
+        links.insert(link, at: to)
+        planRows[r].verbatim = links.map(Diary.line).joined(separator: " ")
+        save()
+    }
+
+    /// Вложение или точка из записи дневника — в план, под дело (P409).
+    /// Снимок — в ряд снимков под делом, точка — своей строкой. `false` —
+    /// не встало, и в записи оно остаётся.
+    @discardableResult
+    func textToPlan(_ piece: String, under task: UUID) -> Bool {
+        guard canEditPlan, index(of: task) != nil else { return false }
+        let line = piece.trimmingCharacters(in: .whitespaces)
+        if let link = Diary.picture(in: line), Diary.kind(of: link) == .photo {
+            let at = index(of: task)! + 1
+            if at < planRows.count, let row = planRows[at].verbatim, Plan.isPhotoRow(row) {
+                planRows[at].verbatim = row.trimmingCharacters(in: .whitespaces) + " " + line
+            } else {
+                planRows.insert(.verbatim(line), at: at)
+            }
+        } else if Geo.point(in: line) != nil {
+            // Голос и файлы план не показывает — они остаются в записи.
+            planRows.insert(.verbatim(line), at: afterBlock(of: task))
+        } else {
+            return false
         }
         save()
         return true

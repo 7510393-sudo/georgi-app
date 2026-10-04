@@ -76,6 +76,10 @@ struct PlanTitle: UIViewRepresentable {
         view.textContainer.lineFragmentPadding = 0
         view.autocapitalizationType = .sentences
         view.spellCheckingType = .no
+        // Без строки подсказок слов над клавишами: полоска вложений стоит
+        // вплотную к клавиатуре и не съедает экран (P409).
+        view.autocorrectionType = .no
+        view.inlinePredictionType = .no
         // Вставлять в название картинки и вложения нельзя: в файле это
         // обычная строка (P161).
         view.allowsEditingTextAttributes = false

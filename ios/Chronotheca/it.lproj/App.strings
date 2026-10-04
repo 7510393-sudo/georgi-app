@@ -630,3 +630,7 @@
 "The plan and the entry of this day will move to the “" = "Il piano e la pagina di questo giorno andranno nella cartella «";
 "The day is in the trash. Restore it in Settings → Trash." = "Il giorno è nel cestino. Ripristinalo in Impostazioni → Cestino.";
 "Move the day to the trash" = "Sposta il giorno nel cestino";
+
+/* P409: крестик у снимка в записи */
+"Move to the strip below" = "Sposta nella striscia in basso";
+"Delete the file — trash for 30 days" = "Elimina il file — cestino per 30 giorni";

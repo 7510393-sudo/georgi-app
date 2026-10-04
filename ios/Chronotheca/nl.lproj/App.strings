@@ -630,3 +630,7 @@
 "The plan and the entry of this day will move to the “" = "Plan en verslag van deze dag gaan naar de map ‘";
 "The day is in the trash. Restore it in Settings → Trash." = "De dag staat in de prullenmand. Terugzetten: Instellingen → Prullenmand.";
 "Move the day to the trash" = "Dag naar de prullenmand";
+
+/* P409: крестик у снимка в записи */
+"Move to the strip below" = "Naar de strook onderaan";
+"Delete the file — trash for 30 days" = "Bestand verwijderen — 30 dagen in prullenmand";

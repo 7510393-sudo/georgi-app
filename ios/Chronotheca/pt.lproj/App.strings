@@ -630,3 +630,7 @@
 "The plan and the entry of this day will move to the “" = "O plano e o registo deste dia irão para a pasta “";
 "The day is in the trash. Restore it in Settings → Trash." = "O dia está no lixo. Restaure em Ajustes → Lixo.";
 "Move the day to the trash" = "Mover o dia para o lixo";
+
+/* P409: крестик у снимка в записи */
+"Move to the strip below" = "Mover para a faixa em baixo";
+"Delete the file — trash for 30 days" = "Apagar o ficheiro — lixo por 30 dias";
