@@ -143,40 +143,55 @@ struct PlanRowLine: View {
             .allowsHitTesting(false)
     }
 
-    /// Долгое нажатие на номер и ход пальца после него (P362) — то же,
-    /// что долгое нажатие на текст дела.
-    private var lift: some Gesture {
+    /// Номер: коснуться — сделано (P383), подержать — поднять дело и вести
+    /// (P362). Один простой жест, который сам отличает касание от долгого
+    /// нажатия по времени и ходу пальца (P410). Прежде это были два жеста,
+    /// один «исключительно перед» другим (P394); на общей странице плана и
+    /// дневника касание до номера перестало доходить.
+    private var handle: some Gesture {
         // Ход пальца меряется по экрану, а не по самому номеру: номер едет
-        // вместе с делом, и мерка от него дёргала бы дело взад-вперёд —
-        // строка дрожала и мерцала на ходу (решение P195).
-        LongPressGesture(minimumDuration: 0.35)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
-            .updating($holding) { value, state, _ in
-                if case .second(true, _) = value { state = true }
-            }
+        // вместе с делом, и мерка от него дёргала бы дело взад-вперёд
+        // (решение P195).
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .updating($holding) { _, state, _ in state = true }
             .onChanged { value in
-                guard case .second(true, let drag) = value else { return }
-                if !told {
-                    told = true
-                    onLift?(.began)
+                if pressStart == nil {
+                    pressStart = Date()
+                    let wait = DispatchWorkItem {
+                        guard !told else { return }
+                        told = true
+                        onLift?(.began)
+                    }
+                    pressTimer = wait
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Self.holdTime, execute: wait)
                 }
-                if let drag { onLift?(.moved(drag.translation)) }
+                if told {
+                    onLift?(.moved(value.translation))
+                } else if hypot(value.translation.width, value.translation.height) > 10 {
+                    // Повели, не подержав, — ни касания, ни подъёма.
+                    pressTimer?.cancel()
+                }
             }
             .onEnded { value in
-                guard told, case .second(true, let drag) = value else { return }
-                told = false
-                onLift?(.ended(drag?.translation ?? .zero))
+                pressTimer?.cancel()
+                pressTimer = nil
+                let quick = Date().timeIntervalSince(pressStart ?? .distantPast) < Self.holdTime
+                pressStart = nil
+                if told {
+                    told = false
+                    onLift?(.ended(value.translation))
+                } else if quick, hypot(value.translation.width, value.translation.height) <= 10 {
+                    onCheck?()
+                }
             }
     }
 
-    /// Номер: подержать — поднять дело, коснуться — сделано (P383). Одним
-    /// жестом, а не двумя (P394): отдельное касание под «главным» долгим
-    /// нажатием до номера не доходило — в 82-й отметка касанием не
-    /// работала. Теперь касание срабатывает, если долгое нажатие не
-    /// состоялось.
-    private var handle: some Gesture {
-        lift.exclusively(before: TapGesture().onEnded { onCheck?() })
-    }
+    /// Сколько держать номер, чтобы дело поднялось.
+    private static let holdTime: TimeInterval = 0.35
+
+    /// Когда палец лёг на номер и отложенный подъём дела.
+    @State private var pressStart: Date?
+    @State private var pressTimer: DispatchWorkItem?
 
     private var head: some View {
         HStack(alignment: .firstTextBaseline, spacing: Self.gap) {
@@ -200,11 +215,14 @@ struct PlanRowLine: View {
                                      : T("Дело \(number)", "Task \(number)"))
         .accessibilityAddTraits(onCheck != nil ? .isButton : [])
         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
-        .highPriorityGesture(onLift != nil ? handle : nil)
+        .highPriorityGesture(onLift != nil || onCheck != nil ? handle : nil)
         // Жест оборвался сам (палец увела прокрутка) — дело опускается.
         .onChange(of: holding) { _, now in
             guard !now else { return }
             DispatchQueue.main.async {
+                pressTimer?.cancel()
+                pressTimer = nil
+                pressStart = nil
                 guard told else { return }
                 told = false
                 onLift?(.cancelled)
