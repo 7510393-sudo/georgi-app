@@ -79,7 +79,7 @@ enum Glyph {
     /// «значок» на деле не имя системного рисунка, а символ юникода: флага
     /// с черепом в системном наборе нет, есть эмодзи «🏴‍☠️» (P336).
     static let all: [(name: String, symbol: String, emoji: Bool)] = [
-        // Два ряда по семь (P404). Сверху — классические чёрно-белые,
+        // Два ряда (P404, P411). Сверху — классические чёрно-белые,
         // снизу — придуманные автором цветные; в каждом ряду — от самых
         // частых к редким (P409).
         ("точка", "circle.fill", false),
@@ -87,6 +87,8 @@ enum Glyph {
         ("кафе", "cup.and.saucer.fill", false),
         ("человек", "person.fill", false),
         ("ночлег", "bed.double.fill", false),
+        ("крест", "cross.fill", false),
+        ("полумесяц", "moon.fill", false),
         ("кружок", "circle", false),
         ("невидимый", "rectangle.dashed", false),
         ("сердце", "heart.fill", false),
@@ -105,6 +107,11 @@ enum Glyph {
     /// «Невидимый» (P409): на карте нет значка — только плашка с названием,
     /// а без названия — со словом «Место».
     static let invisible = "невидимый"
+
+    /// Верхний ряд панели — классические чёрно-белые значки, нижний —
+    /// цветные авторские (P409, P411).
+    static let classic: Set<String> = ["точка", "дом", "кафе", "человек", "ночлег",
+                                       "крест", "полумесяц", "кружок", "невидимый"]
 
     /// Свой цвет значка (P397, P399, P404): красные сердце и огонь, жёлтые
     /// звезда и лампочка, зелёная ёлка (её рисуем сами — `GlyphArt`).
@@ -157,7 +164,7 @@ enum Glyph {
         "плохое место": "bad place", "пираты": "pirates", "личное": "private",
         "опасность": "danger", "вдохновение": "inspiration", "призраки": "ghosts",
         "везение": "luck", "огонь": "fire", "кружок": "ring", "указатель": "pointer", "ночлег": "lodging", "стрелка": "arrow",
-        "невидимый": "invisible",
+        "невидимый": "invisible", "крест": "cross", "полумесяц": "crescent",
     ]
     private static let russian: [String: String] =
         Dictionary(uniqueKeysWithValues: english.map { ($0.value, $0.key) })
@@ -443,6 +450,8 @@ enum GlyphArt {
         case "огонь": return fire(in: circle.insetBy(dx: 3, dy: 1))
         case "пираты": return pirates(in: circle)
         case Glyph.invisible: return invisible(in: circle)
+        case "крест": return cross(in: circle)
+        case "полумесяц": return crescent(in: circle, ctx: ctx)
         default: break
         }
         guard let shape = UIImage(systemName: Glyph.image(mark),
@@ -627,6 +636,64 @@ enum GlyphArt {
         UIColor(white: 0.06, alpha: 1).setStroke()
         staff.lineWidth = 1.7
         staff.stroke()
+    }
+
+    /// Христианский крест (P411): белый, с тёмным контуром.
+    private static func cross(in r: CGRect) {
+        let mid = r.midX
+        let bars = [CGRect(x: mid - 1.6, y: r.minY + 4, width: 3.2, height: 14.5),
+                    CGRect(x: mid - 5.5, y: r.minY + 7.6, width: 11, height: 3.2)]
+        UIColor(white: 0.1, alpha: 0.9).setStroke()
+        for bar in bars {
+            let p = UIBezierPath(rect: bar)
+            p.lineWidth = 1.6
+            p.stroke()
+        }
+        UIColor.white.setFill()
+        for bar in bars { UIBezierPath(rect: bar).fill() }
+    }
+
+    /// Исламский полумесяц со звездой (P411): белые, с тёмным контуром.
+    private static func crescent(in r: CGRect, ctx: CGContext) {
+        let big = CGRect(x: r.minX + 9.8 - 6.8, y: r.minY + 11 - 6.8, width: 13.6, height: 13.6)
+        let bite = CGRect(x: r.minX + 12.6 - 5.6, y: r.minY + 9.6 - 5.6, width: 11.2, height: 11.2)
+        let dark = UIColor(white: 0.1, alpha: 0.9)
+        // Большой круг без «укуса»: обвести и залить.
+        ctx.saveGState()
+        let outside = UIBezierPath(rect: r.insetBy(dx: -2, dy: -2))
+        outside.append(UIBezierPath(ovalIn: bite))
+        outside.usesEvenOddFillRule = true
+        outside.addClip()
+        let moon = UIBezierPath(ovalIn: big)
+        moon.lineWidth = 1.6
+        dark.setStroke()
+        moon.stroke()
+        UIColor.white.setFill()
+        moon.fill()
+        ctx.restoreGState()
+        // Край «укуса» — тоже тёмной чертой, внутри большого круга.
+        ctx.saveGState()
+        UIBezierPath(ovalIn: big).addClip()
+        let edge = UIBezierPath(ovalIn: bite)
+        edge.lineWidth = 1
+        dark.setStroke()
+        edge.stroke()
+        ctx.restoreGState()
+        // Звезда о пяти лучах.
+        let star = UIBezierPath()
+        let c = CGPoint(x: r.minX + 15.6, y: r.minY + 10.2)
+        for k in 0..<10 {
+            let a = -CGFloat.pi / 2 + CGFloat(k) * .pi / 5
+            let rad: CGFloat = k % 2 == 0 ? 2.6 : 1.1
+            let pt = CGPoint(x: c.x + rad * cos(a), y: c.y + rad * sin(a))
+            if k == 0 { star.move(to: pt) } else { star.addLine(to: pt) }
+        }
+        star.close()
+        star.lineWidth = 1
+        dark.setStroke()
+        star.stroke()
+        UIColor.white.setFill()
+        star.fill()
     }
 
     /// «Невидимый» в панели выбора и в списках (P409): пунктирная плашка с

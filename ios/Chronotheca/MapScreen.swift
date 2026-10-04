@@ -1093,33 +1093,38 @@ struct PointPanel: View {
     @FocusState private var focused: Field?
     @State private var copied = false
 
-    /// Четырнадцать значков — два ряда по семь (P404).
-    private static let iconColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
+    /// Значки — два ряда: девять классических и семь авторских (P411).
+    private func iconRow(_ names: [String]) -> some View {
+        HStack(spacing: 0) {
+            ForEach(names, id: \.self) { name in
+                Button {
+                    place.mark = name
+                } label: {
+                    // Каждый значок своего цвета, как на карте (P397);
+                    // выбранный — в синем кольце, а не на тёмном кружке: на
+                    // тёмном пропал бы чёрный человек. Рисунок — тот же, что
+                    // на карте, с подложкой или без (P404).
+                    GlyphIcon(name: name, size: 14)
+                        .frame(width: 32, height: 32)
+                        .overlay(Circle().strokeBorder(place.mark == name ? Look.accent : .clear,
+                                                       lineWidth: 2.5))
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel(T("Значок: ", "Icon: ") + Glyph.shown(name))
+            }
+        }
+    }
 
     var body: some View {
         VStack(spacing: 8) {
             // Сверху значки, ниже название, ещё ниже запись (P238).
             // Каким значком отметить точку (P234).
-            LazyVGrid(columns: Self.iconColumns, spacing: 6) {
-                ForEach(Glyph.all.indices, id: \.self) { i in
-                    let glyph = Glyph.all[i]
-                    Button {
-                        place.mark = glyph.name
-                    } label: {
-                        // Каждый значок своего цвета, как на карте (P397);
-                        // выбранный — в синем кольце, а не на тёмном
-                        // кружке: на тёмном пропал бы чёрный человек.
-                        // Рисунок — тот же, что на карте, с подложкой или
-                        // без (P404).
-                        GlyphIcon(name: glyph.name, size: 14)
-                            .frame(width: 32, height: 32)
-                            .overlay(Circle().strokeBorder(place.mark == glyph.name ? Look.accent : .clear,
-                                                           lineWidth: 2.5))
-                    }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityLabel(T("Значок: ", "Icon: ") + Glyph.shown(glyph.name))
-                }
+            // Два ряда (P409, P411): сверху девять классических чёрно-белых,
+            // снизу семь цветных авторских — в каждом от частых к редким.
+            VStack(spacing: 6) {
+                iconRow(Glyph.all.filter { Glyph.classic.contains($0.name) }.map(\.name))
+                iconRow(Glyph.all.filter { !Glyph.classic.contains($0.name) }.map(\.name))
             }
             // Поля — плотные, чтобы текст читался; прозрачна сама плашка
             // вокруг них (P340).
