@@ -30,11 +30,11 @@ struct RootView: View {
     /// когда замок откроют, — не поверх него (P403).
     @State private var waitingToWrite = false
 
-    /// Открыли на дневнике — поле записи берёт ввод само (P403).
-    private func startWriting() {
-        guard shell.tab == .diary, shell.screen == .today else { return }
-        shell.writeNow += 1
-    }
+    /// Открыли на дневнике — страница у конца записи, но клавиатура сама
+    /// не поднимается (P416; прежде поле брало ввод само, P403): поднятая
+    /// клавиатура закрывала нижнюю строку разделов, и человек терялся.
+    /// Время по-прежнему ставится с первой буквой — когда он сам коснётся.
+    private func startWriting() {}
 
     private var scheme: ColorScheme? {
         theme == "light" ? .light : theme == "dark" ? .dark : nil
@@ -766,11 +766,17 @@ struct Corner: View {
 
     var body: some View {
         ZStack(alignment: leading ? .topLeading : .topTrailing) {
+            // Сверху стикер растворяется в подложке — ни черты, ни резкого
+            // края; черта — только сбоку и снизу, тень явнее (P416).
             CornerShape(leading: leading)
-                .fill(paper)
-                .shadow(color: .black.opacity(0.25), radius: 3, x: leading ? 1.5 : -1.5, y: 2.5)
-            CornerShape(leading: leading)
-                .stroke(edge, lineWidth: 0.8)
+                .fill(LinearGradient(stops: [.init(color: paper.opacity(0), location: 0),
+                                             .init(color: paper, location: 0.5)],
+                                     startPoint: .top, endPoint: .bottom))
+                .shadow(color: .black.opacity(0.4), radius: 4, x: leading ? 2 : -2, y: 3.5)
+            CornerEdge(leading: leading)
+                .stroke(LinearGradient(colors: [edge.opacity(0), edge],
+                                       startPoint: .top, endPoint: .center),
+                        lineWidth: 1)
             Image(systemName: icon)
                 .font(.system(size: 18))
                 .foregroundStyle(tint)
@@ -805,6 +811,22 @@ struct CornerShape: Shape {
             if i == 0 { p.move(to: at) } else { p.addLine(to: at) }
         }
         p.closeSubpath()
+        return p
+    }
+}
+
+/// Кромка стикера-уголка (P416): только боковая сторона и нижняя, без
+/// верхней — сверху он растворяется в подложке.
+struct CornerEdge: Shape {
+    let leading: Bool
+
+    func path(in r: CGRect) -> Path {
+        let side = leading ? r.minX + 0.86 * r.width : r.maxX - 0.86 * r.width
+        let edge = leading ? r.minX : r.maxX
+        var p = Path()
+        p.move(to: CGPoint(x: side, y: r.minY))
+        p.addLine(to: CGPoint(x: side, y: r.minY + 0.8 * r.height))
+        p.addLine(to: CGPoint(x: edge, y: r.minY + 0.8 * r.height))
         return p
     }
 }
