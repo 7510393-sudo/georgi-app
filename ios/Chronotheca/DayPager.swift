@@ -78,27 +78,17 @@ struct DayPage: View {
             // страницу, а не часть страницы (P140).
             heading
                 .overlay { galleryCatcher }
-            VStack(spacing: 0) {
-                tabs
-                content
-            }
-            .overlay { galleryCatcher }
-            // Режим изменений светится тем же синим, что и превью снимков
-            // (P203). Линия обводит правящуюся вкладку и её страницу одной
-            // фигурой, как папку: вверх по корешку вкладки, поверх неё, вниз
-            // — и дальше по верхнему краю страницы под закрытой соседней
-            // вкладкой, отсекая её. Так видно, что правится только эта
-            // вкладка (P341, уточнение автора к P334).
-            .overlayPreferenceValue(OpenTabKey.self) { anchor in
-                GeometryReader { geo in
-                    if live, store.editing(shell.tab), let anchor {
-                        FolderOutline(tab: geo[anchor], radius: 10, inset: 1.5)
-                            .stroke(Look.glow, style: StrokeStyle(lineWidth: 3.9, lineJoin: .round))
-                            .shadow(color: Look.glow.opacity(1), radius: 7)
-                            .allowsHitTesting(false)
-                    }
+                // Облачко «…помнишь?» лежит на шапке и свешивается на
+                // страницу — поверх неё (P140, P408).
+                .overlay(alignment: .bottomTrailing) { cloud }
+                .zIndex(1)
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay { galleryCatcher }
+                // Верхний край страницы — черта через всю ширину (P250).
+                .overlay(alignment: .top) {
+                    Rectangle().fill(Look.inkFaint).frame(height: 1)
                 }
-            }
             AttachBar(live: live, date: date)
         }
         .background(background)
@@ -125,48 +115,28 @@ struct DayPage: View {
         }
     }
 
-    /// Облачко только на вкладке «Дневник» и только на открытом дне
-    /// (решения P66–P69). На соседних страницах его нет: они лишь
-    /// показываются, пока едут.
+    /// Облачко только на открытом дне (решения P66–P69). На соседних
+    /// страницах его нет: они лишь показываются, пока едут.
+    ///
+    /// Прежде оно сидело на корешке «Дневник»; корешков больше нет (P408)
+    /// — оно стоит там же, справа под шапкой, и свешивается на страницу.
     @ViewBuilder private var cloud: some View {
-        if live, shell.tab == .diary, archive.remembered(for: date) != nil,
+        if live, !shell.hideCloud, archive.remembered(for: date) != nil,
            !Remembered.has(Vault.stamp(date), in: read) {
-            // Облачко стоит на верхнем крае вкладки «Дневник», локоть
-            // заходит на вкладку. Размер и место — доли ширины вкладки.
-            // Правее и мельче, чем на эскизе: на телефоне слева дата, а
-            // под локтем надпись вкладки, и накрывать нельзя ни то, ни
-            // другое — самая глубокая точка локтя приходится правее
-            // надписи (P206).
-            GeometryReader { geo in
-                let width = geo.size.width * 0.50
-                let height = width / RememberCloud.ratio
-                let left = geo.size.width * 0.45
-                RememberCloud(date: date, width: width) {
-                    // Облачко уходит сразу по нажатию, не по закрытию
-                    // открывшегося листка (P330).
-                    forget()
-                    remembering = true
-                }
-                    .frame(width: width, height: height)
-                    // Опускали на 2 мм (P224) — вышло лишнее, вернули (P227).
-                    // Край вкладки на рисунке — на верхнем крае вкладки,
-                    // чуть выше, как было принято на прежнем облачке (P230),
-                    // на 1 мм ниже того (P254) и на полмиллиметра обратно
-                    // вверх (P256): итого 3 точки ниже.
-                    .offset(x: left, y: -height * (RememberCloud.tabEdge + 0.05) + 3)
-                // Серая черта вкладки идёт и под облачком — прерывается только
-                // там, где на вкладку опирается локоть (P256). Открытая
-                // вкладка опущена на точку — и черта с ней.
-                TabBorder(radius: 10)
-                    .stroke(Look.inkFaint, lineWidth: 1)
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .mask(ElbowGap(start: left,
-                                   from: left + width * RememberCloud.elbow.lowerBound,
-                                   to: left + width * RememberCloud.elbow.upperBound,
-                                   end: left + width))
-                    .offset(y: 1)
-                    .allowsHitTesting(false)
+            // Те же размеры, что на прежнем корешке: половина его ширины,
+            // а корешок был в половину страницы.
+            let half = (UIScreen.main.bounds.width - 30) / 2
+            let width = half * 0.50
+            let height = width / RememberCloud.ratio
+            RememberCloud(date: date, width: width) {
+                // Облачко уходит сразу по нажатию, не по закрытию
+                // открывшегося листка (P330).
+                forget()
+                remembering = true
             }
+            .frame(width: width, height: height)
+            .offset(x: -(12 + half * 0.05),
+                    y: height * (0.95 - RememberCloud.tabEdge) + 3)
             .transition(.opacity)
         }
     }
@@ -186,7 +156,7 @@ struct DayPage: View {
     /// дневника; различаются они фактурой: план — в клетку, дневник — на
     /// бумаге с волокном (P245).
     private var background: some View {
-        Ru.tint(date).overlay(PageTexture(tab: shell.tab))
+        Ru.tint(date).overlay(PageTexture(tab: .diary))
     }
 
     // MARK: - Шапка дня
@@ -205,7 +175,11 @@ struct DayPage: View {
             // уголками с шестерёнкой и тремя точками; по бокам — только
             // стрелки, слов «вчера / завтра» рядом больше нет (P229).
             HStack(spacing: 0) {
-                side(-1)
+                // По краям строки — шаг назад и вперёд по всей странице, плану
+                // и дневнику разом (P408; прежде здесь листали дни — теперь
+                // это свайп и календарь).
+                stepArrow("arrow.uturn.backward", ready: live && store.canUndo,
+                          name: T("Шаг назад", "Undo")) { store.undo() }
                 Text(live ? store.title : DayPage.title(for: date))
                     .font(.system(size: 23, weight: .semibold))
                     .tracking(-0.2)
@@ -213,7 +187,8 @@ struct DayPage: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .frame(maxWidth: .infinity)
-                side(1)
+                stepArrow("arrow.uturn.forward", ready: live && store.canRedo,
+                          name: T("Шаг вперёд", "Redo")) { store.redo() }
             }
             .frame(height: DayPage.headLine)
 
@@ -253,67 +228,6 @@ struct DayPage: View {
     /// менять рост от того, горит стрелка или нет (P113).
     static let headLine: CGFloat = 31
 
-    /// Стрелка к соседнему дню. Слова «вчера / завтра» рядом с ней убраны
-    /// (P229): имя открытого дня и так говорит, где мы.
-    ///
-    /// Горит та стрелка, что показывает дорогу к сегодняшнему дню (P127).
-    /// Размер у обеих одинаковый: разным он менял бы рост строки.
-    private func side(_ step: Int) -> some View {
-        let lit = toward == step
-        let sign = step < 0 ? "‹" : "›"
-        let arrow = Text(sign)
-            .font(.system(size: 21, weight: lit ? .bold : .regular))
-            .foregroundStyle(lit ? Look.accent : Look.inkFaint)
-            .frame(width: 25, height: DayPage.headLine - 4)
-            .background(lit ? Look.accent.opacity(0.12) : .clear,
-                        in: RoundedRectangle(cornerRadius: 7))
-
-        return arrow
-            .frame(width: 34)
-        .contentShape(Rectangle())
-        // Дорога домой одна, какой кнопкой её ни начинай (решение P168).
-        .onLongPressGesture(minimumDuration: 0.4) {
-            guard live, lit else { return }
-            hideKeyboard()
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            shell.say(T("Вернулись на сегодня", "Back to today"))
-            shell.goHome = true
-        } onPressingChanged: { _ in }
-        .onTapGesture {
-            guard live else { return }
-            hideKeyboard()
-            // Вперёд — чуть выше тоном, назад — чуть ниже (P330).
-            Sounds.flip(rate: step > 0 ? 1.04 : 0.96)
-            store.move(by: step)
-        }
-        .accessibilityLabel(lit ? neighbour(step) + T(". Долгое нажатие — на сегодня", ". Long press for today")
-                                : neighbour(step))
-    }
-
-    /// В какой стороне сегодняшний день: −1 слева, +1 справа, 0 — мы на нём.
-    private var toward: Int {
-        let today = DayStore.today()
-        if date < today { return 1 }
-        if date > today { return -1 }
-        return 0
-    }
-
-    /// Как зовут соседний день. Дальше послезавтра имён нет — там просто
-    /// прошлое и будущее.
-    private func neighbour(_ step: Int) -> String {
-        let cal = Calendar.current
-        guard let day = cal.date(byAdding: .day, value: step, to: date) else { return "" }
-        let n = cal.dateComponents([.day], from: DayStore.today(), to: day).day ?? 0
-        switch n {
-        case -2: return T("позавчера", "two days ago")
-        case -1: return T("вчера", "yesterday")
-        case  0: return T("сегодня", "today")
-        case  1: return T("завтра", "tomorrow")
-        case  2: return T("послезавтра", "in two days")
-        default: return step < 0 ? T("прошлое", "the past") : T("будущее", "the future")
-        }
-    }
-
     /// Воздух над названием экрана. Один на всех трёх экранах, чтобы
     /// название не прыгало по высоте при переходе между ними.
     static let airAbove: CGFloat = 12
@@ -330,107 +244,7 @@ struct DayPage: View {
         }
     }
 
-    // MARK: - Вкладки
-
-    private var tabs: some View {
-        HStack(spacing: 6) {
-            tab(.plan)
-            // Облачко лежит поверх вкладки: вкладки рисуются после шапки,
-            // и то, что выше края, ложится на шапку, а локоть — на вкладку.
-            tab(.diary).overlay(alignment: .topLeading) { cloud }
-        }
-        .padding(.horizontal, 12)
-        // Верхний край открытой страницы — черта через всю ширину. Открытая
-        // вкладка лежит поверх неё, закрытая — за ней (P250).
-        .background(alignment: .bottom) {
-            ZStack(alignment: .bottom) {
-                Look.chrome
-                Rectangle().fill(Look.inkFaint).frame(height: 1)
-            }
-        }
-    }
-
-    private func tab(_ which: Shell.Tab) -> some View {
-        let on = shell.tab == which
-        let page = Ru.tint(date)
-        let wobbling = live && store.editing(which)
-        // Правится открытая вкладка — закрытая уходит в тень заметнее:
-        // на первом плане только то, что правят (P341).
-        let behind = live && !on && store.editing(shell.tab)
-        return Button {
-            guard live else { return }
-            // Качающиеся буквы открытой вкладки — выход из режима
-            // изменений (P211).
-            if wobbling && on {
-                withAnimation(.easeOut(duration: 0.2)) { store.setEditing(which, false) }
-                return
-            }
-            store.prune()
-            store.save()
-            shell.tab = which
-        } label: {
-            // Качающиеся буквы — того же синего, что и рамка (P341).
-            WobblyTitle(text: which.title.uppercased(), wobbling: wobbling,
-                        // Крупнее прежних 13 (P396); отступы на столько же
-                        // меньше — закладка той же высоты.
-                        font: Look.sans(16, weight: on || wobbling ? .semibold : .regular),
-                        color: wobbling ? Look.glow : (on ? Look.ink : Look.inkFaint))
-                .frame(maxWidth: .infinity)
-                .padding(.top, 8.5)
-                .padding(.bottom, 9.5)
-                .background(page.overlay(PageTexture(tab: which, shift: on ? 1 : 0)))
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10,
-                                                  topTrailingRadius: 10))
-                // Верх и бока вкладки обведены заметной чертой: видно, какая
-                // вкладка лежит поверх другой (P246).
-                .overlay(TabBorder(radius: 10).stroke(Look.inkFaint, lineWidth: 1))
-                // Синее свечение режима изменений — одной фигурой по вкладке
-                // и странице (см. `body`, P341).
-                // Закрытая вкладка — лист, лежащий глубже: чуть притенена, и
-                // край открытой страницы проходит по её низу (P250).
-                .overlay {
-                    if !on {
-                        UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10)
-                            .fill(Color.black.opacity(behind ? 0.13 : 0.045))
-                            .allowsHitTesting(false)
-                    }
-                }
-                .overlay(alignment: .bottom) {
-                    if !on { Rectangle().fill(Look.inkFaint).frame(height: 1) }
-                }
-        }
-        // Шаг назад и вперёд — стрелками прямо на корешке, по бокам
-        // названия, без кружков (P406; прежде — кружками над страницей).
-        .overlay { steps(which, on: on) }
-        .offset(y: on ? 1 : 0)
-        .zIndex(on ? 1 : 0)
-        // Где стоит открытая вкладка — по ней рисуется рамка правки (P341).
-        .anchorPreference(key: OpenTabKey.self, value: .bounds) { on ? $0 : nil }
-    }
-
-    /// Стрелки шага на корешке. Работают на открытой вкладке открытой
-    /// страницы; на закрытой и на соседних — бледные, касание по ним
-    /// открывает вкладку, как по любому месту корешка.
-    private func steps(_ which: Shell.Tab, on: Bool) -> some View {
-        let plan = which == .plan
-        let editable = plan ? store.canEditPlan : store.canEditDiary
-        // Шаги плана и дневника — разного рода: спрашиваем у каждого своё.
-        let backEmpty = plan ? store.planBack.isEmpty : store.diaryBack.isEmpty
-        let aheadEmpty = plan ? store.planAhead.isEmpty : store.diaryAhead.isEmpty
-        let back = live && on && editable && !backEmpty
-        let ahead = live && on && editable && !aheadEmpty
-        return HStack(spacing: 0) {
-            stepArrow("arrow.uturn.backward", ready: back, name: T("Шаг назад", "Undo")) {
-                if plan { store.undoPlan() } else { store.undoDiary() }
-            }
-            Spacer(minLength: 0)
-            stepArrow("arrow.uturn.forward", ready: ahead, name: T("Шаг вперёд", "Redo")) {
-                if plan { store.redoPlan() } else { store.redoDiary() }
-            }
-        }
-        .padding(.horizontal, 6)
-        .allowsHitTesting(live && on)
-    }
+    // MARK: - Шаг назад и вперёд
 
     private func stepArrow(_ icon: String, ready: Bool, name: String,
                            act: @escaping () -> Void) -> some View {
@@ -444,7 +258,7 @@ struct DayPage: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(Look.accent)
                 .opacity(ready ? 1 : 0.3)
-                .frame(width: 38, height: 34)
+                .frame(width: 38, height: DayPage.headLine)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -460,10 +274,13 @@ struct DayPage: View {
             // расхождение видно сразу, а не на ощупь при перелистывании.
             SideDay(date: date)
         } else if live {
-            Group {
-                if shell.tab == .plan { PlanView() } else { DiaryView() }
+            // План сверху, дневник ниже — одним листом (P408).
+            DaySheet(date: date, home: shell.freshStart, toDiary: shell.tab == .diary,
+                     diaryOpen: !store.isFuture) {
+                PlanView()
+            } diary: {
+                DiaryView()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             SideDay(date: date)
         }
@@ -642,6 +459,10 @@ struct AttachBar: View {
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var vault: Vault
 
+    /// Куда ложится новое: полоска одна на страницу, всё — в дневник
+    /// (P408). В будущий день дневника нет — тогда в план.
+    private var into: Shell.Tab { store.canEditDiary ? .diary : .plan }
+
     @State private var choosing = false
     @State private var picked: [PhotosPickerItem] = []
     @State private var recording = false
@@ -694,13 +515,13 @@ struct AttachBar: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .onChange(of: shell.tab) { _, _ in if live { shell.gallery = false } }
         .onChange(of: shell.keyboardAsk) { _, ask in
             guard live, let ask else { return }
             shell.keyboardAsk = nil
             // В каком ответе «Как прошло?» писали — до того, как клавиатура
             // уйдёт и забудет это (P407).
             let answering = store.answerTyping
+            let row = store.planTyping
             hideKeyboard()
             switch ask {
             case .photo: toggleGallery()
@@ -711,7 +532,7 @@ struct AttachBar: View {
                 recordAlign = 5.0 / 12.0
                 open { recording = true }
             case .files: open { browsing = true }
-            case .place: notePlaceHere(answer: answering)
+            case .place: notePlaceHere(answer: answering, row: row)
             case .map: openMap()
             }
         }
@@ -735,7 +556,7 @@ struct AttachBar: View {
             CameraPicker { data in
                 shooting = false
                 guard let data else { return }
-                if store.addPhoto(data, to: shell.tab) {
+                if store.addPhoto(data, to: into) {
                     shell.say(T("Снимок положен в папку «", "Photo saved to the “") + vault.name(.photos) + T("»", "” folder"))
                 } else {
                     shell.say(T("Снимок не сохранился", "The photo was not saved"))
@@ -754,7 +575,7 @@ struct AttachBar: View {
     /// Вложение кладётся туда, где человек стоит, — в план или в дневник
     /// (P203). В закрытый день — нельзя, и об этом говорится.
     private func open(_ show: () -> Void) {
-        guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
+        guard store.canEdit(into) else { return shell.say(store.closedReason) }
         // Камера, голос или файлы — ряд снимков больше не нужен (P344).
         if shell.gallery { shell.gallery = false }
         show()
@@ -766,7 +587,7 @@ struct AttachBar: View {
         defer { try? FileManager.default.removeItem(at: url) }
         guard let data = try? Data(contentsOf: url), !data.isEmpty,
               store.addAttachment(data, to: .audio, name: Vault.moment(store.date) + ".m4a",
-                                  tab: shell.tab)
+                                  tab: into)
         else { return shell.say(T("Запись не сохранилась.", "The recording was not saved.")) }
         shell.say(T("Голос положен в папку «", "Voice note saved to the “") + vault.name(.audio) + T("»", "” folder"))
     }
@@ -779,7 +600,7 @@ struct AttachBar: View {
         for url in urls {
             guard let data = try? Data(contentsOf: url) else { continue }
             if store.addAttachment(data, to: .documents, name: url.lastPathComponent,
-                                   tab: shell.tab) { kept += 1 }
+                                   tab: into) { kept += 1 }
         }
         shell.say(kept == urls.count ? T("Положено в папку «", "Saved to the “") + vault.name(.documents)
                                         + T("»: \(kept)", "” folder: \(kept)")
@@ -789,11 +610,13 @@ struct AttachBar: View {
     /// Вписать место, где человек сейчас, — своей строкой у курсора; в
     /// плане — под делом, в котором пишут (P381). Место узнаётся только
     /// по этому нажатию (A9).
-    private func notePlaceHere(answer: String? = nil) {
-        let tab = shell.tab
+    private func notePlaceHere(answer: String? = nil, row asked: UUID? = nil) {
+        // Пишут в деле плана — место встаёт под него; иначе — в дневник
+        // (P381, P408).
+        let row = asked ?? store.planTyping
+        let tab: Shell.Tab = row != nil ? .plan : .diary
         guard store.canEdit(tab) else { return shell.say(store.closedReason) }
         let caret = store.diaryTyping ? store.diaryCaret : nil
-        let row = store.planTyping
         Feel.light()
         Locator.shared.current { location in
             DispatchQueue.main.async {
@@ -841,7 +664,7 @@ struct AttachBar: View {
     }
 
     private func toggleGallery() {
-        guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
+        guard store.canEdit(into) else { return shell.say(store.closedReason) }
         withAnimation(.easeOut(duration: 0.2)) { shell.gallery.toggle() }
     }
 
@@ -849,7 +672,7 @@ struct AttachBar: View {
     /// галереи (P273, P350). Ряд убрали, перелистнув на другой день, —
     /// в чужой день ничего не ложится, об этом говорится.
     private func addFromGallery(_ assets: [PHAsset], day: Date) {
-        let tab = shell.tab
+        let tab = into
         guard Calendar.current.isDate(store.date, inSameDayAs: day), store.canEdit(tab) else {
             return shell.say(T("Отмеченное в галерее не добавлено: открыт другой день",
                                  "The selected photos were not added: another day is open"))
@@ -896,7 +719,7 @@ struct AttachBar: View {
     /// Фото кладутся туда, где человек стоит: на вкладке плана — в план,
     /// в дневнике — в дневник (решение P203).
     private func choosePhotos() {
-        guard store.canEdit(shell.tab) else { return shell.say(store.closedReason) }
+        guard store.canEdit(into) else { return shell.say(store.closedReason) }
         choosing = true
     }
 
@@ -904,7 +727,7 @@ struct AttachBar: View {
     @MainActor
     private func take(_ items: [PhotosPickerItem]) {
         Task {
-            let tab = shell.tab
+            let tab = into
             var added = 0
             var videos = 0
             if items.count > 3 { shell.say(T("Кладу в папку: \(items.count)…", "Saving to the folder: \(items.count)…")) }
@@ -991,8 +814,12 @@ struct SideDay: View {
     @State private var health: String?
 
     var body: some View {
-        Group {
-            if shell.tab == .plan { plan } else { diary }
+        // Та же страница, что у открытого дня: план сверху, дневник ниже
+        // (P114, P408).
+        DaySheet(date: date, diaryOpen: date <= DayStore.today()) {
+            plan
+        } diary: {
+            diary
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear(perform: load)
@@ -1004,8 +831,6 @@ struct SideDay: View {
         PlanPage(rows: rows, isPast: date < DayStore.today(),
                  bellColor: Ru.dayColor(date),
                  events: events,
-                 weather: weather,
-                 photos: planPhotos.map { vault.mediaURL($0, for: date) },
                  resolve: { [vault, date] in vault.mediaURL($0, for: date) })
     }
 
@@ -1016,7 +841,9 @@ struct SideDay: View {
                   text: .constant(text),
                   editable: false,
                   weather: weather,
-                  photos: photos.map { vault.mediaURL($0, for: date) },
+                  // Одна полоска на страницу, как у открытого дня (P408).
+                  photos: (photos + planPhotos).map { vault.mediaURL($0, for: date) },
+                  takesBack: Plan.hasPhotoRows(rows),
                   resolve: { [vault, date] in vault.mediaURL($0, for: date) },
                   health: health)
         .task(id: date) { health = await HealthDay.summary(for: date) }
@@ -1047,8 +874,6 @@ struct PlanPage: View {
     /// иначе он бледнеет на просвет и вспыхивает после поворота.
     var bellColor: Color = Look.inkFaint
     var events: [DayEvents.Shown] = []
-    var weather: String?
-    var photos: [URL?] = []
     /// Где лежат снимки, поставленные между делами (P205).
     var resolve: ((String) -> URL?)?
 
@@ -1056,10 +881,9 @@ struct PlanPage: View {
 
     var body: some View {
         // Прошедший день — как любой: не бледнее и с теми же кнопками,
-        // как на открытой странице (P114, P381).
-        PlanScaffold(isPast: isPast, dimmed: false, weather: weather, photos: photos,
-                     takesBack: Plan.hasPhotoRows(rows)) {
-            Group {
+        // как на открытой странице (P114, P381). Верх страницы дня, без
+        // своей прокрутки — как на открытой (P408).
+        VStack(alignment: .leading, spacing: 0) {
                 // События Календаря — первыми, тем же кодом, что на
                 // открытой странице (P114, P376).
                 ForEach(Array(events.enumerated()), id: \.element.key) { i, e in
@@ -1087,9 +911,9 @@ struct PlanPage: View {
                 }
                 PlanStat(planned: tasks.count + events.count,
                          done: tasks.filter(\.done).count + events.filter(\.row.done).count)
-            }
+            // Воздух под планом — как на открытой странице (P114).
+            Color.clear.frame(height: 18)
         }
-
     }
 }
 

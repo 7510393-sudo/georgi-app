@@ -31,11 +31,25 @@ struct DiaryView: View {
             editable: store.canEditDiary,
             inCloud: store.away.contains(.diary),
             weather: store.weather,
-            photos: store.photos.map(store.photoURL),
-            photoLinks: store.photos,
+            // Полоска одна на всю страницу (P408): снимки дневника, за ними
+            // — прежние снимки полоски плана.
+            photos: store.stripLinks.map(store.photoURL),
+            photoLinks: store.stripLinks,
+            takesBack: Plan.hasPhotoRows(store.planRows),
             resolve: store.photoURL,
-            onOpenPhoto: { shell.openedPhoto = .init(tab: .diary, index: $0) },
-            onMovePhoto: { store.movePhoto(from: $0, to: $1, in: .diary) },
+            onOpenPhoto: { i in
+                let n = store.photos.count
+                shell.openedPhoto = i < n ? .init(tab: .diary, index: i) : .init(tab: .plan, index: i - n)
+            },
+            onMovePhoto: { from, to in
+                // Переставляются внутри своей части полоски.
+                let n = store.photos.count
+                if from < n, to < n {
+                    store.movePhoto(from: from, to: to, in: .diary)
+                } else if from >= n, to >= n {
+                    store.movePhoto(from: from - n, to: to - n, in: .plan)
+                }
+            },
             // Брошенный в текст снимок отметку времени не ставит — это
             // знает само поле записи (P362).
             onFocusText: { store.openNewLine(always: $0) },
@@ -49,7 +63,11 @@ struct DiaryView: View {
                 shell.showPoint($0)
             },
             onCaret: { store.diaryCaret = $0 },
-            onEditing: { store.diaryTyping = $0 },
+            onEditing: {
+                store.diaryTyping = $0
+                // Где пишут — там «где был» (P402, P408).
+                if $0 { shell.tab = .diary }
+            },
             placeCaret: $store.caretRequest,
             // Снимок, отпущенный над полоской, возвращается в неё (P272).
             onReturnPhoto: { link in
@@ -66,20 +84,22 @@ struct DiaryView: View {
             },
             undo: store.diaryBack.isEmpty || !store.canEditDiary ? nil : { store.undoDiary() },
             redo: store.diaryAhead.isEmpty || !store.canEditDiary ? nil : { store.redoDiary() },
-            home: shell.freshStart,
             writeNow: shell.writeNow,
             health: health,
             // Касание по строке «Здоровья» — она ложится в запись (P378).
             onHealth: store.canEditDiary ? { line in store.addHealthLine(line) } : nil,
             onStripCarry: { carryStrip($0, $1, $2) },
             stripCarried: stripCarry,
-            onAnswering: { store.answerTyping = $0 })
+            onAnswering: {
+                store.answerTyping = $0
+                if $0 != nil { shell.tab = .diary }
+            })
         // Взятое из полоски — над пальцем, в синей рамке (P380).
         .overlay {
-            if let i = stripCarry, stripSpot != .zero, store.photos.indices.contains(i) {
+            if let i = stripCarry, stripSpot != .zero, store.stripLinks.indices.contains(i) {
                 GeometryReader { g in
                     let o = g.frame(in: .global).origin
-                    stripGhost(store.photos[i])
+                    stripGhost(store.stripLinks[i])
                         .position(x: stripSpot.x - o.x, y: stripSpot.y - o.y - 48)
                 }
                 .allowsHitTesting(false)
@@ -105,9 +125,13 @@ extension DiaryView {
     /// Превью из полоски несут (P380): над полем записи текст расступается
     /// там, куда оно ляжет; над полоской — встанет на место соседа.
     fileprivate func carryStrip(_ i: Int, _ phase: Lift, _ spot: CGPoint) {
-        guard store.canEditDiary, store.photos.indices.contains(i) else { return }
-        let line = Diary.line(store.photos[i])
+        let links = store.stripLinks
+        guard store.canEditDiary, links.indices.contains(i) else { return }
+        let link = links[i]
+        let line = Diary.line(link)
         let overStrip = StripZones.strip.map { spot.y >= $0.minY - 8 } ?? false
+        // Над делом плана — встанет под него, в ряд снимков (P408).
+        let overTask = overStrip ? nil : taskUnder(spot)
         switch phase {
         case .began:
             Feel.lift()
@@ -115,9 +139,12 @@ extension DiaryView {
             stripSpot = spot
         case .moved:
             stripSpot = spot
+            if overTask != nil {
+                AskLine.carryOutAll()
+                DiaryEditor.active?.carryOut()
             // Над строкой «Как прошло?» — встаёт в конец ответа, в ту же
             // строку (P407).
-            if !overStrip, AskLine.carry(line, at: spot) {
+            } else if !overStrip, AskLine.carry(line, at: spot) {
                 DiaryEditor.active?.carryOut()
             } else if overStrip {
                 AskLine.carryOutAll()
@@ -126,17 +153,33 @@ extension DiaryView {
                 DiaryEditor.active?.carryIn(line, at: CGPoint(x: spot.x, y: spot.y))
             }
         case .ended:
-            if !overStrip, spot != .zero, AskLine.carryEnd(at: spot) {
+            if let task = overTask, spot != .zero {
+                AskLine.carryOutAll()
                 DiaryEditor.active?.carryOut()
+                if Diary.kind(of: link) == .photo {
+                    store.stripPhotoToPlan(link, under: task)
+                    Feel.thud()
+                }
+            } else if !overStrip, spot != .zero, AskLine.carryEnd(at: spot) {
+                DiaryEditor.active?.carryOut()
+                if i >= store.photos.count { store.dropFromPlanStrip(link) }
                 Feel.thud()
             } else if overStrip || spot == .zero {
                 AskLine.carryOutAll()
                 DiaryEditor.active?.carryOut()
-                if let to = StripZones.nearest(to: spot, count: store.photos.count), to != i, spot != .zero {
-                    store.movePhoto(from: i, to: to, in: .diary)
+                let n = store.photos.count
+                if let to = StripZones.nearest(to: spot, count: links.count), to != i, spot != .zero {
+                    if i < n, to < n {
+                        store.movePhoto(from: i, to: to, in: .diary)
+                    } else if i >= n, to >= n {
+                        store.movePhoto(from: i - n, to: to - n, in: .plan)
+                    }
                     Feel.light()
                 }
             } else if DiaryEditor.active?.carryEnd() == true {
+                // Снимок из прежней полоски плана встал в запись — из
+                // полоски он уходит (P408).
+                if i >= store.photos.count { store.dropFromPlanStrip(link) }
                 Feel.thud()
             }
             stripCarry = nil
@@ -147,6 +190,14 @@ extension DiaryView {
             stripCarry = nil
             stripSpot = .zero
         }
+    }
+
+    /// Дело плана под пальцем (P408).
+    fileprivate func taskUnder(_ spot: CGPoint) -> UUID? {
+        guard spot != .zero else { return nil }
+        return store.planRows.first { row in
+            row.isTask && (PlanZones.rows[row.id]?.contains(spot) ?? false)
+        }?.id
     }
 
     @ViewBuilder fileprivate func stripGhost(_ link: String) -> some View {
@@ -186,6 +237,9 @@ struct DiaryPage: View {
     var photos: [URL?] = []
     /// Строки-ссылки тех же снимков: их несёт палец из полоски в текст.
     var photoLinks: [String] = []
+    /// Под делами плана есть снимки — полоска видна и пустой: в неё их
+    /// возвращают (P358, P408).
+    var takesBack = false
     /// Где лежат снимки, стоящие посреди текста (P204).
     var resolve: ((String) -> URL?)?
     var onOpenPhoto: ((Int) -> Void)?
@@ -209,10 +263,6 @@ struct DiaryPage: View {
     /// Шаг назад и вперёд (P261) — там же, где в плане (P312).
     var undo: (() -> Void)?
     var redo: (() -> Void)?
-    /// Приложение открыли заново или вернулись после паузы — запись
-    /// прокручивается к концу, под ней пять пустых строк: коснулся — и
-    /// пишешь (P346). У соседних страниц не меняется.
-    var home = 0
     /// Приложение открыли на дневнике (P403): поле само берёт ввод, курсор —
     /// в начале новой строки. У соседних страниц не меняется.
     var writeNow = 0
@@ -226,13 +276,13 @@ struct DiaryPage: View {
     /// В каком деле «Как прошло?» пишут — туда встаёт «место» (P407).
     var onAnswering: ((String?) -> Void)? = nil
 
-    /// Для какого открытия запись уже прокручена к концу.
-    private static var homed = -1
     /// Для какого открытия поле уже взяло ввод само (P403).
     private static var wrote = -1
     /// Поле берёт ввод по открытию приложения, а не по касанию.
     @State private var writing = false
-    private static var end: String { "дневник-конец" }
+    /// Конец записи: к нему страница едет, когда открывают на дневнике
+    /// (P346, P408).
+    static var end: String { "дневник-конец" }
 
     private enum Field: Hashable { case title }
     @FocusState private var focused: Field?
@@ -249,9 +299,6 @@ struct DiaryPage: View {
     /// Точка заголовка, у которой сейчас крестик (P362).
     @State private var armedPoint: String?
 
-    /// Насколько клавиатура закрывает страницу снизу.
-    @State private var keyboard: CGFloat = 0
-
     private let size = DiaryView.size
 
     var body: some View {
@@ -263,6 +310,18 @@ struct DiaryPage: View {
 
     /// Низ страницы: «Здоровье» строкой и полоска вложений (P406).
     @ViewBuilder private var footer: some View {
+        // Погода дня — строкой внизу страницы, над вложениями, как в
+        // Diarium (P406, P408).
+        if let weather, Prefs.weatherOn {
+            Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
+                .font(Look.sans(12.5))
+                .foregroundStyle(Look.inkFaint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+        }
         if let health {
             Label(health, systemImage: "heart")
                 .font(Look.sans(12))
@@ -276,7 +335,7 @@ struct DiaryPage: View {
                 .onTapGesture { onHealth?(health) }
                 .accessibilityHint(T("Касание — записать в дневник", "Tap to add to the diary"))
         }
-        if !photos.isEmpty {
+        if !photos.isEmpty || takesBack {
             PhotoStrip(photos: photos, onOpen: onOpenPhoto,
                        drag: editable && photoLinks.count == photos.count
                            ? { Diary.line(photoLinks[$0]) } : nil,
@@ -286,18 +345,23 @@ struct DiaryPage: View {
                        carried: stripCarried)
                 .background(GeometryReader { geo in
                     let frame = geo.frame(in: .global)
+                    // Полоска одна на страницу (P408): по ней узнают
+                    // «назад в полоску» и дневник, и план.
                     Color.clear
-                        .onAppear { if editable { StripZones.strip = frame } }
-                        .onChange(of: frame) { _, now in if editable { StripZones.strip = now } }
+                        .onAppear { if editable { StripZones.strip = frame; PlanZones.strip = frame } }
+                        .onChange(of: frame) { _, now in
+                            if editable { StripZones.strip = now; PlanZones.strip = now }
+                        }
                 })
         }
     }
 
+    /// Дневник — нижняя часть страницы дня, без своей прокрутки: страница
+    /// едет целиком, план и дневник вместе (P408). Короткая запись —
+    /// погода, «Здоровье» и полоска всё равно внизу экрана; длинная — под
+    /// ней и уходят вниз вместе со страницей.
     private var page: some View {
-      GeometryReader { outer in
-        ScrollView {
-          ScrollViewReader { proxy in
-           VStack(spacing: 0) {
+        VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 if inCloud {
                     Text(T("Запись этого дня ещё загружается из iCloud. Как только придёт, она появится здесь.",
@@ -313,26 +377,13 @@ struct DiaryPage: View {
                 Color.clear.frame(height: 1).id(Self.end)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 14)
+            .padding(.top, 4)
             .padding(.bottom, 20)
-            // Короткая запись — «Здоровье» и вложения всё равно внизу
-            // экрана; длинная — под ней, и уходят вниз вместе со страницей.
             Spacer(minLength: 0)
             footer
-           }
-           .frame(minHeight: outer.size.height, alignment: .top)
-           // Место под клавиатуру: без него страницу некуда поднять, и
-           // последние строки записи остаются под ней (решение P175).
-           .padding(.bottom, keyboard)
-           .onAppear { goHome(proxy); startWriting() }
-           .onChange(of: home) { _, _ in goHome(proxy) }
-           .onChange(of: writeNow) { _, _ in startWriting() }
-          }
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Color.clear)
-      }
-      .keyboardHeight($keyboard)
+        .onAppear { startWriting() }
+        .onChange(of: writeNow) { _, _ in startWriting() }
     }
 
     /// Открыли приложение на дневнике — клавиатура поднята, курсор в начале
@@ -343,14 +394,6 @@ struct DiaryPage: View {
         writing = true
         // Страница успевает встать на место, потом поле берёт ввод.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { toText = true }
-    }
-
-    /// Прокрутить к концу записи — один раз на каждое открытие
-    /// приложения (P346). Соседние страницы (`home == 0`) не трогаются.
-    private func goHome(_ proxy: ScrollViewProxy) {
-        guard home > 0, home != Self.homed else { return }
-        Self.homed = home
-        DispatchQueue.main.async { proxy.scrollTo(Self.end, anchor: .bottom) }
     }
 
     private var asked: [PlanRow] {

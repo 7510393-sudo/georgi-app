@@ -104,9 +104,55 @@ final class DayStore: ObservableObject {
         if now.timeIntervalSince(planTouched) > 1.2 {
             planBack.append(old)
             if planBack.count > 60 { planBack.removeFirst() }
-            planAhead = []
+            stepped(.plan)
         }
         planTouched = now
+    }
+
+    // MARK: Шаг назад и вперёд по всей странице (P408)
+
+    /// План и дневник — одна страница: стрелка шага отменяет последнюю
+    /// правку, где бы она ни была. Какая сторона правилась в каком
+    /// порядке — здесь; сами прежние состояния — в своих стопках.
+    private var backOrder: [Shell.Tab] = []
+    private var aheadOrder: [Shell.Tab] = []
+
+    /// Новая правка: шаги вперёд больше некуда делать — ни в плане, ни в
+    /// дневнике.
+    private func stepped(_ tab: Shell.Tab) {
+        backOrder.append(tab)
+        if backOrder.count > 120 { backOrder.removeFirst() }
+        planAhead = []
+        diaryAhead = []
+        aheadOrder = []
+    }
+
+    var canUndo: Bool {
+        (!planBack.isEmpty && canEditPlan) || (!diaryBack.isEmpty && canEditDiary)
+    }
+    var canRedo: Bool {
+        (!planAhead.isEmpty && canEditPlan) || (!diaryAhead.isEmpty && canEditDiary)
+    }
+
+    /// Шаг назад — там, где правили последним.
+    func undo() {
+        while let tab = backOrder.popLast() {
+            if tab == .plan, !planBack.isEmpty { undoPlan(); aheadOrder.append(.plan); return }
+            if tab == .diary, !diaryBack.isEmpty { undoDiary(); aheadOrder.append(.diary); return }
+        }
+        // Порядок потерян (стопки обрезались) — что осталось.
+        if !diaryBack.isEmpty { undoDiary(); aheadOrder.append(.diary) }
+        else if !planBack.isEmpty { undoPlan(); aheadOrder.append(.plan) }
+    }
+
+    /// Шаг вперёд — то, что отменили последним.
+    func redo() {
+        while let tab = aheadOrder.popLast() {
+            if tab == .plan, !planAhead.isEmpty { redoPlan(); backOrder.append(.plan); return }
+            if tab == .diary, !diaryAhead.isEmpty { redoDiary(); backOrder.append(.diary); return }
+        }
+        if !diaryAhead.isEmpty { redoDiary(); backOrder.append(.diary) }
+        else if !planAhead.isEmpty { redoPlan(); backOrder.append(.plan) }
     }
 
     func undoPlan() {
@@ -151,7 +197,7 @@ final class DayStore: ObservableObject {
         if now.timeIntervalSince(diaryTouched) > 1.2 {
             diaryBack.append(old)
             if diaryBack.count > 60 { diaryBack.removeFirst() }
-            diaryAhead = []
+            stepped(.diary)
         }
         diaryTouched = now
     }
@@ -504,6 +550,8 @@ final class DayStore: ObservableObject {
         planAhead = []
         diaryBack = []
         diaryAhead = []
+        backOrder = []
+        aheadOrder = []
         diaryCaret = nil
         lastPlanRow = nil
         caretRequest = nil
@@ -720,6 +768,14 @@ final class DayStore: ObservableObject {
         photos.removeAll { placed.contains($0) }
     }
 
+    /// Снимок из прежней полоски плана встал в запись или в ответ — из
+    /// полоски он уходит: полоска одна на страницу (P408).
+    func dropFromPlanStrip(_ link: String) {
+        guard canEditPlan, let k = planPhotos.firstIndex(of: link) else { return }
+        planPhotos.remove(at: k)
+        save()
+    }
+
     /// Отметить, где человек был в этот день. Место — часть дневника:
     /// в будущий день его не поставить (A9, P207).
     @discardableResult
@@ -883,6 +939,23 @@ final class DayStore: ObservableObject {
     }
 
     /// Снимок из-под дела — назад в полоску плана внизу (P358).
+    /// Снимок из полоски внизу страницы — под дело плана (P408): полоска
+    /// одна, в неё ложится всё новое, а под дело снимок переносят пальцем.
+    func stripPhotoToPlan(_ link: String, under id: UUID) {
+        guard canEditPlan, index(of: id) != nil else { return }
+        if let k = photos.firstIndex(of: link) {
+            guard canEditDiary else { return }
+            photos.remove(at: k)
+            touchDiary()
+            planPhotos.append(link)
+        }
+        putPlanPhoto(link, under: id)
+    }
+
+    /// Всё, что лежит в полоске внизу страницы: снимки дневника, за ними —
+    /// прежние снимки полоски плана (P408).
+    var stripLinks: [String] { photos + planPhotos }
+
     func returnPlanPhoto(_ link: String) {
         guard canEditPlan, !planPhotos.contains(link), takeOutPlanPhoto(link) else { return }
         planPhotos.append(link)

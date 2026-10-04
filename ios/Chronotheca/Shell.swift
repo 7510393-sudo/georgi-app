@@ -42,6 +42,8 @@ final class Shell: ObservableObject {
 
     /// Дело, чья шторка «Подробности» открыта.
     @Published var drawer: UUID?
+    /// Снимки для сборки: облачко «…помнишь?» не показывается (P408).
+    @Published var hideCloud = false
 
     /// Дело, которому крутят время, и что именно крутят.
     @Published var roller: Roller?
@@ -242,6 +244,10 @@ final class Shell: ObservableObject {
         guard Vault.isPreview,
               let name = ProcessInfo.processInfo.environment["CHRONOTHECA_SCREEN"]
         else { return }
+        // Облачко «…помнишь?» — только на своих снимках: на снимке плана
+        // его нет, иначе открытая страница не сойдётся с соседской
+        // (P114, P408).
+        hideCloud = !["remember", "diary"].contains(name)
         switch name {
         case "diary":     tab = .diary
         case "calendar":  screen = .calendar
@@ -251,7 +257,6 @@ final class Shell: ObservableObject {
         case "search-menu":   screen = .search; showingMenu = true
         case "settings":  showingSettings = true
         case "remember":  tab = .diary
-        case "details":   drawer = store.tasks.first?.id
         case "past":      store.move(by: -1)
         case "editing":   store.move(by: -1); store.setEditing(.plan, true)
         case "future":    store.move(by: 1); tab = .diary

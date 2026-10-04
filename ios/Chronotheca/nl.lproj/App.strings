@@ -624,3 +624,9 @@
 "…remember?" = "…weet je nog?";
 "where I left" = "waar ik was";
 "Name" = "Naam";
+
+/* P408: одна страница — в корзину весь день */
+"Move this day to the trash?" = "Deze dag naar de prullenmand?";
+"The plan and the entry of this day will move to the “" = "Plan en verslag van deze dag gaan naar de map ‘";
+"The day is in the trash. Restore it in Settings → Trash." = "De dag staat in de prullenmand. Terugzetten: Instellingen → Prullenmand.";
+"Move the day to the trash" = "Dag naar de prullenmand";

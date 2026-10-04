@@ -624,3 +624,9 @@
 "” to the trash" = "» nel cestino";
 "…remember?" = "…ti ricordi?";
 "✓ yes ›" = "✓ sì ›";
+
+/* P408: одна страница — в корзину весь день */
+"Move this day to the trash?" = "Spostare questo giorno nel cestino?";
+"The plan and the entry of this day will move to the “" = "Il piano e la pagina di questo giorno andranno nella cartella «";
+"The day is in the trash. Restore it in Settings → Trash." = "Il giorno è nel cestino. Ripristinalo in Impostazioni → Cestino.";
+"Move the day to the trash" = "Sposta il giorno nel cestino";

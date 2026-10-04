@@ -624,3 +624,9 @@
 "…remember?" = "…а пам’ятаєш?";
 "where I left" = "де був";
 "Name" = "Назва";
+
+/* P408: одна страница — в корзину весь день */
+"Move this day to the trash?" = "Прибрати цей день у кошик?";
+"The plan and the entry of this day will move to the “" = "План і запис цього дня переїдуть у теку «";
+"The day is in the trash. Restore it in Settings → Trash." = "День у кошику. Повернути — Налаштування → Кошик.";
+"Move the day to the trash" = "Прибрати день у кошик";

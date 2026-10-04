@@ -624,3 +624,9 @@
 "…remember?" = "…¿te acuerdas?";
 "where I left" = "donde estaba";
 "Name" = "Nombre";
+
+/* P408: одна страница — в корзину весь день */
+"Move this day to the trash?" = "¿Mover este día a la papelera?";
+"The plan and the entry of this day will move to the “" = "El plan y la entrada de este día irán a la carpeta «";
+"The day is in the trash. Restore it in Settings → Trash." = "El día está en la papelera. Restáuralo en Ajustes → Papelera.";
+"Move the day to the trash" = "Mover el día a la papelera";

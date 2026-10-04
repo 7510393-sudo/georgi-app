@@ -96,14 +96,13 @@ struct RootView: View {
         return Vault.trash(in: root).lastPathComponent
     }
 
+    /// План и дневник — одна страница (P408): в корзину уходит весь день.
     private var trashTitle: String {
-        let name = shell.tab.title.lowercased()
-        return T("Убрать «\(name)» этого дня в корзину?", "Move this day’s \(name) to the trash?")
+        T("Убрать этот день в корзину?", "Move this day to the trash?")
     }
 
     private var trashMessage: String {
-        let what = shell.tab == .diary ? T("Запись", "The entry") : T("План", "The plan")
-        return what + T(" этого дня переедет в папку «", " of this day will move to the “") + trashFolder
+        T("План и запись этого дня переедут в папку «", "The plan and the entry of this day will move to the “") + trashFolder
             + T("» на 30 дней. Снимки и голос останутся на месте. Вернуть можно в Настройки → Корзина.",
                 "” folder for 30 days. Photos and voice notes stay where they are. You can restore it in Settings → Trash.")
     }
@@ -344,13 +343,13 @@ struct RootView: View {
         .confirmationDialog(trashTitle,
                             isPresented: $shell.trashAsk, titleVisibility: .visible) {
             Button(T("Убрать в корзину", "Move to trash"), role: .destructive) {
-                let tab = shell.tab
                 store.save()
-                if Trash.put(store.date, parts: [tab.vaultFolder], in: vault) {
+                if Trash.put(store.date, parts: [Shell.Tab.plan.vaultFolder, Shell.Tab.diary.vaultFolder],
+                             in: vault) {
                     store.load()
                     archive.reload()
                     store.syncUpcomingReminders()
-                    shell.say(tab.title + T(" в корзине. Вернуть — Настройки → Корзина.", " is in the trash. Restore it in Settings → Trash."))
+                    shell.say(T("День в корзине. Вернуть — Настройки → Корзина.", "The day is in the trash. Restore it in Settings → Trash."))
                 } else {
                     shell.say(T("Тут нечего убирать.", "Nothing to remove here."))
                 }
@@ -379,7 +378,7 @@ struct RootView: View {
     private var canvas: some View {
         ZStack(alignment: .trailing) {
             screen
-            if shell.drawer != nil { DetailsDrawer() }
+            // Шторки «Подробности» больше нет (P408).
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()

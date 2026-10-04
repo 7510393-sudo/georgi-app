@@ -96,7 +96,7 @@ struct PlanRowLine: View {
     @State private var told = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: Self.gap) {
+        VStack(alignment: .leading, spacing: 2) {
             // Голова стоит поверх отступа первой строки названия, а не
             // рядом с ним: тогда вторая и третья строки идут во всю ширину,
             // а не складываются в столбик (решение P177).
@@ -105,8 +105,19 @@ struct PlanRowLine: View {
                 title
                 head
             }
-            tab
+            // Шторки «Подробности» больше нет (P408): записанное в ней
+            // прежде видно бледными строками под делом и лежит в файле, как
+            // лежало.
+            ForEach(Array(row.details.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(Look.sans(13))
+                    .foregroundStyle(Look.inkFaint)
+                    .lineLimit(2)
+                    .padding(.leading, Self.wrap)
+            }
         }
+        // Корешка «Детали» справа нет — название идёт до контура (P408).
+        .padding(.trailing, 14)
         .padding(.leading, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -127,7 +138,7 @@ struct PlanRowLine: View {
                           lineWidth: lifted ? 3.25 : 1)
             .shadow(color: Look.glow.opacity(lifted ? 0.9 : 0), radius: 5)
             .padding(.leading, 4)
-            .padding(.trailing, 14)
+            .padding(.trailing, 4)
             .padding(.vertical, 3)
             .allowsHitTesting(false)
     }
@@ -296,27 +307,6 @@ struct PlanRowLine: View {
             .alignmentGuide(.firstTextBaseline) { _ in PlanTitle.baseline }
     }
 
-    /// Закладка «Детали» — корешок, выглядывающий из-за правого края.
-    private var tab: some View {
-        let filled = !row.details.isEmpty
-        return Button { onDetails?() } label: {
-            Text("›")
-                .font(.system(size: 15))
-                .foregroundStyle(filled ? Look.ink : Look.inkSoft)
-                .frame(width: 39)
-                .frame(maxHeight: .infinity)
-                .background(filled ? Look.rule : Look.chrome)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 7,
-                                                  bottomLeadingRadius: 7))
-                .overlay(SideTabBorder(radius: 7)
-                    .stroke(filled ? Look.inkSoft : Look.inkFaint, lineWidth: 1))
-                .padding(.vertical, PlanRowLine.bellRise)
-        }
-        .buttonStyle(.plain)
-        .opacity(dim)
-        .allowsHitTesting(onDetails != nil)
-        .accessibilityLabel(T("Подробности", "Details"))
-    }
 }
 
 /// Косая черта через номер сделанного дела (P383): снизу слева вверх
@@ -373,115 +363,6 @@ struct Line: Shape {
         p.move(to: CGPoint(x: r.minX, y: r.midY))
         p.addLine(to: CGPoint(x: r.maxX, y: r.midY))
         return p
-    }
-}
-
-/// Оправа списка дел: шапка, прокрутка и хвост под списком.
-///
-/// Открытая страница и соседние собираются из неё одинаково — вплоть до
-/// прокрутки. Дважды они расходились по мелочи, и дважды текст прыгал при
-/// перелистывании. Общая оправа — единственное, что это исключает (P114).
-struct PlanScaffold<Content: View>: View {
-
-    let isPast: Bool
-    var dimmed = false
-    /// Погода дня — строкой внизу страницы, над вложениями, как в Diarium
-    /// (P406; прежде — в верхней строке, P277).
-    var weather: String?
-
-    /// Строка, в которую сейчас пишут: её и надо держать на виду.
-    var watching: UUID?
-
-    /// Фотографии плана — полоской внизу страницы (P203). Полоска и погода
-    /// — часть страницы: тянут страницу — едут вместе с ней, а не стоят
-    /// приколоченными к низу экрана (P406).
-    var photos: [URL?] = []
-    /// Под делами есть снимки — полоска видна и пустой: в неё их
-    /// возвращают (P358). Соседние страницы считают то же самое, чтобы
-    /// низ страницы не прыгал при перелистывании (P114).
-    var takesBack = false
-    var onOpenPhoto: ((Int) -> Void)?
-    /// Что несёт палец, взяв превью из полоски (P205).
-    var drag: ((Int) -> String)?
-    var onMovePhoto: ((Int, Int) -> Void)?
-    /// Снимок из-под дела отпустили над полоской — назад в неё (P358).
-    var onTakePhoto: ((String) -> Void)?
-    /// Приложение вернулось после паузы — список снова с самого верха
-    /// (P346). Меняется — прокрутить вверх; у соседних страниц не меняется.
-    var home = 0
-
-    @ViewBuilder let content: () -> Content
-
-    @State private var keyboard: CGFloat = 0
-
-    private static var top: String { "план-верх" }
-
-    var body: some View {
-        GeometryReader { outer in
-            ScrollView {
-                ScrollViewReader { proxy in
-                    VStack(spacing: 0) {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            Color.clear.frame(height: 0).id(Self.top)
-                            content()
-                        }
-                        .padding(.top, 8)
-                        // Короткий список — погода и вложения всё равно
-                        // внизу экрана; длинный — под последним делом.
-                        Spacer(minLength: 0)
-                        footer
-                    }
-                    .frame(minHeight: outer.size.height, alignment: .top)
-                    // Место под клавиатуру. Без него строка, в которую
-                    // пишут, уходит под неё, и человек не видит, что
-                    // набирает (решение P166).
-                    .padding(.bottom, keyboard)
-                    .onChange(of: watching) { _, id in show(id, proxy) }
-                    .onChange(of: keyboard) { _, _ in show(watching, proxy) }
-                    .onChange(of: home) { _, _ in proxy.scrollTo(Self.top, anchor: .top) }
-                }
-            }
-            .scrollDismissesKeyboard(.interactively)
-            // Ход плавный и один: без него страница дёргалась, потому что
-            // клавиатура и содержимое ехали вразнобой.
-            .animation(.easeOut(duration: 0.25), value: keyboard)
-        }
-        .keyboardHeight($keyboard)
-    }
-
-    /// Низ страницы: погода строкой и полоска вложений (P406).
-    @ViewBuilder private var footer: some View {
-        if let weather, Prefs.weatherOn {
-            Label(Prefs.weatherText(weather), systemImage: "cloud.sun")
-                .font(Look.sans(12.5))
-                .foregroundStyle(Look.inkFaint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
-        }
-        if !photos.isEmpty || takesBack {
-            PhotoStrip(photos: photos, onOpen: onOpenPhoto,
-                       drag: drag, onMove: onMovePhoto, onTake: onTakePhoto)
-                .background(GeometryReader { geo in
-                    let frame = geo.frame(in: .global)
-                    Color.clear
-                        .onAppear { PlanZones.strip = frame }
-                        .onChange(of: frame) { _, now in PlanZones.strip = now }
-                })
-        }
-    }
-
-    /// Довести строку до глаз. С задержкой в один оборот: пока клавиатура
-    /// не встала на место, высота ещё не та, и прокрутка уедет не туда.
-    private func show(_ id: UUID?, _ proxy: ScrollViewProxy) {
-        guard let id else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            withAnimation(.easeOut(duration: 0.2)) {
-                proxy.scrollTo(id, anchor: .center)
-            }
-        }
     }
 }
 
@@ -565,41 +446,35 @@ struct PlanView: View {
     /// вплотную, а расступаются соседи уже по целым строкам.
     @State private var dragOffset: CGFloat = 0
 
+    /// Насколько клавиатура закрывает страницу: строку, в которой пишут,
+    /// страница держит над ней.
+    @State private var keyboard: CGFloat = 0
+
     var body: some View {
-        VStack(spacing: 0) {
-            PlanScaffold(isPast: store.isPast, dimmed: !store.canEditPlan,
-                         weather: store.weather,
-                         watching: typingIn,
-                         photos: store.planPhotos.map(store.photoURL),
-                         takesBack: Plan.hasPhotoRows(store.planRows),
-                         onOpenPhoto: { shell.openedPhoto = .init(tab: .plan, index: $0) },
-                         // Снимок из полоски несут под любое дело долгим
-                         // нажатием, без всякого режима (P358, P362).
-                         drag: store.canEditPlan
-                             ? { i in store.planPhotos.indices.contains(i)
-                                 ? Diary.line(store.planPhotos[i]) : "" } : nil,
-                         onMovePhoto: store.canEditPlan
-                             ? { store.movePhoto(from: $0, to: $1, in: .plan) } : nil,
-                         onTakePhoto: store.canEditPlan
-                             ? { store.returnPlanPhoto($0) } : nil,
-                         home: shell.freshStart) {
+        // План — верхняя часть страницы дня, без своей прокрутки: страница
+        // едет целиком, план и дневник вместе (P408).
+        ScrollViewReader { proxy in
+            VStack(alignment: .leading, spacing: 0) {
                 if store.away.contains(.planner) {
                     PlanEmpty(isPast: store.isPast, inCloud: true)
                 } else {
                     eventBlock
                     list
                 }
-                // Касание по пустому месту убирает клавиатуру и крестик у
-                // точки: выход должен быть там, куда рука тянется сама.
+                // Касание по пустому месту под планом убирает клавиатуру и
+                // крестик у точки: выход — там, куда рука тянется сама.
                 Color.clear
-                    .frame(minHeight: 140)
+                    .frame(height: 18)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         hideKeyboard()
                         withAnimation(.easeOut(duration: 0.15)) { armedLine = nil }
                     }
             }
+            .onChange(of: typingIn) { _, id in show(id, proxy) }
+            .onChange(of: keyboard) { _, _ in show(typingIn, proxy) }
         }
+        .keyboardHeight($keyboard)
         // Точка в названии дела открывает карту, как точка строкой (P256).
         .environment(\.openPoint, { point in
             store.noteLeaving(fromToday: true)
@@ -653,8 +528,23 @@ struct PlanView: View {
         // тоже (P359).
         .modifier(SeriesQuestion())
         // Где курсор в плане — туда встанет точка с карты (P240).
-        .onChange(of: typingIn) { _, now in store.planTyping = now }
+        .onChange(of: typingIn) { _, now in
+            store.planTyping = now
+            // Где пишут — там «где был» для «Открывать на» и для карты (P408).
+            if now != nil { shell.tab = .plan }
+        }
         // Прошедший день не бледнеет: он правится, как любой (P381).
+    }
+
+    /// Довести строку до глаз. С задержкой в один оборот: пока клавиатура
+    /// не встала на место, высота ещё не та, и прокрутка уедет не туда.
+    private func show(_ id: UUID?, _ proxy: ScrollViewProxy) {
+        guard let id else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo(id, anchor: .center)
+            }
+        }
     }
 
     /// Пустая плашка следующего дела (P406): «плюса» больше нет. Касание
@@ -756,7 +646,6 @@ struct PlanView: View {
             typing: typingIn == id,
             onTime: { openRoller(id, .time) },
             onBell: { openRoller(id, .bell) },
-            onDetails: { hideKeyboard(); openDetails(id) },
             onUp: { store.move(id, by: -1) },
             onDown: { store.move(id, by: 1) },
             onDelete: { store.delete(id) },
@@ -1285,9 +1174,6 @@ struct PlanView: View {
         shell.roller = .init(id: id, kind: kind)
     }
 
-    private func openDetails(_ id: UUID) {
-        withAnimation(.easeOut(duration: 0.2)) { shell.drawer = id }
-    }
 
     private func toggle(_ row: Binding<PlanRow>) {
         guard store.canEditPlan else { return shell.say(store.closedReason) }
