@@ -414,8 +414,11 @@ struct DayPage: View {
     private func steps(_ which: Shell.Tab, on: Bool) -> some View {
         let plan = which == .plan
         let editable = plan ? store.canEditPlan : store.canEditDiary
-        let back = live && on && editable && !(plan ? store.planBack : store.diaryBack).isEmpty
-        let ahead = live && on && editable && !(plan ? store.planAhead : store.diaryAhead).isEmpty
+        // Шаги плана и дневника — разного рода: спрашиваем у каждого своё.
+        let backEmpty = plan ? store.planBack.isEmpty : store.diaryBack.isEmpty
+        let aheadEmpty = plan ? store.planAhead.isEmpty : store.diaryAhead.isEmpty
+        let back = live && on && editable && !backEmpty
+        let ahead = live && on && editable && !aheadEmpty
         return HStack(spacing: 0) {
             stepArrow("arrow.uturn.backward", ready: back, name: T("Шаг назад", "Undo")) {
                 if plan { store.undoPlan() } else { store.undoDiary() }
