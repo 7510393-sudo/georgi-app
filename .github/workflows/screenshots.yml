@@ -190,6 +190,9 @@ jobs:
           python3 ../.github/сличить-страницы.py
 
       - name: Положить снимки в репозиторий
+        # И тогда, когда съёмка нашла пустой экран или расхождение: по
+        # самим снимкам и разбираться (P408).
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
