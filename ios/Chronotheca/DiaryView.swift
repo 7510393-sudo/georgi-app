@@ -140,7 +140,7 @@ extension DiaryView {
         // У краёв страница едет к пальцу (P409).
         func follow() {
             DiaryEditor.active?.followStrip(at: spot) { [self] in
-                carryStrip(i, .moved, stripSpot)
+                carryStrip(i, .moved(.zero), stripSpot)
             }
         }
         switch phase {
