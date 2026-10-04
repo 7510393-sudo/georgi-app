@@ -264,6 +264,9 @@ struct PlanRowLine: View {
             .overlay {
                 if row.done { Strike().stroke(Look.ink, style: StrokeStyle(lineWidth: 1.8, lineCap: .round)) }
             }
+            // У пустой плашки следующего дела и номер бледный (P417; прежде
+            // — обычной яркости, P406).
+            .opacity(ghost ? 0.35 : 1)
     }
 
     private var time: some View {
