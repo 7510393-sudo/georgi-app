@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Страница дня: сверху план, ниже дневник — одним листом (P408).
 ///
@@ -57,8 +58,12 @@ struct DaySheet<Plan: View, Diary: View>: View {
                     // от экрана: тянешь план — клетка едет с текстом (P412).
                     .coordinateSpace(name: Self.space)
                     // Место под клавиатуру: без него строку, в которой пишут,
-                    // некуда поднять (P166, P175).
-                    .padding(.bottom, keyboard)
+                    // некуда поднять (P166, P175). Ровно столько, сколько
+                    // клавиатура закрывает саму страницу: прежде отводилась
+                    // вся её высота, хотя низ экрана и так занят разделами, —
+                    // и страница, поднятая до конца, висела над клавиатурой
+                    // с зазором в несколько строк (P413).
+                    .padding(.bottom, covered(outer))
                     .onAppear { goHome(proxy) }
                     .onChange(of: home) { _, _ in goHome(proxy) }
                 }
@@ -68,6 +73,17 @@ struct DaySheet<Plan: View, Diary: View>: View {
             .animation(.easeOut(duration: 0.25), value: keyboard)
         }
         .keyboardHeight($keyboard)
+    }
+
+    /// Сколько страницы закрыто клавиатурой вместе с полоской вложений над
+    /// ней.
+    private func covered(_ outer: GeometryProxy) -> CGFloat {
+        guard keyboard > 0 else { return 0 }
+        let safe = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.bottom }
+            .first ?? 0
+        let top = UIScreen.main.bounds.height - keyboard - safe
+        return max(0, outer.frame(in: .global).maxY - top)
     }
 
     /// Встать на место — один раз на каждое открытие приложения: открыли
@@ -93,7 +109,7 @@ private enum SheetMemory {
 
 /// Заголовок части страницы — «План» или «Дневник» (P408): прописными, в
 /// разрядку, как прежние корешки вкладок; на 15% крупнее и без черт по
-/// бокам (P412).
+/// бокам (P412). Ростом ровно в две клетки листа (P413).
 struct SheetHeading: View {
     let title: String
     var faint = false
@@ -105,9 +121,35 @@ struct SheetHeading: View {
             .foregroundStyle(faint ? Look.inkFaint : Look.inkSoft)
             .lineLimit(1)
             .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
             .frame(maxWidth: .infinity)
+            .frame(height: GridSnap.cell * 2)
             .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Строка плана — целое число клеток листа (P413): высота округляется до
+/// клеток вверх (недобор в три точки прощается — его съедают поля), а
+/// содержимое стоит посередине. Клетка листа отсчитывается от верха плана,
+/// и так промежутки между плашками ложатся ровно на её линии.
+struct GridSnap: Layout {
+    static let cell: CGFloat = PageTexture.cell
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        let size = child.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        return CGSize(width: proposal.width ?? size.width, height: Self.snap(size.height))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+                       cache: inout ()) {
+        guard let child = subviews.first else { return }
+        let size = child.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+        child.place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
+                    proposal: ProposedViewSize(width: bounds.width, height: size.height))
+    }
+
+    static func snap(_ h: CGFloat) -> CGFloat {
+        guard h > 0.5 else { return 0 }
+        return max(1, ((h - 3) / cell).rounded(.up)) * cell
     }
 }

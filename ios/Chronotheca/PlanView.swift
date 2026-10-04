@@ -96,6 +96,9 @@ struct PlanRowLine: View {
     @State private var told = false
 
     var body: some View {
+        // Строка — целое число клеток листа, и плашка во всю её высоту:
+        // промежутки между плашками ложатся на линии клетки (P413).
+        GridSnap {
         VStack(alignment: .leading, spacing: 2) {
             // Голова стоит поверх отступа первой строки названия, а не
             // рядом с ним: тогда вторая и третья строки идут во всю ширину,
@@ -117,13 +120,13 @@ struct PlanRowLine: View {
             }
         }
         // Корешка «Детали» справа нет — название идёт до контура (P408).
-        .padding(.trailing, 14)
-        .padding(.leading, 12)
-        .padding(.vertical, 10)
+        // Плашка уже с боков — и содержимое отступает вместе с ней (P413).
+        .padding(.trailing, 20)
+        .padding(.leading, 18)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Каждое дело в своём контуре (P374) — том же, что у поднятого,
-        // только тонком. Справа он уходит под корешок «Детали»: корешок
-        // лежит сверху и черту не пересекает.
+        }
+        // Каждое дело на своей плашке (P374, P413).
         .background { contour }
     }
 
@@ -132,13 +135,25 @@ struct PlanRowLine: View {
     /// куда нажать, чтобы снять отметку.
     private var dim: Double { ghost ? 0.3 : (row.done ? 0.42 : 1) }
 
+    /// Плашка дела (P413): выпуклая, как листок стикера, — свет падает с
+    /// левого верхнего угла: там она светлее и с бликом по кромке, а тень
+    /// ложится вправо вниз. Пустая плашка следующего дела — бледнее.
     private var contour: some View {
-        RoundedRectangle(cornerRadius: 9)
-            .strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(ghost ? 0.3 : 0.75),
-                          lineWidth: lifted ? 3.25 : 1)
+        let shape = RoundedRectangle(cornerRadius: 9)
+        return shape
+            .fill(LinearGradient(colors: [Look.plateLight, Look.plateDark],
+                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0)],
+                                                       startPoint: .topLeading, endPoint: .center),
+                                        lineWidth: 1.2))
+            .overlay(shape.strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(0.4),
+                                        lineWidth: lifted ? 3.25 : 0.8))
+            .shadow(color: .black.opacity(0.16), radius: 2.5, x: 1.5, y: 2)
             .shadow(color: Look.glow.opacity(lifted ? 0.9 : 0), radius: 5)
-            .padding(.leading, 4)
-            .padding(.trailing, 4)
+            .opacity(ghost ? 0.45 : 1)
+            // Плашка уже с боков (P413).
+            .padding(.leading, 10)
+            .padding(.trailing, 10)
             .padding(.vertical, 3)
             .allowsHitTesting(false)
     }
@@ -591,7 +606,6 @@ struct PlanView: View {
                         onBell: { add(then: .bell) },
                         onDetails: { add() },
                         ghost: true)
-            Rectangle().fill(Look.ruleSoft).frame(height: 1).opacity(0.4)
         }
         .contentShape(Rectangle())
         .onTapGesture { add() }
@@ -606,7 +620,6 @@ struct PlanView: View {
                 // они расступаются вместе (P374).
                 VStack(spacing: 0) {
                     taskRow(row)
-                    Rectangle().fill(Look.ruleSoft).frame(height: 1)
                 }
                 .modifier(Zone(id: id))
                 .offset(y: lineShift(id) + eventShift(id) + photoShift(id))
@@ -915,7 +928,6 @@ struct PlanView: View {
                         onCheck: { checkEvent(e) },
                         onLift: { eventLift(e, $0) },
                         lifted: up)
-            Rectangle().fill(Look.ruleSoft).frame(height: 1)
         }
         .background(GeometryReader { geo in
             let frame = geo.frame(in: .global)
@@ -1312,9 +1324,9 @@ struct PlanStat: View {
             .tracking(0.35)
             .foregroundStyle(Look.inkFaint)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
+            .padding(.horizontal, 20)
+            // Две клетки листа (P413).
+            .frame(height: GridSnap.cell * 2)
     }
 }
 
@@ -1347,15 +1359,15 @@ struct PlanExtraLine: View {
         if Plan.isPhotoRow(line) {
             // Снимки под делом — в ряд; каждый несут пальцем под другое
             // дело или назад в полоску (P358, P362).
-            PlanPhotoRow(links: Diary.links(in: line), resolve: resolve, open: open,
-                         onCarry: onPhoto, carried: carriedPhoto)
-            Rectangle().fill(Look.ruleSoft).frame(height: 1)
+            // Ряд — целое число клеток листа (P413).
+            GridSnap {
+                PlanPhotoRow(links: Diary.links(in: line), resolve: resolve, open: open,
+                             onCarry: onPhoto, carried: carriedPhoto)
+            }
         } else if let point = Geo.point(in: line) {
-            // Точка и черта под ней едут вместе.
-            VStack(spacing: 0) {
+            GridSnap {
                 PlanPointLine(point: point, open: tapPoint, armed: armed, glowing: armed || carried,
                               onDelete: onDelete)
-                Rectangle().fill(Look.ruleSoft).frame(height: 1)
             }
             .modifier(Carry(report: onCarry))
         }

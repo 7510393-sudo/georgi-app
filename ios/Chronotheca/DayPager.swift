@@ -84,6 +84,7 @@ struct DayPage: View {
                 .zIndex(1)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .top) { steps }
                 .overlay { galleryCatcher }
                 // Верхний край страницы — черта через всю ширину (P250).
                 .overlay(alignment: .top) {
@@ -214,27 +215,26 @@ struct DayPage: View {
         // Отступ до вкладок держит шапка, а не вкладки: тогда её нижний край
         // совпадает с верхним краем вкладки, и облачко уходит именно за
         // вкладку, а не за пустую полоску над ней.
-        // Внизу шапки — место под стрелки шага (P409).
-        .padding(.bottom, 22)
+        .padding(.bottom, 14)
         .frame(maxWidth: .infinity)
         .background(Look.chrome)
         .contentShape(Rectangle())
         .onTapGesture { hideKeyboard() }
-        // Шаг назад и вперёд по всей странице, плану и дневнику разом
-        // (P408) — у краёв экрана, под шестерёнкой и под тремя точками
-        // (P409; в 86-й они заняли место стрелок, листающих дни).
-        .overlay(alignment: .bottomLeading) {
+    }
+
+    /// Шаг назад и вперёд по всей странице, плану и дневнику разом (P408) —
+    /// на цветном поле страницы, у краёв, в полупрозрачных кружках; страница
+    /// едет под ними, а они стоят (P413; прежде — под уголками шапки, P409).
+    private var steps: some View {
+        HStack {
             stepArrow("arrow.uturn.backward", ready: live && store.canUndo,
                       name: T("Шаг назад", "Undo")) { store.undo() }
-                .padding(.leading, 8)
-                .padding(.bottom, 1)
-        }
-        .overlay(alignment: .bottomTrailing) {
+            Spacer(minLength: 0)
             stepArrow("arrow.uturn.forward", ready: live && store.canRedo,
                       name: T("Шаг вперёд", "Redo")) { store.redo() }
-                .padding(.trailing, 8)
-                .padding(.bottom, 1)
         }
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
     }
 
     /// Высота строки заголовка. Одна на всех страницах: шапка не должна
@@ -329,11 +329,13 @@ struct DayPage: View {
             act()
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Look.accent)
                 .opacity(ready ? 1 : 0.3)
-                .frame(width: 42, height: 28)
-                .contentShape(Rectangle())
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(Look.chrome.opacity(0.62)))
+                .overlay(Circle().strokeBorder(Look.inkFaint.opacity(0.35), lineWidth: 0.8))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(name)
@@ -395,9 +397,12 @@ struct PageTexture: View {
         .accessibilityHidden(true)
     }
 
+    /// Сторона клетки — по ней же строки плана (P413).
+    static let cell: CGFloat = 18
+
     /// Клетка в 18 точек — как в школьной тетради, но еле видная.
     static let grid: UIImage = {
-        let side: CGFloat = 18
+        let side: CGFloat = cell
         return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { ctx in
             UIColor(Look.accent).withAlphaComponent(0.09).setFill()
             ctx.fill(CGRect(x: 0, y: 0, width: side, height: 0.6))
@@ -966,7 +971,6 @@ struct PlanPage: View {
                 ForEach(Array(events.enumerated()), id: \.element.key) { i, e in
                     PlanRowLine(number: i + 1, row: e.row, faded: false, bellColor: bellColor,
                                 stripe: e.color)
-                    Rectangle().fill(Look.ruleSoft).frame(height: 1)
                 }
                 // Дела и снимки между ними — в том же порядке, что и на
                 // открытой странице; прочие строки файла не рисуются.
@@ -974,7 +978,6 @@ struct PlanPage: View {
                     if row.isTask {
                         PlanRowLine(number: events.count + rows[..<i].filter(\.isTask).count + 1,
                                     row: row, faded: false, bellColor: bellColor)
-                        Rectangle().fill(Look.ruleSoft).frame(height: 1)
                     } else if let line = row.verbatim {
                         PlanExtraLine(line: line, resolve: resolve)
                     }
@@ -984,7 +987,6 @@ struct PlanPage: View {
                 if !tasks.contains(where: PlanRow.blank) {
                     PlanRowLine(number: events.count + tasks.count + 1, row: .task(""),
                                 bellColor: bellColor, ghost: true)
-                    Rectangle().fill(Look.ruleSoft).frame(height: 1).opacity(0.4)
                 }
                 PlanStat(planned: tasks.count + events.count,
                          done: tasks.filter(\.done).count + events.filter(\.row.done).count)
