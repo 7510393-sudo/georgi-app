@@ -1144,7 +1144,10 @@ struct PointPanel: View {
                 .overlay(RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Look.inkFaint.opacity(0.6), lineWidth: 1))
             HStack {
-                Button(T("Отмена", "Cancel"), action: cancel)
+                // «Отмена» и «Готово» — в окантовке, как кнопки (P414).
+                Button(action: cancel) { Text(T("Отмена", "Cancel")).modifier(Outlined()) }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Look.accent)
                 Spacer(minLength: 6)
                 // Координаты точки — касание кладёт их в буфер обмена
                 // (P340).
@@ -1163,7 +1166,11 @@ struct PointPanel: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(T("Скопировать координаты", "Copy coordinates"))
                 Spacer(minLength: 6)
-                Button(T("Готово", "Done")) { done(place) }.fontWeight(.semibold)
+                Button { done(place) } label: {
+                    Text(T("Готово", "Done")).fontWeight(.semibold).modifier(Outlined(strong: true))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Look.accent)
             }
             .font(Look.sans(15))
             .padding(.horizontal, 4)
@@ -1345,5 +1352,21 @@ enum PlaceActions {
     /// навигатор и любые карты.
     static func copy(_ c: CLLocationCoordinate2D) {
         UIPasteboard.general.string = Geo.text(c)
+    }
+}
+
+/// Кнопка в окантовке (P414): тонкая рамка цвета кнопки на светлой
+/// подложке; главная — рамка толще.
+struct Outlined: ViewModifier {
+    var strong = false
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Look.planBg.opacity(0.85), in: RoundedRectangle(cornerRadius: 9))
+            .overlay(RoundedRectangle(cornerRadius: 9)
+                .strokeBorder(Look.accent.opacity(strong ? 0.9 : 0.6), lineWidth: strong ? 1.5 : 1))
+            .contentShape(RoundedRectangle(cornerRadius: 9))
     }
 }
