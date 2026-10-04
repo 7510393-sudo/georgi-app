@@ -72,7 +72,8 @@ struct DiaryView: View {
             // Касание по строке «Здоровья» — она ложится в запись (P378).
             onHealth: store.canEditDiary ? { line in store.addHealthLine(line) } : nil,
             onStripCarry: { carryStrip($0, $1, $2) },
-            stripCarried: stripCarry)
+            stripCarried: stripCarry,
+            onAnswering: { store.answerTyping = $0 })
         // Взятое из полоски — над пальцем, в синей рамке (P380).
         .overlay {
             if let i = stripCarry, stripSpot != .zero, store.photos.indices.contains(i) {
@@ -86,7 +87,11 @@ struct DiaryView: View {
         }
         .task(id: store.date) { health = await HealthDay.summary(for: store.date) }
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
-        .onChange(of: store.answers) { _, _ in store.scheduleSave() }
+        .onChange(of: store.answers) { _, _ in
+            // Снимок, перенесённый в ответ, уходит из полоски (P407).
+            store.settlePhotos()
+            store.scheduleSave()
+        }
         .onChange(of: store.diaryText) { _, _ in
             store.touchDiary()
             store.settlePhotos()
@@ -110,13 +115,22 @@ extension DiaryView {
             stripSpot = spot
         case .moved:
             stripSpot = spot
-            if overStrip {
+            // Над строкой «Как прошло?» — встаёт в конец ответа, в ту же
+            // строку (P407).
+            if !overStrip, AskLine.carry(line, at: spot) {
+                DiaryEditor.active?.carryOut()
+            } else if overStrip {
+                AskLine.carryOutAll()
                 DiaryEditor.active?.carryOut()
             } else {
                 DiaryEditor.active?.carryIn(line, at: CGPoint(x: spot.x, y: spot.y))
             }
         case .ended:
-            if overStrip || spot == .zero {
+            if !overStrip, spot != .zero, AskLine.carryEnd(at: spot) {
+                DiaryEditor.active?.carryOut()
+                Feel.thud()
+            } else if overStrip || spot == .zero {
+                AskLine.carryOutAll()
                 DiaryEditor.active?.carryOut()
                 if let to = StripZones.nearest(to: spot, count: store.photos.count), to != i, spot != .zero {
                     store.movePhoto(from: i, to: to, in: .diary)
@@ -128,6 +142,7 @@ extension DiaryView {
             stripCarry = nil
             stripSpot = .zero
         case .cancelled:
+            AskLine.carryOutAll()
             DiaryEditor.active?.carryOut()
             stripCarry = nil
             stripSpot = .zero
@@ -208,6 +223,8 @@ struct DiaryPage: View {
     /// в полоске (P380).
     var onStripCarry: ((Int, Lift, CGPoint) -> Void)? = nil
     var stripCarried: Int? = nil
+    /// В каком деле «Как прошло?» пишут — туда встаёт «место» (P407).
+    var onAnswering: ((String?) -> Void)? = nil
 
     /// Для какого открытия запись уже прокручена к концу.
     private static var homed = -1
@@ -380,9 +397,19 @@ struct DiaryPage: View {
                                 set: { setAnswer?(task.text, $0) }),
                 editable: editable && setAnswer != nil,
                 typing: askingAt == task.text,
-                onBegin: { askingAt = task.text },
-                onDone: { if askingAt == task.text { askingAt = nil } },
-                onNext: { next(after: task.text) })
+                onBegin: {
+                    askingAt = task.text
+                    onAnswering?(task.text)
+                },
+                onDone: {
+                    if askingAt == task.text { askingAt = nil }
+                    onAnswering?(nil)
+                },
+                onNext: { next(after: task.text) },
+                resolve: resolve,
+                onOpen: onOpenInline,
+                onOpenPoint: onOpenPoint,
+                onReturn: editable ? onReturnPhoto : nil)
             // Пустая строка стоит ровно в строку, а исписанная растёт вниз —
             // и дела, стоящие ниже, отодвигаются, освобождая место (P175).
             .frame(minHeight: size * 1.7, alignment: .leading)

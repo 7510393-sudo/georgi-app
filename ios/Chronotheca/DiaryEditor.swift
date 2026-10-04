@@ -477,7 +477,7 @@ struct DiaryEditor: UIViewRepresentable {
         return new.joined(separator: "\n")
     }
 
-    private static let fileLink = try! NSRegularExpression(
+    static let fileLink = try! NSRegularExpression(
         pattern: #"(?<!!)\[[^\]\n]*\]\((<[^>\n]+>|[^)\s]+)\)"#)
 
     /// Ссылка на голос, видео или документ посреди строки — на свою строку.
@@ -551,6 +551,38 @@ struct DiaryEditor: UIViewRepresentable {
                 // цифры, которые ещё набирают (P256).
                 || $0.range(of: #"\]\(geo:[^)\s]+\)|geo:-?\d+(\.\d+)?,\s?-?\d+(\.\d+)?\s"#,
                             options: .regularExpression) != nil
+        }
+    }
+
+    /// Прочитать с диска снимки, стоящие в поле пустыми клетками, — и
+    /// поставить на их место. Общее для записи и строк «Как прошло?» (P407).
+    static func loadPhotos(in view: UITextView) {
+        let storage = view.textStorage
+        storage.enumerateAttribute(.attachment,
+                                   in: NSRange(location: 0, length: storage.length)) { value, _, _ in
+            guard let photo = value as? PhotoAttachment, !photo.loaded,
+                  let url = photo.url else { return }
+            photo.loaded = true
+            Task.detached(priority: .userInitiated) {
+                guard let got = Photo.load(url, side: 280) else { return }
+                let framed = PhotoAttachment.frame(got)
+                await MainActor.run { [weak view] in
+                    Photo.cache.setObject(framed, forKey: PhotoAttachment.key(url))
+                    photo.image = framed
+                    guard let view else { return }
+                    let storage = view.textStorage
+                    storage.enumerateAttribute(.attachment,
+                                               in: NSRange(location: 0, length: storage.length)) { v, r, stop in
+                        guard (v as? PhotoAttachment) === photo else { return }
+                        // Та же вложенная картинка кладётся заново — и поле
+                        // перерисовывает её клетку.
+                        storage.beginEditing()
+                        storage.addAttribute(.attachment, value: photo, range: r)
+                        storage.endEditing()
+                        stop.pointee = true
+                    }
+                }
+            }
         }
     }
 
@@ -694,6 +726,9 @@ struct DiaryEditor: UIViewRepresentable {
 
         /// Место в тексте поля, где лежит взятое.
         private var taken: Int?
+        /// Взятое — строкой, как в файле: его несут и в ответ «Как прошло?»
+        /// (P407).
+        private var takenPiece: String?
         /// Картинка взятого, которая идёт за пальцем.
         private var ghost: UIView?
 
@@ -948,6 +983,8 @@ struct DiaryEditor: UIViewRepresentable {
                     lift(i, g, in: view)
                 }
                 finger = g.location(in: nil)
+                takenPiece = DiaryEditor.plain(view.textStorage.attributedSubstring(
+                    from: NSRange(location: i, length: 1)))
                 startPump()
             case .changed:
                 let spot = g.location(in: nil)
@@ -962,14 +999,18 @@ struct DiaryEditor: UIViewRepresentable {
                                         y: local.y - Self.lift)
                 // Над полоской снимок бледнеет — видно, что отпустить здесь
                 // значит вернуть его вниз; над заголовком — то же для точки.
-                let away = overStrip(g, in: view) || overTitle(g, in: view)
-                ghost?.alpha = away ? 0.5 : 0.9
+                // Над строкой «Как прошло?» — встанет в конец ответа (P407):
+                // ответ показывает это у себя, запись остаётся как была.
+                let intoAnswer = takenPiece.map { AskLine.carry($0, at: g.location(in: nil)) } == true
+                let away = intoAnswer || overStrip(g, in: view) || overTitle(g, in: view)
+                ghost?.alpha = away && !intoAnswer ? 0.5 : 0.9
                 if away { restore(view) } else { previewSoon(view) }
             case .ended:
                 stopPump()
                 heldEnded = Date()
-                let back = overStrip(g, in: view)
-                let up = overTitle(g, in: view)
+                let intoAnswer = takenPiece != nil && AskLine.under(g.location(in: nil)) != nil
+                let back = !intoAnswer && overStrip(g, in: view)
+                let up = !intoAnswer && overTitle(g, in: view)
                 let moved = ghost != nil
                 ghost?.removeFromSuperview()
                 ghost = nil
@@ -978,15 +1019,27 @@ struct DiaryEditor: UIViewRepresentable {
                 // Подержали и отпустили, не сдвинув: точка так и стоит
                 // крупнее, с крестиком; снимок — на месте.
                 guard moved else {
+                    AskLine.carryOutAll()
                     taken = nil
+                    takenPiece = nil
                     return
                 }
                 // Отпустили — ложится ровно под пальцем, даже если наплыв
                 // ещё не успел показать это место (P406).
-                if !back, !up { preview(at, in: view) }
+                if !back, !up, !intoAnswer { preview(at, in: view) }
                 let done = result
                 restore(view)
                 taken = nil
+                takenPiece = nil
+                // Отпустили над строкой «Как прошло?» — вложение уходит из
+                // записи в конец ответа, в ту же строку (P407).
+                if intoAnswer {
+                    if AskLine.carryEnd(at: g.location(in: nil)) {
+                        remove(at: i, in: view)
+                        Feel.light()
+                    }
+                    return
+                }
                 // Точку отпустили над заголовком дня — она уходит туда (P358).
                 if up, let line = view.textStorage.attribute(DiaryEditor.lineKey, at: i,
                                                              effectiveRange: nil) as? String,
@@ -1016,6 +1069,8 @@ struct DiaryEditor: UIViewRepresentable {
                 }
             default:
                 stopPump()
+                AskLine.carryOutAll()
+                takenPiece = nil
                 heldEnded = Date()
                 ghost?.removeFromSuperview()
                 ghost = nil
@@ -1378,33 +1433,7 @@ struct DiaryEditor: UIViewRepresentable {
         /// клетками, и поставить их на место.
         func loadPhotos() {
             guard let view else { return }
-            let storage = view.textStorage
-            storage.enumerateAttribute(.attachment,
-                                       in: NSRange(location: 0, length: storage.length)) { value, _, _ in
-                guard let photo = value as? PhotoAttachment, !photo.loaded,
-                      let url = photo.url else { return }
-                photo.loaded = true
-                Task.detached(priority: .userInitiated) {
-                    guard let got = Photo.load(url, side: 280) else { return }
-                    let framed = PhotoAttachment.frame(got)
-                    await MainActor.run { [weak view] in
-                        Photo.cache.setObject(framed, forKey: PhotoAttachment.key(url))
-                        photo.image = framed
-                        guard let view else { return }
-                        let storage = view.textStorage
-                        storage.enumerateAttribute(.attachment,
-                                                   in: NSRange(location: 0, length: storage.length)) { v, r, stop in
-                            guard (v as? PhotoAttachment) === photo else { return }
-                            // Та же вложенная картинка кладётся заново — и поле
-                            // перерисовывает её клетку.
-                            storage.beginEditing()
-                            storage.addAttribute(.attachment, value: photo, range: r)
-                            storage.endEditing()
-                            stop.pointee = true
-                        }
-                    }
-                }
-            }
+            DiaryEditor.loadPhotos(in: view)
         }
 
         /// Куда встанет брошенное превью: в конец абзаца, над которым его

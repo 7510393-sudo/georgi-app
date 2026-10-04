@@ -276,4 +276,21 @@ final class DiaryTests: XCTestCase {
         XCTAssertEqual(снимков, 1)
         XCTAssertEqual(DiaryEditor.plain(поле), строка, "в файл ложится как было")
     }
+
+    /// Снимок, голос и точка в ответе «Как прошло?» (P407): ответ — одна
+    /// строка в файле, туда и обратно без потерь, а поле отдаёт ровно то,
+    /// что было.
+    func testВложенияВОтветеОднойСтрокой() {
+        let ответ = Diary.adding("[2026-10-04_08.15](../../Audio/2026/2026-10-04_08.15.m4a)",
+                                 to: Diary.adding("![](../../Photos/2026/a.jpg)", to: "хорошо "))
+        XCTAssertEqual(ответ, "хорошо ![](../../Photos/2026/a.jpg) [2026-10-04_08.15](../../Audio/2026/2026-10-04_08.15.m4a)")
+        let день = Diary(answers: ["Сходить в парк": ответ], text: "запись")
+        let файл = день.body(order: ["Сходить в парк"])
+        XCTAssertEqual(файл.components(separatedBy: "\n").filter { $0.hasPrefix("- ") }.count, 1)
+        let прочли = Diary(body: файл, known: ["Сходить в парк"])
+        XCTAssertEqual(прочли.answers["Сходить в парк"], ответ)
+        XCTAssertTrue(прочли.photos.isEmpty, "снимок из ответа в полоску не уходит")
+        let поле = AskLine.dressed(ответ + " geo:51.5,-0.12 и дальше", resolve: { _ in nil })
+        XCTAssertEqual(DiaryEditor.plain(поле), ответ + " geo:51.5,-0.12 и дальше")
+    }
 }

@@ -158,6 +158,13 @@ struct Diary: Equatable {
         return link
     }
 
+    /// Ответ «Как прошло?» с вложением в конце — через пробел, в ту же
+    /// строку: в файле ответ — одна строка (P172, P407).
+    static func adding(_ piece: String, to answer: String) -> String {
+        let body = answer.trimmingCharacters(in: .whitespaces)
+        return body.isEmpty ? piece : body + " " + piece
+    }
+
     /// Какого рода вложение — по расширению файла.
     enum Kind { case photo, video, audio, file }
 

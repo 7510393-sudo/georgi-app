@@ -190,7 +190,26 @@ enum PDFBook {
         if !asked.isEmpty {
             add(T("КАК ПРОШЛО?", "HOW DID IT GO?"), .systemFont(ofSize: 10, weight: .semibold), soft, after: 4)
             for task in day.tasks where asked[task.text] != nil {
-                add(Geo.stripped(task.text) + ": " + (asked[task.text] ?? ""), serif(12.5), after: 3)
+                // Снимки в ответе (P407) — картинками под строкой, голос и
+                // файлы — словом, точки — без координат.
+                let said = asked[task.text] ?? ""
+                let shots = Diary.anywhere(in: said).filter { Diary.kind(of: $0.link) == .photo }
+                var words = said as NSString
+                for piece in shots.reversed() { words = words.replacingCharacters(in: piece.range, with: "") as NSString }
+                let line = Geo.stripped(words as String)
+                    .replacingOccurrences(of: #"\[([^\]\n]*)\]\((<[^>\n]+>|[^)\s]+)\)"#, with: "[$1]",
+                                          options: .regularExpression)
+                    .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+                    .trimmingCharacters(in: .whitespaces)
+                add(Geo.stripped(task.text) + ": " + line, serif(12.5), after: 3)
+                if o.photos {
+                    for piece in shots {
+                        if let picture = image(piece.link, width: body.width) {
+                            out.append(picture)
+                            add("", .systemFont(ofSize: 6), after: 8)
+                        }
+                    }
+                }
             }
             add("", .systemFont(ofSize: 6), after: 8)
         }

@@ -695,6 +695,9 @@ struct AttachBar: View {
         .onChange(of: shell.keyboardAsk) { _, ask in
             guard live, let ask else { return }
             shell.keyboardAsk = nil
+            // В каком ответе «Как прошло?» писали — до того, как клавиатура
+            // уйдёт и забудет это (P407).
+            let answering = store.answerTyping
             hideKeyboard()
             switch ask {
             case .photo: toggleGallery()
@@ -705,7 +708,7 @@ struct AttachBar: View {
                 recordAlign = 5.0 / 12.0
                 open { recording = true }
             case .files: open { browsing = true }
-            case .place: notePlaceHere()
+            case .place: notePlaceHere(answer: answering)
             case .map: openMap()
             }
         }
@@ -783,7 +786,7 @@ struct AttachBar: View {
     /// Вписать место, где человек сейчас, — своей строкой у курсора; в
     /// плане — под делом, в котором пишут (P381). Место узнаётся только
     /// по этому нажатию (A9).
-    private func notePlaceHere() {
+    private func notePlaceHere(answer: String? = nil) {
         let tab = shell.tab
         guard store.canEdit(tab) else { return shell.say(store.closedReason) }
         let caret = store.diaryTyping ? store.diaryCaret : nil
@@ -796,7 +799,7 @@ struct AttachBar: View {
                                        "Could not find where you are — allow location for the app in iPhone Settings."))
                 }
                 if store.writePoint(GeoPoint(title: "", at: location.coordinate), to: tab, here: true,
-                                    caret: caret, after: row) {
+                                    caret: caret, after: row, answer: answer) {
                     shell.say(T("Место записано", "Place noted"))
                 }
             }

@@ -710,8 +710,12 @@ final class DayStore: ObservableObject {
     /// Снимок, брошенный из полоски в текст, уходит из полоски: он теперь
     /// стоит на своём месте в записи, и дважды его показывать незачем (P204).
     func settlePhotos() {
-        guard !photos.isEmpty, diaryText.contains("](") else { return }
-        let placed = photos.filter { diaryText.contains(Diary.line($0)) }
+        // И в ответах «Как прошло?»: снимок встал в строку ответа (P407).
+        let said = answers.values.filter { $0.contains("](") }
+        guard !photos.isEmpty, diaryText.contains("](") || !said.isEmpty else { return }
+        let placed = photos.filter { link in
+            diaryText.contains(Diary.line(link)) || said.contains { $0.contains(Diary.line(link)) }
+        }
         guard !placed.isEmpty else { return }
         photos.removeAll { placed.contains($0) }
     }
@@ -735,6 +739,9 @@ final class DayStore: ObservableObject {
     /// Пишет ли человек сейчас в дневник и в какое дело плана. Нужно, чтобы
     /// точка встала туда, где был курсор (P240).
     var diaryTyping = false
+    /// В каком деле «Как прошло?» сейчас пишут (P407): «место» встаёт в
+    /// конец этого ответа, в ту же строку.
+    var answerTyping: String?
     var planTyping: UUID? {
         didSet { if let planTyping { lastPlanRow = planTyping } }
     }
@@ -771,10 +778,17 @@ final class DayStore: ObservableObject {
     /// после дела, в котором курсор, а без курсора — после последнего дела.
     @discardableResult
     func writePoint(_ point: GeoPoint, to tab: Shell.Tab, here: Bool = false,
-                    caret: Int? = nil, after row: UUID? = nil) -> Bool {
+                    caret: Int? = nil, after row: UUID? = nil, answer: String? = nil) -> Bool {
         guard canEdit(tab) else { return false }
         if here { notePlace(point) }
         let line = Geo.pointLine(point)
+        // Писали в ответ «Как прошло?» — точка в конец этого ответа (P407).
+        if tab == .diary, let task = answer {
+            answers[task] = Diary.adding(line, to: answers[task] ?? "")
+            touchDiary()
+            save()
+            return true
+        }
         switch tab {
         case .plan:
             // Дело, за которым просили, могли уже удалить — тогда под последним.
@@ -910,6 +924,17 @@ final class DayStore: ObservableObject {
     /// Вернуть снимок, стоящий посреди записи, в полоску внизу (P216).
     func returnToStrip(_ link: String) {
         guard canEditDiary else { return }
+        // Из ответа «Как прошло?» — вместе с пробелом перед ним (P407).
+        if !diaryText.contains(Diary.line(link)),
+           let hit = answers.first(where: { $0.value.contains(Diary.line(link)) }) {
+            answers[hit.key] = hit.value.replacingOccurrences(of: " " + Diary.line(link), with: "")
+                .replacingOccurrences(of: Diary.line(link), with: "")
+                .trimmingCharacters(in: .whitespaces)
+            photos.append(link)
+            touchDiary()
+            save()
+            return
+        }
         // Снимок ищется где угодно: своей строкой, в ряду (P348) или
         // посреди фразы (P357). Уходит вместе с одним пробелом или переводом
         // строки рядом — остальное остаётся как было.
