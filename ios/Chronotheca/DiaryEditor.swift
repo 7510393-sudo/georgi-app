@@ -1085,6 +1085,7 @@ struct DiaryEditor: UIViewRepresentable {
                     AskLine.carryOutAll()
                     taken = nil
                     takenPiece = nil
+                    rowSlots = nil
                     return
                 }
                 // Отпустили — ложится ровно под пальцем, даже если наплыв
@@ -1095,6 +1096,7 @@ struct DiaryEditor: UIViewRepresentable {
                 restore(view)
                 taken = nil
                 takenPiece = nil
+                rowSlots = nil
                 // Отпустили над делом плана — уходит из записи под него
                 // (P409).
                 if let task = toPlan, let piece {
@@ -1153,6 +1155,7 @@ struct DiaryEditor: UIViewRepresentable {
                 mark = nil
                 restore(view)
                 taken = nil
+                rowSlots = nil
             }
         }
 
@@ -1204,11 +1207,66 @@ struct DiaryEditor: UIViewRepresentable {
             now = i
             result = nil
             previewing = true
+            rowSlots = slots(around: i, in: view)
+        }
+
+        /// Снимок взят из ряда снимков (P418): где стоят снимки ряда до
+        /// переноса. Место в ряду считается по ним, а не по ряду, уже
+        /// раздвинутому показом, — иначе место перескакивало туда-обратно
+        /// и снимок дёргался под пальцем.
+        private var rowSlots: (band: CGRect, cells: [(index: Int, rect: CGRect)],
+                               original: NSAttributedString)?
+
+        private func slots(around i: Int, in view: UITextView)
+            -> (band: CGRect, cells: [(index: Int, rect: CGRect)], original: NSAttributedString)? {
+            let storage = view.textStorage
+            guard i < storage.length,
+                  storage.attribute(DiaryEditor.photoKey, at: i, effectiveRange: nil) != nil,
+                  let original = view.attributedText.copy() as? NSAttributedString
+            else { return nil }
+            let ns = storage.string as NSString
+            let para = ns.paragraphRange(for: NSRange(location: i, length: 0))
+            var end = NSMaxRange(para)
+            if end > para.location, ns.character(at: end - 1) == 10 { end -= 1 }
+            let row = NSRange(location: para.location, length: end - para.location)
+            guard Self.photoRow(row, in: storage) else { return nil }
+            var cells: [(index: Int, rect: CGRect)] = []
+            for k in row.location..<NSMaxRange(row)
+            where storage.attribute(DiaryEditor.photoKey, at: k, effectiveRange: nil) != nil {
+                guard let start = view.position(from: view.beginningOfDocument, offset: k),
+                      let stop = view.position(from: start, offset: 1),
+                      let range = view.textRange(from: start, to: stop) else { continue }
+                cells.append((k, view.firstRect(for: range)))
+            }
+            guard cells.count > 1 else { return nil }
+            let band = cells.map(\.rect).reduce(cells[0].rect) { $0.union($1) }
+                .insetBy(dx: -40, dy: -28)
+            return (band, cells, original)
         }
 
         /// Показать в поле, как ляжет взятое, если отпустить палец здесь:
         /// текст раздвигается, строки расходятся (P374).
         private func preview(_ at: CGPoint, in view: UITextView) {
+            // Внутри своего ряда — по местам снимков до переноса (P418).
+            if let row = rowSlots, let i = taken, row.band.contains(at) {
+                let others = row.cells.filter { $0.index != i }
+                let k = others.filter { $0.rect.midX < at.x }.count
+                let drop = k < others.count ? others[k].index : (others.last?.index ?? i) + 1
+                if let next = placed(from: i, to: drop, in: row.original) {
+                    guard next.0 != result else { return }
+                    result = next.0
+                    show(next.0, in: view)
+                    now = DiaryEditor.viewOffset(plain: next.1, in: view.attributedText)
+                } else if result != nil {
+                    // Над своим же местом — ряд как был.
+                    result = nil
+                    view.attributedText = row.original
+                    view.typingAttributes = DiaryEditor.body(parent.size, serif: parent.serif)
+                    loadPhotos()
+                    now = i
+                }
+                return
+            }
             guard let current = now, let position = view.closestPosition(to: at) else { return }
             let drop = view.offset(from: view.beginningOfDocument, to: position)
             guard let next = placed(from: current, to: drop, in: view.textStorage),
@@ -1549,7 +1607,11 @@ struct DiaryEditor: UIViewRepresentable {
             guard g.state == .ended, let got = pressed else { return }
             // Это было долгое нажатие, а не касание: точка с крестиком
             // остаётся на экране, карта не открывается (P374).
-            guard Date().timeIntervalSince(heldEnded) > 0.4, taken == nil, cover == nil else { return }
+            // Несут ли что-то сейчас — по картинке над пальцем, а не по
+            // `taken`: ту ставит уже само касание, и после короткого касания
+            // она оставалась — снимки в записи переставали открываться (P418).
+            guard Date().timeIntervalSince(heldEnded) > 0.4, ghost == nil, cover == nil else { return }
+            taken = nil
             if let link = got.photo { parent.onOpenPhoto?(link) }
             if let point = got.point { parent.onOpenPoint?(point) }
         }

@@ -442,10 +442,12 @@ enum GlyphArt {
         case "стрелка": return arrow(in: circle.insetBy(dx: 2, dy: 1))
         case "огонь": return fire(in: circle.insetBy(dx: 3, dy: 1))
         case "пираты": return pirates(in: circle)
-        case Glyph.invisible: return invisible(in: circle)
         default: break
         }
-        guard let shape = UIImage(systemName: Glyph.image(mark),
+        // «Невидимый» — та же точка, что первая, перечёркнутая косой чертой,
+        // как номер сделанного дела (P418).
+        let invisible = mark == Glyph.invisible
+        guard let shape = UIImage(systemName: Glyph.image(invisible ? Glyph.standard : mark),
                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? 17 : 11,
                                                                                  weight: .semibold))
         else { return }
@@ -462,6 +464,18 @@ enum GlyphArt {
             }
         }
         shape.withTintColor(Glyph.color(mark), renderingMode: .alwaysOriginal).draw(in: at)
+        if invisible {
+            let strike = UIBezierPath()
+            strike.move(to: CGPoint(x: circle.minX + 5, y: circle.maxY - 5))
+            strike.addLine(to: CGPoint(x: circle.maxX - 5, y: circle.minY + 5))
+            strike.lineCapStyle = .round
+            UIColor.white.withAlphaComponent(0.9).setStroke()
+            strike.lineWidth = 3.6
+            strike.stroke()
+            UIColor(Look.ink).setStroke()
+            strike.lineWidth = 1.8
+            strike.stroke()
+        }
     }
 
     /// Пустой кружок: белое кольцо, тёмная кайма снаружи и внутри; внутри
@@ -629,24 +643,6 @@ enum GlyphArt {
         staff.stroke()
     }
 
-    /// «Невидимый» в панели выбора и в списках (P409): пунктирная плашка с
-    /// чертой надписи — на карте будет только она, без значка.
-    private static func invisible(in r: CGRect) {
-        let box = CGRect(x: r.minX + 1.5, y: r.midY - 5.5, width: r.width - 3, height: 11)
-        let plate = UIBezierPath(roundedRect: box, cornerRadius: 3)
-        UIColor.white.withAlphaComponent(0.85).setFill()
-        plate.fill()
-        plate.lineWidth = 1.2
-        plate.setLineDash([2.2, 1.6], count: 2, phase: 0)
-        UIColor(white: 0.15, alpha: 0.9).setStroke()
-        plate.stroke()
-        let words = UIBezierPath()
-        words.move(to: CGPoint(x: box.minX + 4, y: box.midY))
-        words.addLine(to: CGPoint(x: box.maxX - 6, y: box.midY))
-        words.lineWidth = 1.6
-        words.lineCapStyle = .round
-        words.stroke()
-    }
 
     /// Эмодзи-значок. Пиратский флаг — с чёрным флагштоком до самой
     /// точки места.
