@@ -140,17 +140,20 @@ struct PlanRowLine: View {
     /// ложится вправо вниз. Пустая плашка следующего дела — бледнее.
     private var contour: some View {
         let shape = RoundedRectangle(cornerRadius: 9)
+        // Плашка сплошная: клетка листа сквозь неё не видна (P415) — и у
+        // пустой плашки следующего дела тоже; та лишь бледнее цветом, тенью
+        // и кромкой.
         return shape
-            .fill(LinearGradient(colors: [Look.plateLight, Look.plateDark],
+            .fill(LinearGradient(colors: ghost ? [Look.plateLight, Look.plateLight]
+                                               : [Look.plateLight, Look.plateDark],
                                  startPoint: .topLeading, endPoint: .bottomTrailing))
             .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0)],
                                                        startPoint: .topLeading, endPoint: .center),
                                         lineWidth: 1.2))
-            .overlay(shape.strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(0.4),
+            .overlay(shape.strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(ghost ? 0.22 : 0.4),
                                         lineWidth: lifted ? 3.25 : 0.8))
-            .shadow(color: .black.opacity(0.16), radius: 2.5, x: 1.5, y: 2)
+            .shadow(color: .black.opacity(ghost ? 0.06 : 0.16), radius: 2.5, x: 1.5, y: 2)
             .shadow(color: Look.glow.opacity(lifted ? 0.9 : 0), radius: 5)
-            .opacity(ghost ? 0.45 : 1)
             // Плашка уже с боков (P413).
             .padding(.leading, 10)
             .padding(.trailing, 10)
