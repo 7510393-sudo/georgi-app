@@ -924,8 +924,8 @@ struct DiaryEditor: UIViewRepresentable {
 
         @objc func carried(_ g: UILongPressGestureRecognizer) {
             guard let view, let i = taken else { return }
-            let finger = g.location(in: view)
-            let at = CGPoint(x: finger.x, y: finger.y - Self.lift)
+            let touch = g.location(in: view)
+            let at = CGPoint(x: touch.x, y: touch.y - Self.lift)
             quietUntil = Date().addingTimeInterval(1.5)
             switch g.state {
             case .began:
