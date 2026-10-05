@@ -358,9 +358,16 @@ struct RootView: View {
             Text(trashMessage)
         }
         .sheet(item: $shell.roller) { RollerSheet(roller: $0) }
+        .onChange(of: shell.keyboardGo) { _, go in
+            guard let go else { return }
+            shell.keyboardGo = nil
+            tapSection(go)
+        }
         .onAppear {
             // Просьбы кнопок над клавиатурой — открытой странице (P279).
             KeyboardBar.ask = { [shell] ask in shell.keyboardAsk = ask }
+            // Разделы над клавиатурой (P423) — так же, как внизу.
+            KeyboardBar.go = { [shell] target in shell.keyboardGo = target }
             // Опись архива нужна не только календарю и поиску: без неё
             // облачко «…помнишь?» не знает, есть ли что вспомнить, и не
             // появляется никогда. Читаем папку сразу при запуске.
@@ -586,33 +593,39 @@ struct RootView: View {
         }
     }
 
+    /// Касание по разделу — внизу экрана или в строке над клавиатурой
+    /// (P423): одно и то же.
+    private func tapSection(_ target: Shell.Screen) {
+        // Открыта шторка «Подробности» — первое касание только убирает
+        // её, второе уже открывает раздел (P342).
+        if closeDrawer() { return }
+        store.prune()
+        store.save()
+        // Второе касание по открытому разделу поднимает его и
+        // возвращает на «Сегодня» — туда, где было (P262).
+        if target != .today, shell.screen == target {
+            return open(.today)
+        }
+        if target == .today {
+            if shell.screen == .today && !store.isToday {
+                // Возвращаемся не мгновенно, а перелистнув страницы:
+                // дорога домой должна быть видна (решение P164).
+                shell.say(T("Вернулись на сегодня", "Back to today"))
+                shell.goHome = true
+            } else if !store.isToday {
+                store.go(to: DayStore.today())
+            }
+        } else {
+            archive.reload()
+        }
+        open(target)
+    }
+
     private func section(_ icon: String, _ name: String, _ target: Shell.Screen,
                          system: Bool = false) -> some View {
         let on = shell.screen == target
         return Button {
-            // Открыта шторка «Подробности» — первое касание только убирает
-            // её, второе уже открывает раздел (P342).
-            if closeDrawer() { return }
-            store.prune()
-            store.save()
-            // Второе касание по открытому разделу поднимает его и
-            // возвращает на «Сегодня» — туда, где было (P262).
-            if target != .today, shell.screen == target {
-                return open(.today)
-            }
-            if target == .today {
-                if shell.screen == .today && !store.isToday {
-                    // Возвращаемся не мгновенно, а перелистнув страницы:
-                    // дорога домой должна быть видна (решение P164).
-                    shell.say(T("Вернулись на сегодня", "Back to today"))
-                    shell.goHome = true
-                } else if !store.isToday {
-                    store.go(to: DayStore.today())
-                }
-            } else {
-                archive.reload()
-            }
-            open(target)
+            tapSection(target)
         } label: {
             VStack(spacing: 5) {
                 // Значки нарисованы автором от руки и обведены в вектор:

@@ -16,8 +16,15 @@ enum KeyboardBar {
 
     /// Кто исполняет просьбы — оболочка приложения.
     static var ask: (Ask) -> Void = { _ in }
+    /// Кто открывает разделы — оболочка приложения (P423).
+    static var go: (Shell.Screen) -> Void = { _ in }
 
-    static let height: CGFloat = 36
+    /// Строка вложений и под ней строка разделов вдвое тоньше (P423):
+    /// клавиатура закрывает нижнюю строку экрана — она поднимается над
+    /// клавиатурой вместе со строкой вложений. Разделы не пропадают (P113).
+    static let attachHeight: CGFloat = 36
+    static let sectionsHeight: CGFloat = 18
+    static let height: CGFloat = attachHeight + sectionsHeight
 
     /// Какой день открыт: полоска над клавиатурой — в его цвет, как и
     /// полоска на странице (P297). Одна приставка на все поля, поэтому
@@ -28,7 +35,7 @@ enum KeyboardBar {
     static let day = Day()
 
     private static var host: UIHostingController<KeyboardBarView>?
-    private static var holder: UIInputView?
+    private static var holder: UIView?
 
     /// Одна приставка на все поля: видна она только у того, в котором пишут.
     static var view: UIView {
@@ -39,10 +46,11 @@ enum KeyboardBar {
         // пустая полоса между приставкой и настоящей клавиатурой (P310).
         made.safeAreaRegions = []
         made.view.backgroundColor = .clear
-        let box = UIInputView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width,
-                                            height: height),
-                              inputViewStyle: .default)
-        box.allowsSelfSizing = false
+        // Простая подложка, а не клавиатурная: строка вложений
+        // полупрозрачная, сквозь неё видна страница (P423).
+        let box = UIView(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width,
+                                       height: height))
+        box.backgroundColor = .clear
         made.view.frame = box.bounds
         made.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         box.addSubview(made.view)
@@ -56,6 +64,42 @@ struct KeyboardBarView: View {
     @ObservedObject private var day = KeyboardBar.day
 
     var body: some View {
+        VStack(spacing: 0) {
+            attachments
+                .frame(height: KeyboardBar.attachHeight)
+            sections
+                .frame(height: KeyboardBar.sectionsHeight)
+        }
+    }
+
+    /// Разделы — одни названия, на том же крафте, что и внизу (P423).
+    /// Пишут всегда на «Сегодня» — оно и выделено.
+    private var sections: some View {
+        HStack(spacing: 0) {
+            name(T("Сегодня", "Today"), .today)
+            name(T("Календарь", "Calendar"), .calendar)
+            name(T("Карта", "Map"), .map)
+            name(T("Поиск", "Search"), .search)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(KraftPaper())
+    }
+
+    private func name(_ title: String, _ target: Shell.Screen) -> some View {
+        Button { KeyboardBar.go(target) } label: {
+            Text(title)
+                .font(Look.sans(11.5, weight: target == .today ? .medium : .regular))
+                .foregroundStyle(target == .today ? Look.accent : Look.kraftInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Строка вложений — полупрозрачная: сквозь неё видна страница (P423).
+    private var attachments: some View {
         HStack(spacing: 0) {
             // Тот же порядок, что и в полоске без клавиатуры: камера
             // слева, дальше фото, аудио, файлы — у каждой кнопки своё
@@ -80,7 +124,7 @@ struct KeyboardBarView: View {
         .padding(.top, 4)
         .padding(.bottom, 3)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DayStrip(date: day.date))
+        .background(DayStrip(date: day.date).opacity(0.55).background(.ultraThinMaterial))
         .overlay(alignment: .top) { Rectangle().fill(Color.black.opacity(0.08)).frame(height: 1) }
     }
 
