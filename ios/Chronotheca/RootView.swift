@@ -583,6 +583,15 @@ struct RootView: View {
             .padding(.top, -TornEdge.depth)
             .ignoresSafeArea(edges: .bottom)
         }
+        // Где верх строки — по нему листок настроек кончается над значками
+        // и рамкой открытого раздела (P424).
+        .background {
+            GeometryReader { g in
+                Color.clear
+                    .onAppear { shell.barTop = g.frame(in: .global).minY }
+                    .onChange(of: g.frame(in: .global).minY) { _, y in shell.barTop = y }
+            }
+        }
     }
 
     private func scale(_ target: Shell.Screen) -> CGFloat {

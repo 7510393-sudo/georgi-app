@@ -25,6 +25,11 @@ enum KeyboardBar {
     static let attachHeight: CGFloat = 36
     static let sectionsHeight: CGFloat = 18
     static let height: CGFloat = attachHeight + sectionsHeight
+    /// Насколько проступает цвет дня у строки вложений: сквозь неё видно
+    /// страницу — и над клавиатурой, и внизу страницы (P424).
+    static let see: Double = 0.5
+    /// Отступ строк от краёв экрана — бока скруглены (P424).
+    static let inset: CGFloat = 6
 
     /// Какой день открыт: полоска над клавиатурой — в его цвет, как и
     /// полоска на странице (P297). Одна приставка на все поля, поэтому
@@ -83,6 +88,10 @@ struct KeyboardBarView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(KraftPaper())
+        // Над клавиатурой бока скруглены (P424); внизу экрана строка
+        // прежняя.
+        .clipShape(Capsule(style: .continuous))
+        .padding(.horizontal, KeyboardBar.inset)
     }
 
     private func name(_ title: String, _ target: Shell.Screen) -> some View {
@@ -116,20 +125,73 @@ struct KeyboardBarView: View {
                     KeyboardBar.ask(.map)
                 }
                 .accessibilityAddTraits(.isButton)
-            key("keyboard.chevron.compact.down", T("убрать", "hide")) {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                                to: nil, from: nil, for: nil)
-            }
+            // Кнопки «убрать клавиатуру» нет (P424): её смахивают вниз.
         }
         .padding(.top, 4)
         .padding(.bottom, 3)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DayStrip(date: day.date).opacity(0.55).background(.ultraThinMaterial))
-        .overlay(alignment: .top) { Rectangle().fill(Color.black.opacity(0.08)).frame(height: 1) }
+        // Полупрозрачная (P424): прежде под цветом дня лежало матовое
+        // стекло — и строка выглядела сплошной.
+        .background(DayStrip(date: day.date).opacity(KeyboardBar.see))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(Color.black.opacity(0.08), lineWidth: 0.6))
+        .padding(.horizontal, KeyboardBar.inset)
     }
 
     private func key(_ icon: String, _ name: String, act: @escaping () -> Void) -> some View {
         Button(action: act) { BarFace(icon: icon, name: name, tint: Look.stripInk, compact: true) }
             .buttonStyle(.plain)
+    }
+}
+
+/// Приставка над клавиатурой у поля SwiftUI (P424).
+///
+/// У `TextField` своей приставки нет, а заголовок дня — он: курсор в
+/// заголовке — и строки вложений и разделов не было. Метка кладётся фоном
+/// поля, находит рядом настоящее поле UIKit и даёт ему ту же приставку,
+/// что у записи.
+struct KeyboardBarAttach: UIViewRepresentable {
+    func makeUIView(context: Context) -> Finder { Finder() }
+    func updateUIView(_ view: Finder, context: Context) {
+        DispatchQueue.main.async { view.attach() }
+    }
+
+    final class Finder: UIView {
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+            backgroundColor = .clear
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            DispatchQueue.main.async { [weak self] in self?.attach() }
+        }
+
+        func attach() {
+            guard window != nil else { return }
+            var level = superview
+            for _ in 0..<4 {
+                guard let here = level else { return }
+                if let field = Self.field(in: here) {
+                    guard field.inputAccessoryView !== KeyboardBar.view else { return }
+                    field.inputAccessoryView = KeyboardBar.view
+                    if field.isFirstResponder { field.reloadInputViews() }
+                    return
+                }
+                level = here.superview
+            }
+        }
+
+        private static func field(in view: UIView) -> UITextField? {
+            if let field = view as? UITextField { return field }
+            for sub in view.subviews {
+                if let field = field(in: sub) { return field }
+            }
+            return nil
+        }
     }
 }

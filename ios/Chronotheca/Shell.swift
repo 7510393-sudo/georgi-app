@@ -164,6 +164,15 @@ final class Shell: ObservableObject {
     @Published var keyboardAsk: KeyboardBar.Ask?
     /// Раздел, выбранный в строке над клавиатурой (P423).
     @Published var keyboardGo: Screen?
+    /// Просьба странице встать на план или на дневник (P424): после
+    /// перелистывания и из календаря.
+    @Published var landing = 0
+    var landOnDiary = false
+    /// Открытая страница сейчас больше дневник, чем план (P424).
+    var lookingAtDiary = false
+    /// Где верх нижней строки разделов на экране — по нему листок настроек
+    /// кончается над ней (P424).
+    @Published var barTop: CGFloat = 0
 
     /// Открыт ли ряд снимков галереи над полоской вложений. Лежит здесь, а
     /// не в самой полоске: касание в любом другом месте — по странице, по

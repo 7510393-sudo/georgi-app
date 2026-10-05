@@ -18,7 +18,20 @@ struct DiaryView: View {
     static let leading: CGFloat = size * 0.24
 
     var body: some View {
-        page
+        if store.isFuture {
+            // Будущий день: дневника ещё нет — касание говорит почему, а не
+            // молчит (P424).
+            page.overlay {
+                // Поверх — чтобы касание не съело поле записи под ним.
+                Color.black.opacity(0.001)
+                    .onTapGesture {
+                        shell.say(T("Этот день ещё не наступил — дневник откроется в свой день",
+                                    "This day hasn't come yet — the diary opens on the day itself"))
+                    }
+            }
+        } else {
+            page
+        }
     }
 
     private var page: some View {
@@ -547,6 +560,9 @@ struct DiaryPage: View {
                         .font(Look.serif(16.5, weight: .semibold))
                         // Без строки подсказок над клавиатурой (P409).
                         .autocorrectionDisabled(true)
+                        // Строка вложений и разделов — и над заголовком
+                        // (P424): прежде она была только у записи.
+                        .background(KeyboardBarAttach())
                         .foregroundStyle(Look.ink)
                         .focused($focused, equals: .title)
                         // Заголовок взяли в руки — просьба «перейти в

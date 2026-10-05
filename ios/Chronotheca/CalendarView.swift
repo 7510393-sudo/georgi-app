@@ -519,6 +519,9 @@ struct CalendarView: View {
     private func open(_ date: Date) {
         store.go(to: date)
         shell.tab = .plan
+        // Из календаря — всегда на план (P424).
+        shell.landOnDiary = false
+        shell.landing += 1
         shell.screen = .today
     }
 }

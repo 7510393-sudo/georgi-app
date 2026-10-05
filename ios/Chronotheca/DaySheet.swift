@@ -22,6 +22,13 @@ struct DaySheet<Plan: View, Diary: View>: View {
     var toDiary = false
     /// Дневника у этого дня ещё нет — будущий день: заголовок бледный.
     var diaryOpen = true
+    /// Просьба встать на план или на дневник (P424): меняется — страница
+    /// встаёт. Перелистнули назад, глядя в дневник, — новая страница
+    /// открывается на дневнике; вперёд и из календаря — на плане.
+    var land = 0
+    var landDiary = false
+    /// Больше половины окна занял дневник — или снова план (P424).
+    var onDiary: ((Bool) -> Void)?
 
     @ViewBuilder let plan: () -> Plan
     @ViewBuilder let diary: () -> Diary
@@ -29,7 +36,13 @@ struct DaySheet<Plan: View, Diary: View>: View {
     @State private var keyboard: CGFloat = 0
 
     private static var top: String { "страница-верх" }
+    private static var diaryTop: String { "страница-дневник" }
     static var space: String { "лист" }
+    private static var window: String { "окно-листа" }
+    /// Строка вложений лежит поверх низа страницы, полупрозрачная (P424):
+    /// столько места под концом записи, чтобы её можно было поднять из-под
+    /// строки.
+    static let stripRoom: CGFloat = 36
 
     var body: some View {
         GeometryReader { outer in
@@ -46,12 +59,22 @@ struct DaySheet<Plan: View, Diary: View>: View {
                         .background(Ru.tint(date).overlay(PageTexture(tab: .plan, space: Self.space)))
                         VStack(alignment: .leading, spacing: 0) {
                             SheetHeading(title: T("Дневник", "Diary"), faint: !diaryOpen)
+                                .id(Self.diaryTop)
                             diary()
+                        }
+                        .background {
+                            if onDiary != nil {
+                                GeometryReader { g in
+                                    Color.clear.preference(key: DiaryShare.self,
+                                                           value: g.frame(in: .named(Self.window)).minY)
+                                }
+                            }
                         }
                         // Короткая страница — низ дневника (погода, полоска)
                         // всё равно у нижнего края экрана.
                         .frame(maxHeight: .infinity, alignment: .top)
                     }
+                    .padding(.bottom, keyboard > 0 ? 0 : Self.stripRoom)
                     .frame(minHeight: outer.size.height, alignment: .top)
                     .background(Ru.tint(date).overlay(PageTexture(tab: .diary, space: Self.space)))
                     // Клетка и волокно отсчитываются от самого листа, а не
@@ -64,9 +87,17 @@ struct DaySheet<Plan: View, Diary: View>: View {
                     // и страница, поднятая до конца, висела над клавиатурой
                     // с зазором в несколько строк (P413).
                     .padding(.bottom, covered(outer))
-                    .onAppear { goHome(proxy) }
+                    .onAppear {
+                        goHome(proxy)
+                        settle(proxy, fresh: true)
+                    }
                     .onChange(of: home) { _, _ in goHome(proxy) }
+                    .onChange(of: land) { _, _ in settle(proxy, fresh: false) }
                 }
+            }
+            .coordinateSpace(name: Self.window)
+            .onPreferenceChange(DiaryShare.self) { top in
+                onDiary?(top < (outer.size.height - Self.stripRoom) / 2)
             }
             .scrollDismissesKeyboard(.interactively)
             // Ход плавный и один: клавиатура и страница едут вместе.
@@ -100,23 +131,49 @@ struct DaySheet<Plan: View, Diary: View>: View {
             }
         }
     }
+
+    /// Встать на план или на дневник по просьбе (P424). Новая страница
+    /// встаёт по просьбе один раз; соседняя, у которой своей просьбы нет
+    /// (`land == 0`), — сразу туда, куда встанет открытая.
+    private func settle(_ proxy: ScrollViewProxy, fresh: Bool) {
+        if fresh {
+            if land > 0 {
+                guard land != SheetMemory.landed else { return }
+            } else if !landDiary {
+                return
+            }
+        }
+        if land > 0 { SheetMemory.landed = land }
+        let diary = landDiary && diaryOpen
+        DispatchQueue.main.async {
+            proxy.scrollTo(diary ? Self.diaryTop : Self.top, anchor: .top)
+        }
+    }
+}
+
+/// Где верх дневника в окне — по нему видно, что занимает экран (P424).
+private struct DiaryShare: PreferenceKey {
+    static let defaultValue: CGFloat = .infinity
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 /// Для какого открытия страница уже встала на место.
 private enum SheetMemory {
     static var homed = -1
+    static var landed = -1
 }
 
 /// Заголовок части страницы — «План» или «Дневник» (P408): прописными, в
 /// разрядку, как прежние корешки вкладок; на 15% крупнее и без черт по
-/// бокам (P412). Ростом ровно в две клетки листа (P413).
+/// бокам (P412), и ещё на 30% (P424). Ростом ровно в две клетки листа
+/// (P413).
 struct SheetHeading: View {
     let title: String
     var faint = false
 
     var body: some View {
         Text(title.uppercased())
-            .font(Look.sans(17.25, weight: .semibold))
+            .font(Look.sans(22.4, weight: .semibold))
             .tracking(1.8)
             .foregroundStyle(faint ? Look.inkFaint : Look.inkSoft)
             .lineLimit(1)

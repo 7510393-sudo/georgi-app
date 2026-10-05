@@ -28,6 +28,10 @@ struct DayPages: View {
                 .environmentObject(archive)
         }, onTurn: { step in
             hideKeyboard()
+            // Назад, глядя в дневник, — на дневник; вперёд — всегда на план:
+            // у будущего есть только план (P424).
+            shell.landOnDiary = step < 0 && shell.lookingAtDiary
+            shell.landing += 1
             store.move(by: step)
         }, plan: $plan)
         .onChange(of: shell.goHome) { _, want in
@@ -90,7 +94,9 @@ struct DayPage: View {
                 .overlay(alignment: .top) {
                     Rectangle().fill(Look.inkFaint).frame(height: 1)
                 }
-            AttachBar(live: live, date: date)
+                // Строка вложений лежит поверх низа страницы, полупрозрачная,
+                // со скруглёнными боками (P424): страница уходит под неё.
+                .overlay(alignment: .bottom) { AttachBar(live: live, date: date) }
         }
         .background(background)
         // Фактура страницы и вкладок отсчитывается от одной точки — клетка
@@ -353,7 +359,9 @@ struct DayPage: View {
         } else if live {
             // План сверху, дневник ниже — одним листом (P408).
             DaySheet(date: date, home: shell.freshStart, toDiary: shell.tab == .diary,
-                     diaryOpen: !store.isFuture) {
+                     diaryOpen: !store.isFuture,
+                     land: shell.landing, landDiary: shell.landOnDiary,
+                     onDiary: { [shell] in shell.lookingAtDiary = $0 }) {
                 PlanView()
             } diary: {
                 DiaryView()
@@ -575,17 +583,16 @@ struct AttachBar: View {
             // строкой у курсора; долгое нажатие — карта.
             item("mappin.and.ellipse", T("место", "place"), ready: true,
                  hold: { openMap() }) { notePlaceHere() }
-            if overKeyboard {
-                item("keyboard.chevron.compact.down", T("убрать", "hide"), ready: true) { hideKeyboard() }
-            }
+            // Кнопки «убрать клавиатуру» нет (P424): её смахивают вниз.
         }
         // Полоска как можно тоньше: одни значки, без подписей (P289).
         .padding(.top, 5)
         .padding(.bottom, 4)
-        .background(DayStrip(date: date))
-        .overlay(alignment: .top) {
-            Rectangle().fill(Color.black.opacity(0.08)).frame(height: 1)
-        }
+        .background(DayStrip(date: date).opacity(KeyboardBar.see))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(Color.black.opacity(0.08), lineWidth: 0.6))
+        .padding(.horizontal, KeyboardBar.inset)
         // Ряд галереи лежит над полоской, поверх страницы: страница под
         // ним не сдвигается (P113, P114).
         .overlay(alignment: .top) {
@@ -883,6 +890,7 @@ struct SideDay: View {
 
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
+    @EnvironmentObject private var store: DayStore
 
     @State private var rows: [PlanRow] = []
     @State private var title = ""
@@ -899,7 +907,10 @@ struct SideDay: View {
     var body: some View {
         // Та же страница, что у открытого дня: план сверху, дневник ниже
         // (P114, P408).
-        DaySheet(date: date, diaryOpen: date <= DayStore.today()) {
+        // Вчерашняя страница, пока её тянут, стоит там же, где встанет
+        // открытой: на дневнике, если смотрели в дневник (P424, P114).
+        DaySheet(date: date, diaryOpen: date <= DayStore.today(),
+                 landDiary: date < store.date && shell.lookingAtDiary) {
             plan
         } diary: {
             diary

@@ -182,6 +182,16 @@ struct SettingsSticker: View {
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
     @State private var askingRename = false
+    /// Где начинается прокрутка листка на экране (P424). Листок выезжает
+    /// сдвигом картинки, а не места, — эта точка стоит, пока он едет.
+    @State private var top: CGFloat = 0
+
+    /// Высота прокрутки: до верха нижней строки и на полторы точки ниже —
+    /// рваный край строки закрыт, рамка открытого раздела видна (P424).
+    private var height: CGFloat {
+        guard top > 0, shell.barTop > top else { return Self.fullHeight }
+        return max(300, shell.barTop + 1.5 - top)
+    }
 
     /// Ширина записки: шире прежних 330, но так, чтобы справа оставалась
     /// полоска страницы, — по ней видно, где человек остался (P383).
@@ -209,8 +219,16 @@ struct SettingsSticker: View {
             version
            }
           }
-          // Листок — до нижней неподвижной строки (P291).
-          .frame(height: Self.fullHeight)
+          // Листок — до нижней неподвижной строки (P291): прикрывает её
+          // рваный край, но не значки и не рамку открытого раздела (P424).
+          .frame(height: height)
+          .background {
+              GeometryReader { g in
+                  Color.clear
+                      .onAppear { top = g.frame(in: .global).minY }
+                      .onChange(of: g.frame(in: .global).minY) { _, y in top = y }
+              }
+          }
         }
         .sheet(isPresented: $showingPDF) {
             PDFSheet(vault: vault, archive: archive)
