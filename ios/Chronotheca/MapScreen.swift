@@ -434,10 +434,36 @@ struct MapSearch: View {
 
     /// Поиск держится, пока идёт: брошенный на полпути, он мог уйти, не
     /// ответив, — и строка говорила «ничего не нашлось» (P370).
-    final class Engine {
+    ///
+    /// Подсказки по мере набора (P422) — как в Картах Apple: город, улица,
+    /// заведение видны, пока пишут, без «Найти». Прежде, пока не нажали
+    /// «Найти», искались только свои места — и город казался ненайденным.
+    /// Подсказчик у Apple для того и сделан, чтобы спрашивать его на каждую
+    /// букву: запросы он сам придерживает и отменяет устаревшие.
+    final class Engine: NSObject, MKLocalSearchCompleterDelegate {
         var searches: [MKLocalSearch] = []
         let geocoder = CLGeocoder()
         var round = 0
+        let completer = MKLocalSearchCompleter()
+        /// Подсказки ещё нужны: после «Найти» или выбора — уже нет.
+        var hinting = false
+        var hinted: (([MKLocalSearchCompletion]) -> Void)?
+
+        override init() {
+            super.init()
+            completer.delegate = self
+            completer.resultTypes = [.address, .pointOfInterest]
+        }
+
+        func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+            guard hinting else { return }
+            hinted?(completer.results)
+        }
+
+        func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+            guard hinting else { return }
+            hinted?([])
+        }
     }
 
     struct Found: Identifiable {
@@ -450,11 +476,15 @@ struct MapSearch: View {
         /// Настоящее ли это название, а не координаты, подставленные вместо
         /// него, — по нему решаем, предлагать ли сразу назвать точку (P330).
         var named = true
+        /// Подсказка, у которой координат ещё нет: их спрашиваем, когда её
+        /// выбрали (P422).
+        var hint: MKLocalSearchCompletion?
     }
 
     /// Отдать находку наружу и очистить строку — иначе следующая вставленная
     /// координата оказывается поверх старого текста (P330).
     private func choose(_ found: Found) {
+        if let hint = found.hint { return settle(hint) }
         query = ""
         results = []
         pick(found.named ? found.title : "", found.at)
@@ -560,16 +590,63 @@ struct MapSearch: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    /// Пока пишут — только свои места: их видно сразу, без ожидания.
+    /// Пока пишут — свои места сразу, ниже подсказки Карт Apple (P422).
     private func ownOnly() {
         nothing = false
         trouble = nil
-        results = own(query)
+        results = typed()
+        let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text.count >= 2, Pasted.find(text) == nil, Pasted.shortLink(in: text) == nil else {
+            engine.hinting = false
+            engine.completer.cancel()
+            return
+        }
+        engine.hinting = true
+        engine.hinted = { hints in
+            guard !looking else { return }
+            results = typed() + hints.prefix(6).map { hint in
+                Found(title: hint.title, subtitle: hint.subtitle,
+                      at: kCLLocationCoordinate2DInvalid, hint: hint)
+            }
+        }
+        if let seen = region() { engine.completer.region = seen }
+        engine.completer.queryFragment = text
+    }
+
+    /// Что видно сразу, без Карт Apple: свои места и вставленные координаты.
+    private func typed() -> [Found] {
+        var out = own(query)
         // Вставили координаты или ссылку с ними — точка видна сразу (P258).
         if let f = Pasted.find(query) {
-            results.insert(Found(title: f.title ?? Geo.text(f.at),
-                                 subtitle: f.title == nil ? T("Координаты", "Coordinates") : Geo.text(f.at),
-                                 at: f.at, named: f.title != nil), at: 0)
+            out.insert(Found(title: f.title ?? Geo.text(f.at),
+                             subtitle: f.title == nil ? T("Координаты", "Coordinates") : Geo.text(f.at),
+                             at: f.at, named: f.title != nil), at: 0)
+        }
+        return out
+    }
+
+    /// Выбрали подсказку — узнать, где она, и поставить туда (P422).
+    private func settle(_ hint: MKLocalSearchCompletion) {
+        engine.hinting = false
+        engine.completer.cancel()
+        engine.searches.forEach { $0.cancel() }
+        results = []
+        nothing = false
+        trouble = nil
+        looking = true
+        engine.round += 1
+        let round = engine.round
+        let search = MKLocalSearch(request: MKLocalSearch.Request(completion: hint))
+        engine.searches = [search]
+        search.start { response, error in
+            guard round == engine.round else { return }
+            looking = false
+            if let item = response?.mapItems.first {
+                choose(Found(title: hint.title, subtitle: hint.subtitle, at: item.placemark.coordinate))
+            } else {
+                nothing = true
+                if let error, !Self.empty(error) { trouble = Self.explain(error) }
+            }
         }
     }
 
@@ -605,6 +682,8 @@ struct MapSearch: View {
             }
             return
         }
+        engine.hinting = false
+        engine.completer.cancel()
         let mine = own(text)
         results = mine
         looking = true
