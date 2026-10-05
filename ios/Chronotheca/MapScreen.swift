@@ -869,7 +869,16 @@ struct NativeMap: UIViewRepresentable {
         let keeper = context.coordinator
         keeper.parent = self
         let kind: MKMapType = satellite ? .hybrid : .standard
-        if map.mapType != kind { map.mapType = kind }
+        if map.mapType != kind {
+            map.mapType = kind
+            // На спутнике плашки названий плотнее (P420) — перерисовать
+            // те, что уже стоят.
+            for case let mark as PlaceMark in map.annotations {
+                guard let view = map.view(for: mark) else { continue }
+                let shown = mark.place.name == Geo.text(mark.place.coordinate) ? "" : mark.place.name
+                view.image = PlaceLabel.draw(shown, mark: mark.place.mark, solid: satellite)
+            }
+        }
         keeper.sync(map)
         if let focus, focus != keeper.focused {
             keeper.focused = focus
@@ -938,7 +947,8 @@ struct NativeMap: UIViewRepresentable {
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "место")
                 // Названием остались координаты — на карте их не пишем (P404).
                 let shown = mark.place.name == Geo.text(mark.place.coordinate) ? "" : mark.place.name
-                let picture = PlaceLabel.draw(shown, mark: mark.place.mark)
+                let picture = PlaceLabel.draw(shown, mark: mark.place.mark,
+                                              solid: map.mapType != .standard)
                 view.image = picture
                 // Метка стоит на точке значком; у «невидимой» — плашкой
                 // посередине (P409).
@@ -1020,7 +1030,9 @@ final class PlaceMark: NSObject, MKAnnotation {
 enum PlaceLabel {
     static let dot: CGFloat = PlaceLabelSize.dot
 
-    static func draw(_ name: String, mark: String) -> UIImage {
+    /// `solid` — карта со спутника (P420): пёстрый снимок сквозь
+    /// прозрачную плашку мешает читать — плашка плотнее.
+    static func draw(_ name: String, mark: String, solid: Bool = false) -> UIImage {
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
         // «Невидимый» (P409): только плашка; без названия — «Место».
@@ -1046,7 +1058,7 @@ enum PlaceLabel {
                                     color: UIColor.black.withAlphaComponent(0.12).cgColor)
             // Полупрозрачная: много названий рядом не должны закрывать карту
             // (0.34 — P372; 0.42 — P361; 0.62 — P330; почти непрозрачная — P244).
-            UIColor(Look.sticker).withAlphaComponent(0.34).setFill()
+            UIColor(Look.sticker).withAlphaComponent(solid ? 0.88 : 0.34).setFill()
             UIBezierPath(roundedRect: box, cornerRadius: 5).fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             // Кромка — чтобы плашка читалась на пёстрой карте (P244).
