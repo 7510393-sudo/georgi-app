@@ -55,6 +55,9 @@ struct PlanRowLine: View {
     /// Пустая плашка следующего дела (P406): всё бледное, номер — обычной
     /// яркости.
     var ghost = false
+    /// Прошедший день (P421): плашка цвета подложки, без кромки и блика —
+    /// от неё остаётся только тень.
+    var past = false
 
     /// Высота строки без подробностей. По ней считается перестановка.
     static let height: CGFloat = 54
@@ -143,16 +146,19 @@ struct PlanRowLine: View {
         // Плашка сплошная: клетка листа сквозь неё не видна (P415) — и у
         // пустой плашки следующего дела тоже; та лишь бледнее цветом, тенью
         // и кромкой.
+        // Пустая плашка — того же цвета, что все, отличается только
+        // бледными линиями (P421): светлая пестрила.
         return shape
-            .fill(LinearGradient(colors: ghost ? [Look.plateLight, Look.plateLight]
-                                               : [Look.plateLight, Look.plateDark],
+            .fill(LinearGradient(colors: past ? [Ru.pastTint, Ru.pastTint]
+                                              : [Look.plateLight, Look.plateDark],
                                  startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0)],
+            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(past ? 0 : 0.9), .white.opacity(0)],
                                                        startPoint: .topLeading, endPoint: .center),
                                         lineWidth: 1.2))
-            .overlay(shape.strokeBorder(lifted ? Look.glow : Look.inkFaint.opacity(ghost ? 0.22 : 0.4),
+            .overlay(shape.strokeBorder(lifted ? Look.glow
+                                               : (past ? .clear : Look.inkFaint.opacity(ghost ? 0.2 : 0.4)),
                                         lineWidth: lifted ? 3.25 : 0.8))
-            .shadow(color: .black.opacity(ghost ? 0.06 : 0.16), radius: 2.5, x: 1.5, y: 2)
+            .shadow(color: .black.opacity(0.16), radius: 2.5, x: 1.5, y: 2)
             .shadow(color: Look.glow.opacity(lifted ? 0.9 : 0), radius: 5)
             // Плашка уже с боков (P413).
             .padding(.leading, 10)
@@ -600,7 +606,8 @@ struct PlanView: View {
     /// Пустая плашка видна, пока все дела чем-то заполнены: начали писать в
     /// новом — под ним появляется следующая (P406).
     private var ghostShown: Bool {
-        store.canEditPlan && !store.tasks.contains(where: PlanRow.blank)
+        // В прошедших днях пустой плашки нет (P421).
+        store.canEditPlan && !store.isPast && !store.tasks.contains(where: PlanRow.blank)
     }
 
     private var ghost: some View {
@@ -703,7 +710,8 @@ struct PlanView: View {
             // Поднятое дело обведено синим — тем же, что и всё, что можно
             // взять пальцем (P203, P362); и дело, под которое ляжет
             // несомый снимок (P377).
-            lifted: up || photoTo == id || shell.planHover?.id == id)
+            lifted: up || photoTo == id || shell.planHover?.id == id,
+            past: store.isPast)
             // Снимок из полоски или из-под другого дела — под это дело, в
             // ряд с теми, что уже там (P358).
             .onDrop(of: store.canEditPlan ? [UTType.plainText] : [],
@@ -933,7 +941,8 @@ struct PlanView: View {
                         onDetails: { open(e) },
                         onCheck: { checkEvent(e) },
                         onLift: { eventLift(e, $0) },
-                        lifted: up)
+                        lifted: up,
+                        past: store.isPast)
         }
         .background(GeometryReader { geo in
             let frame = geo.frame(in: .global)

@@ -971,21 +971,21 @@ struct PlanPage: View {
                 // открытой странице (P114, P376).
                 ForEach(Array(events.enumerated()), id: \.element.key) { i, e in
                     PlanRowLine(number: i + 1, row: e.row, faded: false, bellColor: bellColor,
-                                stripe: e.color)
+                                stripe: e.color, past: isPast)
                 }
                 // Дела и снимки между ними — в том же порядке, что и на
                 // открытой странице; прочие строки файла не рисуются.
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
                     if row.isTask {
                         PlanRowLine(number: events.count + rows[..<i].filter(\.isTask).count + 1,
-                                    row: row, faded: false, bellColor: bellColor)
+                                    row: row, faded: false, bellColor: bellColor, past: isPast)
                     } else if let line = row.verbatim {
                         PlanExtraLine(line: line, resolve: resolve)
                     }
                 }
                 // Пустая плашка следующего дела — как на открытой странице
-                // (P114, P406).
-                if !tasks.contains(where: PlanRow.blank) {
+                // (P114, P406); в прошедшем дне её нет (P421).
+                if !isPast, !tasks.contains(where: PlanRow.blank) {
                     PlanRowLine(number: events.count + tasks.count + 1, row: .task(""),
                                 bellColor: bellColor, ghost: true)
                 }

@@ -126,6 +126,9 @@ enum Ru {
         return n < 0 ? timeTints[0] : timeTints[1]
     }
 
+    /// Цвет прошедших дней — им же залиты плашки прошлого плана (P421).
+    static var pastTint: Color { timeTints[0] }
+
     private static let timeTints: [Color] = [
         Color(light: 0xF1F2F5, dark: 0x181B21),   // прошлое, любое
         // Бледнее на 15% (P330; было 0xF8E2D0/0x30261E, менее насыщенный
