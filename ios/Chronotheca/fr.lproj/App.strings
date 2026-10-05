@@ -634,3 +634,7 @@
 /* P409: крестик у снимка в записи */
 "Move to the strip below" = "Ranger dans la bande en bas";
 "Delete the file — trash for 30 days" = "Supprimer le fichier — corbeille 30 jours";
+
+/* P419: схема / спутник */
+"Show the map" = "Afficher le plan";
+"Show satellite" = "Afficher le satellite";

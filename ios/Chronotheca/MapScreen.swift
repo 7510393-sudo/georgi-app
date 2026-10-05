@@ -81,6 +81,30 @@ struct MapScreen: View {
         }
         .animation(.easeOut(duration: 0.15), value: panel)
         .overlay(alignment: .bottom) { bar }
+        // Схема ↔ спутник — кружком у правого края, над кнопками внизу
+        // (P419; прежде только в меню карты, P222). Пока называют новую
+        // точку и открыта клавиатура — не мешает.
+        .overlay(alignment: .bottomTrailing) {
+            if panel != .naming || selected == nil {
+                Button {
+                    Feel.light()
+                    shell.mapSatellite.toggle()
+                } label: {
+                    Image(systemName: shell.mapSatellite ? "map" : "globe.europe.africa.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Look.accent)
+                        .frame(width: 42, height: 42)
+                        .background(Circle().fill(Look.chrome.opacity(0.82)))
+                        .overlay(Circle().strokeBorder(Look.inkFaint.opacity(0.4), lineWidth: 0.8))
+                        .shadow(color: .black.opacity(0.18), radius: 3, y: 1.5)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 12)
+                .padding(.bottom, 78)
+                .accessibilityLabel(shell.mapSatellite ? T("Показать схему", "Show the map")
+                                                       : T("Показать спутник", "Show satellite"))
+            }
+        }
         .background(Look.chrome)
         .background(GeometryReader { geo in
             let bottom = geo.frame(in: .global).maxY
