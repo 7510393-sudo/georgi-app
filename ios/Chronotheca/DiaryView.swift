@@ -641,9 +641,12 @@ struct DiaryPage: View {
                         if onFocusText(writing) { caretToEnd = true }
                         writing = false
                     },
-                    // Под записью всегда пять пустых строк — место, куда
-                    // коснуться, чтобы продолжить (P346).
-                    grows: true, minHeight: 320, room: size * 1.5 * 5, resolve: resolve,
+                    // Под записью было пять пустых строк (P346), а с
+                    // погодой, полоской и местом под ней до нижней строки
+                    // набегало девять — автор просил четыре (P433): своих
+                    // пустых строк у поля больше нет, остальное даёт низ
+                    // страницы.
+                    grows: true, minHeight: 320, room: 0, resolve: resolve,
                     onOpenPhoto: onOpenInline, onReturnPhoto: onReturnPhoto,
                     onOpenPoint: onOpenPoint, onPointToTitle: onPointToTitle, onCaret: onCaret,
                     moving: editable, onEditing: onEditing,
