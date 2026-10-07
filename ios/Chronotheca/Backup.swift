@@ -73,19 +73,6 @@ enum Backup {
         return v.volumeAvailableCapacity.map(Int64.init)
     }
 
-    /// Сколько весит папка целиком — со снимками и видео.
-    static func size(of root: URL) -> Int64 {
-        var total: Int64 = 0
-        let keys: Set<URLResourceKey> = [.fileAllocatedSizeKey, .isDirectoryKey]
-        guard let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys))
-        else { return 0 }
-        for case let url as URL in walk {
-            guard let v = try? url.resourceValues(forKeys: keys), v.isDirectory != true else { continue }
-            total += Int64(v.fileAllocatedSize ?? 0)
-        }
-        return total
-    }
-
     // MARK: - Где нельзя
 
     /// Почему в это место копию класть не стоит; `nil` — можно.
