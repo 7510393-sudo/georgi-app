@@ -639,3 +639,5 @@
 "Show the map" = "地図を表示";
 "Show satellite" = "航空写真を表示";
 "This day hasn't come yet — the diary opens on the day itself" = "この日はまだ来ていません — 日記はその日になると開きます";
+"note" = "記録";
+"A line at the foot of the diary, next to the weather." = "日記の下部、天気の隣に一行で。";

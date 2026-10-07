@@ -177,13 +177,6 @@ struct MapScreen: View {
             }
             Button {
                 guard let selected else { return hint() }
-                MapActions.copy(selected)
-                shell.say(T("Скопировано: ", "Copied: ") + Geo.text(selected.coordinate))
-            } label: {
-                oval(MapFace(icon: "doc.on.doc", name: T("скопировать", "copy"), tint: Look.inkSoft), on: point)
-            }
-            Button {
-                guard let selected else { return hint() }
                 MapActions.navigate(selected)
             } label: {
                 oval(MapFace(icon: "arrow.triangle.turn.up.right.diamond", name: T("в навигатор", "directions"),
@@ -197,12 +190,23 @@ struct MapScreen: View {
                 }
             }
             .accessibilityHint(point ? T("Запишет выбранную точку", "Saves the chosen place") : T("Запишет, где вы сейчас", "Saves where you are now"))
+            // Слева направо: корзина, в навигатор, записать, скопировать
+            // (P425).
+            Button {
+                guard let selected else { return hint() }
+                MapActions.copy(selected)
+                shell.say(T("Скопировано: ", "Copied: ") + Geo.text(selected.coordinate))
+            } label: {
+                oval(MapFace(icon: "doc.on.doc", name: T("скопировать", "copy"), tint: Look.inkSoft), on: point)
+            }
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 4)
         // Клавиатура сама не поднимает низ приложения (P113) — над ней
         // кнопки поднимает этот отступ, вплотную к её верху (P306, P340).
-        .padding(.bottom, keyboard > 0 ? max(6, keyboard - belowMap + 6) : 6)
+        // Над клавиатурой ещё и строка разделов (P425).
+        .padding(.bottom, keyboard > 0
+                 ? max(6, keyboard - belowMap + 6 + KeyboardBar.sectionsHeight + 4) : 6)
     }
 
     /// Точка не выбрана — кнопка не пропадает, а бледнеет и объясняет, чего
@@ -361,10 +365,8 @@ struct MapScreen: View {
     }
 
     /// Название кнопки — куда ляжет точка (P358).
-    private var saveName: String {
-        shell.tab == .diary ? T("сохранить в дневник", "save to diary")
-                            : T("сохранить в план", "save to plan")
-    }
+    /// Одно слово на любую вкладку (P425): «записать».
+    private var saveName: String { T("записать", "note") }
 
     private func remember(to tab: Shell.Tab) {
         guard store.canEdit(tab) else { return shell.say(store.closedReason) }

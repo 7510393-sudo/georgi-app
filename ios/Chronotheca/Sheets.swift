@@ -406,8 +406,8 @@ struct SettingsSticker: View {
         // «Здоровье» в шапке дневника (P378): включили — iPhone спросит.
         if HealthDay.available {
             NoteRow(title: T("Здоровье: шаги, сон, тренировки", "Health: steps, sleep, workouts"),
-                    detail: health ? T("Строкой над дневником; касание — в запись.",
-                                       "A line above the diary; tap to add it.") : nil) {
+                    detail: health ? T("Строкой внизу дневника, рядом с погодой.",
+                                       "A line at the foot of the diary, next to the weather.") : nil) {
                 Choice(options: onOff, selection: Binding(get: { health }, set: { on in
                     health = on
                     if on { HealthDay.ask { _ in } }

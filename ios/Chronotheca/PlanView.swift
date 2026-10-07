@@ -669,13 +669,7 @@ struct PlanView: View {
             }
         }
         if ghostShown { ghost }
-        stat
-    }
-
-    private var stat: some View {
-        let events = shownEvents
-        return PlanStat(planned: store.tasks.count + events.count,
-                        done: store.doneCount + events.filter(\.row.done).count)
+        // Счёта «запланировано · сделано» больше нет (P425).
     }
 
     private func taskRow(_ row: Binding<PlanRow>) -> some View {

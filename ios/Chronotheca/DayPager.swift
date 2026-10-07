@@ -198,10 +198,12 @@ struct DayPage: View {
 
             // День недели и дата — одной строкой, год двумя цифрами:
             // вкладки поднимаются выше, под текст больше места (P271).
-            (Text(Ru.weekday(date))
+            // День недели — только у дней с именем («вчера», «завтра»…):
+            // у дальних он и так написан крупно сверху (P425).
+            (Text(DayPage.named(date) ? Ru.weekday(date) + ",  " : "")
                 .foregroundColor(Ru.dayColor(date))
                 .tracking(0.6)
-             + Text(",  " + Ru.headDate(date))
+             + Text(Ru.headDate(date))
                 .foregroundColor(Look.inkSoft))
                 .font(Look.sans(14))
                 .lineLimit(1)
@@ -246,7 +248,8 @@ struct DayPage: View {
 
     /// Высота строки заголовка. Одна на всех страницах: шапка не должна
     /// менять рост от того, горит стрелка или нет (P113).
-    static let headLine: CGFloat = 31
+    /// Выше прежних 31: стрелки на 50% крупнее (P425).
+    static let headLine: CGFloat = 38
 
     /// Стрелка к соседнему дню. Слова «вчера / завтра» рядом с ней убраны
     /// (P229): имя открытого дня и так говорит, где мы.
@@ -256,15 +259,20 @@ struct DayPage: View {
     private func side(_ step: Int) -> some View {
         let lit = toward == step
         let sign = step < 0 ? "‹" : "›"
+        // На 50% крупнее; к сегодняшнему дню — в обводке, как открытый
+        // раздел в нижней строке (P425).
         let arrow = Text(sign)
-            .font(.system(size: 21, weight: lit ? .bold : .regular))
+            .font(.system(size: 31.5, weight: lit ? .bold : .regular))
             .foregroundStyle(lit ? Look.accent : Look.inkFaint)
-            .frame(width: 25, height: DayPage.headLine - 4)
-            .background(lit ? Look.accent.opacity(0.12) : .clear,
-                        in: RoundedRectangle(cornerRadius: 7))
+            .frame(width: 36, height: DayPage.headLine - 4)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(lit ? Color.black.opacity(0.08) : .clear)
+                    .overlay(RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(lit ? Look.accent.opacity(0.75) : .clear, lineWidth: 1.3)))
 
         return arrow
-            .frame(width: 34)
+            .frame(width: 44)
         .contentShape(Rectangle())
         // Дорога домой одна, какой кнопкой её ни начинай (решение P168).
         .onLongPressGesture(minimumDuration: 0.4) {
@@ -312,6 +320,11 @@ struct DayPage: View {
     /// Воздух над названием экрана. Один на всех трёх экранах, чтобы
     /// название не прыгало по высоте при переходе между ними.
     static let airAbove: CGFloat = 12
+
+    /// Есть ли у дня имя — позавчера … послезавтра (P425).
+    static func named(_ date: Date) -> Bool {
+        abs(Calendar.current.dateComponents([.day], from: DayStore.today(), to: date).day ?? 9) <= 2
+    }
 
     static func title(for date: Date) -> String {
         let n = Calendar.current.dateComponents([.day], from: DayStore.today(), to: date).day ?? 0
@@ -464,11 +477,22 @@ struct BarFace: View {
     var tint: Color = Look.inkSoft
     /// Только значок — для тонкой полоски вложений (P289).
     var compact = false
+    /// Пятно под значком (P425): строка вложений полупрозрачная, и черты
+    /// значка сливались с тем, что видно сквозь неё. Пятно цвета дня —
+    /// плотное посередине, к краям тает.
+    var spot: Color?
 
     var body: some View {
         VStack(spacing: 3) {
             Image(systemName: icon).font(.system(size: compact ? 18 : 17))
                 .frame(height: compact ? 26 : nil)
+                .background {
+                    if let spot {
+                        RadialGradient(colors: [spot.opacity(0.95), spot.opacity(0.7), spot.opacity(0)],
+                                       center: .center, startRadius: 0, endRadius: 24)
+                            .frame(width: 52, height: 40)
+                    }
+                }
             if !compact {
                 Text(name.uppercased()).font(Look.sans(9)).tracking(0.45)
                     .lineLimit(1)
@@ -579,18 +603,16 @@ struct AttachBar: View {
                 open { recording = true }
             }
             item("doc", T("файлы", "files"), ready: true) { open { browsing = true } }
-            // «Место» — крайней справа (P381): касание — где вы сейчас,
-            // строкой у курсора; долгое нажатие — карта.
-            item("mappin.and.ellipse", T("место", "place"), ready: true,
-                 hold: { openMap() }) { notePlaceHere() }
+            // «Места» больше нет (P425): карта — в строке разделов.
             // Кнопки «убрать клавиатуру» нет (P424): её смахивают вниз.
         }
         // Полоска как можно тоньше: одни значки, без подписей (P289).
         .padding(.top, 5)
         .padding(.bottom, 4)
         .background(DayStrip(date: date).opacity(KeyboardBar.see))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+        // Бока скруглены целиком (P425).
+        .clipShape(Capsule(style: .continuous))
+        .overlay(Capsule(style: .continuous)
             .strokeBorder(Color.black.opacity(0.08), lineWidth: 0.6))
         .padding(.horizontal, KeyboardBar.inset)
         // Ряд галереи лежит над полоской, поверх страницы: страница под
@@ -734,7 +756,7 @@ struct AttachBar: View {
                       hold: (() -> Void)? = nil,
                       act: @escaping () -> Void) -> some View {
         let face = BarFace(icon: icon, name: name, tint: ready ? Look.stripInk : Look.inkFaint,
-                           compact: true)
+                           compact: true, spot: Ru.tint(date))
         return Group {
             if let hold {
                 // У кнопки два жеста: касание и долгое нажатие. Обычная
@@ -1000,8 +1022,8 @@ struct PlanPage: View {
                     PlanRowLine(number: events.count + tasks.count + 1, row: .task(""),
                                 bellColor: bellColor, ghost: true)
                 }
-                PlanStat(planned: tasks.count + events.count,
-                         done: tasks.filter(\.done).count + events.filter(\.row.done).count)
+                // Счёта «запланировано · сделано» нет — как на открытой
+                // странице (P425, P114).
             // Воздух под планом — как на открытой странице (P114).
             Color.clear.frame(height: 18)
         }

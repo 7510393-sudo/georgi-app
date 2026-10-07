@@ -280,6 +280,14 @@ struct RootView: View {
             if shell.showingSettings {
                 SettingsSticker().frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            // Клавиатура закрыла нижнюю строку на карте или в поиске — над
+            // ней та же строка разделов, что на странице дня (P425).
+            if keyboard.height > 0, shell.screen == .map || shell.screen == .search {
+                SectionsRow(current: shell.screen) { tapSection($0) }
+                    .padding(.horizontal, KeyboardBar.inset)
+                    .padding(.bottom, keyboard.height + 2)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            }
             if let notice = shell.notice {
                 toast(notice)
                     // Над клавиатурой и полоской на ней, иначе не видно.
@@ -636,7 +644,7 @@ struct RootView: View {
         return Button {
             tapSection(target)
         } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 3) {
                 // Значки нарисованы автором от руки и обведены в вектор:
                 // ежедневник, раскрытый в начале, посередине и в конце.
                 Group {
@@ -648,7 +656,11 @@ struct RootView: View {
                 }
                 // Книжка на 10%, микроскоп на 5% крупнее прочих (P227).
                 .frame(width: 35 * scale(target), height: 35 * scale(target))
-                Text(name).font(Look.sans(11.5, weight: on ? .medium : .regular))
+                // Того же размера, что в строке разделов над клавиатурой
+                // (P425).
+                Text(name).font(Look.sans(SectionsRow.font, weight: on ? .medium : .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             // Открытый раздел — на светлой подушке. Подушка выходит за
             // значок наружу и не меняет высоты полосы (P218).
@@ -790,14 +802,17 @@ struct Corner: View {
         ZStack(alignment: leading ? .topLeading : .topTrailing) {
             // Сверху стикер растворяется в подложке — ни черты, ни резкого
             // края; черта — только сбоку и снизу, тень явнее (P416).
+            // Растворяется выше значка (P425): значок стоит на чистой
+            // бумаге, а не на переходе.
             CornerShape(leading: leading)
                 .fill(LinearGradient(stops: [.init(color: paper.opacity(0), location: 0),
-                                             .init(color: paper, location: 0.5)],
+                                             .init(color: paper, location: 0.11)],
                                      startPoint: .top, endPoint: .bottom))
                 .shadow(color: .black.opacity(0.4), radius: 4, x: leading ? 2 : -2, y: 3.5)
             CornerEdge(leading: leading)
-                .stroke(LinearGradient(colors: [edge.opacity(0), edge],
-                                       startPoint: .top, endPoint: .center),
+                .stroke(LinearGradient(stops: [.init(color: edge.opacity(0), location: 0),
+                                               .init(color: edge, location: 0.14)],
+                                       startPoint: .top, endPoint: .bottom),
                         lineWidth: 1)
             Image(systemName: icon)
                 .font(.system(size: 18))

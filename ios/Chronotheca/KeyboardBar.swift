@@ -23,7 +23,8 @@ enum KeyboardBar {
     /// клавиатура закрывает нижнюю строку экрана — она поднимается над
     /// клавиатурой вместе со строкой вложений. Разделы не пропадают (P113).
     static let attachHeight: CGFloat = 36
-    static let sectionsHeight: CGFloat = 18
+    /// Вдвое шире прежней (P425): названия разделов читаются.
+    static let sectionsHeight: CGFloat = 36
     static let height: CGFloat = attachHeight + sectionsHeight
     /// Насколько проступает цвет дня у строки вложений: сквозь неё видно
     /// страницу — и над клавиатурой, и внизу страницы (P424).
@@ -78,33 +79,10 @@ struct KeyboardBarView: View {
     }
 
     /// Разделы — одни названия, на том же крафте, что и внизу (P423).
-    /// Пишут всегда на «Сегодня» — оно и выделено.
+    /// Пишут всегда на «Сегодня» — оно и обведено.
     private var sections: some View {
-        HStack(spacing: 0) {
-            name(T("Сегодня", "Today"), .today)
-            name(T("Календарь", "Calendar"), .calendar)
-            name(T("Карта", "Map"), .map)
-            name(T("Поиск", "Search"), .search)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(KraftPaper())
-        // Над клавиатурой бока скруглены (P424); внизу экрана строка
-        // прежняя.
-        .clipShape(Capsule(style: .continuous))
-        .padding(.horizontal, KeyboardBar.inset)
-    }
-
-    private func name(_ title: String, _ target: Shell.Screen) -> some View {
-        Button { KeyboardBar.go(target) } label: {
-            Text(title)
-                .font(Look.sans(11.5, weight: target == .today ? .medium : .regular))
-                .foregroundStyle(target == .today ? Look.accent : Look.kraftInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        SectionsRow(current: .today) { KeyboardBar.go($0) }
+            .padding(.horizontal, KeyboardBar.inset)
     }
 
     /// Строка вложений — полупрозрачная: сквозь неё видна страница (P423).
@@ -117,14 +95,7 @@ struct KeyboardBarView: View {
             key("photo", T("фото", "photo")) { KeyboardBar.ask(.photo) }
             key("mic", T("аудио", "audio")) { KeyboardBar.ask(.audio) }
             key("doc", T("файлы", "files")) { KeyboardBar.ask(.files) }
-            // «Место»: касание — где вы сейчас, долгое нажатие — карта (P381).
-            BarFace(icon: "mappin.and.ellipse", name: T("место", "place"), tint: Look.stripInk, compact: true)
-                .onTapGesture { KeyboardBar.ask(.place) }
-                .onLongPressGesture(minimumDuration: 0.5) {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    KeyboardBar.ask(.map)
-                }
-                .accessibilityAddTraits(.isButton)
+            // «Места» нет (P425): карта — в строке разделов под этой.
             // Кнопки «убрать клавиатуру» нет (P424): её смахивают вниз.
         }
         .padding(.top, 4)
@@ -133,65 +104,133 @@ struct KeyboardBarView: View {
         // Полупрозрачная (P424): прежде под цветом дня лежало матовое
         // стекло — и строка выглядела сплошной.
         .background(DayStrip(date: day.date).opacity(KeyboardBar.see))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+        // Бока скруглены целиком (P425).
+        .clipShape(Capsule(style: .continuous))
+        .overlay(Capsule(style: .continuous)
             .strokeBorder(Color.black.opacity(0.08), lineWidth: 0.6))
         .padding(.horizontal, KeyboardBar.inset)
     }
 
     private func key(_ icon: String, _ name: String, act: @escaping () -> Void) -> some View {
-        Button(action: act) { BarFace(icon: icon, name: name, tint: Look.stripInk, compact: true) }
+        Button(action: act) {
+            BarFace(icon: icon, name: name, tint: Look.stripInk, compact: true, spot: Ru.tint(day.date))
+        }
             .buttonStyle(.plain)
     }
 }
 
-/// Приставка над клавиатурой у поля SwiftUI (P424).
+/// Заголовок дня — поле UIKit со своей приставкой над клавиатурой (P425).
 ///
-/// У `TextField` своей приставки нет, а заголовок дня — он: курсор в
-/// заголовке — и строки вложений и разделов не было. Метка кладётся фоном
-/// поля, находит рядом настоящее поле UIKit и даёт ему ту же приставку,
-/// что у записи.
-struct KeyboardBarAttach: UIViewRepresentable {
-    func makeUIView(context: Context) -> Finder { Finder() }
-    func updateUIView(_ view: Finder, context: Context) {
-        DispatchQueue.main.async { view.attach() }
+/// У поля SwiftUI приставки нет, а найти под ним поле UIKit и дать её ему
+/// не вышло (P424): курсор в заголовке — и строки вложений и разделов над
+/// клавиатурой пропадали. Поле UIKit несёт ту же приставку, что и запись.
+struct TitleLine: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var focused: Bool
+    var size: CGFloat
+    /// «Ввод» — дальше, в текст записи.
+    var onReturn: () -> Void = {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.inputAccessoryView = KeyboardBar.view
+        field.delegate = context.coordinator
+        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)),
+                        for: .editingChanged)
+        field.borderStyle = .none
+        field.backgroundColor = .clear
+        field.textColor = UIColor(Look.ink)
+        field.tintColor = UIColor(Look.accent)
+        // Без строки подсказок над клавиатурой (P409).
+        field.autocorrectionType = .no
+        field.spellCheckingType = .no
+        field.autocapitalizationType = .sentences
+        field.returnKeyType = .next
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return field
     }
 
-    final class Finder: UIView {
-        override init(frame: CGRect) {
-            super.init(frame: frame)
-            isUserInteractionEnabled = false
-            backgroundColor = .clear
+    func updateUIView(_ field: UITextField, context: Context) {
+        context.coordinator.parent = self
+        let plain = Prefs.serifUIFont(size)
+        let bold = plain.fontDescriptor.withSymbolicTraits(.traitBold)
+            .map { UIFont(descriptor: $0, size: size) } ?? plain
+        if field.font != bold { field.font = bold }
+        if field.markedTextRange == nil, field.text != text { field.text = text }
+        if focused, !field.isFirstResponder {
+            DispatchQueue.main.async { field.becomeFirstResponder() }
+        } else if !focused, field.isFirstResponder {
+            DispatchQueue.main.async { field.resignFirstResponder() }
+        }
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: TitleLine
+        init(_ parent: TitleLine) { self.parent = parent }
+
+        @objc func changed(_ field: UITextField) {
+            parent.text = field.text ?? ""
         }
 
-        required init?(coder: NSCoder) { nil }
-
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            DispatchQueue.main.async { [weak self] in self?.attach() }
+        func textFieldDidBeginEditing(_ field: UITextField) {
+            if !parent.focused { parent.focused = true }
         }
 
-        func attach() {
-            guard window != nil else { return }
-            var level = superview
-            for _ in 0..<4 {
-                guard let here = level else { return }
-                if let field = Self.field(in: here) {
-                    guard field.inputAccessoryView !== KeyboardBar.view else { return }
-                    field.inputAccessoryView = KeyboardBar.view
-                    if field.isFirstResponder { field.reloadInputViews() }
-                    return
-                }
-                level = here.superview
-            }
+        func textFieldDidEndEditing(_ field: UITextField) {
+            if parent.focused { parent.focused = false }
         }
 
-        private static func field(in view: UIView) -> UITextField? {
-            if let field = view as? UITextField { return field }
-            for sub in view.subviews {
-                if let field = field(in: sub) { return field }
-            }
-            return nil
+        func textFieldShouldReturn(_ field: UITextField) -> Bool {
+            parent.onReturn()
+            return false
         }
+    }
+}
+
+/// Строка разделов над клавиатурой (P423, P425): одни названия на крафте,
+/// бока скруглены, открытый раздел обведён — как в нижней строке. Над
+/// клавиатурой на странице дня, на карте и в поиске.
+struct SectionsRow: View {
+    let current: Shell.Screen
+    let go: (Shell.Screen) -> Void
+
+    /// Размер названий — тот же, что под значками внизу (P425).
+    static let font: CGFloat = 15
+
+    var body: some View {
+        HStack(spacing: 0) {
+            name(T("Сегодня", "Today"), .today)
+            name(T("Календарь", "Calendar"), .calendar)
+            name(T("Карта", "Map"), .map)
+            name(T("Поиск", "Search"), .search)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: KeyboardBar.sectionsHeight)
+        .background(KraftPaper())
+        .clipShape(Capsule(style: .continuous))
+    }
+
+    private func name(_ title: String, _ target: Shell.Screen) -> some View {
+        let on = target == current
+        return Button { go(target) } label: {
+            Text(title)
+                .font(Look.sans(Self.font, weight: on ? .medium : .regular))
+                .foregroundStyle(on ? Look.accent : Look.kraftInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(on ? Color.black.opacity(0.08) : .clear)
+                        .overlay(RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(on ? Look.accent.opacity(0.75) : .clear, lineWidth: 1.3)))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

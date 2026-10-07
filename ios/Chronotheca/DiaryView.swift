@@ -329,8 +329,8 @@ struct DiaryPage: View {
     /// (P346, P408).
     static var end: String { "дневник-конец" }
 
-    private enum Field: Hashable { case title }
-    @FocusState private var focused: Field?
+    /// Курсор в заголовке (P425): поле теперь UIKit, со своей приставкой.
+    @State private var titleFocused = false
 
     /// Дело, на которое сейчас отвечают в «Как прошло?».
     @State private var askingAt: String?
@@ -515,7 +515,7 @@ struct DiaryPage: View {
             askingAt = nil
             // Ввод уходит из поля ответа, и только потом заголовок его
             // принимает: иначе два поля перетягивают клавиатуру.
-            DispatchQueue.main.async { focused = .title }
+            DispatchQueue.main.async { titleFocused = true }
         }
     }
 
@@ -556,27 +556,19 @@ struct DiaryPage: View {
                         .allowsHitTesting(false)
                 }
                 if editable {
-                    TextField("", text: titleWords)
-                        .font(Look.serif(16.5, weight: .semibold))
-                        // Без строки подсказок над клавиатурой (P409).
-                        .autocorrectionDisabled(true)
-                        // Строка вложений и разделов — и над заголовком
-                        // (P424): прежде она была только у записи.
-                        .background(KeyboardBarAttach())
-                        .foregroundStyle(Look.ink)
-                        .focused($focused, equals: .title)
-                        // Заголовок взяли в руки — просьба «перейти в
-                        // запись», если вдруг висит, снимается (P389).
-                        .onChange(of: focused) { _, now in
-                            if now == .title { toText = false }
-                        }
-                        .submitLabel(.next)
-                        // «Ввод» уводит из заголовка в текст записи, а не
-                        // просто убирает клавиатуру (решение P40).
-                        .onSubmit {
-                            focused = nil
-                            toText = true
-                        }
+                    // Строки вложений и разделов — и над заголовком (P425).
+                    // «Ввод» уводит из заголовка в текст записи, а не просто
+                    // убирает клавиатуру (решение P40).
+                    TitleLine(text: titleWords, focused: $titleFocused, size: 16.5) {
+                        titleFocused = false
+                        toText = true
+                    }
+                    .frame(height: 22)
+                    // Заголовок взяли в руки — просьба «перейти в запись»,
+                    // если вдруг висит, снимается (P389).
+                    .onChange(of: titleFocused) { _, now in
+                        if now { toText = false }
+                    }
                 } else {
                     Text(Geo.stripped(title))
                         .font(Look.serif(16.5, weight: .semibold))
