@@ -279,7 +279,9 @@ struct RootView: View {
                     .id("\(textSize)|\(fontKey)")
                 tabbar
             }
-            .background(Look.chrome.ignoresSafeArea())
+            // На странице дня полоса над шапкой (часы, батарея) — того же
+            // цвета, что лист: шапка — продолжение страницы (P434).
+            .background((shell.screen == .today ? Ru.tint(store.date) : Look.chrome).ignoresSafeArea())
 
             // Верхней строки больше нет: шестерёнка и три точки нарисованы
             // на уголках бумаги, торчащих сверху слева и справа, а имя дня
@@ -425,7 +427,8 @@ struct RootView: View {
     // MARK: - Шапка
 
     /// Шестерёнка и три точки — на уголках бумаги, торчащих сверху: левый
-    /// голубой, как бумажка настроек, правый желтоватый, как бумажка меню.
+    /// желтоватый, как бумажка настроек, правый голубой, как бумажка меню
+    /// (P434; прежде наоборот).
     /// У уголков тень — они лежат поверх страницы (P229). Меню у каждого
     /// экрана своё; кнопка не пропадает, что бы ни было открыто (P188).
     private var corners: some View {
@@ -438,7 +441,7 @@ struct RootView: View {
                 hideKeyboard()
                 shell.pullOut(settings: true)
             } label: {
-                Corner(leading: true, paper: Look.note, edge: Look.noteEdge, icon: "gearshape",
+                Corner(leading: true, paper: Look.sticker, edge: Look.stickerEdge, icon: "gearshape",
                        tint: shell.showingSettings ? Look.accent : Look.inkSoft)
                     // Пока листок вытянут, его угол — это и есть уголок.
                     .opacity(shell.showingSettings ? 0 : 1)
@@ -455,7 +458,7 @@ struct RootView: View {
                 hideKeyboard()
                 shell.pullOut(settings: false)
             } label: {
-                Corner(leading: false, paper: Look.sticker, edge: Look.stickerEdge, icon: "ellipsis",
+                Corner(leading: false, paper: Look.note, edge: Look.noteEdge, icon: "ellipsis",
                        tint: dotsLit ? Look.accent : Look.inkSoft)
                     .opacity(shell.showingMenu ? 0 : 1)
             }

@@ -54,7 +54,7 @@ struct NoteRow<Trailing: View>: View {
         // страницы, тонкий край и лёгкая тень, как у листков на экране, а
         // не гладкая плашка обычного приложения.
         .background(Look.planBg, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.noteEdge.opacity(0.7), lineWidth: 0.8))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.stickerEdge.opacity(0.9), lineWidth: 0.8))
         .shadow(color: .black.opacity(0.07), radius: 1.5, y: 1)
         .padding(.horizontal, 10)
         .padding(.vertical, 3)

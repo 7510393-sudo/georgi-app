@@ -90,10 +90,8 @@ struct DayPage: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay(alignment: .top) { steps }
                 .overlay { galleryCatcher }
-                // Верхний край страницы — черта через всю ширину (P250).
-                .overlay(alignment: .top) {
-                    Rectangle().fill(Look.inkFaint).frame(height: 1)
-                }
+                // Черты между шапкой и страницей больше нет (P434, прежде
+                // P250): шапка — продолжение листа.
                 // Строка вложений лежит поверх низа страницы, полупрозрачная,
                 // со скруглёнными боками (P424): страница уходит под неё.
                 .overlay(alignment: .bottom) { AttachBar(live: live, date: date) }
@@ -183,49 +181,41 @@ struct DayPage: View {
             // Имя дня поднялось на место прежней верхней строки, между
             // уголками с шестерёнкой и тремя точками; по бокам — только
             // стрелки, слов «вчера / завтра» рядом больше нет (P229).
+            // Имя дня и под ним день недели с датой — одним блоком между
+            // стрелками (P434): шапка ниже на строку, под текст больше места.
             HStack(spacing: 0) {
                 side(-1)
-                Text(live ? store.title : DayPage.title(for: date))
-                    .font(.system(size: 23, weight: .semibold))
-                    .tracking(-0.2)
-                    .foregroundStyle(Look.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    Text(live ? store.title : DayPage.title(for: date))
+                        .font(.system(size: 21, weight: .semibold))
+                        .tracking(-0.2)
+                        .foregroundStyle(Look.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    // День недели — только у дней с именем («вчера»,
+                    // «завтра»…): у дальних он и так написан крупно (P425).
+                    (Text(DayPage.named(date) ? Ru.weekday(date) + ",  " : "")
+                        .foregroundColor(Ru.dayColor(date))
+                        .tracking(0.4)
+                     + Text(Ru.headDate(date))
+                        .foregroundColor(Look.inkSoft))
+                        .font(Look.sans(12.5))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .frame(maxWidth: .infinity)
                 side(1)
             }
-            .frame(height: DayPage.headLine)
-
-            // День недели и дата — одной строкой, год двумя цифрами:
-            // вкладки поднимаются выше, под текст больше места (P271).
-            // День недели — только у дней с именем («вчера», «завтра»…):
-            // у дальних он и так написан крупно сверху (P425).
-            (Text(DayPage.named(date) ? Ru.weekday(date) + ",  " : "")
-                .foregroundColor(Ru.dayColor(date))
-                .tracking(0.6)
-             + Text(Ru.headDate(date))
-                .foregroundColor(Look.inkSoft))
-                .font(Look.sans(14))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                // Строка прижата влево, к стрелке: справа над вкладкой
-                // сидит облачко, и в середине строки оно накрывало год.
-                // Прижата на всех страницах, а не только с облачком, —
-                // иначе шапка прыгала бы при перелистывании (P114).
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 8)
+            .frame(height: DayPage.headLine + 8)
         }
         // Шапка на 30% уже экрана: по бокам — уголки бумаги (P229).
         .padding(.horizontal, Corner.size + 4)
-        // Над названием — воздух: когда под шапкой легла тень, название
-        // казалось прижатым к ней (решение P192).
-        .padding(.top, DayPage.airAbove)
-        // Отступ до вкладок держит шапка, а не вкладки: тогда её нижний край
-        // совпадает с верхним краем вкладки, и облачко уходит именно за
-        // вкладку, а не за пустую полоску над ней.
-        .padding(.bottom, 14)
+        // Верх поднят (P434): над шапкой воздуха меньше.
+        .padding(.top, 2)
+        .padding(.bottom, 4)
         .frame(maxWidth: .infinity)
-        .background(Look.chrome)
+        // Шапка — продолжение листа дня, того же цвета (P434).
+        .background(Ru.tint(date).overlay(PageTexture(tab: .diary)))
         .contentShape(Rectangle())
         .onTapGesture { hideKeyboard() }
     }
