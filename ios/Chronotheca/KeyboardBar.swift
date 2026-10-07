@@ -71,16 +71,66 @@ enum KeyboardBar {
         holder = box
         // Клавиатура уходит — строки над ней гаснут сразу, а не едут с ней
         // до самого низа и пропадают там (P429). Пришла — снова видны.
+        //
+        // Клавиатуру смахивают пальцем — тогда iPhone молчит до самого
+        // конца, и строки доезжали до низа экрана, ложились поверх нижней
+        // строки разделов и только потом пропадали: это и был «скачок»
+        // (запись экрана автора, P438). Теперь строки гаснут по ходу: чем
+        // ниже их увели, тем прозрачнее.
+        KeyboardBar.fader.box = box
         let centre = NotificationCenter.default
         centre.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil,
                            queue: .main) { _ in
+            KeyboardBar.fader.stop()
             UIView.animate(withDuration: 0.12) { box.alpha = 0 }
         }
         centre.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil,
                            queue: .main) { _ in
             box.alpha = 1
         }
+        centre.addObserver(forName: UIResponder.keyboardDidShowNotification, object: nil,
+                           queue: .main) { note in
+            let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect ?? .zero
+            KeyboardBar.fader.start(below: max(0, frame.height - KeyboardBar.height))
+        }
+        centre.addObserver(forName: UIResponder.keyboardDidHideNotification, object: nil,
+                           queue: .main) { _ in
+            KeyboardBar.fader.stop()
+        }
         return box
+    }
+
+    private static let fader = Fader()
+
+    /// Следит, пока клавиатура открыта, где строки над ней: смахивают
+    /// клавиатуру — строки тают, пройдя половину её высоты, гаснут совсем.
+    private final class Fader: NSObject {
+        weak var box: UIView?
+        private var link: CADisplayLink?
+        /// Высота самой клавиатуры под строками, когда она открыта.
+        private var full: CGFloat = 0
+
+        func start(below: CGFloat) {
+            full = below
+            box?.alpha = 1
+            guard link == nil, below > 0 else { return }
+            let made = CADisplayLink(target: self, selector: #selector(tick))
+            made.add(to: .main, forMode: .common)
+            link = made
+        }
+
+        func stop() {
+            link?.invalidate()
+            link = nil
+        }
+
+        @objc private func tick() {
+            guard let box, let window = box.window, full > 0 else { return }
+            let frame = box.convert(box.bounds, to: window)
+            // Сколько клавиатуры ещё видно под строками.
+            let left = window.bounds.height - frame.maxY
+            box.alpha = max(0, min(1, left / (full * 0.5)))
+        }
     }
 }
 
