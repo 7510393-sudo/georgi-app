@@ -68,6 +68,17 @@ enum KeyboardBar {
         box.addSubview(made.view)
         host = made
         holder = box
+        // Клавиатура уходит — строки над ней гаснут сразу, а не едут с ней
+        // до самого низа и пропадают там (P429). Пришла — снова видны.
+        let centre = NotificationCenter.default
+        centre.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil,
+                           queue: .main) { _ in
+            UIView.animate(withDuration: 0.12) { box.alpha = 0 }
+        }
+        centre.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil,
+                           queue: .main) { _ in
+            box.alpha = 1
+        }
         return box
     }
 }
