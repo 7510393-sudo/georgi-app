@@ -142,8 +142,10 @@ struct DayPage: View {
             .frame(width: width, height: height)
             // Левее стрелки «шаг вперёд» у правого края — не накрывает её
             // (P409).
+            // Шапка стала ниже, дата — посередине под именем дня (P434):
+            // облачко опущено на страницу, чтобы не закрывать дату.
             .offset(x: -56,
-                    y: height * (0.95 - RememberCloud.tabEdge) + 3)
+                    y: height * (0.95 - RememberCloud.tabEdge) + 30)
             .transition(.opacity)
         }
     }
