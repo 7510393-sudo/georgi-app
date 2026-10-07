@@ -309,6 +309,7 @@ struct RootView: View {
             }
             // Подсказки для первого знакомства (P427) — поверх всего, когда
             // экран спокоен.
+            GlideView()
             HintLayer(screen: shell.screen,
                       quiet: !shell.showingMenu && !shell.showingSettings
                           && shell.movingTask == nil && keyboard.height == 0
@@ -687,6 +688,7 @@ struct RootView: View {
                 Text(name).font(Look.sans(SectionsRow.font, weight: on ? .medium : .regular))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .reportsY { y in if target == .today { KeyboardBar.glide.namesTarget = y } }
             }
             // Открытый раздел — на светлой подушке. Подушка выходит за
             // значок наружу и не меняет высоты полосы (P218).

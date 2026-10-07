@@ -611,6 +611,8 @@ struct AttachBar: View {
         .overlay(Capsule(style: .continuous)
             .strokeBorder(Color.black.opacity(0.08), lineWidth: 0.6))
         .padding(.horizontal, KeyboardBar.inset)
+        // Куда втекает строка над клавиатурой, когда та уходит (P440).
+        .reportsY { [live] y in if live { KeyboardBar.glide.pillTarget = y } }
         // Ряд галереи лежит над полоской, поверх страницы: страница под
         // ним не сдвигается (P113, P114).
         .overlay(alignment: .top) {

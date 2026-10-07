@@ -47,6 +47,57 @@ enum KeyboardBar {
     }
     static let day = Day()
 
+    /// Куда строки над клавиатурой «втекают», когда она уходит (P440).
+    static let glide = Glide()
+
+    /// Строки над клавиатурой не уезжают вместе с ней вниз и не гаснут на
+    /// полпути: как только клавиатуру отпустили, их место занимают такие же
+    /// строки в окне приложения — они едут к настоящим нижним строкам
+    /// (полоске вложений у низа страницы и названиям разделов внизу), на
+    /// месте тают и сливаются с ними. Прежде строки над клавиатурой
+    /// уезжали ниже настоящих, гасли, а настоящие «подпрыгивали» (запись
+    /// экрана автора, P440).
+    final class Glide: ObservableObject {
+        @Published var on = false
+        @Published var pillY: CGFloat = 0
+        @Published var namesY: CGFloat = 0
+        @Published var opacity: Double = 1
+        /// Где настоящие строки — по высоте экрана; их сообщают сами.
+        var pillTarget: CGFloat?
+        var namesTarget: CGFloat?
+        private var token = 0
+
+        func start(pill: CGFloat, names: CGFloat, opacity from: Double, duration: Double) -> Bool {
+            guard let pt = pillTarget, let nt = namesTarget else { return false }
+            token += 1
+            let mine = token
+            var quiet = Transaction()
+            quiet.disablesAnimations = true
+            withTransaction(quiet) {
+                on = true
+                pillY = min(pill, pt)
+                namesY = min(names, nt)
+                opacity = from
+            }
+            DispatchQueue.main.async {
+                withAnimation(.easeOut(duration: duration)) {
+                    self.pillY = pt
+                    self.namesY = nt
+                }
+                withAnimation(.easeIn(duration: duration)) { self.opacity = 0 }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
+                if self.token == mine { self.on = false }
+            }
+            return true
+        }
+
+        func stop() {
+            token += 1
+            on = false
+        }
+    }
+
     private static var host: UIHostingController<KeyboardBarView>?
     private static var holder: UIView?
 
@@ -80,12 +131,25 @@ enum KeyboardBar {
         KeyboardBar.fader.box = box
         let centre = NotificationCenter.default
         centre.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil,
-                           queue: .main) { _ in
+                           queue: .main) { note in
             KeyboardBar.fader.stop()
+            // Строки втекают в нижние (P440); не вышло — гаснут сразу.
+            let time = (note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+            if let window = box.window, box.alpha > 0.02 {
+                let at = box.convert(box.bounds, to: window)
+                if KeyboardBar.glide.start(pill: at.minY + KeyboardBar.attachHeight / 2,
+                                           names: at.minY + KeyboardBar.attachHeight
+                                               + KeyboardBar.sectionsHeight / 2,
+                                           opacity: Double(box.alpha), duration: max(time, 0.2)) {
+                    box.alpha = 0
+                    return
+                }
+            }
             UIView.animate(withDuration: 0.12) { box.alpha = 0 }
         }
         centre.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil,
                            queue: .main) { _ in
+            KeyboardBar.glide.stop()
             box.alpha = 1
         }
         centre.addObserver(forName: UIResponder.keyboardDidShowNotification, object: nil,
@@ -148,13 +212,13 @@ struct KeyboardBarView: View {
 
     /// Разделы — одни названия, на том же крафте, что и внизу (P423).
     /// Пишут всегда на «Сегодня» — оно и обведено.
-    private var sections: some View {
+    var sections: some View {
         SectionsRow(current: .today) { KeyboardBar.go($0) }
             .padding(.horizontal, KeyboardBar.inset)
     }
 
     /// Строка вложений — полупрозрачная: сквозь неё видна страница (P423).
-    private var attachments: some View {
+    var attachments: some View {
         HStack(spacing: 0) {
             // Тот же порядок, что и в полоске без клавиатуры: камера
             // слева, дальше фото, аудио, файлы — у каждой кнопки своё
@@ -300,5 +364,42 @@ struct SectionsRow: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Строки, втекающие в нижние, когда клавиатура уходит (P440): рисуются в
+/// окне приложения поверх всего и не ловят касаний.
+struct GlideView: View {
+    @ObservedObject private var glide = KeyboardBar.glide
+
+    var body: some View {
+        if glide.on {
+            let width = UIScreen.main.bounds.width
+            let rows = KeyboardBarView()
+            ZStack {
+                rows.attachments
+                    .frame(width: width, height: KeyboardBar.attachHeight)
+                    .position(x: width / 2, y: glide.pillY)
+                rows.sections
+                    .frame(width: width, height: KeyboardBar.sectionsHeight)
+                    .position(x: width / 2, y: glide.namesY)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .opacity(glide.opacity)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+extension View {
+    /// Сообщить, где по высоте экрана стоит эта строка (P440).
+    func reportsY(_ set: @escaping (CGFloat?) -> Void) -> some View {
+        background(GeometryReader { g in
+            Color.clear
+                .onAppear { set(g.frame(in: .global).midY) }
+                .onChange(of: g.frame(in: .global).midY) { _, y in set(y) }
+                .onDisappear { set(nil) }
+        })
     }
 }
