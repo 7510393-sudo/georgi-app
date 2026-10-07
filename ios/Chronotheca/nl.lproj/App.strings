@@ -705,3 +705,4 @@
 "Trial month: %@ days left" = "Proefmaand: nog %@ dagen";
 "A month for free" = "Een maand gratis";
 "Chronotheca for good" = "Chronotheca voorgoed";
+"In %@, export your entries as text or Markdown to a folder in Files and choose it here." = "Exporteer in %@ je notities als tekst of Markdown naar een map in Bestanden en kies die hier.";

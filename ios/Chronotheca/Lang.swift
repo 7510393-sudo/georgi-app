@@ -10,11 +10,11 @@ import Foundation
 enum Lang {
     static let key = "prefs.language"
 
-    /// Наши языки — названия на них самих, в порядке для списка.
+    /// Наши языки — названия на них самих, по алфавиту: латиница, кириллица, японский (P439).
     static let all: [(code: String, name: String)] = [
-        ("en", "English"), ("ru", "Русский"), ("uk", "Українська"), ("de", "Deutsch"),
-        ("fr", "Français"), ("es", "Español"), ("it", "Italiano"), ("pt", "Português"),
-        ("nl", "Nederlands"), ("ja", "日本語"),
+        ("de", "Deutsch"), ("en", "English"), ("es", "Español"), ("fr", "Français"),
+        ("it", "Italiano"), ("nl", "Nederlands"), ("pt", "Português"),
+        ("ru", "Русский"), ("uk", "Українська"), ("ja", "日本語"),
     ]
 
     /// Язык сейчас: выбранный в настройках, иначе — язык телефона, если он

@@ -104,9 +104,8 @@ enum Glyph {
     static let bare: Set<String> = ["стрелка", "огонь", "пираты",
                                     "сердце", "природа", "звезда", "вдохновение"]
 
-    /// Звезда, лампочка и сердце на десятую крупнее прочих голых значков
-    /// (P428).
-    static let larger: Set<String> = ["звезда", "вдохновение", "сердце"]
+    /// Звезда и лампочка — свой размер, на 10% меньше прежнего (P439).
+    static let larger: Set<String> = ["звезда", "вдохновение"]
 
     /// «Невидимый» (P409): на карте нет значка — только плашка с названием,
     /// а без названия — со словом «Место».
@@ -446,8 +445,8 @@ enum GlyphArt {
         // что нарисовано здесь.
         switch mark {
         // На 5% меньше прежнего (P431).
-        case "природа": return tree(in: circle.insetBy(dx: 2.5, dy: 0.6))
-        case "сердце": return heart(in: circle.insetBy(dx: 0, dy: 1.2))
+        case "природа": return tree(in: circle.insetBy(dx: 3.45, dy: 1.75))
+        case "сердце": return heart(in: circle.insetBy(dx: 1.2, dy: 1.75))
         case "стрелка": return arrow(in: circle.insetBy(dx: 2, dy: 1))
         case "огонь": return fire(in: circle.insetBy(dx: 3, dy: 1))
         case "пираты": return pirates(in: circle)
@@ -457,7 +456,7 @@ enum GlyphArt {
         // как номер сделанного дела (P418).
         let invisible = mark == Glyph.invisible
         guard let shape = UIImage(systemName: Glyph.image(invisible ? Glyph.standard : mark),
-                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? (Glyph.larger.contains(mark) ? 17.8 : 17) : 11,
+                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? (Glyph.larger.contains(mark) ? 16 : 17) : 11,
                                                                                  weight: .semibold))
         else { return }
         let g = shape.size

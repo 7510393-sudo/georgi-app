@@ -935,6 +935,10 @@ struct SideDay: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear(perform: load)
+        // Страницу могли переиспользовать для другого дня, а запись открытого
+        // дня — лечь на диск уже после первого чтения (P439).
+        .onChange(of: date) { _, _ in load() }
+        .onChange(of: store.savedTick) { _, _ in load() }
     }
 
     private var tasks: [PlanRow] { rows.filter { $0.isTask } }

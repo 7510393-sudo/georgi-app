@@ -705,3 +705,4 @@
 "Trial month: %@ days left" = "Mois d’essai : %@ jours restants";
 "A month for free" = "Un mois offert";
 "Chronotheca for good" = "Chronotheca pour toujours";
+"In %@, export your entries as text or Markdown to a folder in Files and choose it here." = "Dans %@, exportez vos entrées en texte ou Markdown vers un dossier de Fichiers, puis choisissez-le ici.";

@@ -705,3 +705,4 @@
 "Trial month: %@ days left" = "お試し月：残り %@ 日";
 "A month for free" = "1か月無料";
 "Chronotheca for good" = "Chronotheca をずっと";
+"In %@, export your entries as text or Markdown to a folder in Files and choose it here." = "%@で記録をテキストまたはMarkdownとして「ファイル」のフォルダに書き出し、ここでそのフォルダを選んでください。";

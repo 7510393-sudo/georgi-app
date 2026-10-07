@@ -336,17 +336,12 @@ struct ImportSheet: View {
                             if app == "Day One" {
                                 DayOneImportView()
                             } else {
-                                SoonImportView(app: app)
+                                TextImportView(app: app)
                             }
                         } label: {
                             HStack {
                                 Text(app).font(Look.sans(16))
                                 Spacer()
-                                if app != "Day One" {
-                                    Text(T("скоро", "soon"))
-                                        .font(Look.sans(12.5))
-                                        .foregroundStyle(Look.inkFaint)
-                                }
                             }
                         }
                     }
@@ -367,35 +362,6 @@ struct ImportSheet: View {
         }
         .environmentObject(vault)
         .environmentObject(store)
-    }
-}
-
-/// Перенос из приложения, которого мы ещё не умеем читать.
-private struct SoonImportView: View {
-    let app: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(T("Перенос из \(app) ещё делается.", "Import from \(app) is still being made."))
-                .font(Look.sans(17, weight: .semibold))
-            Text(T("Мы переносим только то, что потом откроется без нашего приложения: обычный текст, "
-                   + "снимки, голос. Сначала проверяем, в каком виде \(app) отдаёт записи, — и только "
-                   + "тогда берёмся. Если нужен именно этот перенос, напишите нам.",
-                   "We only import what will later open without our app: plain text, photos, voice. We "
-                   + "first check how \(app) exports entries — and only then build it. If you need this "
-                   + "import, write to us."))
-                .font(Look.sans(15))
-                .foregroundStyle(Look.inkSoft)
-            // Пока своего переноса нет — общий, через текст (P428).
-            Text(T("Если \(app) умеет выгружать записи текстом или Markdown, перенесите их сейчас: «Markdown и текст» в начале списка.",
-                   "If \(app) can export entries as text or Markdown, import them now: “Markdown and text” at the top of the list."))
-                .font(Look.sans(15))
-                .foregroundStyle(Look.ink)
-            Spacer()
-        }
-        .padding(20)
-        .navigationTitle(app)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

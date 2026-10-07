@@ -705,3 +705,4 @@
 "Trial month: %@ days left" = "Пробний місяць: залишилося днів — %@";
 "A month for free" = "Місяць безкоштовно";
 "Chronotheca for good" = "Хронотека назавжди";
+"In %@, export your entries as text or Markdown to a folder in Files and choose it here." = "У %@ експортуйте записи текстом або Markdown у папку у «Файлах» і виберіть її тут.";

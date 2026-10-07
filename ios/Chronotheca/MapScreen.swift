@@ -1039,7 +1039,8 @@ struct NativeMap: UIViewRepresentable {
                 // Метка стоит на точке значком; у «невидимой» — плашкой
                 // посередине (P409).
                 view.centerOffset = mark.place.mark == Glyph.invisible ? .zero
-                    : CGPoint(x: 0, y: picture.size.height / 2 - PlaceLabel.dot / 2)
+                    : CGPoint(x: 0, y: picture.size.height / 2
+                              - PlaceLabel.dot * PlaceLabel.scale(mark: mark.place.mark, chosen: chosen) / 2)
                 view.displayPriority = .required
                 view.collisionMode = .rectangle
                 quick(view)
@@ -1121,8 +1122,16 @@ enum PlaceLabel {
     /// `chosen` — место выбрано (P428): плашка и значок непрозрачные,
     /// значок в чёрном круге, у голых — чёрная кайма по контуру.
     /// «Невидимый», стрелка и пиратский флаг выбором не меняются.
+    /// Выбранное место: значок в полтора раза крупнее (P439). Без контура и
+    /// чёрного круга. «Невидимый», стрелка и пиратский флаг не меняются.
+    static func scale(mark: String, chosen: Bool) -> CGFloat {
+        chosen && ![Glyph.invisible, "стрелка", "пираты"].contains(mark) ? 1.5 : 1
+    }
+
     static func draw(_ name: String, mark: String, solid: Bool = false, chosen: Bool = false) -> UIImage {
-        let chosen = chosen && ![Glyph.invisible, "стрелка", "пираты"].contains(mark)
+        let grow = scale(mark: mark, chosen: chosen)
+        let chosen = grow > 1
+        let big = dot * grow
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
         // «Невидимый» (P409): только плашка; без названия — «Место».
@@ -1132,34 +1141,20 @@ enum PlaceLabel {
         let named = invisible || !given.isEmpty
         let wide = named ? min(text.size(withAttributes: words).width, 150) : 0
         let plate = named ? CGSize(width: wide + 12, height: font.lineHeight + 6) : .zero
-        let above: CGFloat = invisible ? 0 : dot + 4
-        let size = CGSize(width: max(invisible ? 0 : dot, plate.width) + 4,
-                          height: named ? above + plate.height + 3 : dot + 4)
+        let above: CGFloat = invisible ? 0 : big + 4
+        let size = CGSize(width: max(invisible ? 0 : big, plate.width) + 4,
+                          height: named ? above + plate.height + 3 : big + 4)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let mid = size.width / 2
             if !invisible {
-                let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
-                if chosen {
-                    if Glyph.bare.contains(mark) {
-                        // Кайма по контуру: тот же рисунок чёрным, сдвинутый
-                        // во все стороны.
-                        let base = GlyphArt.image(mark)
-                        let shape = UIGraphicsImageRenderer(size: base.size).image { c in
-                            base.draw(at: .zero)
-                            UIColor.black.setFill()
-                            c.fill(CGRect(origin: .zero, size: base.size), blendMode: .sourceIn)
-                        }
-                        let at = CGRect(x: circle.minX - 1, y: circle.minY - 1,
-                                        width: shape.size.width, height: shape.size.height)
-                        for a in stride(from: 0.0, to: 2 * Double.pi, by: Double.pi / 8) {
-                            shape.draw(in: at.offsetBy(dx: 1.8 * cos(a), dy: 1.8 * sin(a)))
-                        }
-                    } else {
-                        UIColor.black.setFill()
-                        UIBezierPath(ovalIn: circle.insetBy(dx: -1, dy: -1)).fill()
-                    }
-                }
+                let circle = CGRect(x: mid - dot / 2, y: 1 + (big - dot) / 2, width: dot, height: dot)
+                // Тот же рисунок, увеличенный вокруг своего центра.
+                ctx.cgContext.saveGState()
+                ctx.cgContext.translateBy(x: circle.midX, y: circle.midY)
+                ctx.cgContext.scaleBy(x: grow, y: grow)
+                ctx.cgContext.translateBy(x: -circle.midX, y: -circle.midY)
                 GlyphArt.draw(mark, in: circle, ctx: ctx.cgContext)
+                ctx.cgContext.restoreGState()
             }
             guard named else { return }
             let box = CGRect(x: mid - plate.width / 2, y: invisible ? 1 : above,

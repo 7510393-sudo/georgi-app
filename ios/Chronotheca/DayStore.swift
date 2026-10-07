@@ -179,22 +179,27 @@ final class DayStore: ObservableObject {
 
     @Published var diaryTitle: String = ""
     @Published var diaryText: String = "" {
-        didSet { noteDiaryChange(from: oldValue) }
+        didSet { noteDiaryChange(from: DiarySnap(text: oldValue, answers: answers)) }
     }
 
     // MARK: Шаг назад и вперёд в дневнике (P312)
 
     /// То же самое, что шаг назад и вперёд в плане (P261), но для текста
     /// записи. Только открытый день и пока он открыт.
-    @Published private(set) var diaryBack: [String] = []
-    @Published private(set) var diaryAhead: [String] = []
+    /// Запись и ответы «Как прошло?» — одна тетрадь, один шаг (P439).
+    struct DiarySnap: Equatable {
+        var text: String
+        var answers: [String: String]
+    }
+    @Published private(set) var diaryBack: [DiarySnap] = []
+    @Published private(set) var diaryAhead: [DiarySnap] = []
     private var quietDiary = false
     private var diaryTouched = Date.distantPast
 
     /// Правка записи — в историю. Буквы, набранные без остановки, — один
     /// шаг, а не по шагу на букву.
-    private func noteDiaryChange(from old: String) {
-        guard !quietDiary, old != diaryText else { return }
+    private func noteDiaryChange(from old: DiarySnap) {
+        guard !quietDiary, old != DiarySnap(text: diaryText, answers: answers) else { return }
         let now = Date()
         if now.timeIntervalSince(diaryTouched) > 1.2 {
             diaryBack.append(old)
@@ -207,9 +212,10 @@ final class DayStore: ObservableObject {
     func undoDiary() {
         guard canEditDiary, let back = diaryBack.popLast() else { return }
         quietDiary = true
-        diaryAhead.append(diaryText)
-        keepAttachments(from: diaryText, to: back)
-        diaryText = back
+        diaryAhead.append(DiarySnap(text: diaryText, answers: answers))
+        keepAttachments(from: diaryText, to: back.text)
+        diaryText = back.text
+        answers = back.answers
         quietDiary = false
         diaryTouched = .distantPast
         save()
@@ -239,15 +245,18 @@ final class DayStore: ObservableObject {
     func redoDiary() {
         guard canEditDiary, let ahead = diaryAhead.popLast() else { return }
         quietDiary = true
-        diaryBack.append(diaryText)
-        keepAttachments(from: diaryText, to: ahead)
-        diaryText = ahead
+        diaryBack.append(DiarySnap(text: diaryText, answers: answers))
+        keepAttachments(from: diaryText, to: ahead.text)
+        diaryText = ahead.text
+        answers = ahead.answers
         quietDiary = false
         diaryTouched = .distantPast
         save()
     }
 
-    @Published var answers: [String: String] = [:]
+    @Published var answers: [String: String] = [:] {
+        didSet { noteDiaryChange(from: DiarySnap(text: diaryText, answers: oldValue)) }
+    }
     /// Ссылки на фотографии дня, как они записаны в файле (P200).
     @Published var photos: [String] = []
     /// Фотографии плана — свои, отдельно от дневника (P203).
@@ -1220,8 +1229,8 @@ final class DayStore: ObservableObject {
         // историю, и один шаг назад стирал всё написанное.
         quietDiary = true
         diaryText = diary.text
-        quietDiary = false
         answers = diary.answers
+        quietDiary = false
         photos = diary.photos
         place = file.value("place")
         weather = file.value("weather")
@@ -1260,6 +1269,9 @@ final class DayStore: ObservableObject {
     }
 
     private var pendingSave: DispatchWorkItem?
+    /// Растёт с каждой записью дня на диск: соседние страницы перечитывают
+    /// свои дни, чтобы не показывать устаревшее (P439).
+    @Published private(set) var savedTick = 0
 
     /// Запись не на каждую букву: иначе файл в iCloud переписывается
     /// десятки раз в минуту. Полсекунды тишины — и день на диске.
@@ -1283,6 +1295,7 @@ final class DayStore: ObservableObject {
         // Заголовок дня — это уже запись, даже если под ним пока нет ни строчки.
         let b = write(diary, to: .diary, keep: !diaryTitle.isEmpty || place != nil || weather != nil)
         if a || b { load() }
+        savedTick += 1
         // Напоминания дня — по тому, что теперь в плане (P260). Недокачанный
         // план не трогаем: пустой список снял бы настоящие напоминания.
         if !away.contains(.planner) { Reminders.sync(day: date, rows: planRows) }
