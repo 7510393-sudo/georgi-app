@@ -285,7 +285,10 @@ struct RootView: View {
             if keyboard.height > 0, shell.screen == .map || shell.screen == .search {
                 SectionsRow(current: shell.screen) { tapSection($0) }
                     .padding(.horizontal, KeyboardBar.inset)
-                    .padding(.bottom, keyboard.height + 2)
+                    // Высота клавиатуры считана от края экрана, а страница
+                    // кончается выше — над полосой жеста «домой»: её вычитаем,
+                    // иначе строка висит выше клавиатуры на её ширину (P426).
+                    .padding(.bottom, max(0, keyboard.height - KeyboardBar.safeBottom) + 2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
             if let notice = shell.notice {

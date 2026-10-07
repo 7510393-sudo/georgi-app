@@ -29,6 +29,12 @@ enum KeyboardBar {
     /// Насколько проступает цвет дня у строки вложений: сквозь неё видно
     /// страницу — и над клавиатурой, и внизу страницы (P424).
     static let see: Double = 0.5
+    /// Нижняя безопасная полоса телефона (жест «домой»).
+    static var safeBottom: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.bottom }
+            .first ?? 0
+    }
     /// Отступ строк от краёв экрана — бока скруглены (P424).
     static let inset: CGFloat = 6
 

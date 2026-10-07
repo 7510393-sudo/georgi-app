@@ -89,7 +89,13 @@ struct SearchView: View {
     private var found: [Archive.Day] {
         let days = archive.newestFirst.filter(kept)
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !needle.isEmpty else { return days }
+        // Пока ничего не набрано, список начинается с последнего заполненного
+        // дня: пустые будущие дни, заведённые планировщиком (повторы, дела
+        // вперёд), в нём ничего не говорят (P426).
+        guard !needle.isEmpty else {
+            let today = DayStore.today()
+            return days.filter { $0.date <= today || !$0.isPlanOnly }
+        }
         let scope = shell.scope
         return days.filter { day in
             if scope != .plan {

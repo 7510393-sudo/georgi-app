@@ -658,6 +658,7 @@ final class Vault: ObservableObject {
             let subpath = UserDefaults.standard.string(forKey: Vault.subpathKey) ?? ""
             granted = url
             root = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
+            healLevel(in: url)
 
             if stale {
                 // Закладка устарела: папку переименовали или передвинули.
@@ -676,6 +677,28 @@ final class Vault: ObservableObject {
             problem = T("Не удалось открыть прежнюю папку. Записи в ней целы — ", "Could not open the previous folder. The entries in it are safe — ")
                     + T("укажите это место заново.", "point to that place again.")
         }
+    }
+
+    /// Записи — на другом уровне, чем помнит приложение (P426).
+    ///
+    /// Папку перенесли в «Файлах» или выбрали уровнем выше-ниже, чем в
+    /// прошлый раз: файлы целы, а приложение смотрит мимо и показывает
+    /// пустое. Если на запомненном месте нашего архива нет, а рядом — в своей
+    /// подпапке «Chronotheca», или выше по родителям — есть, идём туда и
+    /// запоминаем. Пустую папку, в которой архива нет нигде, не трогаем.
+    private func healLevel(in url: URL) {
+        guard let current = root, !isOurs(current),
+              let found = findVault(from: current),
+              found.standardizedFileURL != current.standardizedFileURL
+        else { return }
+        let base = url.standardizedFileURL.path
+        let path = found.standardizedFileURL.path
+        guard path == base || path.hasPrefix(base + "/") else { return }
+        let subpath = String(path.dropFirst(base.count))
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        UserDefaults.standard.set(subpath, forKey: Vault.subpathKey)
+        UserDefaults.standard.set(found.path, forKey: Vault.lastPathKey)
+        root = found
     }
 
     private func begin(_ url: URL) -> Bool {

@@ -206,7 +206,7 @@ struct MapScreen: View {
         // кнопки поднимает этот отступ, вплотную к её верху (P306, P340).
         // Над клавиатурой ещё и строка разделов (P425).
         .padding(.bottom, keyboard > 0
-                 ? max(6, keyboard - belowMap + 6 + KeyboardBar.sectionsHeight + 4) : 6)
+                 ? max(6, keyboard - belowMap + 2 + KeyboardBar.sectionsHeight + 8) : 6)
     }
 
     /// Точка не выбрана — кнопка не пропадает, а бледнеет и объясняет, чего
