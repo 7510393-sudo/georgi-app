@@ -315,9 +315,13 @@ struct CalendarView: View {
             VStack(spacing: 1) {
                 Text("\(cal.component(.day, from: date))")
                     // Цифры плотнее, сегодняшняя — крупнее и жирнее всех
-                    // (P247).
-                    .font(Look.sans(isToday ? 18 : 14.5, weight: isToday ? .bold : .medium))
-                    .foregroundStyle(Look.ink)
+                    // (P247) и белая в синем кружке (P431): будущее теперь
+                    // того же цвета, что сегодня (P412), и одной жирности
+                    // мало, чтобы сегодня находилось с одного взгляда.
+                    .font(Look.sans(isToday ? 16 : 14.5, weight: isToday ? .bold : .medium))
+                    .foregroundStyle(isToday ? Color.white : Look.ink)
+                    .frame(minWidth: isToday ? 26 : nil, minHeight: isToday ? 22 : nil)
+                    .background { if isToday { Capsule().fill(Look.accent) } }
                 dots(count: entries(stamp, date).count, light: false)
             }
             .frame(maxWidth: .infinity)
@@ -450,9 +454,12 @@ struct CalendarView: View {
         return Button { pick(stamp, date) } label: {
             HStack(alignment: .top, spacing: 12) {
                 VStack(spacing: 1) {
+                    // Сегодня — белым в синем кружке (P431).
                     Text("\(cal.component(.day, from: date))")
-                        .font(stamp == today ? Look.sans(18, weight: .bold) : Look.mono(15))
-                        .foregroundStyle(stamp == today ? Look.accent : Look.ink)
+                        .font(stamp == today ? Look.sans(16, weight: .bold) : Look.mono(15))
+                        .foregroundStyle(stamp == today ? Color.white : Look.ink)
+                        .frame(minWidth: stamp == today ? 28 : nil, minHeight: stamp == today ? 24 : nil)
+                        .background { if stamp == today { Capsule().fill(Look.accent) } }
                     Text(Ru.weekdayShort(date))
                         .font(Look.sans(10))
                         .foregroundStyle(Ru.dayColor(date))

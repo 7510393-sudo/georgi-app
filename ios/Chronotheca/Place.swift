@@ -445,8 +445,9 @@ enum GlyphArt {
         // Свои рисунки (P409): ни чужих значков, ни эмодзи — только то,
         // что нарисовано здесь.
         switch mark {
-        case "природа": return tree(in: circle.insetBy(dx: 2, dy: 0))
-        case "сердце": return heart(in: circle.insetBy(dx: -0.6, dy: 0.4))
+        // На 5% меньше прежнего (P431).
+        case "природа": return tree(in: circle.insetBy(dx: 2.5, dy: 0.6))
+        case "сердце": return heart(in: circle.insetBy(dx: 0, dy: 1.2))
         case "стрелка": return arrow(in: circle.insetBy(dx: 2, dy: 1))
         case "огонь": return fire(in: circle.insetBy(dx: 3, dy: 1))
         case "пираты": return pirates(in: circle)
@@ -456,7 +457,7 @@ enum GlyphArt {
         // как номер сделанного дела (P418).
         let invisible = mark == Glyph.invisible
         guard let shape = UIImage(systemName: Glyph.image(invisible ? Glyph.standard : mark),
-                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? (Glyph.larger.contains(mark) ? 18.7 : 17) : 11,
+                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? (Glyph.larger.contains(mark) ? 17.8 : 17) : 11,
                                                                                  weight: .semibold))
         else { return }
         let g = shape.size
@@ -547,28 +548,31 @@ enum GlyphArt {
         }
     }
 
-    /// Сердце (P428): своё, с острым низом и чёткими «плечами», а не
-    /// округлый системный шарик. Красное с тёмной каймой, без подложки.
+    /// Сердце (P428, P431): плавное, как рисуют рукой, — два круглых
+    /// «плеча», мягкая выемка сверху, бока сходятся к острию дугами, без
+    /// прямых углов. Красное с тёмной каймой и бликом, без подложки.
     private static func heart(in r: CGRect) {
         let w = r.width, h = r.height
         func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + w * x, y: r.minY + h * y) }
         let p = UIBezierPath()
-        p.move(to: pt(0.5, 0.95))
-        p.addLine(to: pt(0.1, 0.5))
-        p.addCurve(to: pt(0.5, 0.24), controlPoint1: pt(-0.06, 0.26), controlPoint2: pt(0.34, 0.04))
-        p.addCurve(to: pt(0.9, 0.5), controlPoint1: pt(0.66, 0.04), controlPoint2: pt(1.06, 0.26))
+        p.move(to: pt(0.5, 0.92))
+        p.addCurve(to: pt(0.04, 0.38), controlPoint1: pt(0.36, 0.80), controlPoint2: pt(0.04, 0.62))
+        p.addCurve(to: pt(0.28, 0.10), controlPoint1: pt(0.04, 0.22), controlPoint2: pt(0.14, 0.10))
+        p.addCurve(to: pt(0.5, 0.24), controlPoint1: pt(0.39, 0.10), controlPoint2: pt(0.46, 0.16))
+        p.addCurve(to: pt(0.72, 0.10), controlPoint1: pt(0.54, 0.16), controlPoint2: pt(0.61, 0.10))
+        p.addCurve(to: pt(0.96, 0.38), controlPoint1: pt(0.86, 0.10), controlPoint2: pt(0.96, 0.22))
+        p.addCurve(to: pt(0.5, 0.92), controlPoint1: pt(0.96, 0.62), controlPoint2: pt(0.64, 0.80))
         p.close()
-        p.lineJoinStyle = .miter
-        p.miterLimit = 10
+        p.lineJoinStyle = .round
         p.lineWidth = 1.4
         UIColor(white: 0.1, alpha: 0.9).setStroke()
         p.stroke()
         Glyph.color("сердце").setFill()
         p.fill()
-        // Блик — сердце читается рисунком, а не пятном.
-        let shine = UIBezierPath(ovalIn: CGRect(x: r.minX + w * 0.24, y: r.minY + h * 0.27,
-                                                width: w * 0.14, height: h * 0.1))
-        UIColor.white.withAlphaComponent(0.55).setFill()
+        // Блик на левом «плече».
+        let shine = UIBezierPath(ovalIn: CGRect(x: r.minX + w * 0.17, y: r.minY + h * 0.19,
+                                                width: w * 0.16, height: h * 0.11))
+        UIColor.white.withAlphaComponent(0.5).setFill()
         shine.fill()
     }
 
