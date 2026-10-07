@@ -106,6 +106,12 @@ struct CalendarView: View {
                     // или сегодняшний — стоял вверху экрана (P286).
                     .onAppear { toTop(proxy, in: date, current: current) }
                     .onChange(of: stored) { _, _ in toTop(proxy, in: date, current: current) }
+                    // Календарь не собирается заново при каждом открытии —
+                    // он ждёт на своей плашке. Встаём на день всякий раз,
+                    // как его открывают, а не только в первый (P442).
+                    .onChange(of: shell.screen) { _, now in
+                        if now == .calendar { toTop(proxy, in: date, current: current) }
+                    }
                 }
             }
         }
@@ -315,20 +321,17 @@ struct CalendarView: View {
             VStack(spacing: 1) {
                 Text("\(cal.component(.day, from: date))")
                     // Цифры плотнее, сегодняшняя — крупнее и жирнее всех
-                    // (P247) и белая в синем кружке (P431): будущее теперь
-                    // того же цвета, что сегодня (P412), и одной жирности
-                    // мало, чтобы сегодня находилось с одного взгляда.
+                    // (P247), белая; синим залита вся клетка, а не кружок
+                    // под цифрой (P442, прежде P431).
                     .font(Look.sans(isToday ? 16 : 14.5, weight: isToday ? .bold : .medium))
                     .foregroundStyle(isToday ? Color.white : Look.ink)
-                    .frame(minWidth: isToday ? 26 : nil, minHeight: isToday ? 22 : nil)
-                    .background { if isToday { Capsule().fill(Look.accent) } }
-                dots(count: entries(stamp, date).count, light: false)
+                dots(count: entries(stamp, date).count, light: isToday)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 32)
             // Клетка — того же цвета, что страница этого дня: сегодня
             // абрикосовое, прошлое голубеет, будущее зеленеет (P245).
-            .background(tint(date), in: RoundedRectangle(cornerRadius: 8))
+            .background(isToday ? Look.accent : tint(date), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(isSelected ? Look.accent : .clear, lineWidth: 1.5))
         }
@@ -428,7 +431,11 @@ struct CalendarView: View {
             cal.isDate($0, equalTo: month, toGranularity: .month)
         }
         guard let target else { return }
-        DispatchQueue.main.async { proxy.scrollTo(Vault.stamp(target), anchor: .top) }
+        // Строки списка рисуются по мере надобности: дать им встать, потом
+        // ехать к дню (P442).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            proxy.scrollTo(Vault.stamp(target), anchor: .top)
+        }
     }
 
     private func monthList(of date: Date) -> some View {
