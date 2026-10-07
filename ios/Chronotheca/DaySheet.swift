@@ -29,6 +29,9 @@ struct DaySheet<Plan: View, Diary: View>: View {
     var landDiary = false
     /// Больше половины окна занял дневник — или снова план (P424).
     var onDiary: ((Bool) -> Void)?
+    /// Что сидит над заголовком «Дневник» — облачко «…помнишь?» открытого
+    /// дня (P436). У соседних страниц нет.
+    var diaryMark: AnyView? = nil
 
     @ViewBuilder let plan: () -> Plan
     @ViewBuilder let diary: () -> Diary
@@ -60,6 +63,14 @@ struct DaySheet<Plan: View, Diary: View>: View {
                         VStack(alignment: .leading, spacing: 0) {
                             SheetHeading(title: T("Дневник", "Diary"), faint: !diaryOpen)
                                 .id(Self.diaryTop)
+                                // Облачко «…помнишь?» сидит над заголовком,
+                                // у правого края (P436): низом на его верху.
+                                .overlay(alignment: .topTrailing) {
+                                    if let diaryMark {
+                                        diaryMark.alignmentGuide(.top) { $0[.bottom] - 6 }
+                                    }
+                                }
+                                .zIndex(1)
                             diary()
                         }
                         .background {

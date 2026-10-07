@@ -77,14 +77,9 @@ struct DayPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Облачко лежит на шапке, а вкладки рисуются следом и накрывают
-            // его низ. Оттого и видно, что это бумажка, подсунутая под
-            // страницу, а не часть страницы (P140).
+            // Облачко «…помнишь?» — над заголовком «Дневник» (P436).
             heading
                 .overlay { galleryCatcher }
-                // Облачко «…помнишь?» лежит на шапке и свешивается на
-                // страницу — поверх неё (P140, P408).
-                .overlay(alignment: .bottomTrailing) { cloud }
                 .zIndex(1)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -149,12 +144,10 @@ struct DayPage: View {
                 remembering = true
             }
             .frame(width: width, height: height)
-            // Левее стрелки «шаг вперёд» у правого края — не накрывает её
-            // (P409).
-            // Шапка стала ниже, дата — посередине под именем дня (P434):
-            // облачко опущено на страницу, чтобы не закрывать дату.
-            .offset(x: -56,
-                    y: height * (0.95 - RememberCloud.tabEdge) + 30)
+            // Сидит над заголовком «Дневник», у правого края, и едет вместе
+            // со страницей (P436; прежде свешивалось с шапки, P434). На
+            // сантиметр правее прежнего места.
+            .offset(x: 8, y: -2)
             .transition(.opacity)
         }
     }
@@ -375,7 +368,8 @@ struct DayPage: View {
             DaySheet(date: date, home: shell.freshStart, toDiary: shell.tab == .diary,
                      diaryOpen: !store.isFuture,
                      land: shell.landing, landDiary: shell.landOnDiary,
-                     onDiary: { [shell] in shell.lookingAtDiary = $0 }) {
+                     onDiary: { [shell] in shell.lookingAtDiary = $0 },
+                     diaryMark: AnyView(cloud)) {
                 PlanView()
             } diary: {
                 DiaryView()
