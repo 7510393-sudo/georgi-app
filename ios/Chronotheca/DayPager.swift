@@ -28,11 +28,7 @@ struct DayPages: View {
                 .environmentObject(archive)
         }, onTurn: { step in
             hideKeyboard()
-            // Назад, глядя в дневник, — на дневник; вперёд — всегда на план:
-            // у будущего есть только план (P424).
-            shell.landOnDiary = step < 0 && shell.lookingAtDiary
-            shell.landing += 1
-            store.move(by: step)
+            shell.turn(step, store)
         }, plan: $plan)
         .onChange(of: shell.goHome) { _, want in
             guard want else { return }
@@ -89,7 +85,9 @@ struct DayPage: View {
                 .overlay(alignment: .top) {
                     LinearGradient(colors: [Ru.tint(date), Ru.tint(date).opacity(0)],
                                    startPoint: .top, endPoint: .bottom)
-                        .frame(height: 22)
+                        // Короче прежних 22 точек: слово «План» вверху
+                        // страницы больше не тонет в дымке (P441).
+                        .frame(height: 14)
                         .allowsHitTesting(false)
                 }
                 .overlay(alignment: .top) { steps }
@@ -282,7 +280,10 @@ struct DayPage: View {
             hideKeyboard()
             // Вперёд — чуть выше тоном, назад — чуть ниже (P330).
             Sounds.flip(rate: step > 0 ? 1.04 : 0.96)
-            store.move(by: step)
+            // Тот же поворот, что пальцем: куда встанет новая страница —
+            // по тому же правилу (P441). Прежде стрелки шапки его не знали,
+            // и день всегда открывался на плане.
+            shell.turn(step, store)
         }
         .accessibilityLabel(lit ? neighbour(step) + T(". Долгое нажатие — на сегодня", ". Long press for today")
                                 : neighbour(step))
@@ -971,7 +972,11 @@ struct SideDay: View {
         (rows, planPhotos) = Plan.splitPhotos(
             Plan.rows(from: DayFile(text: vault.read(.planner, for: date)).body))
         let file = DayFile(text: vault.read(.diary, for: date))
-        let diary = Diary(body: file.body)
+        // Ответы «Как прошло?» — по настоящим названиям дел, как у открытой
+        // страницы (P155): без них дело с двоеточием в названии («Звонок в
+        // 10:30») теряло ответ на соседней странице, и он появлялся скачком,
+        // когда страница становилась открытой (P441).
+        let diary = Diary(body: file.body, known: rows.map(\.text))
         title = file.value("title") ?? ""
         text = diary.text
         answers = diary.answers

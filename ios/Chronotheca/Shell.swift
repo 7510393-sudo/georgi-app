@@ -168,6 +168,16 @@ final class Shell: ObservableObject {
     /// перелистывания и из календаря.
     @Published var landing = 0
     var landOnDiary = false
+
+    /// Перелистнуть день — пальцем или стрелкой шапки (P424, P441). Назад,
+    /// когда больше половины окна занимает дневник, — новая страница на
+    /// дневнике; назад с плана и вперёд — на плане: у будущего есть только
+    /// план.
+    func turn(_ step: Int, _ store: DayStore) {
+        landOnDiary = step < 0 && lookingAtDiary
+        landing += 1
+        store.move(by: step)
+    }
     /// Открытая страница сейчас больше дневник, чем план (P424).
     var lookingAtDiary = false
     /// Где верх нижней строки разделов на экране — по нему листок настроек

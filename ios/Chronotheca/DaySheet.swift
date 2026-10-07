@@ -53,7 +53,10 @@ struct DaySheet<Plan: View, Diary: View>: View {
                 ScrollViewReader { proxy in
                     VStack(spacing: 0) {
                         VStack(alignment: .leading, spacing: 0) {
-                            SheetHeading(title: T("План", "Plan"))
+                            // Чуть ниже середины своей полосы: у верхнего края
+                            // страница тает под шапкой, и буквы не должны
+                            // попадать в эту дымку (P441).
+                            SheetHeading(title: T("План", "Plan"), drop: 6)
                                 .id(Self.top)
                             plan()
                         }
@@ -195,6 +198,9 @@ private enum SheetMemory {
 struct SheetHeading: View {
     let title: String
     var faint = false
+    /// Насколько буквы ниже середины полосы; сама полоса той же высоты —
+    /// строки плана остаются на линиях клетки (P413, P441).
+    var drop: CGFloat = 0
 
     var body: some View {
         Text(title.uppercased())
@@ -202,6 +208,7 @@ struct SheetHeading: View {
             .tracking(1.8)
             .foregroundStyle(faint ? Look.inkFaint : Look.inkSoft)
             .lineLimit(1)
+            .offset(y: drop)
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity)
             .frame(height: GridSnap.cell * 2)
