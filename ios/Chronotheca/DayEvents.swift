@@ -86,6 +86,21 @@ enum DayEvents {
         }
     }
 
+    /// События дня для календаря: месяц спрашивает сразу о сорока днях, и
+    /// каждый раз заново — при каждой перерисовке. Ответ помнится, пока
+    /// календарь открыт; открыли заново — спрашиваем Календарь снова.
+    private static var cache: [String: [Item]] = [:]
+
+    static func cachedItems(for day: Date) -> [Item] {
+        let stamp = Vault.stamp(day)
+        if let hit = cache[stamp] { return hit }
+        let found = items(for: day)
+        cache[stamp] = found
+        return found
+    }
+
+    static func forgetCache() { cache = [:] }
+
     /// Само событие — чтобы открыть его или удалить.
     static func event(_ key: String, on day: Date) -> EKEvent? {
         guard allowed else { return nil }

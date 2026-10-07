@@ -699,8 +699,9 @@ final class DayStore: ObservableObject {
     /// дневник и в день, который ещё не скачан из iCloud, её не положить
     /// (P182, P200, P203).
     @discardableResult
-    func addPhoto(_ data: Data, to tab: Shell.Tab) -> Bool {
+    func addPhoto(_ data: Data, to tab: Shell.Tab, camera: Bool = false) -> Bool {
         guard canEdit(tab), let link = vault.addPhoto(data, for: date) else { return false }
+        if camera { CameraShots.mark(link) }
         attach(link, to: tab)
         return true
     }

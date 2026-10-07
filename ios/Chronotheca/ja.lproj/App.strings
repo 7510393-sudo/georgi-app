@@ -664,3 +664,26 @@
 "Got it" = "わかりました";
 "Getting-started tips" = "はじめてのヒント";
 "Show again ›" = "もう一度表示 ›";
+
+/* P428. */
+"What is copied" = "コピーするもの";
+"The whole archive: " = "アーカイブ全体：";
+"counting…" = "計算中…";
+"Free there: " = "空き容量：";
+"Markdown and text" = "Markdown とテキスト";
+"If %@ can export entries as text or Markdown, import them now: “Markdown and text” at the top of the list." = "%@ が記録をテキストや Markdown で書き出せるなら、今すぐ移せます：一覧の一番上の「Markdown とテキスト」へ。";
+"The day’s attachments" = "その日の添付";
+"Save to the device" = "端末に保存";
+"Time to make one" = "作りどきです";
+"Switch to another app" = "別のアプリへ移る";
+"How ›" = "方法 ›";
+"How to move to another app" = "別のアプリへ移る方法";
+"Make a PDF" = "PDF を作る";
+"There is nothing to export: your entries are plain Markdown text files in your folder, one per day, with photos and voice next to them in their own folders. Obsidian, iA Writer and any text editor open them: point them at this folder. For reading and printing, make a PDF for any period." = "書き出すものはありません。記録はフォルダ内の普通の Markdown テキストファイルで、1日1ファイル、写真や音声はそれぞれのフォルダにあります。Obsidian、iA Writer、どのテキストエディタでも開けます。このフォルダを指定するだけです。読むためや印刷用には、好きな期間の PDF を。";
+"— Imported —" = "— 取り込み —";
+"Almost every journal can export entries as text or Markdown: Obsidian, Diarly, Bear, Journey, Notion, iA Writer. Export them to a folder in Files and choose it here." = "ほとんどの日記アプリは記録をテキストや Markdown で書き出せます：Obsidian、Diarly、Bear、Journey、Notion、iA Writer。「ファイル」のフォルダに書き出し、ここで選んでください。";
+"Each file becomes an entry of its day. The day comes from the file name (for example “2024-05-17.md”), otherwise from the first line, otherwise from the file’s date." = "各ファイルはその日の記録になります。日付はファイル名（例：「2024-05-17.md」）から、なければ最初の行から、それもなければファイルの日付から取ります。";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Imported —”. Importing again does not duplicate anything." = "記録の上に書き込むことはありません。その日に既に何かあれば、取り込んだ分は「— 取り込み —」の下、末尾に入ります。もう一度取り込んでも重複しません。";
+"Choose the folder with entries…" = "記録のあるフォルダを選ぶ…";
+"There are no .md or .txt files in this folder." = "このフォルダには .md や .txt のファイルがありません。";
+"Imported entries: %@, days: %@." = "取り込んだ記録：%@件、日数：%@日。";

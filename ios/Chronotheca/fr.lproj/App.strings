@@ -664,3 +664,26 @@
 "Got it" = "Compris";
 "Getting-started tips" = "Conseils de découverte";
 "Show again ›" = "Afficher à nouveau ›";
+
+/* P428. */
+"What is copied" = "Ce qui est copié";
+"The whole archive: " = "Toute l’archive : ";
+"counting…" = "calcul…";
+"Free there: " = "Libre là-bas : ";
+"Markdown and text" = "Markdown et texte";
+"If %@ can export entries as text or Markdown, import them now: “Markdown and text” at the top of the list." = "Si %@ sait exporter les entrées en texte ou en Markdown, importez-les maintenant : « Markdown et texte » en haut de la liste.";
+"The day’s attachments" = "Pièces jointes du jour";
+"Save to the device" = "Enregistrer sur l’appareil";
+"Time to make one" = "Il est temps";
+"Switch to another app" = "Passer à une autre app";
+"How ›" = "Comment ›";
+"How to move to another app" = "Comment passer à une autre app";
+"Make a PDF" = "Créer un PDF";
+"There is nothing to export: your entries are plain Markdown text files in your folder, one per day, with photos and voice next to them in their own folders. Obsidian, iA Writer and any text editor open them: point them at this folder. For reading and printing, make a PDF for any period." = "Rien à exporter : vos entrées sont de simples fichiers texte Markdown dans votre dossier, un par jour, avec photos et voix à côté dans leurs propres dossiers. Obsidian, iA Writer et tout éditeur de texte les ouvrent : indiquez-leur ce dossier. Pour lire et imprimer, créez un PDF pour n’importe quelle période.";
+"— Imported —" = "— Importé —";
+"Almost every journal can export entries as text or Markdown: Obsidian, Diarly, Bear, Journey, Notion, iA Writer. Export them to a folder in Files and choose it here." = "Presque tous les journaux savent exporter les entrées en texte ou en Markdown : Obsidian, Diarly, Bear, Journey, Notion, iA Writer. Exportez-les dans un dossier de Fichiers et choisissez-le ici.";
+"Each file becomes an entry of its day. The day comes from the file name (for example “2024-05-17.md”), otherwise from the first line, otherwise from the file’s date." = "Chaque fichier devient une entrée de son jour. Le jour vient du nom du fichier (par exemple « 2024-05-17.md »), sinon de la première ligne, sinon de la date du fichier.";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Imported —”. Importing again does not duplicate anything." = "Rien n’est écrit par-dessus vos entrées : si un jour contient déjà quelque chose, l’import va à la fin sous « — Importé — ». Importer à nouveau ne double rien.";
+"Choose the folder with entries…" = "Choisir le dossier des entrées…";
+"There are no .md or .txt files in this folder." = "Ce dossier ne contient aucun fichier .md ou .txt.";
+"Imported entries: %@, days: %@." = "Entrées importées : %@, jours : %@.";

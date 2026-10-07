@@ -13,6 +13,7 @@ final class Archive: ObservableObject {
         let stamp: String          // ГГГГ-ММ-ДД
         let date: Date
         var tasks: [PlanRow] = []
+        var marks: [DayEvents.Mark] = []
         var title: String = ""
         var text: String = ""
         var answers: [String: String] = [:]
@@ -137,6 +138,9 @@ final class Archive: ObservableObject {
                     if folder == .planner {
                         let rows = Plan.rows(from: parsed.body)
                         day.tasks = rows.filter { $0.isTask }
+                        // Отметки у событий Календаря — «сделано», «убрано»
+                        // (P376): календарю нужны, как и странице (P428).
+                        day.marks = DayEvents.marks(in: rows)
                         day.attachments += rows.compactMap { $0.verbatim.flatMap { Diary.picture(in: $0) } }
                     } else {
                         let diary = Diary(body: parsed.body)

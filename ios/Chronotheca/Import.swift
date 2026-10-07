@@ -318,6 +318,18 @@ struct ImportSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                // Из любого приложения, которое выгружает текст (P428).
+                Section {
+                    NavigationLink {
+                        TextImportView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(T("Markdown и текст", "Markdown and text")).font(Look.sans(16))
+                            Text("Obsidian, Diarly, Bear, Journey, Notion, iA Writer…")
+                                .font(Look.sans(12.5)).foregroundStyle(Look.inkFaint)
+                        }
+                    }
+                }
                 Section {
                     ForEach(Self.apps, id: \.self) { app in
                         NavigationLink {
@@ -374,6 +386,11 @@ private struct SoonImportView: View {
                    + "import, write to us."))
                 .font(Look.sans(15))
                 .foregroundStyle(Look.inkSoft)
+            // Пока своего переноса нет — общий, через текст (P428).
+            Text(T("Если \(app) умеет выгружать записи текстом или Markdown, перенесите их сейчас: «Markdown и текст» в начале списка.",
+                   "If \(app) can export entries as text or Markdown, import them now: “Markdown and text” at the top of the list."))
+                .font(Look.sans(15))
+                .foregroundStyle(Look.ink)
             Spacer()
         }
         .padding(20)

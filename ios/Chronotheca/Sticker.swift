@@ -45,10 +45,13 @@ struct Sticker<Content: View>: View {
             content()
         }
         .frame(maxWidth: width)
-        .background(paper)
         .clipShape(shape)
+        // Тень — у одной простой фигуры под листком, а не у всего его
+        // содержимого (P428): тень по сложному содержимому считается
+        // заново на каждом кадре выезда, и длинный листок настроек
+        // дёргался. Вид тот же.
+        .background(shape.fill(paper).shadow(color: .black.opacity(0.32), radius: 14, y: 6))
         .overlay(StickerBorder(radius: 12, side: side).stroke(edge, lineWidth: 1))
-        .shadow(color: .black.opacity(0.32), radius: 14, y: 6)
         // Спрятанный листок стоит так, что его нижний угол — ровно уголок
         // над экраном; вытягивают его за этот угол (P237).
         .visualEffect { [amount, side] content, geo in

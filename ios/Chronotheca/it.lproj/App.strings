@@ -664,3 +664,26 @@
 "Got it" = "Capito";
 "Getting-started tips" = "Suggerimenti per iniziare";
 "Show again ›" = "Mostra di nuovo ›";
+
+/* P428. */
+"What is copied" = "Cosa si copia";
+"The whole archive: " = "Tutto l’archivio: ";
+"counting…" = "calcolo…";
+"Free there: " = "Libero lì: ";
+"Markdown and text" = "Markdown e testo";
+"If %@ can export entries as text or Markdown, import them now: “Markdown and text” at the top of the list." = "Se %@ sa esportare le voci come testo o Markdown, importale ora: «Markdown e testo» in cima all’elenco.";
+"The day’s attachments" = "Allegati del giorno";
+"Save to the device" = "Salva sul dispositivo";
+"Time to make one" = "È ora di farla";
+"Switch to another app" = "Passa a un’altra app";
+"How ›" = "Come ›";
+"How to move to another app" = "Come passare a un’altra app";
+"Make a PDF" = "Crea un PDF";
+"There is nothing to export: your entries are plain Markdown text files in your folder, one per day, with photos and voice next to them in their own folders. Obsidian, iA Writer and any text editor open them: point them at this folder. For reading and printing, make a PDF for any period." = "Non c’è niente da esportare: le tue voci sono normali file di testo Markdown nella tua cartella, uno per giorno, con foto e voce accanto nelle loro cartelle. Obsidian, iA Writer e qualsiasi editor di testo li aprono: indica loro questa cartella. Per leggere e stampare, crea un PDF di qualsiasi periodo.";
+"— Imported —" = "— Importato —";
+"Almost every journal can export entries as text or Markdown: Obsidian, Diarly, Bear, Journey, Notion, iA Writer. Export them to a folder in Files and choose it here." = "Quasi ogni diario sa esportare le voci come testo o Markdown: Obsidian, Diarly, Bear, Journey, Notion, iA Writer. Esportale in una cartella in File e sceglila qui.";
+"Each file becomes an entry of its day. The day comes from the file name (for example “2024-05-17.md”), otherwise from the first line, otherwise from the file’s date." = "Ogni file diventa una voce del suo giorno. Il giorno viene dal nome del file (per esempio «2024-05-17.md»), altrimenti dalla prima riga, altrimenti dalla data del file.";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Imported —”. Importing again does not duplicate anything." = "Nulla viene scritto sopra le tue voci: se un giorno ha già qualcosa, l’importazione va in fondo sotto «— Importato —». Importare di nuovo non duplica nulla.";
+"Choose the folder with entries…" = "Scegli la cartella con le voci…";
+"There are no .md or .txt files in this folder." = "In questa cartella non ci sono file .md o .txt.";
+"Imported entries: %@, days: %@." = "Voci importate: %@, giorni: %@.";

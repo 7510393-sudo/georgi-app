@@ -196,3 +196,28 @@ struct Tag: ViewModifier {
             .contentShape(RoundedRectangle(cornerRadius: 6))
     }
 }
+
+/// Кнопка, которую пора нажать (P428): красная и мигает — резервная копия
+/// давно не делалась. Мигание просил автор: строка должна звать сама.
+struct DueButton: View {
+    let title: String
+    let action: () -> Void
+    @State private var dim = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(Look.sans(13.5, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize()
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.red.opacity(dim ? 0.45 : 0.9)))
+        }
+        .buttonStyle(.plain)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { dim = true }
+        }
+    }
+}

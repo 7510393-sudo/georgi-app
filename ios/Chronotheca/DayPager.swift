@@ -668,7 +668,7 @@ struct AttachBar: View {
             CameraPicker { data in
                 shooting = false
                 guard let data else { return }
-                if store.addPhoto(data, to: into) {
+                if store.addPhoto(data, to: into, camera: true) {
                     shell.say(T("Снимок положен в папку «", "Photo saved to the “") + vault.name(.photos) + T("»", "” folder"))
                 } else {
                     shell.say(T("Снимок не сохранился", "The photo was not saved"))

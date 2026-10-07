@@ -73,7 +73,10 @@ struct CalendarView: View {
                 selected = nil
             }, plan: $plan)
         }
-        .onAppear { archive.reload() }
+        .onAppear {
+            DayEvents.forgetCache()
+            archive.reload()
+        }
         // Просьба из меню календаря: та же дорога домой, что у кнопки вида.
         .onChange(of: shell.calendarHome) { _, want in
             guard want else { return }
@@ -315,7 +318,7 @@ struct CalendarView: View {
                     // (P247).
                     .font(Look.sans(isToday ? 18 : 14.5, weight: isToday ? .bold : .medium))
                     .foregroundStyle(Look.ink)
-                dots(count: archive.tasks(stamp).count, light: false)
+                dots(count: entries(stamp, date).count, light: false)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 32)
@@ -326,6 +329,15 @@ struct CalendarView: View {
                 .strokeBorder(isSelected ? Look.accent : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
+    }
+
+    /// Дела дня вместе с событиями Календаря iPhone — как на странице дня
+    /// (P376): сперва события, потом свои дела. Прежде календарь показывал
+    /// только свои дела, и события были видны лишь на самой странице (P428).
+    private func entries(_ stamp: String, _ date: Date) -> [PlanRow] {
+        let marks = archive.day(stamp)?.marks ?? []
+        let events = DayEvents.shown(DayEvents.cachedItems(for: date), marks: marks).map(\.row)
+        return events + archive.tasks(stamp)
     }
 
     /// Точек столько, сколько дел, но не больше трёх: по ним видно,
@@ -375,7 +387,7 @@ struct CalendarView: View {
                         .font(Look.sans(13))
                         .foregroundStyle(Look.accent)
                 }
-                let tasks = archive.tasks(stamp)
+                let tasks = entries(stamp, date)
                 if tasks.isEmpty {
                     Text(T("Дел на этот день нет.", "No tasks on this day."))
                         .font(Look.sans(13))
@@ -432,7 +444,7 @@ struct CalendarView: View {
 
     private func row(_ date: Date, today: String) -> some View {
         let stamp = Vault.stamp(date)
-        let tasks = archive.tasks(stamp)
+        let tasks = entries(stamp, date)
         let open = stamp == selected
 
         return Button { pick(stamp, date) } label: {

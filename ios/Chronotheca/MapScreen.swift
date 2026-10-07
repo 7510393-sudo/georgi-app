@@ -957,7 +957,8 @@ struct NativeMap: UIViewRepresentable {
             for case let mark as PlaceMark in map.annotations {
                 guard let view = map.view(for: mark) else { continue }
                 let shown = mark.place.name == Geo.text(mark.place.coordinate) ? "" : mark.place.name
-                view.image = PlaceLabel.draw(shown, mark: mark.place.mark, solid: satellite)
+                view.image = PlaceLabel.draw(shown, mark: mark.place.mark, solid: satellite,
+                                             chosen: mark.place.file != nil && selected?.file == mark.place.file)
             }
         }
         keeper.sync(map)
@@ -988,6 +989,9 @@ struct NativeMap: UIViewRepresentable {
                 .joined(separator: "|")
             key += parent.days.map { "\($0.stamp)\($0.today)" }.joined(separator: "|")
             key += draft.map { "\($0.name)\($0.latitude)\($0.longitude)" } ?? "-"
+            // Выбранное место рисуется иначе (P428) — сменился выбор, метки
+            // ставятся заново.
+            key += "|" + (parent.selected?.file ?? "")
             guard key != drawn else { return }
             drawn = key
             map.removeAnnotations(map.annotations.filter { !($0 is MKUserLocation) })
@@ -1028,8 +1032,9 @@ struct NativeMap: UIViewRepresentable {
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "место")
                 // Названием остались координаты — на карте их не пишем (P404).
                 let shown = mark.place.name == Geo.text(mark.place.coordinate) ? "" : mark.place.name
+                let chosen = mark.place.file != nil && parent.selected?.file == mark.place.file
                 let picture = PlaceLabel.draw(shown, mark: mark.place.mark,
-                                              solid: map.mapType != .standard)
+                                              solid: map.mapType != .standard, chosen: chosen)
                 view.image = picture
                 // Метка стоит на точке значком; у «невидимой» — плашкой
                 // посередине (P409).
@@ -1113,7 +1118,11 @@ enum PlaceLabel {
 
     /// `solid` — карта со спутника (P420): пёстрый снимок сквозь
     /// прозрачную плашку мешает читать — плашка плотнее.
-    static func draw(_ name: String, mark: String, solid: Bool = false) -> UIImage {
+    /// `chosen` — место выбрано (P428): плашка и значок непрозрачные,
+    /// значок в чёрном круге, у голых — чёрная кайма по контуру.
+    /// «Невидимый», стрелка и пиратский флаг выбором не меняются.
+    static func draw(_ name: String, mark: String, solid: Bool = false, chosen: Bool = false) -> UIImage {
+        let chosen = chosen && ![Glyph.invisible, "стрелка", "пираты"].contains(mark)
         let font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor(Look.ink)]
         // «Невидимый» (P409): только плашка; без названия — «Место».
@@ -1130,6 +1139,26 @@ enum PlaceLabel {
             let mid = size.width / 2
             if !invisible {
                 let circle = CGRect(x: mid - dot / 2, y: 1, width: dot, height: dot)
+                if chosen {
+                    if Glyph.bare.contains(mark) {
+                        // Кайма по контуру: тот же рисунок чёрным, сдвинутый
+                        // во все стороны.
+                        let base = GlyphArt.image(mark)
+                        let shape = UIGraphicsImageRenderer(size: base.size).image { c in
+                            base.draw(at: .zero)
+                            UIColor.black.setFill()
+                            c.fill(CGRect(origin: .zero, size: base.size), blendMode: .sourceIn)
+                        }
+                        let at = CGRect(x: circle.minX - 1, y: circle.minY - 1,
+                                        width: shape.size.width, height: shape.size.height)
+                        for a in stride(from: 0.0, to: 2 * Double.pi, by: Double.pi / 8) {
+                            shape.draw(in: at.offsetBy(dx: 1.8 * cos(a), dy: 1.8 * sin(a)))
+                        }
+                    } else {
+                        UIColor.black.setFill()
+                        UIBezierPath(ovalIn: circle.insetBy(dx: -1, dy: -1)).fill()
+                    }
+                }
                 GlyphArt.draw(mark, in: circle, ctx: ctx.cgContext)
             }
             guard named else { return }
@@ -1139,7 +1168,7 @@ enum PlaceLabel {
                                     color: UIColor.black.withAlphaComponent(0.12).cgColor)
             // Полупрозрачная: много названий рядом не должны закрывать карту
             // (0.34 — P372; 0.42 — P361; 0.62 — P330; почти непрозрачная — P244).
-            UIColor(Look.sticker).withAlphaComponent(solid ? 0.88 : 0.34).setFill()
+            UIColor(Look.sticker).withAlphaComponent(chosen ? 1 : solid ? 0.88 : 0.34).setFill()
             UIBezierPath(roundedRect: box, cornerRadius: 5).fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             // Кромка — чтобы плашка читалась на пёстрой карте (P244).
@@ -1317,23 +1346,16 @@ struct PlaceCloud: View {
     @State private var copied = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                if place.name.isEmpty {
-                    coordinates
-                } else {
-                    Text(place.name)
-                        .font(Look.serif(17, weight: .semibold))
-                        .foregroundStyle(Look.ink)
-                        .lineLimit(2)
-                }
-                Spacer()
-                Button(place.file == nil ? T("Назвать", "Name it") : T("Изменить", "Edit"), action: edit)
-                    .font(Look.sans(14))
+        // Без пустот (P428): название, под ним пояснение, последней строкой
+        // — координаты с копированием и «Изменить» справа внизу.
+        VStack(alignment: .leading, spacing: 3) {
+            if !place.name.isEmpty {
+                Text(place.name)
+                    .font(Look.serif(17, weight: .semibold))
+                    .foregroundStyle(Look.ink)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            // Координаты видны всегда: в плане и дневнике их нет, они здесь
-            // (P352). Касание копирует; их же можно выделить пальцем.
-            if !place.name.isEmpty { coordinates }
             if !place.text.isEmpty {
                 // Не выше шести строк; длиннее — прокручивается пальцем.
                 ViewThatFits(in: .vertical) {
@@ -1342,8 +1364,18 @@ struct PlaceCloud: View {
                 }
                 .frame(maxHeight: 6 * 20)
             }
+            // Координаты видны всегда: в плане и дневнике их нет, они здесь
+            // (P352). Касание копирует; их же можно выделить пальцем.
+            HStack(alignment: .firstTextBaseline) {
+                coordinates
+                Spacer(minLength: 8)
+                Button(place.file == nil ? T("Назвать", "Name it") : T("Изменить", "Edit"), action: edit)
+                    .font(Look.sans(14))
+            }
+            .padding(.top, 2)
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         // Та же кромка, что у кнопок внизу (P283) — плашка чётче на пёстрой
         // карте (P307).

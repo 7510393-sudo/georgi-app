@@ -60,6 +60,32 @@ enum Backup {
         return url
     }
 
+    /// Сколько свободно там, куда кладём копию (P428). `nil` — место не
+    /// выбрано или система не ответила.
+    static func freeSpace() -> Int64? {
+        guard let url = place() else { return nil }
+        let opened = url.startAccessingSecurityScopedResource()
+        defer { if opened { url.stopAccessingSecurityScopedResource() } }
+        let keys: Set<URLResourceKey> = [.volumeAvailableCapacityForImportantUsageKey,
+                                         .volumeAvailableCapacityKey]
+        guard let v = try? url.resourceValues(forKeys: keys) else { return nil }
+        if let important = v.volumeAvailableCapacityForImportantUsage, important > 0 { return important }
+        return v.volumeAvailableCapacity.map(Int64.init)
+    }
+
+    /// Сколько весит папка целиком — со снимками и видео.
+    static func size(of root: URL) -> Int64 {
+        var total: Int64 = 0
+        let keys: Set<URLResourceKey> = [.fileAllocatedSizeKey, .isDirectoryKey]
+        guard let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys))
+        else { return 0 }
+        for case let url as URL in walk {
+            guard let v = try? url.resourceValues(forKeys: keys), v.isDirectory != true else { continue }
+            total += Int64(v.fileAllocatedSize ?? 0)
+        }
+        return total
+    }
+
     // MARK: - Где нельзя
 
     /// Почему в это место копию класть не стоит; `nil` — можно.
@@ -518,6 +544,18 @@ enum Backup {
     }
 
     /// «полная · 12 дн. назад · с тех пор +340 МБ» или «ещё ни разу».
+    /// Строка под «Резервной копией» (P428): когда, сколько весила, куда
+    /// легла последняя копия.
+    static func detail(size: Int64?) -> String {
+        var out = summary(size: size)
+        guard last != nil else { return out }
+        if sizeAtLast > 0 {
+            out += " · " + ByteCountFormatter.string(fromByteCount: sizeAtLast, countStyle: .file)
+        }
+        if let placeName { out += "\n→ " + placeName }
+        return out
+    }
+
     static func summary(size: Int64?) -> String {
         guard let last else { return T("ещё ни разу", "never yet") }
         let days = Int(Date().timeIntervalSince(last) / 86_400)
@@ -558,6 +596,8 @@ struct BackupSheet: View {
     /// С прошлой копии этих файлов в архиве не стало (P377).
     @State private var vanished: [String] = []
     @State private var broughtBack: String?
+    @State private var archiveSize: Int64?
+    @State private var free: Int64?
 
     private static var names: [String] {
         [T("Место копии", "Backup place"),
@@ -583,10 +623,28 @@ struct BackupSheet: View {
                            + "even if you delete an entry here. Your entries themselves are left untouched."))
                         .foregroundStyle(Look.inkSoft)
 
+                    // Что и куда — до копирования (P428): откуда, сколько
+                    // весит архив, куда и сколько там свободно.
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(T("Что копируем", "What is copied")).font(Look.sans(13, weight: .semibold))
+                        Text(vault.friendlyPath).font(Look.sans(13)).foregroundStyle(Look.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(T("Весь архив: ", "The whole archive: ")
+                             + (archiveSize.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) }
+                                ?? T("считаю…", "counting…")))
+                            .font(Look.sans(13)).foregroundStyle(Look.inkSoft)
+                    }
+
                     VStack(alignment: .leading, spacing: 6) {
                         Text(T("Куда копировать", "Where to copy")).font(Look.sans(13, weight: .semibold))
                         Text(placeName ?? T("ещё не выбрано", "not chosen yet"))
                             .foregroundStyle(placeName == nil ? Look.inkFaint : Look.ink)
+                        if placeName != nil, let free {
+                            Text(T("Свободно там: ", "Free there: ")
+                                 + ByteCountFormatter.string(fromByteCount: free, countStyle: .file))
+                                .font(Look.sans(13))
+                                .foregroundStyle(archiveSize.map { $0 > free } == true ? .red : Look.inkSoft)
+                        }
                         Button(placeName == nil ? T("Выбрать место…", "Choose a place…")
                                                 : T("Выбрать другое место…", "Choose another place…")) {
                             choosing = true
@@ -600,8 +658,10 @@ struct BackupSheet: View {
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(T("Последняя копия: ", "Last backup: ") + Backup.summary(size: nil))
+                        // После копирования — куда и сколько легло (P428).
+                        Text(T("Последняя копия: ", "Last backup: ") + Backup.detail(size: nil))
                             .foregroundStyle(Look.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
                         Button {
                             copy()
                         } label: {
@@ -641,6 +701,22 @@ struct BackupSheet: View {
             }
         }
         .interactiveDismissDisabled(running)
+        .onAppear(perform: measure)
+        .onChange(of: placeName) { _, _ in measure() }
+        .onChange(of: running) { _, now in if !now { measure() } }
+    }
+
+    /// Объём архива и свободное место у копии — в стороне от экрана.
+    private func measure() {
+        let root = vault.root
+        DispatchQueue.global(qos: .utility).async {
+            let size = root.map(Backup.size(of:))
+            let space = Backup.freeSpace()
+            DispatchQueue.main.async {
+                archiveSize = size
+                free = space
+            }
+        }
     }
 
     // MARK: - Ступени на экране

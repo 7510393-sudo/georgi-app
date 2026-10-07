@@ -100,7 +100,13 @@ enum Glyph {
 
     /// Значки без серой подложки (P398, P399, P404): рисунок с контуром
     /// прямо на карте. Стрелка, огонь и флаг нарисованы свои (P409).
-    static let bare: Set<String> = ["стрелка", "огонь", "пираты"]
+    /// Сердце, ёлка, звезда и лампочка — тоже без подложки и кружка (P428).
+    static let bare: Set<String> = ["стрелка", "огонь", "пираты",
+                                    "сердце", "природа", "звезда", "вдохновение"]
+
+    /// Звезда, лампочка и сердце на десятую крупнее прочих голых значков
+    /// (P428).
+    static let larger: Set<String> = ["звезда", "вдохновение", "сердце"]
 
     /// «Невидимый» (P409): на карте нет значка — только плашка с названием,
     /// а без названия — со словом «Место».
@@ -113,8 +119,9 @@ enum Glyph {
         "точка": .white,
         "сердце": UIColor(red: 0.93, green: 0.12, blue: 0.14, alpha: 1),
         "огонь": UIColor(red: 0.95, green: 0.1, blue: 0.08, alpha: 1),
-        "звезда": UIColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1),
-        "вдохновение": UIColor(red: 1.0, green: 0.88, blue: 0.0, alpha: 1),
+        // Жёлтые — ярче (P428).
+        "звезда": UIColor(red: 1.0, green: 0.90, blue: 0.08, alpha: 1),
+        "вдохновение": UIColor(red: 1.0, green: 0.93, blue: 0.12, alpha: 1),
     ]
 
     /// «Пустой кружок»: отметка без заливки — одно белое кольцо, карта под
@@ -438,7 +445,8 @@ enum GlyphArt {
         // Свои рисунки (P409): ни чужих значков, ни эмодзи — только то,
         // что нарисовано здесь.
         switch mark {
-        case "природа": return tree(in: circle.insetBy(dx: 4, dy: 3))
+        case "природа": return tree(in: circle.insetBy(dx: 2, dy: 0))
+        case "сердце": return heart(in: circle.insetBy(dx: -0.6, dy: 0.4))
         case "стрелка": return arrow(in: circle.insetBy(dx: 2, dy: 1))
         case "огонь": return fire(in: circle.insetBy(dx: 3, dy: 1))
         case "пираты": return pirates(in: circle)
@@ -448,7 +456,7 @@ enum GlyphArt {
         // как номер сделанного дела (P418).
         let invisible = mark == Glyph.invisible
         guard let shape = UIImage(systemName: Glyph.image(invisible ? Glyph.standard : mark),
-                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? 17 : 11,
+                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: bare ? (Glyph.larger.contains(mark) ? 18.7 : 17) : 11,
                                                                                  weight: .semibold))
         else { return }
         let g = shape.size
@@ -500,15 +508,24 @@ enum GlyphArt {
     /// уже прежнего.
     private static func tree(in r: CGRect) {
         let mid = r.midX
+        // Ветки резкие (P428): острые концы ярусов, низ — зубцами, а не
+        // дугой.
         func tier(_ top: CGFloat, _ base: CGFloat, _ half: CGFloat) -> UIBezierPath {
             let p = UIBezierPath()
+            let y = r.minY + r.height * base
+            let notch = r.minY + r.height * (base - 0.07)
             p.move(to: CGPoint(x: mid, y: r.minY + r.height * top))
-            p.addLine(to: CGPoint(x: mid + r.width * half, y: r.minY + r.height * base))
-            p.addQuadCurve(to: CGPoint(x: mid - r.width * half, y: r.minY + r.height * base),
-                           controlPoint: CGPoint(x: mid, y: r.minY + r.height * (base - 0.12)))
+            p.addLine(to: CGPoint(x: mid + r.width * half, y: y))
+            p.addLine(to: CGPoint(x: mid + r.width * half * 0.5, y: notch))
+            p.addLine(to: CGPoint(x: mid + r.width * half * 0.2, y: y - 0.5))
+            p.addLine(to: CGPoint(x: mid, y: notch))
+            p.addLine(to: CGPoint(x: mid - r.width * half * 0.2, y: y - 0.5))
+            p.addLine(to: CGPoint(x: mid - r.width * half * 0.5, y: notch))
+            p.addLine(to: CGPoint(x: mid - r.width * half, y: y))
             p.close()
-            p.lineWidth = 1.5
-            p.lineJoinStyle = .round
+            p.lineWidth = 1.3
+            p.lineJoinStyle = .miter
+            p.miterLimit = 8
             return p
         }
         let trunk = UIBezierPath(rect: CGRect(x: mid - 1.3, y: r.minY + r.height * 0.8,
@@ -528,6 +545,31 @@ enum GlyphArt {
             green.setFill()
             p.fill()
         }
+    }
+
+    /// Сердце (P428): своё, с острым низом и чёткими «плечами», а не
+    /// округлый системный шарик. Красное с тёмной каймой, без подложки.
+    private static func heart(in r: CGRect) {
+        let w = r.width, h = r.height
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + w * x, y: r.minY + h * y) }
+        let p = UIBezierPath()
+        p.move(to: pt(0.5, 0.95))
+        p.addLine(to: pt(0.1, 0.5))
+        p.addCurve(to: pt(0.5, 0.24), controlPoint1: pt(-0.06, 0.26), controlPoint2: pt(0.34, 0.04))
+        p.addCurve(to: pt(0.9, 0.5), controlPoint1: pt(0.66, 0.04), controlPoint2: pt(1.06, 0.26))
+        p.close()
+        p.lineJoinStyle = .miter
+        p.miterLimit = 10
+        p.lineWidth = 1.4
+        UIColor(white: 0.1, alpha: 0.9).setStroke()
+        p.stroke()
+        Glyph.color("сердце").setFill()
+        p.fill()
+        // Блик — сердце читается рисунком, а не пятном.
+        let shine = UIBezierPath(ovalIn: CGRect(x: r.minX + w * 0.24, y: r.minY + h * 0.27,
+                                                width: w * 0.14, height: h * 0.1))
+        UIColor.white.withAlphaComponent(0.55).setFill()
+        shine.fill()
     }
 
     /// Стрелка вниз (P409): своя, на десятую уже системной и с острыми

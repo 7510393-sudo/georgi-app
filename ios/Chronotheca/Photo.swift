@@ -229,6 +229,8 @@ struct PhotoStrip: View {
 
     /// Превью, которое сейчас несут, — по нему соседи расступаются.
     @State private var carrying: Int?
+    /// Обзор всех вложений сеткой (P428).
+    @State private var showingAll = false
 
     /// Как снимок в тексте — в пять строк дневника (P383; прежде 60,
     /// P275), вплотную, без промежутков.
@@ -264,6 +266,12 @@ struct PhotoStrip: View {
         }
         .frame(height: Self.side)
         .onChange(of: photos.count) { _, _ in carrying = nil }
+        .sheet(isPresented: $showingAll) {
+            AttachmentGrid(items: photos) { i in
+                showingAll = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onOpen?(i) }
+            }
+        }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
@@ -327,8 +335,75 @@ struct PhotoStrip: View {
             .background(Look.chrome, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.rule))
             .contentShape(Rectangle())
-            .onTapGesture { onOpen?(i) }
+            // Много вложений — не листать по одному, а обзор сеткой по
+            // видам (P428).
+            .onTapGesture { showingAll = true }
             .accessibilityLabel(T("Ещё фотографий: \(n)", "More photos: \(n)"))
+    }
+}
+
+/// Все вложения дня сеткой, по видам: снимки, видео, голос, файлы (P428).
+/// Касание открывает вложение так же, как из полоски.
+struct AttachmentGrid: View {
+    let items: [URL?]
+    let open: (Int) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private static let columns = [GridItem(.adaptive(minimum: 84), spacing: 4)]
+
+    private func kind(_ i: Int) -> Diary.Kind {
+        items[i].map { Diary.kind(of: $0.lastPathComponent) } ?? .photo
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    group(T("Снимки", "Photos"), .photo)
+                    group(T("Видео", "Video"), .video)
+                    group(T("Голос", "Voice"), .audio)
+                    group(T("Файлы", "Files"), .file)
+                }
+                .padding(12)
+            }
+            .background(Look.chrome)
+            .navigationTitle(T("Вложения дня", "The day’s attachments"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(T("Готово", "Done")) { dismiss() }.fontWeight(.semibold)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func group(_ title: String, _ k: Diary.Kind) -> some View {
+        let found = items.indices.filter { kind($0) == k }
+        if !found.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(title) · \(found.count)")
+                    .font(Look.sans(13, weight: .semibold))
+                    .foregroundStyle(Look.inkSoft)
+                LazyVGrid(columns: Self.columns, spacing: 4) {
+                    ForEach(found, id: \.self) { i in
+                        tile(i)
+                            .aspectRatio(1, contentMode: .fill)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .contentShape(Rectangle())
+                            .onTapGesture { open(i) }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func tile(_ i: Int) -> some View {
+        switch kind(i) {
+        case .photo: PhotoThumb(url: items[i])
+        case .video: PhotoThumb(url: items[i], video: true)
+        case .audio: FileTile(icon: "waveform", label: items[i]?.lastPathComponent ?? T("голос", "voice"))
+        case .file: FileTile(icon: "doc.text", label: items[i]?.lastPathComponent ?? T("файл", "file"))
+        }
     }
 }
 
@@ -592,6 +667,7 @@ struct PhotoViewer: View {
     @State private var image: UIImage?
     @State private var scale: CGFloat = 1
     @State private var asking = false
+    @State private var saved = false
     /// Насколько снимок стянут пальцем вниз (P270).
     @State private var pulled: CGSize = .zero
     /// Насколько снимок сдвинут вбок, пока его листают (P278).
@@ -621,7 +697,9 @@ struct PhotoViewer: View {
                 ProgressView().tint(.white)
             }
         }
-        .overlay(alignment: .top) { bar.opacity(pulled == .zero ? 1 : 0) }
+        // Кнопки — внизу (P428): «Готово · Поделиться · Удалить», у снятых
+        // в приложении ещё «Сохранить на устройство».
+        .overlay(alignment: .bottom) { bar.opacity(pulled == .zero ? 1 : 0) }
         // Под снимком — страница: её видно, пока снимок стягивают.
         .presentationBackground(.clear)
         .task {
@@ -709,6 +787,18 @@ struct PhotoViewer: View {
                 }
                 .accessibilityLabel(T("Вернуть в полоску внизу страницы", "Move back to the strip at the bottom"))
             }
+            if let url, let image, CameraShots.taken(url) {
+                Button {
+                    UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                    Feel.done()
+                    saved = true
+                } label: {
+                    Image(systemName: saved ? "checkmark" : "square.and.arrow.down")
+                        .modifier(OverPhoto(round: true))
+                }
+                .disabled(saved)
+                .accessibilityLabel(T("Сохранить на устройство", "Save to the device"))
+            }
             if onRemove != nil {
                 Button { asking = true } label: {
                     Image(systemName: "trash").modifier(OverPhoto(round: true))
@@ -718,7 +808,7 @@ struct PhotoViewer: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 14)
-        .padding(.top, 10)
+        .padding(.bottom, 14)
     }
 }
 
@@ -844,5 +934,22 @@ struct RemoveQuestion: ViewModifier {
             Text(T("«Убрать со страницы» — файл останется в папке. «Удалить из хранилища» — файл уйдёт в корзину на 30 дней: вернуть его можно в Настройки → Корзина, потом он сотрётся насовсем.",
                    "“Remove from the page” keeps the file in the folder. “Delete from storage” moves it to the trash for 30 days: you can restore it in Settings → Trash; after that it is erased for good."))
         }
+    }
+}
+
+/// Снимки, снятые камерой из приложения (P428): их, в отличие от взятых из
+/// «Фото», есть смысл сохранить на устройство — в «Фото» их ещё нет.
+/// Помнит телефон, по имени файла.
+enum CameraShots {
+    private static let key = "photos.camera"
+
+    static func mark(_ link: String) {
+        var all = UserDefaults.standard.stringArray(forKey: key) ?? []
+        all.append((link as NSString).lastPathComponent)
+        UserDefaults.standard.set(Array(all.suffix(2000)), forKey: key)
+    }
+
+    static func taken(_ url: URL) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: key) ?? []).contains(url.lastPathComponent)
     }
 }

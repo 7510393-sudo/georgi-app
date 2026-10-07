@@ -291,17 +291,52 @@ struct SettingsSticker: View {
 
     @ViewBuilder private var entriesPart: some View {
         NoteSection(title: T("Записи", "Entries"))
+        // Порядок — от того, где лежат записи, к тому, как их взять с
+        // собой (P428).
         place
         safety
-        // Резервная копия (P368): когда была и кнопка — единственная
-        // главная кнопка на записке.
-        NoteRow(title: T("Резервная копия", "Backup"), detail: Backup.summary(size: storageBytes),
+        // Жмут — и весь архив переезжает, а не только то, что будет
+        // написано дальше (P325).
+        NoteRow(title: T("Перенести архив в другое место", "Move the archive elsewhere")) {
+            NoteButton(title: T("Выбрать ›", "Choose ›")) { choosingPlace = true }
+        }
+        if let before = vault.previousFriendly {
+            // Куда именно вернёмся — видно до нажатия, а не после.
+            NoteRow(title: T("Вернуться к прежней папке", "Back to the previous folder"), detail: before) {
+                NoteButton(title: T("Вернуть ›", "Go back ›")) {
+                    close()
+                    vault.goBack()
+                }
+            }
+        }
+        // Резервная копия (P368): когда была, сколько, куда. Пора — кнопка
+        // мигает красным «Пора сделать» (P428).
+        NoteRow(title: T("Резервная копия", "Backup"), detail: Backup.detail(size: storageBytes),
                 detailColor: Backup.healthy ? Look.inkSoft : .orange) {
-            NoteButton(title: T("Сделать", "Make"), main: true) { showingBackup = true }
+            if Backup.healthy {
+                NoteButton(title: T("Сделать", "Make"), main: true) { showingBackup = true }
+            } else {
+                DueButton(title: T("Пора сделать", "Time to make one")) { showingBackup = true }
+            }
+        }
+        // Записи за срок одной книгой (P296).
+        NoteRow(title: T("PDF за выбранный срок", "PDF for a period")) {
+            NoteButton(title: T("Собрать ›", "Make ›")) { showingPDF = true }
         }
         // Перенос из других дневников — бесплатно всегда (M14, P378).
         NoteRow(title: T("Переход из другого приложения", "Switch from another app")) {
             NoteButton(title: T("Открыть ›", "Open ›")) { showingImport = true }
+        }
+        // Уйти можно в любой день: записи и так обычные файлы (P428).
+        NoteRow(title: T("Переход в другое приложение", "Switch to another app")) {
+            NoteButton(title: T("Как ›", "How ›")) { showingLeave = true }
+        }
+        .alert(T("Как перейти в другое приложение", "How to move to another app"), isPresented: $showingLeave) {
+            Button(T("Собрать PDF", "Make a PDF")) { showingPDF = true }
+            Button(T("Понятно", "Got it"), role: .cancel) { }
+        } message: {
+            Text(T("Ничего выгружать не нужно: записи — обычные текстовые файлы Markdown в вашей папке, по дню на файл, снимки и голос — рядом в своих папках. Их открывают Obsidian, iA Writer и любой текстовый редактор: укажите им эту папку. Для чтения и печати — PDF за любой срок.",
+                   "There is nothing to export: your entries are plain Markdown text files in your folder, one per day, with photos and voice next to them in their own folders. Obsidian, iA Writer and any text editor open them: point them at this folder. For reading and printing, make a PDF for any period."))
         }
         // Папки с прежними, русскими, именами — перевести (P353).
         if vault.hasRussianNames {
@@ -321,24 +356,6 @@ struct SettingsSticker: View {
                      + T("ссылки на снимки в записях поправятся следом. Файлы не копируются ", "photo links in your entries are updated after that. Files are not copied ")
                      + T("и не пересоздаются — меняются только имена. Если перевод оборвётся, ", "or recreated — only the names change. If it is interrupted, ")
                      + T("ничего не пропадёт: приложение понимает оба имени.", "nothing is lost: the app understands both names."))
-            }
-        }
-        // Записи за срок одной книгой (P296).
-        NoteRow(title: T("PDF за выбранный срок", "PDF for a period")) {
-            NoteButton(title: T("Собрать ›", "Make ›")) { showingPDF = true }
-        }
-        // Жмут — и весь архив переезжает, а не только то, что будет
-        // написано дальше (P325).
-        NoteRow(title: T("Перенести архив в другое место", "Move the archive elsewhere")) {
-            NoteButton(title: T("Выбрать ›", "Choose ›")) { choosingPlace = true }
-        }
-        if let before = vault.previousFriendly {
-            // Куда именно вернёмся — видно до нажатия, а не после.
-            NoteRow(title: T("Вернуться к прежней папке", "Back to the previous folder"), detail: before) {
-                NoteButton(title: T("Вернуть ›", "Go back ›")) {
-                    close()
-                    vault.goBack()
-                }
             }
         }
     }
@@ -534,6 +551,7 @@ struct SettingsSticker: View {
     }
 
     @State private var storageBytes: Int64?
+    @State private var showingLeave = false
 
     /// Сколько места занимает вся папка — не только записи, но и снимки,
     /// голос, видео и документы. Считаем не на каждый штрих, а один раз,

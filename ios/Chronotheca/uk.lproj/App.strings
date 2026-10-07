@@ -664,3 +664,26 @@
 "Got it" = "Зрозуміло";
 "Getting-started tips" = "Підказки для знайомства";
 "Show again ›" = "Показати знову ›";
+
+/* P428. */
+"What is copied" = "Що копіюємо";
+"The whole archive: " = "Увесь архів: ";
+"counting…" = "рахую…";
+"Free there: " = "Вільно там: ";
+"Markdown and text" = "Markdown і текст";
+"If %@ can export entries as text or Markdown, import them now: “Markdown and text” at the top of the list." = "Якщо %@ вміє вивантажувати записи текстом або Markdown, перенесіть їх зараз: «Markdown і текст» на початку списку.";
+"The day’s attachments" = "Вкладення дня";
+"Save to the device" = "Зберегти на пристрій";
+"Time to make one" = "Час зробити";
+"Switch to another app" = "Перехід до іншого застосунку";
+"How ›" = "Як ›";
+"How to move to another app" = "Як перейти до іншого застосунку";
+"Make a PDF" = "Зібрати PDF";
+"There is nothing to export: your entries are plain Markdown text files in your folder, one per day, with photos and voice next to them in their own folders. Obsidian, iA Writer and any text editor open them: point them at this folder. For reading and printing, make a PDF for any period." = "Нічого вивантажувати не треба: записи — звичайні текстові файли Markdown у вашій теці, по дню на файл, знімки й голос — поруч у своїх теках. Їх відкривають Obsidian, iA Writer і будь-який текстовий редактор: вкажіть їм цю теку. Для читання й друку — PDF за будь-який термін.";
+"— Imported —" = "— Імпорт —";
+"Almost every journal can export entries as text or Markdown: Obsidian, Diarly, Bear, Journey, Notion, iA Writer. Export them to a folder in Files and choose it here." = "Майже будь-який щоденник уміє вивантажувати записи текстом або Markdown: Obsidian, Diarly, Bear, Journey, Notion, iA Writer. Вивантажте їх у теку у «Файлах» і оберіть її тут.";
+"Each file becomes an entry of its day. The day comes from the file name (for example “2024-05-17.md”), otherwise from the first line, otherwise from the file’s date." = "Кожен файл стане записом свого дня. День береться з назви файлу (наприклад, «2024-05-17.md»), інакше — з першого рядка, інакше — за датою файлу.";
+"Nothing is written over your entries: if a day already has something, the import goes at the end under “— Imported —”. Importing again does not duplicate anything." = "Поверх ваших записів нічого не пишеться: якщо в дні вже щось є, перенесене стане в кінці під рядком «— Імпорт —». Повторне перенесення нічого не подвоїть.";
+"Choose the folder with entries…" = "Обрати теку із записами…";
+"There are no .md or .txt files in this folder." = "У цій теці немає файлів .md або .txt.";
+"Imported entries: %@, days: %@." = "Перенесено записів: %@, днів: %@.";
