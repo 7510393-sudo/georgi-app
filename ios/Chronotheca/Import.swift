@@ -271,7 +271,7 @@ enum DayOneImport {
 
     /// Положить файл выгрузки в свою папку архива — с датой дня в имени;
     /// чужое не затирается: занято имя — к нему номер.
-    private static func copy(_ source: URL, folder: String, date: Date, root: URL) -> String? {
+    static func copy(_ source: URL, folder: String, date: Date, root: URL, tag: String = "dayone") -> String? {
         let kind: Vault.Folder
         switch folder {
         case "photos": kind = .photos
@@ -284,7 +284,7 @@ enum DayOneImport {
         let home = Vault.folder(kind, in: root)
         let dir = home.appendingPathComponent(year)
         let ext = source.pathExtension.lowercased() == "jpeg" ? "jpg" : source.pathExtension.lowercased()
-        let base = stamp + "_dayone_" + String(source.deletingPathExtension().lastPathComponent.prefix(8))
+        let base = stamp + "_" + tag + "_" + String(source.deletingPathExtension().lastPathComponent.prefix(8))
         var target = dir.appendingPathComponent(base + "." + ext)
         var n = 2
         let fm = FileManager.default
@@ -303,8 +303,8 @@ enum DayOneImport {
 }
 
 /// Переход из другого приложения (P381): список дневников, откуда можно
-/// перенести записи. Работает пока перенос из Day One; у остальных сказано
-/// честно, что их перенос ещё делается.
+/// перенести записи. Свой перенос — у Day One, Diarium и Journey (P444); у
+/// остальных — через текст или Markdown (P439).
 struct ImportSheet: View {
 
     @EnvironmentObject private var vault: Vault
@@ -312,8 +312,11 @@ struct ImportSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     /// Как в Diarium: самые частые дневники, по алфавиту.
-    static let apps = ["Apple Journal", "Day One", "Daybook", "Daylio", "Diarly", "Diaro",
+    static let apps = ["Apple Journal", "Day One", "Daybook", "Daylio", "Diarium", "Diarly", "Diaro",
                        "Evernote", "Journey", "Memorize"]
+
+    /// Свой перенос, а не через текст: Day One (P378), Diarium и Journey (P444).
+    static let own: Set<String> = ["Day One", "Diarium", "Journey"]
 
     var body: some View {
         NavigationStack {
@@ -335,6 +338,8 @@ struct ImportSheet: View {
                         NavigationLink {
                             if app == "Day One" {
                                 DayOneImportView()
+                            } else if Self.own.contains(app) {
+                                JsonImportView(app: app)
                             } else {
                                 TextImportView(app: app)
                             }

@@ -63,6 +63,46 @@ enum Reminders {
         }
     }
 
+    // MARK: Вечером — «запишите день» (P444)
+
+    /// Час вечернего напоминания; −1 — выключено (так по умолчанию).
+    static let eveningKey = "prefs.evening"
+    static var eveningHour: Int {
+        UserDefaults.standard.object(forKey: eveningKey) as? Int ?? -1
+    }
+
+    /// Вечерние напоминания на неделю вперёд, каждое — на свой день. Сегодня
+    /// уже записано — сегодняшнего нет: напоминать о сделанном незачем.
+    /// Расставляется заново, когда приложение открывают и когда день ложится
+    /// на диск, — так неделя всегда впереди.
+    static func evening(todayWritten: Bool) {
+        guard !testing else { return }
+        let center = UNUserNotificationCenter.current()
+        let hour = eveningHour
+        center.getPendingNotificationRequests { pending in
+            let old = pending.map(\.identifier).filter { $0.hasPrefix("evening.") }
+            center.removePendingNotificationRequests(withIdentifiers: old)
+            guard hour >= 0 else { return }
+            let cal = Calendar.current
+            let today = cal.startOfDay(for: DayStore.today())
+            let now = Date()
+            for k in 0..<7 {
+                if k == 0 && todayWritten { continue }
+                guard let day = cal.date(byAdding: .day, value: k, to: today),
+                      let when = cal.date(bySettingHour: hour, minute: 0, second: 0, of: day),
+                      when > now else { continue }
+                let content = UNMutableNotificationContent()
+                content.title = T("Запишите день", "Write down your day")
+                content.body = T("Пара строк о том, как прошло сегодня.", "A few lines on how today went.")
+                content.sound = .default
+                let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: when)
+                let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+                center.add(UNNotificationRequest(identifier: "evening." + Vault.stamp(day),
+                                                 content: content, trigger: trigger))
+            }
+        }
+    }
+
     /// Когда звонить: час из колокольчика в этот день. Час раньше границы
     /// суток — это уже следующее утро по часам (граница — 4:00, P17).
     static func moment(_ hhmm: String, on day: Date) -> Date? {

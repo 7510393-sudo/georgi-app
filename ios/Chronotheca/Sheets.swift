@@ -436,6 +436,21 @@ struct SettingsSticker: View {
                 }))
             }
         }
+        // Вечером — «запишите день» (P444): в выбранный час, если день ещё
+        // не записан.
+        NoteRow(title: T("Напоминание вечером", "Evening reminder"),
+                detail: evening >= 0 ? T("«Запишите день» — если в дневнике сегодня пусто.",
+                                         "“Write down your day” — if today’s diary is empty.") : nil) {
+            Choice(options: [(-1, T("выкл", "off")), (20, "20:00"), (21, "21:00"), (22, "22:00")],
+                   selection: Binding(get: { evening }, set: { hour in
+                evening = hour
+                if hour >= 0 {
+                    Reminders.ask { _ in store.planEvening() }
+                } else {
+                    store.planEvening()
+                }
+            }))
+        }
         // События Календаря iPhone в плане (P376).
         NoteRow(title: T("События Календаря iPhone", "iPhone Calendar events"),
                 detail: eventsDetail, detailColor: eventsDenied ? .orange : Look.inkSoft) {
@@ -587,6 +602,7 @@ struct SettingsSticker: View {
     }
 
     @State private var undone = false
+    @AppStorage(Reminders.eveningKey) private var evening = -1
     @AppStorage(Prefs.lock) private var locked = false
     @AppStorage(Prefs.boundary) private var boundary = 0
     @AppStorage(Prefs.startTab) private var startTab = "plan"
@@ -728,8 +744,9 @@ struct SettingsSticker: View {
 
     private var missing: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(T("Напоминание вечером: «запишите день»", "Evening reminder: “write down your day”"))
-            Text(T("Перенос из Day One и «Дневника» Apple", "Import from Day One and Apple Journal"))
+            // Вечернее напоминание есть (P444), Day One, Diarium, Journey —
+            // тоже; «Дневник» Apple своих записей наружу не отдаёт.
+            Text(T("Перенос из «Дневника» Apple", "Import from Apple Journal"))
         }
         .font(Look.sans(12))
         .foregroundStyle(Look.inkFaint)

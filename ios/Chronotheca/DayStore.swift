@@ -1301,6 +1301,14 @@ final class DayStore: ObservableObject {
         if !away.contains(.planner) { Reminders.sync(day: date, rows: planRows) }
         // Дела сегодняшнего дня — виджету (P382).
         if isToday, !away.contains(.planner) { WidgetShare.publish(day: date, rows: planRows) }
+        // Сегодня записали — вечернее «запишите день» не придёт (P444).
+        if isToday, Reminders.eveningHour >= 0 { Reminders.evening(todayWritten: todayWritten) }
+    }
+
+    /// В сегодняшнем дневнике есть хоть что-то: запись или ответ «Как прошло?».
+    private var todayWritten: Bool {
+        !diaryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || answers.values.contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
     /// Расставить напоминания на две недели вперёд — по файлам: колокольчик
@@ -1324,6 +1332,13 @@ final class DayStore: ObservableObject {
         // сегодня, а не остаёмся на вчерашней странице (P330).
         let now = DayStore.today()
         if date != now { go(to: now) } else { refresh() }
+        // Вечерние напоминания — на неделю вперёд от нынешнего дня (P444).
+        planEvening()
+    }
+
+    /// Расставить вечерние «запишите день» заново (P444); выключены — снять.
+    func planEvening() {
+        Reminders.evening(todayWritten: isToday && todayWritten)
     }
 
     /// План дня таким, каким он ляжет в файл.
