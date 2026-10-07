@@ -641,3 +641,26 @@
 "This day hasn't come yet — the diary opens on the day itself" = "Deze dag is nog niet aangebroken — het dagboek opent op de dag zelf";
 "note" = "noteren";
 "A line at the foot of the diary, next to the weather." = "Een regel onderaan het dagboek, naast het weer.";
+
+/* Подсказки для знакомства (P427). */
+"Turn the days" = "Blader door de dagen";
+"Swipe sideways for yesterday and tomorrow. “Today” at the bottom brings you back." = "Veeg opzij voor gisteren en morgen. ‘Vandaag’ onderaan brengt je terug.";
+"Plan and diary on one page" = "Plan en dagboek op één pagina";
+"Tasks for the day on top, the diary below. Scroll down to write." = "Bovenaan de taken van de dag, daaronder het dagboek. Scrol omlaag om te schrijven.";
+"Tasks" = "Taken";
+"Tap the number to mark a task done. Hold a task and drag: up or down to reorder, right to move it to another day, left to delete." = "Tik op het nummer om een taak af te vinken. Houd een taak vast en sleep: omhoog of omlaag om te herschikken, naar rechts naar een andere dag, naar links om te verwijderen.";
+"Photos, voice, files" = "Foto’s, stem, bestanden";
+"The strip at the bottom of the page and above the keyboard: camera, photos, voice, files. Drag a photo from the strip straight into your text." = "De balk onderaan de pagina en boven het toetsenbord: camera, foto’s, stem, bestanden. Sleep een foto uit de strook direct in je tekst.";
+"The top corners" = "De bovenhoeken";
+"Left: settings. Right: the page menu. Touch a corner or pull it down." = "Links: instellingen. Rechts: het paginamenu. Tik op een hoek of trek hem omlaag.";
+"Your entries are your files" = "Je notities zijn je bestanden";
+"Everything is kept as plain files in the folder you chose. You can see them in Files; delete the app and your entries stay." = "Alles staat als gewone bestanden in de map die je hebt gekozen. Je ziet ze in Bestanden; verwijder je de app, dan blijven je notities.";
+"Your places" = "Je plekken";
+"Hold your finger on the map to drop a pin. Name it, pick an icon and add it to the day." = "Houd je vinger op de kaart om een speld te plaatsen. Geef hem een naam, kies een icoon en zet hem bij de dag.";
+"Where to search" = "Waar zoeken";
+"The three dots at top right: search only the plan or the diary, or only photos, video, voice, files or places." = "De drie puntjes rechtsboven: zoek alleen in het plan of het dagboek, of alleen foto’s, video, stem, bestanden of plekken.";
+"Don’t show tips" = "Niet meer tonen";
+"Next" = "Volgende";
+"Got it" = "Begrepen";
+"Getting-started tips" = "Tips om te beginnen";
+"Show again ›" = "Opnieuw tonen ›";

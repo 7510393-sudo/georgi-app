@@ -283,6 +283,7 @@ final class Shell: ObservableObject {
         case "editing":   store.move(by: -1); store.setEditing(.plan, true)
         case "future":    store.move(by: 1); tab = .diary
         case "side":      probingSide = true
+        case "hint":      Hints.shared.showFirstForPreview()
         case "list":
             // Вид календаря запоминается в настройках — оттуда его и берём.
             UserDefaults.standard.set(CalendarView.Kind.list.rawValue, forKey: "calendar.kind")

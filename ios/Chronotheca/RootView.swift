@@ -301,6 +301,12 @@ struct RootView: View {
                     .padding(.bottom, max(0, keyboard.height - KeyboardBar.safeBottom) + 2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
+            // Подсказки для первого знакомства (P427) — поверх всего, когда
+            // экран спокоен.
+            HintLayer(screen: shell.screen,
+                      quiet: !shell.showingMenu && !shell.showingSettings
+                          && shell.movingTask == nil && keyboard.height == 0
+                          && vault.moving == nil)
             if let notice = shell.notice {
                 toast(notice)
                     // Над клавиатурой и полоской на ней, иначе не видно.

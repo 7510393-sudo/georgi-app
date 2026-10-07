@@ -407,7 +407,9 @@ final class DayStore: ObservableObject {
                        until: Vault.stamp(date), time: row.time, bell: row.bell,
                        text: row.text, missed: nil)
         Repeats.extend(&s, through: seriesHorizon(every), vault: vault, open: date)
-        Repeats.save(Repeats.load(vault) + [s], vault)
+        // Список не прочитался — не пишем поверх (P427): дела в файлах дней
+        // уже стоят, без списка их только не будут дописывать дальше.
+        if let list = Repeats.list(vault) { Repeats.save(list + [s], vault) }
         noteSeries()
         syncUpcomingReminders()
         return Repeats.written(s, after: date).count - (s.missed?.count ?? 0)
@@ -426,14 +428,21 @@ final class DayStore: ObservableObject {
 
     /// Убрать будущие повторы серии и саму серию.
     private func dropFuture(_ series: String) {
-        var list = Repeats.load(vault)
-        if let s = list.first(where: { $0.id == series }) {
-            for day in Repeats.written(s, after: date) {
-                _ = Repeats.edit(series, on: day, vault: vault) { rows, k in _ = rows.remove(at: k) }
-            }
+        let list = Repeats.list(vault)
+        // Дни берутся и из списка серий, и из самих файлов: списка могло не
+        // оказаться (не перенесли с архивом, ещё в iCloud) — тогда прежде
+        // удалялся только этот день (P427).
+        var days = Set(Repeats.scan(series, after: date, vault: vault))
+        if let s = list?.first(where: { $0.id == series }) {
+            days.formUnion(Repeats.written(s, after: date))
         }
-        list.removeAll { $0.id == series }
-        Repeats.save(list, vault)
+        for day in days.sorted() {
+            _ = Repeats.edit(series, on: day, vault: vault) { rows, k in _ = rows.remove(at: k) }
+        }
+        if var list, list.contains(where: { $0.id == series }) {
+            list.removeAll { $0.id == series }
+            Repeats.save(list, vault)
+        }
     }
 
     /// Дело серии поправили — название, время, напоминание. Спросить,
@@ -457,19 +466,22 @@ final class DayStore: ObservableObject {
             if all { dropFuture(r.series) }
         } else if all {
             let row = planRows[i]
-            var list = Repeats.load(vault)
-            if let k = list.firstIndex(where: { $0.id == r.series }) {
-                for day in Repeats.written(list[k], after: date) {
-                    _ = Repeats.edit(r.series, on: day, vault: vault) { rows, j in
-                        rows[j].text = row.text
-                        rows[j].time = row.time
-                        rows[j].bell = row.bell
-                    }
+            var list = Repeats.list(vault)
+            let k = list?.firstIndex(where: { $0.id == r.series })
+            var days = Set(Repeats.scan(r.series, after: date, vault: vault))
+            if let list, let k { days.formUnion(Repeats.written(list[k], after: date)) }
+            for day in days.sorted() {
+                _ = Repeats.edit(r.series, on: day, vault: vault) { rows, j in
+                    rows[j].text = row.text
+                    rows[j].time = row.time
+                    rows[j].bell = row.bell
                 }
-                list[k].text = row.text
-                list[k].time = row.time
-                list[k].bell = row.bell
-                Repeats.save(list, vault)
+            }
+            if let k, list != nil {
+                list![k].text = row.text
+                list![k].time = row.time
+                list![k].bell = row.bell
+                Repeats.save(list!, vault)
             }
         }
         noteSeries()

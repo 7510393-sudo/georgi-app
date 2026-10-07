@@ -515,6 +515,13 @@ struct SettingsSticker: View {
 
     @ViewBuilder private var aboutPart: some View {
         NoteSection(title: T("О приложении", "About"))
+        // Подсказки для знакомства — заново, с первой (P427).
+        NoteRow(title: T("Подсказки для знакомства", "Getting-started tips")) {
+            NoteButton(title: T("Показать снова ›", "Show again ›")) {
+                Hints.shared.startOver()
+                close()
+            }
+        }
         NoteRow(title: T("Чего ещё нет", "Not there yet")) {
             NoteButton(title: undone ? T("Скрыть ▾", "Hide ▾") : T("Показать ›", "Show ›")) { undone.toggle() }
         }

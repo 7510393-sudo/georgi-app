@@ -641,3 +641,26 @@
 "This day hasn't come yet — the diary opens on the day itself" = "Цей день ще не настав — щоденник відкриється в свій день";
 "note" = "записати";
 "A line at the foot of the diary, next to the weather." = "Рядком унизу щоденника, поруч із погодою.";
+
+/* Подсказки для знакомства (P427). */
+"Turn the days" = "Гортайте дні";
+"Swipe sideways for yesterday and tomorrow. “Today” at the bottom brings you back." = "Проведіть пальцем убік — учора й завтра. «Сьогодні» внизу поверне до сьогоднішнього дня.";
+"Plan and diary on one page" = "План і щоденник — одна сторінка";
+"Tasks for the day on top, the diary below. Scroll down to write." = "Угорі — справи на день, нижче — щоденник. Прокрутіть униз, щоб писати.";
+"Tasks" = "Справи";
+"Tap the number to mark a task done. Hold a task and drag: up or down to reorder, right to move it to another day, left to delete." = "Торкніться номера — справу зроблено. Утримуйте справу й ведіть: угору-вниз — переставити, праворуч — на інший день, ліворуч — видалити.";
+"Photos, voice, files" = "Знімки, голос, файли";
+"The strip at the bottom of the page and above the keyboard: camera, photos, voice, files. Drag a photo from the strip straight into your text." = "Рядок унизу сторінки й над клавіатурою: камера, фото, голос, файли. Знімок зі смужки можна пальцем перенести просто в текст.";
+"The top corners" = "Куточки вгорі";
+"Left: settings. Right: the page menu. Touch a corner or pull it down." = "Ліворуч — налаштування, праворуч — меню сторінки. Торкніться куточка або потягніть його вниз.";
+"Your entries are your files" = "Записи — ваші файли";
+"Everything is kept as plain files in the folder you chose. You can see them in Files; delete the app and your entries stay." = "Усе лежить звичайними файлами в теці, яку ви обрали. Їх видно у «Файлах»; видаліть застосунок — записи залишаться.";
+"Your places" = "Свої місця";
+"Hold your finger on the map to drop a pin. Name it, pick an icon and add it to the day." = "Утримуйте палець на карті — з’явиться точка. Її можна назвати, обрати значок і записати в день.";
+"Where to search" = "Де шукати";
+"The three dots at top right: search only the plan or the diary, or only photos, video, voice, files or places." = "Три крапки праворуч угорі — шукати лише в плані чи в щоденнику, лише знімки, відео, голос, файли або місця.";
+"Don’t show tips" = "Більше не показувати";
+"Next" = "Далі";
+"Got it" = "Зрозуміло";
+"Getting-started tips" = "Підказки для знайомства";
+"Show again ›" = "Показати знову ›";

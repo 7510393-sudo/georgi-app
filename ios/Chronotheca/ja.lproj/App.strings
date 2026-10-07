@@ -641,3 +641,26 @@
 "This day hasn't come yet — the diary opens on the day itself" = "この日はまだ来ていません — 日記はその日になると開きます";
 "note" = "記録";
 "A line at the foot of the diary, next to the weather." = "日記の下部、天気の隣に一行で。";
+
+/* Подсказки для знакомства (P427). */
+"Turn the days" = "日をめくる";
+"Swipe sideways for yesterday and tomorrow. “Today” at the bottom brings you back." = "横にスワイプすると昨日と明日へ。下の「今日」で今日に戻ります。";
+"Plan and diary on one page" = "計画と日記は1ページに";
+"Tasks for the day on top, the diary below. Scroll down to write." = "上にその日の予定、下に日記。下にスクロールして書きましょう。";
+"Tasks" = "予定";
+"Tap the number to mark a task done. Hold a task and drag: up or down to reorder, right to move it to another day, left to delete." = "番号をタップすると完了になります。予定を長押ししてドラッグ：上下で並べ替え、右で別の日へ、左で削除。";
+"Photos, voice, files" = "写真・音声・ファイル";
+"The strip at the bottom of the page and above the keyboard: camera, photos, voice, files. Drag a photo from the strip straight into your text." = "ページの下とキーボードの上のバー：カメラ、写真、音声、ファイル。帯の写真は指でそのまま本文へ移せます。";
+"The top corners" = "上の角";
+"Left: settings. Right: the page menu. Touch a corner or pull it down." = "左は設定、右はページのメニュー。角をタップするか、下に引き出します。";
+"Your entries are your files" = "記録はあなたのファイル";
+"Everything is kept as plain files in the folder you chose. You can see them in Files; delete the app and your entries stay." = "すべては選んだフォルダに普通のファイルとして保存されます。「ファイル」アプリで見られ、アプリを削除しても記録は残ります。";
+"Your places" = "自分の場所";
+"Hold your finger on the map to drop a pin. Name it, pick an icon and add it to the day." = "地図を長押しするとピンが立ちます。名前を付け、アイコンを選び、その日に記録できます。";
+"Where to search" = "探す場所";
+"The three dots at top right: search only the plan or the diary, or only photos, video, voice, files or places." = "右上の三つの点：計画だけ・日記だけ、または写真・ビデオ・音声・ファイル・場所だけを検索。";
+"Don’t show tips" = "今後表示しない";
+"Next" = "次へ";
+"Got it" = "わかりました";
+"Getting-started tips" = "はじめてのヒント";
+"Show again ›" = "もう一度表示 ›";

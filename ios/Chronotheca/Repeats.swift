@@ -69,11 +69,47 @@ enum Repeats {
         vault.folder(.service)?.appendingPathComponent(fileName)
     }
 
-    static func load(_ vault: Vault) -> [Series] {
-        guard let url = url(vault), case .text(let text) = Vault.reading(at: url),
-              let list = try? JSONDecoder().decode([Series].self, from: Data(text.utf8))
-        else { return [] }
-        return list
+    static func load(_ vault: Vault) -> [Series] { list(vault) ?? [] }
+
+    /// Список серий — или `nil`, если файл есть, но прочитать его нельзя
+    /// (ещё в iCloud, испорчен). Тогда писать список нельзя: новый лёг бы
+    /// поверх непрочитанного, и все серии пропали бы (P182, P427).
+    static func list(_ vault: Vault) -> [Series]? {
+        guard let url = url(vault) else { return nil }
+        switch Vault.reading(at: url) {
+        case .none: return []
+        case .away: return nil
+        case .text(let text):
+            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return [] }
+            return try? JSONDecoder().decode([Series].self, from: Data(text.utf8))
+        }
+    }
+
+    /// Дни после `date`, в файлах которых стоит дело серии `id`. Нужно,
+    /// когда серии нет в списке — список не перенесли с архивом или он ещё
+    /// в iCloud: тогда «этот и все следующие» удаляли только этот день
+    /// (P427). Смотрятся файлы плана на два года вперёд.
+    static func scan(_ id: String, after date: Date, vault: Vault) -> [Date] {
+        guard let root = vault.root else { return [] }
+        let cal = Calendar.current
+        let from = cal.startOfDay(for: date)
+        let base = Vault.folder(.planner, in: root)
+        let fm = FileManager.default
+        var out: [Date] = []
+        let year = cal.component(.year, from: from)
+        for y in year...(year + 2) {
+            let folder = base.appendingPathComponent(String(y))
+            guard let names = try? fm.contentsOfDirectory(atPath: folder.path) else { continue }
+            for name in names where name.hasSuffix(".md") && !name.hasPrefix(".") {
+                guard let day = Vault.date(from: String(name.dropLast(3))), day > from,
+                      case .text(let text) = Vault.reading(at: folder.appendingPathComponent(name),
+                                                           coordinated: false),
+                      text.contains(id) else { continue }
+                let rows = Plan.rows(from: DayFile(text: text).body)
+                if rows.contains(where: { $0.repeats?.series == id }) { out.append(day) }
+            }
+        }
+        return out.sorted()
     }
 
     @discardableResult

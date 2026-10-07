@@ -641,3 +641,26 @@
 "This day hasn't come yet — the diary opens on the day itself" = "Dieser Tag ist noch nicht gekommen – das Tagebuch öffnet sich an diesem Tag";
 "note" = "eintragen";
 "A line at the foot of the diary, next to the weather." = "Eine Zeile unten im Tagebuch, neben dem Wetter.";
+
+/* Подсказки для знакомства (P427). */
+"Turn the days" = "Tage blättern";
+"Swipe sideways for yesterday and tomorrow. “Today” at the bottom brings you back." = "Wische seitwärts für gestern und morgen. „Heute“ unten bringt dich zurück.";
+"Plan and diary on one page" = "Plan und Tagebuch auf einer Seite";
+"Tasks for the day on top, the diary below. Scroll down to write." = "Oben die Aufgaben des Tages, darunter das Tagebuch. Scrolle nach unten, um zu schreiben.";
+"Tasks" = "Aufgaben";
+"Tap the number to mark a task done. Hold a task and drag: up or down to reorder, right to move it to another day, left to delete." = "Tippe auf die Nummer, um eine Aufgabe abzuhaken. Halte eine Aufgabe und ziehe: hoch oder runter zum Umsortieren, nach rechts auf einen anderen Tag, nach links zum Löschen.";
+"Photos, voice, files" = "Fotos, Sprache, Dateien";
+"The strip at the bottom of the page and above the keyboard: camera, photos, voice, files. Drag a photo from the strip straight into your text." = "Die Leiste unten auf der Seite und über der Tastatur: Kamera, Fotos, Sprache, Dateien. Ein Foto aus dem Streifen lässt sich direkt in den Text ziehen.";
+"The top corners" = "Die oberen Ecken";
+"Left: settings. Right: the page menu. Touch a corner or pull it down." = "Links: Einstellungen. Rechts: das Seitenmenü. Tippe auf eine Ecke oder ziehe sie nach unten.";
+"Your entries are your files" = "Deine Einträge sind deine Dateien";
+"Everything is kept as plain files in the folder you chose. You can see them in Files; delete the app and your entries stay." = "Alles liegt als gewöhnliche Dateien in dem Ordner, den du gewählt hast. Du siehst sie in „Dateien“; löschst du die App, bleiben deine Einträge.";
+"Your places" = "Deine Orte";
+"Hold your finger on the map to drop a pin. Name it, pick an icon and add it to the day." = "Halte den Finger auf der Karte, um eine Nadel zu setzen. Gib ihr einen Namen, wähle ein Symbol und trage sie in den Tag ein.";
+"Where to search" = "Wo suchen";
+"The three dots at top right: search only the plan or the diary, or only photos, video, voice, files or places." = "Die drei Punkte oben rechts: nur im Plan oder im Tagebuch suchen, oder nur Fotos, Videos, Sprache, Dateien oder Orte.";
+"Don’t show tips" = "Keine Tipps mehr";
+"Next" = "Weiter";
+"Got it" = "Verstanden";
+"Getting-started tips" = "Tipps zum Kennenlernen";
+"Show again ›" = "Erneut zeigen ›";

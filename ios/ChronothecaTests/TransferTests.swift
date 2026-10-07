@@ -81,6 +81,16 @@ final class TransferTests: XCTestCase {
         XCTAssertEqual(Transfer.records(in: откуда), 2)
     }
 
+    /// Список повторяющихся дел переезжает вместе с записями (P427).
+    func testСписокПовторовПереезжает() {
+        let список = откуда.appendingPathComponent("System/" + Repeats.fileName)
+        try? Data("[]".utf8).write(to: список)
+        запись(откуда, "2026-09-22", "план", .planner)
+        Transfer.move(Transfer.contents(of: откуда), from: откуда, to: куда)
+        XCTAssertTrue(fm.fileExists(atPath: куда.appendingPathComponent("System/" + Repeats.fileName).path))
+        XCTAssertFalse(fm.fileExists(atPath: список.path))
+    }
+
     /// На новом месте за то же число — не скачанный файл: прочитать его
     /// нечем, писать поверх нельзя. Остаются оба (P426, P182).
     func testПоверхНеСкачанногоНеПишется() {

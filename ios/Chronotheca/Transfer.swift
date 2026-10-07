@@ -51,7 +51,8 @@ enum Transfer {
     /// Всё, что переносится, — относительными путями от корня архива.
     ///
     /// «Служебное» не трогаем: метка архива и записка «что это за папка» у
-    /// новой папки свои, и подменять их чужими незачем.
+    /// новой папки свои, и подменять их чужими незачем. Кроме списка
+    /// повторяющихся дел — он часть записей (P427).
     ///
     /// Пути — с именами папок, как они лежат в прежнем архиве; русские и
     /// английские смотрятся обе (P353). На новом месте каждая ложится под
@@ -86,6 +87,15 @@ enum Transfer {
                 guard full.hasPrefix(head) else { continue }
                 out.append(String(full.dropFirst(head.count))
                     .trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+            }
+        }
+        // Из служебного переезжает только список повторяющихся дел: без
+        // него на новом месте «этот и все следующие» не находили следующих,
+        // и повторы не дописывались дальше (P427).
+        for name in [Vault.Folder.service.rawValue, Vault.Folder.service.russian] {
+            let list = root.appendingPathComponent(name).appendingPathComponent(Repeats.fileName)
+            if fm.fileExists(atPath: list.path) || fm.fileExists(atPath: stub(of: list).path) {
+                out.append(name + "/" + Repeats.fileName)
             }
         }
         return Array(Set(out)).sorted()
