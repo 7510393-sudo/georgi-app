@@ -65,12 +65,22 @@ enum Transfer {
             .flatMap { [$0.rawValue, $0.russian] }
         for name in names {
             let base = root.appendingPathComponent(name)
+            // Скрытое не пропускаем целиком: не скачанный из iCloud файл
+            // лежит невидимой заглушкой «.ИМЯ.icloud». Прежде такие файлы
+            // молча оставались на старом месте, и на новом записей не было
+            // (P426). Заглушка считается тем файлом, который за ней стоит.
             guard let walk = fm.enumerator(at: base,
                                            includingPropertiesForKeys: [.isDirectoryKey],
-                                           options: [.skipsHiddenFiles]) else { continue }
-            for case let url as URL in walk {
+                                           options: []) else { continue }
+            for case var url as URL in walk {
                 let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?
                     .isDirectory ?? false
+                let leaf = url.lastPathComponent
+                if leaf.hasPrefix(".") {
+                    if isDir { walk.skipDescendants(); continue }
+                    guard let real = stubbed(leaf) else { continue }
+                    url = url.deletingLastPathComponent().appendingPathComponent(real)
+                }
                 if isDir { continue }
                 let full = url.standardizedFileURL.path
                 guard full.hasPrefix(head) else { continue }
@@ -78,7 +88,20 @@ enum Transfer {
                     .trimmingCharacters(in: CharacterSet(charactersIn: "/")))
             }
         }
-        return out.sorted()
+        return Array(Set(out)).sorted()
+    }
+
+    /// Имя файла за заглушкой iCloud: «.2026-10-07.md.icloud» → «2026-10-07.md».
+    static func stubbed(_ name: String) -> String? {
+        guard name.hasPrefix("."), name.hasSuffix(".icloud"),
+              name.count > ".icloud".count + 1 else { return nil }
+        return String(name.dropFirst().dropLast(".icloud".count))
+    }
+
+    /// Заглушка, которая стоит на месте не скачанного файла.
+    private static func stub(of url: URL) -> URL {
+        url.deletingLastPathComponent()
+            .appendingPathComponent("." + url.lastPathComponent + ".icloud")
     }
 
     // MARK: - Перенос
@@ -92,12 +115,41 @@ enum Transfer {
         let fm = FileManager.default
         var moved = 0, kept = 0, failed = 0
 
+        // Всё, что ещё в iCloud, просим скачать сразу, а не по одному: пока
+        // переносится скачанное, докачивается остальное. Ждём не дольше двух
+        // минут на весь перенос — без сети он не должен висеть вечно.
+        for rel in files {
+            let src = from.appendingPathComponent(rel)
+            if !fm.fileExists(atPath: src.path), fm.fileExists(atPath: stub(of: src).path) {
+                try? fm.startDownloadingUbiquitousItem(at: src)
+            }
+        }
+        let patience = Date().addingTimeInterval(120)
+
         for (i, rel) in files.enumerated() {
             defer { step(i + 1) }
 
             let src = from.appendingPathComponent(rel)
             let dst = destination(rel, in: to)
-            guard fm.fileExists(atPath: src.path) else { continue }
+            if !fm.fileExists(atPath: src.path) {
+                // Файла нет — может быть, он ещё в iCloud: ждём, пока
+                // докачается. Не дождались — файл остаётся на прежнем месте
+                // и в отчёте числится неперенесённым, а не пропадает молча
+                // (P426).
+                guard fm.fileExists(atPath: stub(of: src).path) else { continue }
+                while !fm.fileExists(atPath: src.path), Date() < patience {
+                    Thread.sleep(forTimeInterval: 0.3)
+                }
+                guard fm.fileExists(atPath: src.path) else { failed += 1; continue }
+            }
+
+            // На новом месте за то же число лежит не скачанный из iCloud
+            // файл: прочитать его нечем, писать поверх нельзя (P182).
+            // Остаются оба — как с разными записями за одно число.
+            if !fm.fileExists(atPath: dst.path), fm.fileExists(atPath: stub(of: dst).path) {
+                kept += 1
+                continue
+            }
 
             if fm.fileExists(atPath: dst.path) {
                 if same(src, dst) {

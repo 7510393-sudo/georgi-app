@@ -70,6 +70,13 @@ struct DaySheet<Plan: View, Diary: View>: View {
                                 }
                             }
                         }
+                        // Страница открыта на дневнике — дневник не короче
+                        // окна: иначе на коротком дне листать некуда, и план
+                        // остаётся сверху, хотя должен уйти за верхний край
+                        // (P426). Соседняя страница считает так же (P114).
+                        .frame(minHeight: landDiary && diaryOpen
+                               ? max(0, outer.size.height - Self.stripRoom) : nil,
+                               alignment: .top)
                         // Короткая страница — низ дневника (погода, полоска)
                         // всё равно у нижнего края экрана.
                         .frame(maxHeight: .infinity, alignment: .top)

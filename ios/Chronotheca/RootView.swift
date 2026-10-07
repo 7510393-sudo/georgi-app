@@ -183,6 +183,16 @@ struct RootView: View {
         .onChange(of: shell.freshStart) { _, _ in
             if lockOn && locked { waitingToWrite = true } else { startWriting() }
         }
+        // Записи переехали — «Вернуться к прежней папке», новая папка после
+        // «Завести», «На этом iPhone», уровень поправлен при запуске. Страница
+        // и опись перечитываются с нового места: прежде после возврата к
+        // прежней папке на экране оставался день, прочитанный со старого
+        // (P426).
+        .onChange(of: vault.root) { _, now in
+            guard now != nil else { return }
+            store.load()
+            archive.reload()
+        }
         .preferredColorScheme(scheme)
         .fileImporter(isPresented: $shell.picking, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result {

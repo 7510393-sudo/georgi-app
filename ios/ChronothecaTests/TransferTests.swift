@@ -68,6 +68,32 @@ final class TransferTests: XCTestCase {
                        "метка архива у новой папки своя")
     }
 
+    /// Не скачанный из iCloud файл лежит невидимой заглушкой — его тоже
+    /// переносить, а не оставлять молча на старом месте (P426).
+    func testЗаглушкаICloudВходитВОпись() {
+        let папка = откуда.appendingPathComponent("Diary/2026")
+        try? fm.createDirectory(at: папка, withIntermediateDirectories: true)
+        try? Data().write(to: папка.appendingPathComponent(".2026-09-20.md.icloud"))
+        try? Data().write(to: папка.appendingPathComponent(".DS_Store"))
+        запись(откуда, "2026-09-22", "текст")
+        XCTAssertEqual(Transfer.contents(of: откуда),
+                       ["Diary/2026/2026-09-20.md", "Diary/2026/2026-09-22.md"])
+        XCTAssertEqual(Transfer.records(in: откуда), 2)
+    }
+
+    /// На новом месте за то же число — не скачанный файл: прочитать его
+    /// нечем, писать поверх нельзя. Остаются оба (P426, P182).
+    func testПоверхНеСкачанногоНеПишется() {
+        let мой = запись(откуда, "2026-09-22", "мой текст")
+        let папка = куда.appendingPathComponent("Diary/2026")
+        try? fm.createDirectory(at: папка, withIntermediateDirectories: true)
+        try? Data().write(to: папка.appendingPathComponent(".2026-09-22.md.icloud"))
+        let отчёт = Transfer.move(Transfer.contents(of: откуда), from: откуда, to: куда)
+        XCTAssertEqual(отчёт.kept, 1)
+        XCTAssertEqual(текст(мой), "мой текст")
+        XCTAssertFalse(fm.fileExists(atPath: папка.appendingPathComponent("2026-09-22.md").path))
+    }
+
     // MARK: - Перенос
 
     func testЗаписиПереезжаютИИсчезаютСпрежнегоМеста() {
