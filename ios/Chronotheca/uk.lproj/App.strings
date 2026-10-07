@@ -687,3 +687,21 @@
 "Choose the folder with entries…" = "Обрати теку із записами…";
 "There are no .md or .txt files in this folder." = "У цій теці немає файлів .md або .txt.";
 "Imported entries: %@, days: %@." = "Перенесено записів: %@, днів: %@.";
+
+/* Покупка (P432). */
+"purchased — for good" = "куплено — назавжди";
+"trial month: %@ days left" = "пробний місяць: залишилося днів — %@";
+"trial month not started" = "пробний місяць не розпочато";
+"the month is over — entries are readable; writing needs the purchase" = "місяць минув — записи читаються, писати нове після покупки";
+"purchase not available yet — everything is open" = "покупка поки недоступна — усе відкрито";
+"A month of the whole app, nothing held back. Then one purchase of %@, for good, no subscription." = "Місяць — увесь застосунок без обмежень. Потім — одна покупка за %@, назавжди, без підписки.";
+"If you don't buy, you lose nothing: everything you wrote stays readable, and the files stay in your folder. Only writing new entries stops." = "Не купили — нічого не втрачаєте: усе написане читається завжди, файли лишаються у вашій теці. Не можна буде лише писати нове.";
+"Start the free month" = "Почати безкоштовний місяць";
+"Buy for good — %@" = "Купити назавжди — %@";
+"Restore purchases" = "Відновити покупки";
+"Redeem a code" = "Ввести код";
+"Purchased. Thank you!" = "Куплено. Дякуємо!";
+"The trial month is over" = "Пробний місяць минув";
+"Trial month: %@ days left" = "Пробний місяць: залишилося днів — %@";
+"A month for free" = "Місяць безкоштовно";
+"Chronotheca for good" = "Хронотека назавжди";

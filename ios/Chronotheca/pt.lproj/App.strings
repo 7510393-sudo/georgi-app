@@ -687,3 +687,21 @@
 "Choose the folder with entries…" = "Escolher a pasta com as entradas…";
 "There are no .md or .txt files in this folder." = "Não há arquivos .md ou .txt nesta pasta.";
 "Imported entries: %@, days: %@." = "Entradas importadas: %@, dias: %@.";
+
+/* Покупка (P432). */
+"purchased — for good" = "comprado — para sempre";
+"trial month: %@ days left" = "mês de teste: faltam %@ dias";
+"trial month not started" = "mês de teste não iniciado";
+"the month is over — entries are readable; writing needs the purchase" = "o mês acabou — as entradas continuam legíveis; escrever exige a compra";
+"purchase not available yet — everything is open" = "compra ainda indisponível — tudo está aberto";
+"A month of the whole app, nothing held back. Then one purchase of %@, for good, no subscription." = "Um mês com o app inteiro, sem cortes. Depois, uma única compra de %@, para sempre, sem assinatura.";
+"If you don't buy, you lose nothing: everything you wrote stays readable, and the files stay in your folder. Only writing new entries stops." = "Se não comprar, você não perde nada: tudo o que escreveu continua legível e os arquivos ficam na sua pasta. Só não dá mais para escrever coisas novas.";
+"Start the free month" = "Começar o mês grátis";
+"Buy for good — %@" = "Comprar para sempre — %@";
+"Restore purchases" = "Restaurar compras";
+"Redeem a code" = "Resgatar um código";
+"Purchased. Thank you!" = "Comprado. Obrigado!";
+"The trial month is over" = "O mês de teste acabou";
+"Trial month: %@ days left" = "Mês de teste: faltam %@ dias";
+"A month for free" = "Um mês grátis";
+"Chronotheca for good" = "Chronotheca para sempre";

@@ -532,6 +532,13 @@ struct SettingsSticker: View {
 
     @ViewBuilder private var aboutPart: some View {
         NoteSection(title: T("О приложении", "About"))
+        // Покупка: месяц пробы, потом разовая (M14, P432).
+        NoteRow(title: T("Хронотека навсегда", "Chronotheca for good"), detail: Purchase.shared.summary) {
+            NoteButton(title: T("Открыть ›", "Open ›")) {
+                close()
+                Purchase.shared.asking = true
+            }
+        }
         // Подсказки для знакомства — заново, с первой (P427).
         NoteRow(title: T("Подсказки для знакомства", "Getting-started tips")) {
             NoteButton(title: T("Показать снова ›", "Show again ›")) {

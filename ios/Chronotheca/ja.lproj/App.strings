@@ -687,3 +687,21 @@
 "Choose the folder with entries…" = "記録のあるフォルダを選ぶ…";
 "There are no .md or .txt files in this folder." = "このフォルダには .md や .txt のファイルがありません。";
 "Imported entries: %@, days: %@." = "取り込んだ記録：%@件、日数：%@日。";
+
+/* Покупка (P432). */
+"purchased — for good" = "購入済み — ずっと使えます";
+"trial month: %@ days left" = "お試し月：残り %@ 日";
+"trial month not started" = "お試し月はまだ始まっていません";
+"the month is over — entries are readable; writing needs the purchase" = "お試し期間終了 — 記録は読めます。新しく書くには購入が必要です";
+"purchase not available yet — everything is open" = "購入はまだ利用できません — すべて使えます";
+"A month of the whole app, nothing held back. Then one purchase of %@, for good, no subscription." = "1か月、アプリのすべてを制限なしで。その後は %@ の買い切り。ずっと使えて、サブスクリプションはありません。";
+"If you don't buy, you lose nothing: everything you wrote stays readable, and the files stay in your folder. Only writing new entries stops." = "購入しなくても何も失いません。書いたものはいつでも読め、ファイルはあなたのフォルダに残ります。新しく書けなくなるだけです。";
+"Start the free month" = "無料の1か月を始める";
+"Buy for good — %@" = "買い切りで購入 — %@";
+"Restore purchases" = "購入を復元";
+"Redeem a code" = "コードを使う";
+"Purchased. Thank you!" = "購入しました。ありがとうございます！";
+"The trial month is over" = "お試し月が終わりました";
+"Trial month: %@ days left" = "お試し月：残り %@ 日";
+"A month for free" = "1か月無料";
+"Chronotheca for good" = "Chronotheca をずっと";

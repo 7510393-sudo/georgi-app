@@ -687,3 +687,21 @@
 "Choose the folder with entries…" = "Choisir le dossier des entrées…";
 "There are no .md or .txt files in this folder." = "Ce dossier ne contient aucun fichier .md ou .txt.";
 "Imported entries: %@, days: %@." = "Entrées importées : %@, jours : %@.";
+
+/* Покупка (P432). */
+"purchased — for good" = "acheté — pour toujours";
+"trial month: %@ days left" = "mois d’essai : %@ jours restants";
+"trial month not started" = "mois d’essai non commencé";
+"the month is over — entries are readable; writing needs the purchase" = "le mois est fini — les entrées restent lisibles ; écrire demande l’achat";
+"purchase not available yet — everything is open" = "achat pas encore disponible — tout est ouvert";
+"A month of the whole app, nothing held back. Then one purchase of %@, for good, no subscription." = "Un mois de l’app entière, sans restriction. Ensuite un seul achat de %@, pour toujours, sans abonnement.";
+"If you don't buy, you lose nothing: everything you wrote stays readable, and the files stay in your folder. Only writing new entries stops." = "Si vous n’achetez pas, vous ne perdez rien : tout ce que vous avez écrit reste lisible et les fichiers restent dans votre dossier. Seule l’écriture de nouvelles entrées s’arrête.";
+"Start the free month" = "Commencer le mois gratuit";
+"Buy for good — %@" = "Acheter pour toujours — %@";
+"Restore purchases" = "Restaurer les achats";
+"Redeem a code" = "Utiliser un code";
+"Purchased. Thank you!" = "Acheté. Merci !";
+"The trial month is over" = "Le mois d’essai est terminé";
+"Trial month: %@ days left" = "Mois d’essai : %@ jours restants";
+"A month for free" = "Un mois offert";
+"Chronotheca for good" = "Chronotheca pour toujours";

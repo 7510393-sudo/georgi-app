@@ -103,6 +103,11 @@ struct DiaryView: View {
             onHealth: store.canEditDiary ? { line in store.addHealthLine(line) } : nil,
             onStripCarry: { carryStrip($0, $1, $2) },
             stripCarried: stripCarry,
+            onRemovePhoto: { i, delete in
+                let n = store.photos.count
+                shell.say(i < n ? store.removeAttachment(at: i, from: .diary, delete: delete)
+                                : store.removeAttachment(at: i - n, from: .plan, delete: delete))
+            },
             onAnswering: {
                 store.answerTyping = $0
                 if $0 != nil { shell.tab = .diary }
@@ -312,6 +317,10 @@ struct DiaryPage: View {
     /// в полоске (P380).
     var onStripCarry: ((Int, Lift, CGPoint) -> Void)? = nil
     var stripCarried: Int? = nil
+    /// Крестик у подержанного превью (P432): убрать со страницы или
+    /// удалить в корзину — тот же вопрос, что у открытого снимка.
+    var onRemovePhoto: ((Int, Bool) -> Void)? = nil
+    @State private var removing: Int?
     /// В каком деле «Как прошло?» пишут — туда встаёт «место» (P407).
     var onAnswering: ((String?) -> Void)? = nil
     /// Снимок или точку из записи несут в план (P409).
@@ -387,7 +396,14 @@ struct DiaryPage: View {
                        onMove: editable ? onMovePhoto : nil,
                        anyKind: true,
                        onCarry: editable ? onStripCarry : nil,
-                       carried: stripCarried)
+                       carried: stripCarried,
+                       onRemove: editable && onRemovePhoto != nil ? { removing = $0 } : nil)
+                .modifier(RemoveQuestion(
+                    asking: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                    act: { delete in
+                        if let i = removing { onRemovePhoto?(i, delete) }
+                        removing = nil
+                    }))
                 .background(GeometryReader { geo in
                     let frame = geo.frame(in: .global)
                     // Полоска одна на страницу (P408): по ней узнают

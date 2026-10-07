@@ -687,3 +687,21 @@
 "Choose the folder with entries…" = "Kies de map met notities…";
 "There are no .md or .txt files in this folder." = "Deze map bevat geen .md- of .txt-bestanden.";
 "Imported entries: %@, days: %@." = "Geïmporteerde notities: %@, dagen: %@.";
+
+/* Покупка (P432). */
+"purchased — for good" = "gekocht — voorgoed";
+"trial month: %@ days left" = "proefmaand: nog %@ dagen";
+"trial month not started" = "proefmaand niet gestart";
+"the month is over — entries are readable; writing needs the purchase" = "de maand is om — notities blijven leesbaar; schrijven vraagt de aankoop";
+"purchase not available yet — everything is open" = "aankoop nog niet beschikbaar — alles is open";
+"A month of the whole app, nothing held back. Then one purchase of %@, for good, no subscription." = "Een maand de hele app, zonder beperkingen. Daarna één aankoop van %@, voorgoed, zonder abonnement.";
+"If you don't buy, you lose nothing: everything you wrote stays readable, and the files stay in your folder. Only writing new entries stops." = "Koop je niet, dan verlies je niets: alles wat je schreef blijft leesbaar en de bestanden blijven in je map. Alleen nieuwe dingen schrijven stopt.";
+"Start the free month" = "Gratis maand starten";
+"Buy for good — %@" = "Voorgoed kopen — %@";
+"Restore purchases" = "Aankopen herstellen";
+"Redeem a code" = "Code inwisselen";
+"Purchased. Thank you!" = "Gekocht. Dank je!";
+"The trial month is over" = "De proefmaand is om";
+"Trial month: %@ days left" = "Proefmaand: nog %@ dagen";
+"A month for free" = "Een maand gratis";
+"Chronotheca for good" = "Chronotheca voorgoed";

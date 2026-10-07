@@ -18,11 +18,13 @@ final class DayStore: ObservableObject {
     /// План правится в любой день — и в прошедший тоже, теми же жестами,
     /// что сегодняшний (P381: «Править этот день» убрано). Нельзя только,
     /// пока файл плана не скачан из iCloud.
-    var canEditPlan: Bool { !away.contains(.planner) }
+    /// Месяц прошёл без покупки — писать новое нельзя, читать можно всегда
+    /// (M14, P432).
+    var canEditPlan: Bool { !away.contains(.planner) && Purchase.canWrite }
 
     /// Дневник живёт назад: вчерашнее дописывают и через неделю (решение P63).
     /// А вот дня, который ещё не наступил, в дневнике не бывает.
-    var canEditDiary: Bool { !isFuture && !away.contains(.diary) }
+    var canEditDiary: Bool { !isFuture && !away.contains(.diary) && Purchase.canWrite }
 
     /// Файлы дня, которые лежат, но не прочитались — чаще всего ещё не
     /// скачаны из iCloud. Писать в такой день нельзя: пустая страница на

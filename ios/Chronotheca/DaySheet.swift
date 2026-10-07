@@ -81,7 +81,12 @@ struct DaySheet<Plan: View, Diary: View>: View {
                         // всё равно у нижнего края экрана.
                         .frame(maxHeight: .infinity, alignment: .top)
                     }
-                    .padding(.bottom, keyboard > 0 ? 0 : Self.stripRoom)
+                    // Место под строкой вложений — всегда, и с клавиатурой
+                    // (P432): прежде оно пропадало, пока клавиатура открыта,
+                    // и возвращалось скачком, когда она уходила, — низ
+                    // страницы прыгал на эти 36 точек (около 6 мм) вниз и
+                    // обратно (видео автора).
+                    .padding(.bottom, Self.stripRoom)
                     .frame(minHeight: outer.size.height, alignment: .top)
                     .background(Ru.tint(date).overlay(PageTexture(tab: .diary, space: Self.space)))
                     // Клетка и волокно отсчитываются от самого листа, а не
@@ -93,7 +98,9 @@ struct DaySheet<Plan: View, Diary: View>: View {
                     // вся её высота, хотя низ экрана и так занят разделами, —
                     // и страница, поднятая до конца, висела над клавиатурой
                     // с зазором в несколько строк (P413).
-                    .padding(.bottom, covered(outer))
+                    // Строка вложений уже дала своё место — его не считаем
+                    // дважды: над клавиатурой без зазора, как прежде (P413).
+                    .padding(.bottom, max(0, covered(outer) - Self.stripRoom))
                     .onAppear {
                         goHome(proxy)
                         settle(proxy, fresh: true)

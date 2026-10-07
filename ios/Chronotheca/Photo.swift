@@ -226,6 +226,10 @@ struct PhotoStrip: View {
     var onCarry: ((Int, Lift, CGPoint) -> Void)? = nil
     /// Превью, которое сейчас несут, — на своём месте оно бледное.
     var carried: Int? = nil
+    /// Крестик (P432): подержали превью и не повели — у него крестик, как у
+    /// точки в тексте; повели — крестик уходит, превью несут.
+    var onRemove: ((Int) -> Void)? = nil
+    @State private var armed: Int?
 
     /// Превью, которое сейчас несут, — по нему соседи расступаются.
     @State private var carrying: Int?
@@ -300,7 +304,27 @@ struct PhotoStrip: View {
         face(i)
             .frame(width: Self.side, height: Self.side)
             .contentShape(Rectangle())
-            .onTapGesture { onOpen?(i) }
+            .onTapGesture {
+                // Касание при крестике — только убрать крестик.
+                if armed != nil { withAnimation(.easeOut(duration: 0.15)) { armed = nil } }
+                else { onOpen?(i) }
+            }
+            .overlay(alignment: .topTrailing) {
+                if armed == i, let onRemove {
+                    Button {
+                        armed = nil
+                        onRemove(i)
+                    } label: {
+                        CloseMark()
+                            .scaleEffect(0.8)
+                            .background(Circle().fill(Look.chrome))
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: 8, y: -8)
+                    .transition(.scale.combined(with: .opacity))
+                    .accessibilityLabel(T("Убрать", "Remove"))
+                }
+            }
             .opacity(carried == i ? 0.3 : 1)
             // Где превью на экране — чтобы, отпустив над полоской, поставить
             // взятое на место соседа (P380).
@@ -311,7 +335,12 @@ struct PhotoStrip: View {
                     .onChange(of: frame) { _, now in if onCarry != nil { StripZones.cells[i] = now } }
             })
             .modifier(ThumbCarry(report: onCarry.map { f -> (Lift, CGPoint) -> Void in
-                { phase, spot in f(i, phase, spot) }
+                { phase, spot in
+                    if case .began = phase { armed = nil }
+                    f(i, phase, spot)
+                }
+            }, stayed: onRemove == nil ? nil : {
+                withAnimation(.easeOut(duration: 0.15)) { armed = i }
             }))
             // В плане бросить под дело можно только снимок; в дневнике в
             // текст — и голос, и видео, и документ: там они кнопочкой
@@ -559,6 +588,8 @@ enum StripZones {
 /// на месте — за пальцем идёт его копия, нарисованная планом поверх всего.
 struct ThumbCarry: ViewModifier {
     let report: ((Lift, CGPoint) -> Void)?
+    /// Подержали и отпустили, не уводя пальца (P432).
+    var stayed: (() -> Void)? = nil
 
     @State private var lifted = false
     /// Палец ушёл от места — рамка остаётся только у копии над пальцем.
@@ -599,8 +630,10 @@ struct ThumbCarry: ViewModifier {
                     }
                     .onEnded { value in
                         guard lifted else { return }
+                        let still = !away
                         lifted = false
                         away = false
+                        if still { stayed?() }
                         var spot = CGPoint.zero
                         if case .second(true, let drag) = value, let drag { spot = drag.location }
                         report(.ended(.zero), spot)

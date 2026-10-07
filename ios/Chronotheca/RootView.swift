@@ -9,6 +9,8 @@ import UniformTypeIdentifiers
 struct RootView: View {
 
     @EnvironmentObject private var vault: Vault
+    /// Покупка: месяц пробы и разовая покупка (P432).
+    @ObservedObject private var purchase = Purchase.shared
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var archive: Archive
     @EnvironmentObject private var shell: Shell
@@ -194,6 +196,8 @@ struct RootView: View {
             archive.reload()
         }
         .preferredColorScheme(scheme)
+        .onAppear { purchase.start() }
+        .sheet(isPresented: $purchase.asking) { PurchaseSheet(purchase: purchase) }
         .fileImporter(isPresented: $shell.picking, allowedContentTypes: [.folder]) { result in
             if case .success(let url) = result {
                 vault.adopt(url)
