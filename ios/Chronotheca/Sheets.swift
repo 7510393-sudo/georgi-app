@@ -432,7 +432,7 @@ struct SettingsSticker: View {
                                        "A line at the foot of the diary, next to the weather.") : nil) {
                 Choice(options: onOff, selection: Binding(get: { health }, set: { on in
                     health = on
-                    if on { HealthDay.ask { _ in } }
+                    if on { HealthDay.ask { _ in } } else { HealthDay.changed() }
                 }))
             }
         }

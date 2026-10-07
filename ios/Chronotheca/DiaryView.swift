@@ -128,6 +128,9 @@ struct DiaryView: View {
             }
         }
         .task(id: store.date) { health = await HealthDay.summary(for: store.date) }
+        .onReceive(NotificationCenter.default.publisher(for: HealthDay.note)) { _ in
+            Task { health = await HealthDay.summary(for: store.date) }
+        }
         .onChange(of: store.diaryTitle) { _, _ in store.scheduleSave() }
         .onChange(of: store.answers) { _, _ in
             // Снимок, перенесённый в ответ, уходит из полоски (P407).

@@ -22,7 +22,22 @@ enum HealthDay {
     static func ask(_ done: @escaping (Bool) -> Void) {
         guard available else { return done(false) }
         store.requestAuthorization(toShare: [], read: types) { ok, _ in
-            DispatchQueue.main.async { done(ok) }
+            DispatchQueue.main.async {
+                changed()
+                done(ok)
+            }
+        }
+    }
+
+    /// Включили, выключили или разрешили — открытая страница считает строку
+    /// заново (P443). Прежде строка считалась один раз при открытии дня, и
+    /// если разрешения тогда ещё не было, оставалась пустой.
+    static let note = Notification.Name("HealthDay.changed")
+
+    static func changed() {
+        Task { @MainActor in
+            cache.removeAll()
+            NotificationCenter.default.post(name: note, object: nil)
         }
     }
 
@@ -54,7 +69,9 @@ enum HealthDay {
         if sleep >= 30 * 60 { parts.append(T("сон ", "sleep ") + span(sleep)) }
         if workout >= 60 { parts.append(T("тренировки ", "workouts ") + span(workout)) }
         let text = parts.joined(separator: " · ")
-        if start < cal.startOfDay(for: Date()) { cache[stamp] = text }
+        // Пустое не запоминается: шагов могло не быть потому, что ещё не
+        // было разрешения (P443).
+        if start < cal.startOfDay(for: Date()), !text.isEmpty { cache[stamp] = text }
         return text.isEmpty ? nil : text
     }
 

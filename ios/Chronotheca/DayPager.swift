@@ -932,7 +932,7 @@ struct SideDay: View {
         // Вчерашняя страница, пока её тянут, стоит там же, где встанет
         // открытой: на дневнике, если смотрели в дневник (P424, P114).
         DaySheet(date: date, diaryOpen: date <= DayStore.today(),
-                 landDiary: date < store.date && shell.lookingAtDiary) {
+                 landDiary: shell.lookingAtDiary) {
             plan
         } diary: {
             diary
@@ -967,6 +967,9 @@ struct SideDay: View {
                   resolve: { [vault, date] in vault.mediaURL($0, for: date) },
                   health: health)
         .task(id: date) { health = await HealthDay.summary(for: date) }
+        .onReceive(NotificationCenter.default.publisher(for: HealthDay.note)) { _ in
+            Task { health = await HealthDay.summary(for: date) }
+        }
     }
 
     private func load() {
