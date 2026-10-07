@@ -28,7 +28,8 @@ enum KeyboardBar {
     static let height: CGFloat = attachHeight + sectionsHeight
     /// Насколько проступает цвет дня у строки вложений: сквозь неё видно
     /// страницу — и над клавиатурой, и внизу страницы (P424).
-    static let see: Double = 0.5
+    /// Плотнее прежней половины (P435): сквозь строку страница едва видна.
+    static let see: Double = 0.85
     /// Нижняя безопасная полоса телефона (жест «домой»).
     static var safeBottom: CGFloat {
         UIApplication.shared.connectedScenes

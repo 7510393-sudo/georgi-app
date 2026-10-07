@@ -88,6 +88,15 @@ struct DayPage: View {
                 .zIndex(1)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // План и дневник уходят под шапку мягко, тая (P435): у
+                // верхнего края страницы — полоса её цвета, прозрачная
+                // книзу. Касания проходят насквозь.
+                .overlay(alignment: .top) {
+                    LinearGradient(colors: [Ru.tint(date), Ru.tint(date).opacity(0)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(height: 22)
+                        .allowsHitTesting(false)
+                }
                 .overlay(alignment: .top) { steps }
                 .overlay { galleryCatcher }
                 // Черты между шапкой и страницей больше нет (P434, прежде
