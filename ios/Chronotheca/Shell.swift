@@ -272,10 +272,28 @@ final class Shell: ObservableObject {
     ///
     /// Нужно, чтобы у каждой сборки был снимок каждого экрана, а не одного.
     /// Иначе про интерфейс приходится рассуждать по памяти, а память врёт.
+    ///
+    /// Ставится ещё дважды, через полторы и через четыре секунды: с 101-й
+    /// снимки календаря, поиска, меню, настроек и соседних дней выходили
+    /// страницей «Сегодня» — что-то при запуске возвращало приложение на
+    /// неё раньше, чем снималось (P448). Повтор делает снимки надёжными;
+    /// всё, что он ставит, — те же значения, второй раз ничего не сдвигает.
     func openRequestedScreen(_ store: DayStore) {
         guard Vault.isPreview,
               let name = ProcessInfo.processInfo.environment["CHRONOTHECA_SCREEN"]
         else { return }
+        applyScreen(name, store)
+        for delay in [1.5, 4.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.applyScreen(name, store)
+            }
+        }
+    }
+
+    private func applyScreen(_ name: String, _ store: DayStore) {
+        let cal = Calendar.current
+        let today = DayStore.today()
+        func day(_ k: Int) -> Date { cal.date(byAdding: .day, value: k, to: today) ?? today }
         // Облачко «…помнишь?» — только на своих снимках: на снимке плана
         // его нет, иначе открытая страница не сойдётся с соседской
         // (P114, P408).
@@ -289,9 +307,14 @@ final class Shell: ObservableObject {
         case "search-menu":   screen = .search; showingMenu = true
         case "settings":  showingSettings = true
         case "remember":  tab = .diary
-        case "past":      store.move(by: -1)
-        case "editing":   store.move(by: -1); store.setEditing(.plan, true)
-        case "future":    store.move(by: 1); tab = .diary
+        // Дни — от сегодняшнего, а не шагом: повтор не уводит дальше.
+        case "past":      if store.date != day(-1) { store.go(to: day(-1)) }
+        case "editing":
+            if store.date != day(-1) { store.go(to: day(-1)) }
+            store.setEditing(.plan, true)
+        case "future":
+            if store.date != day(1) { store.go(to: day(1)) }
+            tab = .diary
         case "side":      probingSide = true
         case "hint":      Hints.shared.showFirstForPreview()
         case "list":
