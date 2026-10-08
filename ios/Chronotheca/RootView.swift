@@ -20,6 +20,11 @@ struct RootView: View {
 
     /// Клавиатура: над ней встаёт полоска вложений (P253).
     @StateObject private var keyboard = KeyboardWatch()
+    /// Высота полосы «домой» — меряется раскладкой и запоминается, пока
+    /// клавиатуры нет (P450). Прежде её спрашивали у окна прямо во время
+    /// рисования экрана: с 103-й весь верхний слой — настройки, меню,
+    /// разделы — переставал обновляться.
+    @State private var homeBar: CGFloat = 0
 
     // Настройки (P249): замок, скрытие страницы, тема.
     @Environment(\.scenePhase) private var phase
@@ -314,7 +319,7 @@ struct RootView: View {
                     // Высота клавиатуры считана от края экрана, а страница
                     // кончается выше — над полосой жеста «домой»: её вычитаем,
                     // иначе строка висит выше клавиатуры на её ширину (P426).
-                    .padding(.bottom, max(0, keyboard.height - KeyboardBar.safeBottom) + 2)
+                    .padding(.bottom, max(0, keyboard.height - homeBar) + 2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
             // Подсказки для первого знакомства (P427) — поверх всего, когда
@@ -342,6 +347,19 @@ struct RootView: View {
         // Нижние разделы стоят на месте, что бы ни случилось: клавиатура их
         // не поднимает. Иначе значки пляшут по экрану и в них не попасть.
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        // Мерка — во весь экран: внутри безопасной области полоса «домой»
+        // читалась бы нулём. Пока видна клавиатура, низ занят ею — тогда
+        // прежняя мерка остаётся; полоса «домой» не бывает выше 60 точек.
+        .background {
+            GeometryReader { g in
+                Color.clear
+                    .onAppear { homeBar = g.safeAreaInsets.bottom }
+                    .onChange(of: g.safeAreaInsets.bottom) { _, now in
+                        if keyboard.height == 0, now < 60, now != homeBar { homeBar = now }
+                    }
+            }
+            .ignoresSafeArea()
+        }
         .tint(Look.accent)
         .onChange(of: shell.screen) { old, new in
             follow(from: old, to: new)
@@ -613,8 +631,8 @@ struct RootView: View {
         .padding(.top, 7)
         .padding(.bottom, 2)
         // Над полосой «домой» — её высота у самого окна, она не меняется
-        // от клавиатуры (P447).
-        .padding(.bottom, KeyboardBar.safeBottom)
+        // от клавиатуры (P447), меряется раскладкой (P450).
+        .padding(.bottom, homeBar)
         // Крафт-картон с оторванным верхним краем, до самого низа экрана
         // (P297). Край заходит на строку вложений на глубину зубцов.
         .background(alignment: .top) {
