@@ -37,6 +37,8 @@ struct DaySheet<Plan: View, Diary: View>: View {
     @ViewBuilder let diary: () -> Diary
 
     @State private var keyboard: CGFloat = 0
+    /// Место под ушедшей клавиатурой, которое ещё держит страницу (P446).
+    @State private var hold: CGFloat = 0
 
     private static var top: String { "страница-верх" }
     private static var diaryTop: String { "страница-дневник" }
@@ -112,6 +114,11 @@ struct DaySheet<Plan: View, Diary: View>: View {
                     // прыгала обратно (запись экрана автора). Это и был
                     // «скачок».
                     .background(NoBounce())
+                    // Где лист и какой он высоты без места под клавиатуру —
+                    // по ним место отпускается, когда клавиатура ушла (P446).
+                    .background(GeometryReader { g in
+                        Color.clear.preference(key: SheetBox.self, value: g.frame(in: .named(Self.window)))
+                    })
                     // Место под клавиатуру: без него строку, в которой пишут,
                     // некуда поднять (P166, P175). Ровно столько, сколько
                     // клавиатура закрывает саму страницу: прежде отводилась
@@ -120,7 +127,7 @@ struct DaySheet<Plan: View, Diary: View>: View {
                     // с зазором в несколько строк (P413).
                     // Строка вложений уже дала своё место — его не считаем
                     // дважды: над клавиатурой без зазора, как прежде (P413).
-                    .padding(.bottom, max(0, covered(outer) - Self.stripRoom))
+                    .padding(.bottom, max(max(0, covered(outer, keyboard) - Self.stripRoom), hold))
                     .onAppear {
                         goHome(proxy)
                         settle(proxy, fresh: true)
@@ -130,6 +137,22 @@ struct DaySheet<Plan: View, Diary: View>: View {
                 }
             }
             .coordinateSpace(name: Self.window)
+            // Клавиатура ушла — место под ней остаётся, пока страница стоит
+            // ниже, чем позволил бы лист без него: иначе iPhone подтягивает
+            // страницу вниз одним рывком (запись экрана автора, P446).
+            // Запоминается, пока клавиатура ещё открыта: в миг её ухода
+            // место уже на месте, и лист не становится короче ни на кадр.
+            .onChange(of: keyboard) { _, now in
+                if now > 0 { hold = max(0, covered(outer, now) - Self.stripRoom) }
+            }
+            // Прокрутили вверх — лишнее место отпускается ровно настолько,
+            // насколько оно больше не нужно: ничто не прыгает.
+            .onPreferenceChange(SheetBox.self) { box in
+                guard keyboard == 0, hold > 0 else { return }
+                let needed = max(0, -box.minY + outer.size.height - box.height)
+                if needed < hold { hold = needed }
+            }
+            .onChange(of: date) { _, _ in hold = 0 }
             .onPreferenceChange(DiaryShare.self) { top in
                 onDiary?(top < (outer.size.height - Self.stripRoom) / 2)
             }
@@ -142,7 +165,7 @@ struct DaySheet<Plan: View, Diary: View>: View {
 
     /// Сколько страницы закрыто клавиатурой вместе с полоской вложений над
     /// ней.
-    private func covered(_ outer: GeometryProxy) -> CGFloat {
+    private func covered(_ outer: GeometryProxy, _ keyboard: CGFloat) -> CGFloat {
         guard keyboard > 0 else { return 0 }
         let safe = UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.bottom }
@@ -189,6 +212,12 @@ struct DaySheet<Plan: View, Diary: View>: View {
         DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { proxy.scrollTo(target, anchor: .top) }
     }
+}
+
+/// Где лист в окне и какой он высоты без места под клавиатуру (P446).
+private struct SheetBox: PreferenceKey {
+    static let defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
 }
 
 /// Где верх дневника в окне — по нему видно, что занимает экран (P424).
