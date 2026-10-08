@@ -106,6 +106,12 @@ struct DaySheet<Plan: View, Diary: View>: View {
                     // Клетка и волокно отсчитываются от самого листа, а не
                     // от экрана: тянешь план — клетка едет с текстом (P412).
                     .coordinateSpace(name: Self.space)
+                    // Страница не оттягивается пальцем за край (P445):
+                    // клавиатуру смахивали вниз — короткая страница ехала за
+                    // пальцем на пару сантиметров и, когда клавиатура уходила,
+                    // прыгала обратно (запись экрана автора). Это и был
+                    // «скачок».
+                    .background(NoBounce())
                     // Место под клавиатуру: без него строку, в которой пишут,
                     // некуда поднять (P166, P175). Ровно столько, сколько
                     // клавиатура закрывает саму страницу: прежде отводилась
@@ -163,19 +169,25 @@ struct DaySheet<Plan: View, Diary: View>: View {
     /// Встать на план или на дневник по просьбе (P424). Новая страница
     /// встаёт по просьбе один раз; соседняя, у которой своей просьбы нет
     /// (`land == 0`), — сразу туда, куда встанет открытая.
+    ///
+    /// Просьба помнится вместе с днём (P445): прежде — одним номером, и
+    /// уходящая страница успевала «исполнить» его за новую — новая страница
+    /// считала, что уже встала, и оставалась на плане.
     private func settle(_ proxy: ScrollViewProxy, fresh: Bool) {
+        let key = "\(land)|\(Vault.stamp(date))"
         if fresh {
             if land > 0 {
-                guard land != SheetMemory.landed else { return }
+                guard key != SheetMemory.landed else { return }
             } else if !landDiary {
                 return
             }
         }
-        if land > 0 { SheetMemory.landed = land }
-        let diary = landDiary && diaryOpen
-        DispatchQueue.main.async {
-            proxy.scrollTo(diary ? Self.diaryTop : Self.top, anchor: .top)
-        }
+        if land > 0 { SheetMemory.landed = key }
+        let target = landDiary && diaryOpen ? Self.diaryTop : Self.top
+        // Ещё раз, когда страница нового дня уже разложена: первая прокрутка
+        // могла прийтись на прежнюю раскладку.
+        DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { proxy.scrollTo(target, anchor: .top) }
     }
 }
 
@@ -188,7 +200,7 @@ private struct DiaryShare: PreferenceKey {
 /// Для какого открытия страница уже встала на место.
 private enum SheetMemory {
     static var homed = -1
-    static var landed = -1
+    static var landed = ""
 }
 
 /// Заголовок части страницы — «План» или «Дневник» (P408): прописными, в
@@ -240,5 +252,33 @@ struct GridSnap: Layout {
     static func snap(_ h: CGFloat) -> CGFloat {
         guard h > 0.5 else { return 0 }
         return max(1, ((h - 3) / cell).rounded(.up)) * cell
+    }
+}
+
+/// Выключает у прокрутки, в которой стоит, оттяжку за край (P445).
+private struct NoBounce: UIViewRepresentable {
+    func makeUIView(context: Context) -> Finder { Finder() }
+    func updateUIView(_ view: Finder, context: Context) { view.apply() }
+
+    final class Finder: UIView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            apply()
+        }
+
+        /// Стоит внутри листа — первая прокрутка выше по цепочке и есть
+        /// прокрутка страницы.
+        func apply() {
+            DispatchQueue.main.async { [weak self] in
+                var node: UIView? = self?.superview
+                while let here = node {
+                    if let scroll = here as? UIScrollView {
+                        scroll.bounces = false
+                        return
+                    }
+                    node = here.superview
+                }
+            }
+        }
     }
 }
