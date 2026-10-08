@@ -721,3 +721,9 @@
 "Evening reminder" = "Abendliche Erinnerung";
 "“Write down your day” — if today’s diary is empty." = "„Schreib deinen Tag auf“ — wenn das Tagebuch heute leer ist.";
 "Import from Apple Journal" = "Import aus Apple Journal";
+
+/* Карта «Записи» (P451) */
+"You add your own places in “My places” — the switch at the top right." = "Eigene Orte setzt du unter „Meine Orte“ — der Schalter oben rechts.";
+"Entries on the map" = "Einträge auf der Karte";
+"No entries on the map yet: add a place to a day's text and the day will appear here." = "Noch keine Einträge auf der Karte: Füge dem Text eines Tages einen Ort hinzu, dann erscheint der Tag hier.";
+"Entries here" = "Einträge hier";

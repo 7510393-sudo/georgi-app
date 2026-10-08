@@ -93,6 +93,11 @@ final class Shell: ObservableObject {
     @Published var mapSatellite = UserDefaults.standard.bool(forKey: "map.satellite") {
         didSet { UserDefaults.standard.set(mapSatellite, forKey: "map.satellite") }
     }
+    /// Карта показывает записи — дни с точками, превью и числом, — а не
+    /// свои места (P451). Выбор запоминается, как спутник.
+    @Published var mapEntries = UserDefaults.standard.bool(forKey: "map.entries") {
+        didSet { UserDefaults.standard.set(mapEntries, forKey: "map.entries") }
+    }
 
     /// Открыть карту на точке из текста.
     func showPoint(_ point: GeoPoint) {

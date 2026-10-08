@@ -721,3 +721,9 @@
 "Evening reminder" = "Нагадування ввечері";
 "“Write down your day” — if today’s diary is empty." = "«Запишіть день» — якщо в щоденнику сьогодні порожньо.";
 "Import from Apple Journal" = "Перенесення з «Щоденника» Apple";
+
+/* Карта «Записи» (P451) */
+"You add your own places in “My places” — the switch at the top right." = "Свої точки ставляться в «Моїх місцях» — перемикач праворуч угорі.";
+"Entries on the map" = "Записи на мапі";
+"No entries on the map yet: add a place to a day's text and the day will appear here." = "На мапі ще немає записів: поставте точку в тексті дня — і день з’явиться тут.";
+"Entries here" = "Записи тут";

@@ -22,6 +22,9 @@ final class Archive: ObservableObject {
         var photos = 0
         /// Где человек был в этот день, если отметил (P207).
         var place: CLLocationCoordinate2D?
+        /// Все точки дня — в записи, в заголовке, под делами и в ответах:
+        /// по ним день встаёт на карту «Записи» (P451).
+        var points: [CLLocationCoordinate2D] = []
         /// Вложения дня — и дневника, и плана, и стоящие посреди текста.
         var attachments: [String] = []
 
@@ -135,6 +138,7 @@ final class Archive: ObservableObject {
                     guard case .text(let text) = reading else { continue }
 
                     let parsed = DayFile(text: text)
+                    day.points += Geo.points(inText: parsed.body).map(\.point.at)
                     if folder == .planner {
                         let rows = Plan.rows(from: parsed.body)
                         day.tasks = rows.filter { $0.isTask }
@@ -151,6 +155,8 @@ final class Archive: ObservableObject {
                         day.attachments = diary.text.components(separatedBy: "\n")
                             .flatMap { Diary.links(in: $0) } + diary.photos + day.attachments
                         day.place = parsed.value("place").flatMap(Geo.parse)
+                        day.points += Geo.points(inText: day.title).map(\.point.at)
+                        if let place = day.place { day.points.append(place) }
                     }
                     found[stamp] = day
                 }

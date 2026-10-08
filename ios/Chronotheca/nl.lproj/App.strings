@@ -721,3 +721,9 @@
 "Evening reminder" = "Herinnering ’s avonds";
 "“Write down your day” — if today’s diary is empty." = "‘Schrijf je dag op’ — als het dagboek van vandaag leeg is.";
 "Import from Apple Journal" = "Importeren uit Apple Dagboek";
+
+/* Карта «Записи» (P451) */
+"You add your own places in “My places” — the switch at the top right." = "Eigen plekken zet je in ‘Mijn plekken’ — de schakelaar rechtsboven.";
+"Entries on the map" = "Aantekeningen op de kaart";
+"No entries on the map yet: add a place to a day's text and the day will appear here." = "Nog geen aantekeningen op de kaart: zet een plek in de tekst van een dag en de dag verschijnt hier.";
+"Entries here" = "Aantekeningen hier";

@@ -721,3 +721,9 @@
 "Evening reminder" = "夜のリマインダー";
 "“Write down your day” — if today’s diary is empty." = "「今日を書き残しましょう」— 今日の日記が空のとき。";
 "Import from Apple Journal" = "Appleの「ジャーナル」から取り込む";
+
+/* Карта «Записи» (P451) */
+"You add your own places in “My places” — the switch at the top right." = "自分の場所は「自分の場所」で追加します — 右上の切り替えです。";
+"Entries on the map" = "地図上の記録";
+"No entries on the map yet: add a place to a day's text and the day will appear here." = "地図にはまだ記録がありません。日の本文に場所を入れると、その日がここに表示されます。";
+"Entries here" = "ここの記録";

@@ -49,14 +49,26 @@ struct MapScreen: View {
 
     enum Panel { case naming, cloud }
 
+    /// Несколько записей под одним кружком — их список (P451).
+    @State private var entryList: MapEntryGroup?
+
     var body: some View {
         ZStack(alignment: .top) {
-            NativeMap(places: places, days: days, selected: selected, focus: focus,
+            NativeMap(places: shell.mapEntries ? [] : places, days: days,
+                      entries: shell.mapEntries ? entries : [],
+                      selected: selected, focus: focus,
                       satellite: shell.mapSatellite,
-                      onLongPress: pick, onPlace: choose, onDay: openDay,
+                      onLongPress: longPress, onPlace: choose, onDay: openDay,
+                      onEntries: openEntries,
                       onSelected: { withAnimation { panel = .cloud } },
                       onTapEmpty: tapEmpty,
                       onRegion: { seen.region = $0 })
+            // Справа сверху, под уголком с тремя точками: «мои места /
+            // записи» и под ним «схема / спутник» (P451; спутник прежде —
+            // внизу справа, P419). Плашки точки ложатся поверх, как и на
+            // кнопку «где я».
+            side
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             if let selected, panel == .naming {
                 // Новая булавка — новая панель: поля не должны
                 // остаться от прежней точки.
@@ -81,30 +93,6 @@ struct MapScreen: View {
         }
         .animation(.easeOut(duration: 0.15), value: panel)
         .overlay(alignment: .bottom) { bar }
-        // Схема ↔ спутник — кружком у правого края, над кнопками внизу
-        // (P419; прежде только в меню карты, P222). Пока называют новую
-        // точку и открыта клавиатура — не мешает.
-        .overlay(alignment: .bottomTrailing) {
-            if panel != .naming || selected == nil {
-                Button {
-                    Feel.light()
-                    shell.mapSatellite.toggle()
-                } label: {
-                    Image(systemName: shell.mapSatellite ? "map" : "globe.europe.africa.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Look.accent)
-                        .frame(width: 42, height: 42)
-                        .background(Circle().fill(Look.chrome.opacity(0.82)))
-                        .overlay(Circle().strokeBorder(Look.inkFaint.opacity(0.4), lineWidth: 0.8))
-                        .shadow(color: .black.opacity(0.18), radius: 3, y: 1.5)
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 12)
-                .padding(.bottom, 78)
-                .accessibilityLabel(shell.mapSatellite ? T("Показать схему", "Show the map")
-                                                       : T("Показать спутник", "Show satellite"))
-            }
-        }
         .background(Look.chrome)
         .background(GeometryReader { geo in
             let bottom = geo.frame(in: .global).maxY
@@ -149,6 +137,12 @@ struct MapScreen: View {
                 focus = MapFocus(center: place.coordinate, meters: 1500)
             }
         }
+        .sheet(item: $entryList) { group in
+            MapEntriesList(entries: group.entries) { date in
+                entryList = nil
+                openDay(date)
+            }
+        }
         .onChange(of: selected) { _, now in
             shell.mapPoint = now.map { GeoPoint(title: $0.name, at: $0.coordinate) }
         }
@@ -158,6 +152,122 @@ struct MapScreen: View {
     /// Точек дней на карте больше нет (P294): на карте — только свои
     /// места человека.
     private var days: [MapDay] { [] }
+
+    /// Записи на карте (P451): день — на каждом своём месте, по точкам в
+    /// тексте, заголовке, под делами и в ответах. Близкие точки одного
+    /// дня — одно место.
+    private var entries: [MapEntry] {
+        archive.days.values.flatMap { day -> [MapEntry] in
+            var seen = Set<String>()
+            let cover = day.cover.flatMap { link -> (URL, Bool)? in
+                let kind = Diary.kind(of: link)
+                guard kind == .photo || kind == .video,
+                      let url = vault.mediaURL(link, for: day.date) else { return nil }
+                return (url, kind == .video)
+            }
+            return day.points.compactMap { at -> MapEntry? in
+                let key = String(format: "%.4f,%.4f", at.latitude, at.longitude)
+                guard seen.insert(key).inserted else { return nil }
+                return MapEntry(stamp: day.stamp, date: day.date, at: at,
+                                cover: cover?.0, video: cover?.1 ?? false, line: Self.line(of: day))
+            }
+        }
+    }
+
+    /// Чем день назван в списке записей: заголовок, начало записи, первое
+    /// дело — без точек и ссылок.
+    private static func line(of day: Archive.Day) -> String {
+        let title = Geo.stripped(day.title).trimmingCharacters(in: .whitespaces)
+        if !title.isEmpty { return title }
+        if let first = day.preview.split(separator: "\n").first {
+            return Geo.stripped(String(first)).trimmingCharacters(in: .whitespaces)
+        }
+        return day.tasks.first(where: { $0.isTask }).map { Geo.stripped($0.text) } ?? ""
+    }
+
+    /// Долгое нажатие ставит свою точку — только в «Моих местах»: на карте
+    /// записей своих мест не видно, и новая булавка там сбивала бы.
+    private func longPress(_ at: CLLocationCoordinate2D) {
+        guard shell.mapEntries else { return pick(at) }
+        shell.say(T("Свои точки ставятся в «Моих местах» — переключатель справа сверху.",
+                    "You add your own places in “My places” — the switch at the top right."))
+    }
+
+    /// Одна запись — сразу её день; несколько — список (P451).
+    private func openEntries(_ found: [MapEntry]) {
+        var seen = Set<String>()
+        let unique = found.sorted { $0.stamp > $1.stamp }.filter { seen.insert($0.stamp).inserted }
+        if unique.count == 1, let one = unique.first {
+            openDay(one.date)
+        } else if !unique.isEmpty {
+            entryList = MapEntryGroup(entries: unique)
+        }
+    }
+
+    // MARK: - Справа сверху
+
+    private var side: some View {
+        VStack(spacing: 8) {
+            // Переключатель: два значка в одной капсуле, выбранный — залит.
+            VStack(spacing: 0) {
+                sideMode(entries: false, icon: "mappin.and.ellipse",
+                         label: T("Мои места", "My places"))
+                Rectangle().fill(Look.inkFaint.opacity(0.4)).frame(width: 26, height: 0.8)
+                sideMode(entries: true, icon: "photo.on.rectangle.angled",
+                         label: T("Записи на карте", "Entries on the map"))
+            }
+            .background(Capsule().fill(Look.chrome.opacity(0.82)))
+            .overlay(Capsule().strokeBorder(Look.inkFaint.opacity(0.4), lineWidth: 0.8))
+            .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.18), radius: 3, y: 1.5)
+
+            Button {
+                Feel.light()
+                shell.mapSatellite.toggle()
+            } label: {
+                Image(systemName: shell.mapSatellite ? "map" : "globe.europe.africa.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Look.accent)
+                    .frame(width: MapSide.button, height: MapSide.button)
+                    .background(Circle().fill(Look.chrome.opacity(0.82)))
+                    .overlay(Circle().strokeBorder(Look.inkFaint.opacity(0.4), lineWidth: 0.8))
+                    .shadow(color: .black.opacity(0.18), radius: 3, y: 1.5)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(shell.mapSatellite ? T("Показать схему", "Show the map")
+                                                   : T("Показать спутник", "Show satellite"))
+        }
+        .padding(.trailing, 12)
+        .padding(.top, MapSide.top)
+    }
+
+    private func sideMode(entries on: Bool, icon: String, label: String) -> some View {
+        let chosen = shell.mapEntries == on
+        return Button {
+            guard !chosen else { return }
+            Feel.light()
+            if on {
+                // Со своих мест на записи — выбранная точка и её плашка
+                // уходят: на карте записей их нет.
+                withAnimation { panel = nil }
+                selected = nil
+            }
+            shell.mapEntries = on
+            if on, entries.isEmpty {
+                shell.say(T("На карте пока нет записей: поставьте точку в тексте дня — и день появится здесь.",
+                            "No entries on the map yet: add a place to a day's text and the day will appear here."))
+            }
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(chosen ? Color.white : Look.accent)
+                .frame(width: MapSide.button, height: MapSide.segment)
+                .background(chosen ? Look.accent : Color.clear)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
 
     // MARK: - Кнопки внизу
 
@@ -885,6 +995,8 @@ struct NativeMap: UIViewRepresentable {
 
     var places: [Place]
     var days: [MapDay]
+    /// Записи — на карте «Записи» вместо своих мест (P451).
+    var entries: [MapEntry] = []
     var selected: Place?
     var focus: MapFocus?
     /// Спутник вместо схемы — из меню карты (P222).
@@ -892,6 +1004,7 @@ struct NativeMap: UIViewRepresentable {
     var onLongPress: (CLLocationCoordinate2D) -> Void
     var onPlace: (Place) -> Void
     var onDay: (Date) -> Void
+    var onEntries: ([MapEntry]) -> Void = { _ in }
     var onSelected: () -> Void
     var onTapEmpty: () -> Void = {}
     var onRegion: (MKCoordinateRegion) -> Void = { _ in }
@@ -939,7 +1052,8 @@ struct NativeMap: UIViewRepresentable {
         NSLayoutConstraint.activate([
             // Справа сверху, под уголком с тремя точками (P228).
             track.trailingAnchor.constraint(equalTo: map.trailingAnchor, constant: -12),
-            track.topAnchor.constraint(equalTo: map.topAnchor, constant: Corner.size + 6),
+            // Под переключателем записей и кнопкой спутника (P451).
+            track.topAnchor.constraint(equalTo: map.topAnchor, constant: MapSide.bottom),
             compass.trailingAnchor.constraint(equalTo: map.trailingAnchor, constant: -12),
             compass.topAnchor.constraint(equalTo: track.bottomAnchor, constant: 10),
         ])
@@ -988,6 +1102,8 @@ struct NativeMap: UIViewRepresentable {
             var key = parent.places.map { "\($0.id)\($0.name)\($0.mark)\($0.latitude)\($0.longitude)" }
                 .joined(separator: "|")
             key += parent.days.map { "\($0.stamp)\($0.today)" }.joined(separator: "|")
+            key += "#" + parent.entries.map { "\($0.stamp)\($0.at.latitude)\($0.at.longitude)\($0.cover?.path ?? "")" }
+                .joined(separator: "|")
             key += draft.map { "\($0.name)\($0.latitude)\($0.longitude)" } ?? "-"
             // Выбранное место рисуется иначе (P428) — сменился выбор, метки
             // ставятся заново.
@@ -997,6 +1113,7 @@ struct NativeMap: UIViewRepresentable {
             map.removeAnnotations(map.annotations.filter { !($0 is MKUserLocation) })
             map.addAnnotations(parent.days.map { DayMark($0) })
             map.addAnnotations(parent.places.map { PlaceMark($0) })
+            map.addAnnotations(parent.entries.map { EntryMark($0) })
             if let draft { map.addAnnotation(DraftMark(draft)) }
         }
 
@@ -1052,6 +1169,24 @@ struct NativeMap: UIViewRepresentable {
                 view.titleVisibility = .visible
                 view.displayPriority = .required
                 return view
+            case let mark as EntryMark:
+                // Запись: превью снимка дня. Близкие сливаются в кружок с
+                // числом — это делает сама карта (P451).
+                let view = MKAnnotationView(annotation: mark, reuseIdentifier: "запись")
+                view.clusteringIdentifier = "записи"
+                // Не «обязательная»: такие карта в кружки не сливает.
+                view.displayPriority = .defaultHigh
+                show([mark.entry], in: view, for: mark)
+                quick(view)
+                return view
+            case let cluster as MKClusterAnnotation:
+                let members = cluster.memberAnnotations.compactMap { ($0 as? EntryMark)?.entry }
+                guard !members.isEmpty else { return nil }
+                let view = MKAnnotationView(annotation: cluster, reuseIdentifier: "записи")
+                view.displayPriority = .required
+                show(members, in: view, for: cluster)
+                quick(view)
+                return view
             case let mark as DayMark:
                 let view = MKAnnotationView(annotation: mark, reuseIdentifier: "день")
                 // Точка дня подписана датой: иначе непонятно, что за точка
@@ -1081,7 +1216,36 @@ struct NativeMap: UIViewRepresentable {
             switch annotation {
             case let mark as PlaceMark: parent.onPlace(mark.place)
             case let mark as DayMark: parent.onDay(mark.day.date)
+            case let mark as EntryMark: parent.onEntries([mark.entry])
+            case let cluster as MKClusterAnnotation:
+                parent.onEntries(cluster.memberAnnotations.compactMap { ($0 as? EntryMark)?.entry })
             default: return
+            }
+        }
+
+        /// Превью записи (или кружка записей) на карте: сразу — рамка с
+        /// числом, снимок дорисовывается, когда прочитан с диска (P451).
+        private func show(_ entries: [MapEntry], in view: MKAnnotationView, for annotation: MKAnnotation) {
+            let count = Set(entries.map(\.stamp)).count
+            let newest = entries.sorted { $0.stamp > $1.stamp }
+            let cover = newest.first(where: { $0.cover != nil })
+            let key = cover.flatMap { $0.cover.map { "карта|" + $0.path } }
+            let ready = key.flatMap { Photo.cache.object(forKey: $0 as NSString) }
+            view.image = EntryPin.draw(ready, count: count)
+            view.centerOffset = EntryPin.offset
+            guard ready == nil, let cover, let url = cover.cover, let key else { return }
+            Task { @MainActor [weak view] in
+                let image: UIImage?
+                if cover.video {
+                    image = await Photo.poster(url, side: EntryPin.side)
+                } else {
+                    image = await Task.detached { Photo.load(url, side: EntryPin.side) }.value
+                }
+                guard let image else { return }
+                Photo.cache.setObject(image, forKey: key as NSString)
+                // Карта могла уже отдать эту рамку другой метке.
+                guard let view, view.annotation === annotation else { return }
+                view.image = EntryPin.draw(image, count: count)
             }
         }
 
@@ -1093,13 +1257,170 @@ struct NativeMap: UIViewRepresentable {
             guard let annotation = view.annotation else { return }
             switch annotation {
             // Свои места и дни отвечают на своё касание сразу (P243).
-            case is PlaceMark, is DayMark: break
+            case is PlaceMark, is DayMark, is EntryMark, is MKClusterAnnotation: break
             case is DraftMark: parent.onSelected()
             default: return
             }
             // Снять выбор сразу — чтобы ту же метку можно было нажать снова.
             map.deselectAnnotation(annotation, animated: false)
         }
+    }
+}
+
+/// Где стоят кнопки справа сверху на карте (P451): переключатель «мои
+/// места / записи» из двух половин и под ним «схема / спутник»; ниже —
+/// «где я» и компас.
+enum MapSide {
+    static let button: CGFloat = 42
+    static let segment: CGFloat = 40
+    static var top: CGFloat { Corner.size + 6 }
+    static var bottom: CGFloat { top + 2 * segment + 1 + 8 + button + 10 }
+}
+
+/// День на карте «Записи» — на одном из своих мест (P451).
+struct MapEntry {
+    let stamp: String
+    let date: Date
+    let at: CLLocationCoordinate2D
+    /// Снимок или видео дня для превью.
+    let cover: URL?
+    let video: Bool
+    /// Заголовок или начало записи — для списка.
+    let line: String
+}
+
+/// Несколько записей под одним кружком — для листка со списком.
+struct MapEntryGroup: Identifiable {
+    let id = UUID()
+    let entries: [MapEntry]
+}
+
+final class EntryMark: NSObject, MKAnnotation {
+    let entry: MapEntry
+    var coordinate: CLLocationCoordinate2D { entry.at }
+    var title: String? { Ru.shortDate(entry.date) }
+    init(_ entry: MapEntry) { self.entry = entry }
+}
+
+/// Превью записи на карте: снимок в белой рамке с хвостиком к месту и,
+/// если записей несколько, — число в синем кружке.
+enum EntryPin {
+    static let side: CGFloat = 48
+    private static let size = CGSize(width: side + 16, height: side + 17)
+    private static let card = CGRect(x: 4, y: 8, width: side, height: side)
+
+    /// Хвостик рамки — ровно на месте.
+    static var offset: CGPoint {
+        CGPoint(x: size.width / 2 - card.midX, y: -(card.maxY + 6 - size.height / 2))
+    }
+
+    static func draw(_ photo: UIImage?, count: Int) -> UIImage {
+        UIGraphicsImageRenderer(size: size).image { ctx in
+            let g = ctx.cgContext
+            let frame = UIBezierPath(roundedRect: card, cornerRadius: 9)
+            let tail = UIBezierPath()
+            tail.move(to: CGPoint(x: card.midX - 6, y: card.maxY - 1))
+            tail.addLine(to: CGPoint(x: card.midX, y: card.maxY + 6))
+            tail.addLine(to: CGPoint(x: card.midX + 6, y: card.maxY - 1))
+            tail.close()
+            g.saveGState()
+            g.setShadow(offset: CGSize(width: 0, height: 1.5), blur: 3,
+                        color: UIColor.black.withAlphaComponent(0.3).cgColor)
+            UIColor.white.setFill()
+            frame.fill()
+            tail.fill()
+            g.restoreGState()
+
+            let inner = card.insetBy(dx: 2.5, dy: 2.5)
+            g.saveGState()
+            UIBezierPath(roundedRect: inner, cornerRadius: 7).addClip()
+            if let photo, photo.size.width > 0, photo.size.height > 0 {
+                let scale = max(inner.width / photo.size.width, inner.height / photo.size.height)
+                let w = photo.size.width * scale, h = photo.size.height * scale
+                photo.draw(in: CGRect(x: inner.midX - w / 2, y: inner.midY - h / 2, width: w, height: h))
+            } else {
+                // Записи без снимка — бумажка с книжкой.
+                UIColor(Look.sticker).setFill()
+                UIRectFill(inner)
+                if let book = UIImage(systemName: "book.closed",
+                                      withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .medium))?
+                    .withTintColor(UIColor(Look.inkSoft), renderingMode: .alwaysOriginal) {
+                    book.draw(at: CGPoint(x: inner.midX - book.size.width / 2,
+                                          y: inner.midY - book.size.height / 2))
+                }
+            }
+            g.restoreGState()
+
+            guard count > 1 else { return }
+            let text = (count > 999 ? "999+" : "\(count)") as NSString
+            let font = UIFont.systemFont(ofSize: 11, weight: .bold)
+            let words: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
+            let width = max(20, ceil(text.size(withAttributes: words).width) + 10)
+            let badge = CGRect(x: min(size.width - width, card.maxX - width / 2 - 2), y: 0,
+                               width: width, height: 20)
+            UIColor(Look.accent).setFill()
+            UIBezierPath(roundedRect: badge, cornerRadius: 10).fill()
+            UIColor.white.setStroke()
+            let ring = UIBezierPath(roundedRect: badge.insetBy(dx: 0.75, dy: 0.75), cornerRadius: 9.25)
+            ring.lineWidth = 1.5
+            ring.stroke()
+            let used = text.size(withAttributes: words)
+            text.draw(at: CGPoint(x: badge.midX - used.width / 2, y: badge.midY - used.height / 2),
+                      withAttributes: words)
+        }
+    }
+}
+
+/// Список записей под одним кружком карты (P451): дата, начало записи,
+/// превью; касание — открыть день.
+struct MapEntriesList: View {
+    let entries: [MapEntry]
+    let open: (Date) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List(entries, id: \.stamp) { entry in
+                Button { open(entry.date) } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Group {
+                            if let url = entry.cover {
+                                PhotoThumb(url: url, video: entry.video)
+                            } else {
+                                Image(systemName: "book.closed")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Look.inkSoft)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .background(Look.sticker)
+                            }
+                        }
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(Search.stamp(entry.date))
+                                .font(Look.sans(13))
+                                .foregroundStyle(Look.inkSoft)
+                            Text(entry.line)
+                                .font(Look.serif(16))
+                                .foregroundStyle(Look.ink)
+                                .lineLimit(2)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+            .navigationTitle(T("Записи здесь", "Entries here"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(T("Готово", "Done")) { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
