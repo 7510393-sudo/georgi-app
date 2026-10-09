@@ -66,9 +66,13 @@ struct MapScreen: View {
             // Справа сверху, под уголком с тремя точками: «мои места /
             // записи» и под ним «схема / спутник» (P451; спутник прежде —
             // внизу справа, P419). Плашки точки ложатся поверх, как и на
-            // кнопку «где я».
-            side
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            // кнопку «где я». Пока плашка открыта, их нет: сквозь
+            // полупрозрачную плашку они путались со значками (P461).
+            if selected == nil || panel == nil {
+                side
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .transition(.opacity)
+            }
             if let selected, panel == .naming {
                 // Новая булавка — новая панель: поля не должны
                 // остаться от прежней точки.
