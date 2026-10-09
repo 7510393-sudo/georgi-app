@@ -324,11 +324,13 @@ struct RootView: View {
             if keyboard.height > 0, shell.screen == .map || shell.screen == .search {
                 SectionsRow(current: shell.screen) { tapSection($0) }
                     .padding(.horizontal, KeyboardBar.inset)
-                    // Высота клавиатуры считана от края экрана, а страница
-                    // кончается выше — над полосой жеста «домой»: её вычитаем,
-                    // иначе строка висит выше клавиатуры на её ширину (P426).
-                    .padding(.bottom, max(0, keyboard.height - homeBar) + 2)
+                    // Высота клавиатуры считана от края экрана — и строка
+                    // ставится от края экрана, без мерки полосы «домой»:
+                    // с ней в 106-й строка висела над клавиатурой на ширину
+                    // этой полосы, и под ней просвечивал экран (P462).
+                    .padding(.bottom, keyboard.height + 2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .ignoresSafeArea(.container, edges: .bottom)
             }
             // Подсказки для первого знакомства (P427) — поверх всего, когда
             // экран спокоен.
