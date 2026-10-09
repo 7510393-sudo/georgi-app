@@ -291,6 +291,7 @@ struct SettingsSticker: View {
                     Button {
                         Lang.set(lang.code)
                         language = lang.code
+                        KeyboardBar.relabel()
                     } label: {
                         if lang.code == Lang.code {
                             Label(lang.name, systemImage: "checkmark")

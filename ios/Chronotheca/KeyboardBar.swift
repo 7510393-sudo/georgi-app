@@ -90,7 +90,7 @@ enum KeyboardBar {
                 }
                 // Тают только названия разделов; строка вложений доезжает
                 // до нижней целиком и сливается с ней (P456).
-                withAnimation(.easeIn(duration: duration)) { self.opacity = 0 }
+                withAnimation(.easeOut(duration: duration * 0.6)) { self.opacity = 0 }
                 withAnimation(.easeOut(duration: duration)) { self.pillOpacity = 1 }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
@@ -106,6 +106,13 @@ enum KeyboardBar {
     }
 
     private static var host: UIHostingController<KeyboardBarView>?
+
+    /// Сменили язык — приставка одна на всё время работы и сама не
+    /// перерисовывается: в 106-й над клавиатурой оставались русские
+    /// названия разделов при английском приложении (P463).
+    static func relabel() {
+        host?.rootView = KeyboardBarView()
+    }
     private static var holder: UIView?
 
     /// Одна приставка на все поля: видна она только у того, в котором пишут.
@@ -199,7 +206,14 @@ enum KeyboardBar {
             guard let box, let window = box.window, full > 0 else { return }
             let frame = box.convert(box.bounds, to: window)
             // Сколько клавиатуры ещё видно под строками.
-            let left = window.bounds.height - frame.maxY
+            var left = window.bounds.height - frame.maxY
+            // Строки гаснут, не доезжая до нижних: к строке вложений внизу
+            // страницы они приходят уже прозрачными. Прежде гасли только у
+            // самого края экрана и на полсекунды ложились поверх значков
+            // разделов (запись экрана автора со 106-й, P463).
+            if let pill = KeyboardBar.glide.pillTarget {
+                left = pill - (frame.minY + KeyboardBar.attachHeight / 2)
+            }
             box.alpha = max(0, min(1, left / (full * 0.5)))
         }
     }
