@@ -62,6 +62,9 @@ enum KeyboardBar {
         @Published var pillY: CGFloat = 0
         @Published var namesY: CGFloat = 0
         @Published var opacity: Double = 1
+        /// Строка вложений не тает, а доезжает до нижней (P456): была
+        /// приглушена смахиванием — по пути возвращает яркость.
+        @Published var pillOpacity: Double = 1
         /// Где настоящие строки — по высоте экрана; их сообщают сами.
         var pillTarget: CGFloat?
         var namesTarget: CGFloat?
@@ -78,13 +81,17 @@ enum KeyboardBar {
                 pillY = min(pill, pt)
                 namesY = min(names, nt)
                 opacity = from
+                pillOpacity = from
             }
             DispatchQueue.main.async {
                 withAnimation(.easeOut(duration: duration)) {
                     self.pillY = pt
                     self.namesY = nt
                 }
+                // Тают только названия разделов; строка вложений доезжает
+                // до нижней целиком и сливается с ней (P456).
                 withAnimation(.easeIn(duration: duration)) { self.opacity = 0 }
+                withAnimation(.easeOut(duration: duration)) { self.pillOpacity = 1 }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
                 if self.token == mine { self.on = false }
@@ -380,12 +387,13 @@ struct GlideView: View {
                 rows.attachments
                     .frame(width: width, height: KeyboardBar.attachHeight)
                     .position(x: width / 2, y: glide.pillY)
+                    .opacity(glide.pillOpacity)
                 rows.sections
                     .frame(width: width, height: KeyboardBar.sectionsHeight)
                     .position(x: width / 2, y: glide.namesY)
+                    .opacity(glide.opacity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .opacity(glide.opacity)
             .ignoresSafeArea()
             .allowsHitTesting(false)
         }

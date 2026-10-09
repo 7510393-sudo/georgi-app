@@ -12,6 +12,8 @@ struct DiaryView: View {
     /// Превью из полоски, которое несут, и где палец (P380).
     @State private var stripCarry: Int?
     @State private var stripSpot: CGPoint = .zero
+    /// Крестик у вложения в тексте нажат — сперва вопрос (P456).
+    @State private var deleting: String?
 
     /// На ступень крупнее прежних 15,5 и растёт с настройкой (P274).
     static var size: CGFloat { 16.5 * Prefs.textScale }
@@ -115,7 +117,14 @@ struct DiaryView: View {
             planTarget: store.canEditPlan ? { PlanZones.task(at: $0, tasks: store.tasks) } : nil,
             onPlanHover: { hover($0, photo: $1) },
             onToPlan: { piece, task in store.textToPlan(piece, under: task) },
-            onDeleteAttachment: { deleteFromText($0) })
+            onDeleteAttachment: { deleting = $0 })
+        // Удаление — только после вопроса, как в полоске (P456).
+        .modifier(RemoveQuestion(
+            asking: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            act: { delete in
+                if let link = deleting { deleteFromText(link, delete: delete) }
+                deleting = nil
+            }))
         // Взятое из полоски — над пальцем, в синей рамке (P380).
         .overlay {
             if let i = stripCarry, stripSpot != .zero, store.stripLinks.indices.contains(i) {
@@ -241,10 +250,10 @@ extension DiaryView {
 
     /// Крестик у снимка в записи → «удалить файл» (P409): снимок уходит из
     /// записи, а файл — в корзину на 30 дней, как из полоски (P371).
-    fileprivate func deleteFromText(_ link: String) {
+    fileprivate func deleteFromText(_ link: String, delete: Bool) {
         store.returnToStrip(link)
         guard let k = store.photos.lastIndex(of: link) else { return }
-        shell.say(store.removeAttachment(at: k, from: .diary, delete: true))
+        shell.say(store.removeAttachment(at: k, from: .diary, delete: delete))
     }
 
     @ViewBuilder fileprivate func stripGhost(_ link: String) -> some View {
@@ -252,9 +261,9 @@ extension DiaryView {
             if Diary.kind(of: link) == .photo {
                 PlanPhotoThumb(url: store.photoURL(link))
             } else {
-                Image(uiImage: FileChip.draw(link)).scaleEffect(1.3)
-                    .padding(10)
-                    .background(Look.planBg, in: RoundedRectangle(cornerRadius: 9))
+                // Голос и документ несут той же плиткой, какой они встанут
+                // в текст (P456).
+                Image(uiImage: PhotoAttachment.tile(link))
             }
         }
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Look.glow, lineWidth: 2.6))

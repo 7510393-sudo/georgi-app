@@ -423,12 +423,12 @@ struct DiaryEditor: UIViewRepresentable {
             let content = ns.substring(with: line).trimmingCharacters(in: .newlines)
             let range = NSRange(location: line.location, length: (content as NSString).length)
             let row = Diary.pictures(in: content)
-            if let link = Diary.picture(in: content), Diary.kind(of: link) == .photo {
+            if let link = Diary.picture(in: content) {
+                // Снимок, голос, видео, документ своей строкой — квадратной
+                // плиткой, как снимок (P456; прежде голос и документ были
+                // кнопочкой с именем, P377): переносятся, раздвигают строки,
+                // возвращаются в полоску и удаляются крестиком так же.
                 found.append((range, link, nil))
-            } else if Diary.picture(in: content) != nil {
-                // Голос, видео, документ своей строкой — кнопочкой с
-                // именем, как точка (P377). В файле — та же строка.
-                found.append((range, content, nil))
             } else if row.count > 1 {
                 // Несколько снимков в одной строке — рядом, через пробел
                 // (P348). Каждый — своей картинкой, пробел остаётся.
@@ -2132,6 +2132,14 @@ final class PhotoAttachment: NSTextAttachment {
         self.url = url
         super.init(data: nil, ofType: nil)
         bounds = CGRect(origin: CGPoint(x: 0, y: -4), size: DiaryEditor.photoSize)
+        // Голос, видео, документ — плитка со значком того же размера, что
+        // снимок (P456). Читать с диска нечего.
+        if Diary.kind(of: link) != .photo {
+            image = PhotoAttachment.tile(link)
+            loaded = true
+            accessibilityLabel = FileChip.name(link)
+            return
+        }
         if let url, let cached = Photo.cache.object(forKey: PhotoAttachment.key(url)) {
             image = cached
             loaded = true
@@ -2149,6 +2157,42 @@ final class PhotoAttachment: NSTextAttachment {
         let box = CGRect(origin: .zero, size: DiaryEditor.photoSize)
         UIColor(Look.chrome).setFill()
         UIBezierPath(roundedRect: box, cornerRadius: 6).fill()
+    }
+
+    /// Плитка голоса, видео или документа — как в полоске внизу: значок и
+    /// подпись на бумаге с тонкой рамкой (P456).
+    static func tile(_ link: String) -> UIImage {
+        let size = DiaryEditor.photoSize
+        let kind = Diary.kind(of: link)
+        let icon = kind == .audio ? "waveform" : kind == .video ? "play.rectangle" : "doc.text"
+        let label = kind == .audio ? T("голос", "voice") : kind == .video ? T("видео", "video")
+            : ((link as NSString).pathExtension.lowercased().isEmpty
+                ? T("файл", "file") : (link as NSString).pathExtension.lowercased())
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            let box = CGRect(origin: .zero, size: size)
+            let shape = UIBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 6)
+            UIColor(Look.chrome).setFill()
+            shape.fill()
+            UIColor(Look.rule).setStroke()
+            shape.lineWidth = 1
+            shape.stroke()
+            let tint = UIColor(Look.inkSoft)
+            if let symbol = UIImage(systemName: icon,
+                                    withConfiguration: UIImage.SymbolConfiguration(pointSize: size.width * 0.22,
+                                                                                   weight: .regular))?
+                .withTintColor(tint, renderingMode: .alwaysOriginal) {
+                symbol.draw(at: CGPoint(x: box.midX - symbol.size.width / 2,
+                                        y: box.midY - symbol.size.height * 0.85))
+            }
+            let words: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: max(10, size.width * 0.1)),
+                .foregroundColor: tint,
+            ]
+            let text = label as NSString
+            let used = text.size(withAttributes: words)
+            text.draw(at: CGPoint(x: box.midX - min(used.width, box.width - 8) / 2, y: box.midY + 6),
+                      withAttributes: words)
+        }
     }
 
     /// Снимок, обрезанный по клетке и со скруглёнными углами.

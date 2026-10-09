@@ -361,9 +361,14 @@ struct RootView: View {
         .background {
             GeometryReader { g in
                 Color.clear
-                    .onAppear { homeBar = g.safeAreaInsets.bottom }
+                    .onAppear { if g.safeAreaInsets.bottom < 60 { homeBar = g.safeAreaInsets.bottom } }
+                    // Меряется один раз (P456): полоса «домой» у телефона
+                    // всегда одна. Перемеряя её, строка в конце ухода
+                    // клавиатуры ловила промежуточный низ и улетала вверх
+                    // (запись экрана автора). Поправка — только если первая
+                    // мерка пришла пустой.
                     .onChange(of: g.safeAreaInsets.bottom) { _, now in
-                        if keyboard.height == 0, now < 60, now != homeBar { homeBar = now }
+                        if homeBar == 0, keyboard.height == 0, now > 0, now < 60 { homeBar = now }
                     }
             }
             .ignoresSafeArea()

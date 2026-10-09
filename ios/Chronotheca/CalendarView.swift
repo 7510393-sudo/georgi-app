@@ -427,7 +427,9 @@ struct CalendarView: View {
 
     private func toTop(_ proxy: ScrollViewProxy, in month: Date, current: Bool) {
         guard current, kind == .list else { return }
-        let target = [store.date, DayStore.today()].first {
+        // Сегодняшний — первым (P456): автор открыл «Список» в пятницу, а
+        // вверху стояло воскресенье, открытое раньше.
+        let target = [DayStore.today(), store.date].first {
             cal.isDate($0, equalTo: month, toGranularity: .month)
         }
         guard let target else { return }
@@ -442,7 +444,10 @@ struct CalendarView: View {
         let cells = MonthGrid.cells(of: date, calendar: cal, firstWeekday: cal.firstWeekday).compactMap { $0 }
         let today = Vault.stamp(DayStore.today())
 
-        return LazyVStack(spacing: 0) {
+        // Не «ленивый» столбец (P456): в нём строки, ещё не нарисованные,
+        // стоят наугад, и прокрутка к дню промахивалась на день-два. Дней в
+        // месяце не больше 31 — рисовать их сразу ничего не стоит.
+        return VStack(spacing: 0) {
             ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
                 row(day, today: today)
                     .id(Vault.stamp(day))
@@ -525,10 +530,13 @@ struct CalendarView: View {
     /// нижний край рамки вокруг недели, и этот загиб её и замыкает (P143).
     @ViewBuilder private func weekRule(after date: Date) -> some View {
         let weekday = cal.component(.weekday, from: date)
-        // Неделя кончается днём перед первым днём недели (P290).
-        let last = cal.firstWeekday == 1 ? 7 : 1
-        if weekday == last {
-            WeekEnd().stroke(Look.inkFaint, lineWidth: 2).frame(height: 2)
+        // Черты обнимают выходные — субботу и воскресенье, — с какого бы дня
+        // ни начиналась неделя (P456; прежде при неделе с воскресенья жирная
+        // черта вставала после субботы, и выделенными выглядели пятница и
+        // суббота). Нижняя — заметнее, с явными загибами.
+        if weekday == 1 {
+            WeekEnd(rise: 9).stroke(Look.inkSoft, style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
+                .frame(height: 3)
         } else if weekday == 6 {
             Rectangle().fill(Look.inkFaint).opacity(0.55).frame(height: 1)
         } else {
