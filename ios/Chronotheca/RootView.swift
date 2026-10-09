@@ -876,11 +876,16 @@ struct Corner: View {
             // края; черта — только сбоку и снизу, тень явнее (P416).
             // Растворяется выше значка (P425): значок стоит на чистой
             // бумаге, а не на переходе.
+            // Тень — только от плотной части листка (P459): прежде её
+            // отбрасывал и растворяющийся верх, и сквозь прозрачную бумагу
+            // над листком проступала серая полоса — «неаккуратный верх».
+            CornerShape(leading: leading, top: 0.2)
+                .fill(paper)
+                .shadow(color: .black.opacity(0.4), radius: 4, x: leading ? 2 : -2, y: 3.5)
             CornerShape(leading: leading)
                 .fill(LinearGradient(stops: [.init(color: paper.opacity(0), location: 0),
                                              .init(color: paper, location: 0.11)],
                                      startPoint: .top, endPoint: .bottom))
-                .shadow(color: .black.opacity(0.4), radius: 4, x: leading ? 2 : -2, y: 3.5)
             CornerEdge(leading: leading)
                 .stroke(LinearGradient(stops: [.init(color: edge.opacity(0), location: 0),
                                                .init(color: edge, location: 0.14)],
@@ -902,14 +907,17 @@ struct Corner: View {
 /// острому углу, от угла боковая сторона уходит вверх за край экрана.
 struct CornerShape: Shape {
     let leading: Bool
+    /// Откуда сверху начинается листок, доля высоты: тень берётся только с
+    /// плотной части (P459).
+    var top: CGFloat = 0
 
     func path(in r: CGRect) -> Path {
         // Точки для левого уголка; правый — зеркально.
         // Стикер наклеен ровно, без наклона: видна его нижняя сторона и
         // боковая, угол между ними прямой (P236).
         let points: [CGPoint] = [
-            CGPoint(x: 0, y: 0),
-            CGPoint(x: 0.86, y: 0),              // боковая сторона уходит за верх
+            CGPoint(x: 0, y: top),
+            CGPoint(x: 0.86, y: top),            // боковая сторона уходит за верх
             CGPoint(x: 0.86, y: 0.80),           // прямой угол
             CGPoint(x: 0, y: 0.80),              // нижняя сторона уходит за край
         ]
