@@ -770,3 +770,13 @@
 "Back" = "Zurück";
 "Trial folder" = "Probeordner";
 "video" = "Video";
+
+/* P458 */
+"“Bring them back” puts these files back into your entries folder, where they were. Nothing is deleted or replaced: a file already in place is left alone. If you deleted a file on purpose, just don’t tap." = "„Aus der Sicherung zurückholen“ legt diese Dateien zurück in deinen Ordner, dorthin, wo sie lagen. Nichts wird gelöscht oder ersetzt: Eine Datei, die schon da ist, bleibt unberührt. Hast du eine Datei absichtlich gelöscht, tippe einfach nicht.";
+"Delete the task?" = "Aufgabe löschen?";
+"Keep" = "Behalten";
+"Turned off now." = "Zurzeit ausgeschaltet.";
+"They appear one at a time, where needed." = "Sie erscheinen einzeln, wo sie gebraucht werden.";
+"Show again" = "Wieder zeigen";
+"Tips are on again — they will appear one at a time, where needed." = "Tipps sind wieder an — sie erscheinen einzeln, wo sie gebraucht werden.";
+"Turn off" = "Ausschalten";

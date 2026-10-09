@@ -787,6 +787,12 @@ struct BackupSheet: View {
                 Text(vanished.prefix(5).joined(separator: "\n") + (vanished.count > 5 ? "\n…" : ""))
                     .font(Look.mono(11.5))
                     .foregroundStyle(Look.inkSoft)
+                // Что произойдёт — словами до нажатия (P458).
+                Text(T("«Вернуть из копии» положит эти файлы обратно в папку записей — туда, где они лежали. Ничего не удаляется и не заменяется: файл, который уже на месте, не трогается. Если файл вы удалили нарочно, просто не нажимайте.",
+                       "“Bring them back” puts these files back into your entries folder, where they were. Nothing is deleted or replaced: a file already in place is left alone. If you deleted a file on purpose, just don’t tap."))
+                    .font(Look.sans(13))
+                    .foregroundStyle(Look.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button(T("Вернуть из копии", "Bring them back from the backup")) { bringBack() }
                     .buttonStyle(.borderedProminent)
                     .disabled(running)

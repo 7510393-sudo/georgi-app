@@ -770,3 +770,13 @@
 "Back" = "戻る";
 "Trial folder" = "お試しフォルダ";
 "video" = "動画";
+
+/* P458 */
+"“Bring them back” puts these files back into your entries folder, where they were. Nothing is deleted or replaced: a file already in place is left alone. If you deleted a file on purpose, just don’t tap." = "「バックアップから戻す」は、これらのファイルを記録フォルダの元の場所に戻します。削除や上書きは一切ありません。すでにあるファイルはそのままです。わざと削除したファイルなら、押さないでください。";
+"Delete the task?" = "予定を削除しますか？";
+"Keep" = "残す";
+"Turned off now." = "いまはオフです。";
+"They appear one at a time, where needed." = "必要な場所で一つずつ表示されます。";
+"Show again" = "もう一度表示";
+"Tips are on again — they will appear one at a time, where needed." = "ヒントがオンに戻りました。必要な場所で一つずつ表示されます。";
+"Turn off" = "オフにする";

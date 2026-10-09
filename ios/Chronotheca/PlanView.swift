@@ -433,6 +433,8 @@ struct PlanView: View {
     @State private var slide: CGFloat = 0
     /// Точка в плане, у которой после долгого нажатия виден крестик.
     @State private var armedLine: UUID?
+    /// Дело отвели влево — сперва вопрос (P458).
+    @State private var askingDelete: UUID?
     /// Точка, которую несут пальцем (P374), откуда и куда: места — в
     /// порядке видимых строк. Строки между ними расступаются на её высоту.
     @State private var lineDrag: UUID?
@@ -538,6 +540,19 @@ struct PlanView: View {
         .onAppear(perform: startEvents)
         .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in
             reloadEvents()
+        }
+        .confirmationDialog(T("Удалить дело?", "Delete the task?"),
+                            isPresented: Binding(get: { askingDelete != nil },
+                                                 set: { if !$0 { askingDelete = nil } }),
+                            titleVisibility: .visible, presenting: askingDelete) { id in
+            Button(T("Удалить", "Delete"), role: .destructive) {
+                askingDelete = nil
+                withAnimation(.easeOut(duration: 0.2)) { store.delete(id) }
+                Feel.light()
+            }
+            Button(T("Оставить", "Keep"), role: .cancel) { askingDelete = nil }
+        } message: { id in
+            Text(store.index(of: id).map { store.planRows[$0].text } ?? "")
         }
         .confirmationDialog(T("Событие Календаря", "Calendar event"),
                             isPresented: Binding(get: { askingEvent != nil },
@@ -825,8 +840,15 @@ struct PlanView: View {
             }
             guard real, axis == .horizontal else { return }
             if by <= -Self.swipe {
-                withAnimation(.easeOut(duration: 0.2)) { store.delete(id) }
-                Feel.light()
+                // Предохранитель (P458): пустое дело и дело из серии (у него
+                // свой вопрос, P359) — сразу; остальное — после вопроса.
+                let r = row.wrappedValue
+                if r.repeats != nil || (r.text.isEmpty && r.details.isEmpty) {
+                    withAnimation(.easeOut(duration: 0.2)) { store.delete(id) }
+                    Feel.light()
+                } else {
+                    askingDelete = id
+                }
             } else if by >= Self.swipe {
                 Feel.paper()
                 withAnimation(.pull) {

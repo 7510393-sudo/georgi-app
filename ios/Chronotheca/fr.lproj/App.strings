@@ -770,3 +770,13 @@
 "Back" = "Retour";
 "Trial folder" = "Dossier d’essai";
 "video" = "vidéo";
+
+/* P458 */
+"“Bring them back” puts these files back into your entries folder, where they were. Nothing is deleted or replaced: a file already in place is left alone. If you deleted a file on purpose, just don’t tap." = "« Récupérer » remet ces fichiers dans votre dossier de notes, là où ils étaient. Rien n’est supprimé ni remplacé : un fichier déjà en place n’est pas touché. Si vous avez supprimé un fichier exprès, ne touchez simplement pas.";
+"Delete the task?" = "Supprimer la tâche ?";
+"Keep" = "Garder";
+"Turned off now." = "Désactivés pour l’instant.";
+"They appear one at a time, where needed." = "Ils apparaissent un à un, au bon endroit.";
+"Show again" = "Montrer à nouveau";
+"Tips are on again — they will appear one at a time, where needed." = "Les conseils sont de nouveau actifs — ils apparaîtront un à un, au bon endroit.";
+"Turn off" = "Désactiver";

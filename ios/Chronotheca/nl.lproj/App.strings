@@ -770,3 +770,13 @@
 "Back" = "Terug";
 "Trial folder" = "Proefmap";
 "video" = "video";
+
+/* P458 */
+"“Bring them back” puts these files back into your entries folder, where they were. Nothing is deleted or replaced: a file already in place is left alone. If you deleted a file on purpose, just don’t tap." = "‘Terughalen uit de back-up’ zet deze bestanden terug in je map met aantekeningen, waar ze stonden. Er wordt niets verwijderd of vervangen: een bestand dat er al staat, blijft onaangeroerd. Heb je een bestand bewust verwijderd, tik dan gewoon niet.";
+"Delete the task?" = "Taak verwijderen?";
+"Keep" = "Bewaren";
+"Turned off now." = "Nu uitgeschakeld.";
+"They appear one at a time, where needed." = "Ze verschijnen één voor één, waar ze nodig zijn.";
+"Show again" = "Opnieuw tonen";
+"Tips are on again — they will appear one at a time, where needed." = "Tips staan weer aan — ze verschijnen één voor één, waar ze nodig zijn.";
+"Turn off" = "Uitschakelen";

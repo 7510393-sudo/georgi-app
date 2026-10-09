@@ -188,6 +188,7 @@ struct SettingsSticker: View {
     @EnvironmentObject private var shell: Shell
     @State private var askingRename = false
     @State private var askingTrial = false
+    @ObservedObject private var hints = Hints.shared
     /// Где начинается прокрутка листка на экране (P424). Листок выезжает
     /// сдвигом картинки, а не места, — эта точка стоит, пока он едет.
     @State private var top: CGFloat = 0
@@ -566,16 +567,28 @@ struct SettingsSticker: View {
         NoteSection(title: T("О приложении", "About"))
         // Покупка: месяц пробы, потом разовая (M14, P432).
         NoteRow(title: T("Хронотека навсегда", "Chronotheca for good"), detail: Purchase.shared.summary) {
+            // Листок покупки — поверх настроек; закрыли — снова настройки
+            // (P458): прежде настройки закрывались, и человек терялся.
             NoteButton(title: T("Открыть ›", "Open ›")) {
-                close()
                 Purchase.shared.asking = true
             }
         }
         // Подсказки для знакомства — заново, с первой (P427).
-        NoteRow(title: T("Подсказки для знакомства", "Getting-started tips")) {
-            NoteButton(title: T("Показать снова ›", "Show again ›")) {
-                Hints.shared.startOver()
-                close()
+        // Две кнопки (P458): включить снова — подсказки придут к месту, по
+        // одной, когда понадобятся; отключить — ни одной больше. Настройки
+        // при этом не закрываются.
+        NoteRow(title: T("Подсказки для знакомства", "Getting-started tips"),
+                detail: hints.off ? T("Сейчас отключены.", "Turned off now.")
+                                  : T("Появляются по одной, к месту.", "They appear one at a time, where needed.")) {
+            HStack(spacing: 6) {
+                NoteButton(title: T("Показать снова", "Show again")) {
+                    Hints.shared.startOver()
+                    shell.say(T("Подсказки снова включены — появятся по одной, к месту.",
+                                "Tips are on again — they will appear one at a time, where needed."))
+                }
+                NoteButton(title: T("Отключить", "Turn off")) {
+                    Hints.shared.turnOff()
+                }
             }
         }
         // Пройти первый запуск самому — в пробной папке (P452): свои записи

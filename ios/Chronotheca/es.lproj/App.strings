@@ -770,3 +770,13 @@
 "Back" = "Volver";
 "Trial folder" = "Carpeta de prueba";
 "video" = "vídeo";
+
+/* P458 */
+"“Bring them back” puts these files back into your entries folder, where they were. Nothing is deleted or replaced: a file already in place is left alone. If you deleted a file on purpose, just don’t tap." = "«Recuperar de la copia» devuelve estos archivos a tu carpeta de entradas, donde estaban. No se borra ni se sustituye nada: un archivo que ya está en su sitio no se toca. Si borraste un archivo a propósito, simplemente no lo toques.";
+"Delete the task?" = "¿Borrar la tarea?";
+"Keep" = "Conservar";
+"Turned off now." = "Desactivados ahora.";
+"They appear one at a time, where needed." = "Aparecen de uno en uno, donde hacen falta.";
+"Show again" = "Mostrar de nuevo";
+"Tips are on again — they will appear one at a time, where needed." = "Los consejos vuelven a estar activos: aparecerán de uno en uno, donde hagan falta.";
+"Turn off" = "Desactivar";

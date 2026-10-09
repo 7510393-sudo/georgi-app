@@ -770,3 +770,13 @@
 "Back" = "Назад";
 "Trial folder" = "Пробна тека";
 "video" = "відео";
+
+/* P458 */
+"“Bring them back” puts these files back into your entries folder, where they were. Nothing is deleted or replaced: a file already in place is left alone. If you deleted a file on purpose, just don’t tap." = "«Повернути з копії» покладе ці файли назад у теку записів — туди, де вони лежали. Нічого не видаляється й не замінюється: файл, який уже на місці, не чіпається. Якщо файл ви видалили навмисно, просто не натискайте.";
+"Delete the task?" = "Видалити справу?";
+"Keep" = "Залишити";
+"Turned off now." = "Зараз вимкнені.";
+"They appear one at a time, where needed." = "З’являються по одній, доречно.";
+"Show again" = "Показати знову";
+"Tips are on again — they will appear one at a time, where needed." = "Підказки знову ввімкнені — з’являтимуться по одній, доречно.";
+"Turn off" = "Вимкнути";
