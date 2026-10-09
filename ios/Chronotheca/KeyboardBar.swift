@@ -80,7 +80,9 @@ enum KeyboardBar {
                 on = true
                 pillY = min(pill, pt)
                 namesY = min(names, nt)
-                opacity = from
+                // Названия могли уже наполовину растаять, пока клавиатуру
+                // вели пальцем (P464).
+                opacity = min(from, KeyboardBar.names.value)
                 pillOpacity = from
             }
             DispatchQueue.main.async {
@@ -164,6 +166,7 @@ enum KeyboardBar {
         centre.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil,
                            queue: .main) { _ in
             KeyboardBar.glide.stop()
+            KeyboardBar.names.value = 1
             box.alpha = 1
         }
         centre.addObserver(forName: UIResponder.keyboardDidShowNotification, object: nil,
@@ -180,6 +183,13 @@ enum KeyboardBar {
 
     private static let fader = Fader()
 
+    /// Насколько видны названия разделов над клавиатурой: тают, когда
+    /// клавиатуру ведут вниз пальцем (P464).
+    final class Names: ObservableObject {
+        @Published var value: Double = 1
+    }
+    static let names = Names()
+
     /// Следит, пока клавиатура открыта, где строки над ней: смахивают
     /// клавиатуру — строки тают, пройдя половину её высоты, гаснут совсем.
     private final class Fader: NSObject {
@@ -191,6 +201,7 @@ enum KeyboardBar {
         func start(below: CGFloat) {
             full = below
             box?.alpha = 1
+            KeyboardBar.names.value = 1
             guard link == nil, below > 0 else { return }
             let made = CADisplayLink(target: self, selector: #selector(tick))
             made.add(to: .main, forMode: .common)
@@ -206,15 +217,24 @@ enum KeyboardBar {
             guard let box, let window = box.window, full > 0 else { return }
             let frame = box.convert(box.bounds, to: window)
             // Сколько клавиатуры ещё видно под строками.
-            var left = window.bounds.height - frame.maxY
-            // Строки гаснут, не доезжая до нижних: к строке вложений внизу
-            // страницы они приходят уже прозрачными. Прежде гасли только у
-            // самого края экрана и на полсекунды ложились поверх значков
-            // разделов (запись экрана автора со 106-й, P463).
-            if let pill = KeyboardBar.glide.pillTarget {
-                left = pill - (frame.minY + KeyboardBar.attachHeight / 2)
+            let left = window.bounds.height - frame.maxY
+            // Строка вложений не тает, а встаёт в нижнюю (P464): едет с
+            // клавиатурой целиком, и как только дошла до строки вложений
+            // внизу страницы — уступает ей место, та точно такая же. Тают
+            // только названия разделов под ней — и успевают растаять,
+            // прежде чем лягут на нижнюю строку вложений (P463).
+            guard let pill = KeyboardBar.glide.pillTarget else {
+                box.alpha = max(0, min(1, left / (full * 0.5)))
+                return
             }
-            box.alpha = max(0, min(1, left / (full * 0.5)))
+            let travel = pill - (frame.minY + KeyboardBar.attachHeight / 2)
+            box.alpha = travel > 0.5 ? 1 : 0
+            let gap = KeyboardBar.attachHeight + KeyboardBar.sectionsHeight
+            let names = Double(max(0, min(1, (travel - gap) / 60)))
+            if abs(KeyboardBar.names.value - names) > 0.02 || names == 0 || names == 1,
+               KeyboardBar.names.value != names {
+                KeyboardBar.names.value = names
+            }
         }
     }
 }
@@ -226,7 +246,7 @@ struct KeyboardBarView: View {
         VStack(spacing: 0) {
             attachments
                 .frame(height: KeyboardBar.attachHeight)
-            sections
+            fadingSections
                 .frame(height: KeyboardBar.sectionsHeight)
         }
     }
@@ -236,6 +256,11 @@ struct KeyboardBarView: View {
     var sections: some View {
         SectionsRow(current: .today) { KeyboardBar.go($0) }
             .padding(.horizontal, KeyboardBar.inset)
+    }
+
+    /// Названия над клавиатурой — с таянием, пока её ведут пальцем (P464).
+    var fadingSections: some View {
+        FadingSections { sections }
     }
 
     /// Строка вложений — полупрозрачная: сквозь неё видна страница (P423).
@@ -269,6 +294,20 @@ struct KeyboardBarView: View {
             BarFace(icon: icon, name: name, tint: Look.stripInk, compact: true, spot: Ru.tint(day.date))
         }
             .buttonStyle(.plain)
+    }
+}
+
+/// Строка разделов над клавиатурой, которая тает вместе с её уходом (P464).
+private struct FadingSections<Content: View>: View {
+    @ObservedObject var names = KeyboardBar.names
+    let content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        content().opacity(names.value)
     }
 }
 
