@@ -187,6 +187,7 @@ struct SettingsSticker: View {
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
     @State private var askingRename = false
+    @State private var askingTrial = false
     /// Где начинается прокрутка листка на экране (P424). Листок выезжает
     /// сдвигом картинки, а не места, — эта точка стоит, пока он едет.
     @State private var top: CGFloat = 0
@@ -249,6 +250,17 @@ struct SettingsSticker: View {
                 store.load()
                 archive.reload()
             }
+        }
+        .confirmationDialog(T("Пройти первый запуск?", "Try the first launch?"), isPresented: $askingTrial,
+                            titleVisibility: .visible) {
+            Button(T("Начать пробу", "Start the trial")) {
+                close()
+                shell.trialWelcome = true
+            }
+            Button(T("Отмена", "Cancel"), role: .cancel) { }
+        } message: {
+            Text(T("Приложение откроется как в первый раз: приветствие, образцы дней, подсказки. Всё это — в отдельной пробной папке; ваши записи останутся на месте и не изменятся. Вернуться к ним — здесь же, в настройках: «К своим».",
+                   "The app opens as if for the first time: welcome, sample days, tips. All of it lives in a separate trial folder; your entries stay where they are, untouched. To return to them — here in the settings: “Back”."))
         }
         .confirmationDialog(T("Где хранить записи", "Where to keep entries"), isPresented: $choosingPlace,
                             titleVisibility: .visible) {
@@ -400,7 +412,7 @@ struct SettingsSticker: View {
             Choice(options: [(false, T("понедельника", "Monday")), (true, T("воскресенья", "Sunday"))],
                    selection: $sundayFirst)
         }
-        NoteRow(title: T("«Как прошло?»", "“How did it go?”")) {
+        NoteRow(title: T("«Итоги дня»", "“How the day went”")) {
             Choice(options: onOff, selection: Binding(get: { !noAsk }, set: { noAsk = !$0 }))
         }
         // Погоды нет — почему (P354). Текст можно выделить и прислать.
@@ -439,8 +451,8 @@ struct SettingsSticker: View {
         // Вечером — «запишите день» (P444): в выбранный час, если день ещё
         // не записан.
         NoteRow(title: T("Напоминание вечером", "Evening reminder"),
-                detail: evening >= 0 ? T("«Запишите день» — если в дневнике сегодня пусто.",
-                                         "“Write down your day” — if today’s diary is empty.") : nil) {
+                detail: evening >= 0 ? T("Короткая мысль в этот час — если в дневнике сегодня пусто.",
+                                         "A short thought at this hour — if today’s diary is empty.") : nil) {
             Choice(options: [(-1, T("выкл", "off")), (20, "20:00"), (21, "21:00"), (22, "22:00")],
                    selection: Binding(get: { evening }, set: { hour in
                 evening = hour
@@ -564,6 +576,24 @@ struct SettingsSticker: View {
             NoteButton(title: T("Показать снова ›", "Show again ›")) {
                 Hints.shared.startOver()
                 close()
+            }
+        }
+        // Пройти первый запуск самому — в пробной папке (P452): свои записи
+        // остаются на месте, в них ничего не пишется.
+        if vault.inTrial {
+            NoteRow(title: T("Идёт проба первого запуска", "Trying the first launch"),
+                    detail: T("Образцы — в пробной папке. Ваши записи на месте.",
+                              "The samples are in a trial folder. Your entries are untouched.")) {
+                NoteButton(title: T("К своим ›", "Back ›")) {
+                    close()
+                    vault.endTrial()
+                }
+            }
+        } else {
+            NoteRow(title: T("Пройти первый запуск", "Try the first launch"),
+                    detail: T("Как увидит приложение новый человек — в пробной папке.",
+                              "See the app as a newcomer does — in a trial folder.")) {
+                NoteButton(title: T("Начать ›", "Start ›")) { askingTrial = true }
             }
         }
         NoteRow(title: T("Чего ещё нет", "Not there yet")) {
@@ -1346,10 +1376,21 @@ struct FileSheet: View {
 
 struct WelcomeView: View {
 
+    /// Проба первого запуска из настроек (P452): «Начать» ведёт в пробную
+    /// папку, своих папок не предлагает.
+    var trial = false
+
     @EnvironmentObject private var vault: Vault
     @EnvironmentObject private var shell: Shell
     @EnvironmentObject private var store: DayStore
     @EnvironmentObject private var archive: Archive
+
+    /// Своя папка в iCloud Drive доступна: iCloud включён и приложению его
+    /// дали. Нет — остаётся выбрать папку самому.
+    @State private var cloud = true
+    /// Человек сам захотел выбрать папку.
+    @State private var manual = false
+    @State private var starting = false
 
     private static var invitation: String {
         T("Записи ложатся обычными файлами в папку «\(Vault.folderName)». Папка ваша: "
@@ -1361,10 +1402,96 @@ struct WelcomeView: View {
     var body: some View {
         ScrollView {
         VStack(spacing: 18) {
-            Image(systemName: "folder")
+            Image(systemName: "book.closed")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
+                .padding(.top, 24)
 
+            Text(T("Хронотека", "Chronotheca")).font(.largeTitle.weight(.semibold))
+
+            Text(T("Тетрадь дня: утром — план, вечером — итоги. Записи — ваши файлы.",
+                   "A notebook for your day: a plan in the morning, the outcome in the evening. Your entries are your files."))
+                .font(.title3)
+                .multilineTextAlignment(.center)
+
+            // Одна кнопка (P452): своя папка в iCloud Drive заводится сама,
+            // без системного окна выбора.
+            if trial || (cloud && !manual) {
+                Button(action: start) {
+                    Group {
+                        if starting { ProgressView() } else { Text(T("Начать", "Start")) }
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(starting)
+                .padding(.top, 8)
+
+                Text(trial
+                     ? T("Проба: записи лягут в отдельную пробную папку. Ваши настоящие записи останутся на месте.",
+                         "A trial: entries go into a separate trial folder. Your real entries stay where they are.")
+                     : T("Записи лягут в iCloud Drive › Chronotheca. Их видно в «Файлах», они есть на iPad и Mac и остаются, даже если удалить приложение.",
+                         "Entries go to iCloud Drive › Chronotheca. You can see them in Files, they are on your iPad and Mac, and they stay even if you delete the app."))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                if trial {
+                    Button(T("Отмена", "Cancel")) { shell.trialWelcome = false }
+                        .font(.footnote)
+                } else {
+                    Button(T("Выбрать папку самому", "Choose a folder myself")) {
+                        withAnimation { manual = true }
+                    }
+                    .font(.footnote)
+                }
+            } else {
+                if !cloud {
+                    Text(T("iCloud Drive на этом iPhone недоступен — выберите, где хранить записи.",
+                           "iCloud Drive is not available on this iPhone — choose where to keep your entries."))
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .multilineTextAlignment(.center)
+                }
+                choices
+            }
+
+            if let problem = vault.problem {
+                Text(problem)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(28)
+        }
+        .onAppear {
+            guard !trial else { return }
+            Vault.cloudAvailable { ok in cloud = ok }
+        }
+    }
+
+    private func start() {
+        starting = true
+        if trial {
+            vault.startTrial()
+            Hints.shared.startOver()
+            shell.trialWelcome = false
+            shell.startOver(store)
+            archive.reload()
+            starting = false
+            return
+        }
+        vault.useCloud { ok in
+            starting = false
+            if !ok { withAnimation { cloud = false } }
+        }
+    }
+
+    /// Выбрать папку самому — прежние два пути (P366).
+    @ViewBuilder private var choices: some View {
             Text(T("Где хранить записи", "Where to keep entries")).font(.title2)
 
             Text(Self.invitation)
@@ -1408,15 +1535,10 @@ struct WelcomeView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            if let problem = vault.problem {
-                Text(problem)
+            if cloud {
+                Button(T("Назад", "Back")) { withAnimation { manual = false } }
                     .font(.footnote)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
             }
-        }
-        .padding(28)
-        }
     }
 
     private func guide(_ text: String) -> some View {

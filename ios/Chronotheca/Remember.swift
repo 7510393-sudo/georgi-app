@@ -45,28 +45,29 @@ struct RememberCloud: View {
                 // Подпись нарисована по-русски (P230). На других языках —
                 // рисунок без слов, а подпись своим языком ложится поверх
                 // тем же наклоном и на то же место, рукописным шрифтом (P397).
-                Image(Lang.isRussian ? "облачко-перо" : "облачко-без-слов")
+                // «А вот когда-то…» вместо «…а помнишь?» (P452): рисунка с
+                // новой подписью нет — подпись на всех языках шрифтом.
+                Image("облачко-без-слов")
                     .renderingMode(.template)
                     .resizable()
                     .foregroundStyle(Look.ink)
-                if !Lang.isRussian {
-                    Text(T("…а помнишь?", "…remember?"))
-                        .font(.custom("Noteworthy-Bold", size: width * 0.105))
-                        .foregroundStyle(Look.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.4)
-                        .frame(width: width * 0.56)
-                        .rotationEffect(.degrees(-28.5))
-                        // Середина русской подписи на рисунке: 310 и 215
-                        // из 715 × 407.
-                        .offset(x: width * (310.0 / 715 - 0.5), y: height * (215.0 / 407 - 0.5))
-                        .accessibilityHidden(true)
-                }
+                Text(T("А вот когда-то…", "Back then…"))
+                    .font(Lang.isRussian ? Look.serif(width * 0.092, weight: .semibold).italic()
+                                         : .custom("Noteworthy-Bold", size: width * 0.105))
+                    .foregroundStyle(Look.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
+                    .frame(width: width * 0.56)
+                    .rotationEffect(.degrees(-28.5))
+                    // Середина русской подписи на рисунке: 310 и 215
+                    // из 715 × 407.
+                    .offset(x: width * (310.0 / 715 - 0.5), y: height * (215.0 / 407 - 0.5))
+                    .accessibilityHidden(true)
             }
             .frame(width: width, height: height)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(T("Помнишь? Запись того же числа год назад", "Remember? The entry from this day a year ago"))
+        .accessibilityLabel(T("А вот когда-то… Запись этого же числа в прошлые годы", "Back then… The entry from this date in past years"))
     }
 }
 

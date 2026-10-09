@@ -201,6 +201,14 @@ struct RootView: View {
             archive.reload()
         }
         .preferredColorScheme(scheme)
+        // Проба первого запуска из настроек (P452).
+        .fullScreenCover(isPresented: $shell.trialWelcome) {
+            WelcomeView(trial: true)
+                .environmentObject(vault)
+                .environmentObject(shell)
+                .environmentObject(store)
+                .environmentObject(archive)
+        }
         .onAppear { purchase.start() }
         .sheet(isPresented: $purchase.asking) { PurchaseSheet(purchase: purchase) }
         .fileImporter(isPresented: $shell.picking, allowedContentTypes: [.folder]) { result in

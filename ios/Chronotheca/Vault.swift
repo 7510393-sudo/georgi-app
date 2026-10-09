@@ -129,6 +129,22 @@ final class Vault: ObservableObject {
     /// Записи лежат в своей папке приложения на этом iPhone.
     var onPhone: Bool { UserDefaults.standard.string(forKey: Vault.placeKey) == "phone" }
 
+    /// Своя папка приложения в iCloud Drive (P452): «iCloud Drive ›
+    /// Chronotheca». Заводится одной кнопкой «Начать», без системного окна.
+    /// Остаётся в iCloud и после удаления приложения.
+    static let cloudContainer = "iCloud.com.kobiashvili.diary"
+    var inOwnCloud: Bool { UserDefaults.standard.string(forKey: Vault.placeKey) == "cloud" }
+
+    /// Проба первого запуска (P452): записи пишутся в отдельную служебную
+    /// папку, а настоящий архив человека ждёт нетронутым. Возврат — «Вернуться
+    /// к своим записям»; пробная папка стирается, переносить из неё нечего.
+    private static let trialKey = "vault.trial"
+    var inTrial: Bool { UserDefaults.standard.bool(forKey: Vault.trialKey) }
+    static var trialFolder: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Chronotheca trial", isDirectory: true)
+    }
+
     /// Своя папка приложения. Её видно в «Файлах» → «На iPhone».
     static var phoneFolder: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -161,6 +177,15 @@ final class Vault: ObservableObject {
         if path.contains("/Data/Application/"), let r = path.range(of: "/Documents") {
             let tail = path[r.upperBound...].split(separator: "/").map(String.init)
             return ([T("На iPhone", "On My iPhone"), Vault.folderName] + tail).joined(separator: " › ")
+        }
+        // Своя папка приложения в iCloud: в «Файлах» — «iCloud Drive ›
+        // Chronotheca» (P452).
+        if let r = path.range(of: "/Mobile Documents/iCloud~com~kobiashvili~diary/Documents") {
+            let tail = path[r.upperBound...].split(separator: "/").map(String.init)
+            return (["iCloud Drive", Vault.folderName] + tail).joined(separator: " › ")
+        }
+        if path.contains("/Application Support/Chronotheca trial") {
+            return T("Пробная папка", "Trial folder")
         }
         let places: [(String, String)] = [
             ("/Mobile Documents/com~apple~CloudDocs", "iCloud Drive"),
@@ -428,6 +453,72 @@ final class Vault: ObservableObject {
         use(granted: home, target: home)
     }
 
+    /// Своя папка в iCloud Drive (P452). Где она лежит, iPhone говорит не
+    /// сразу — спрашиваем в стороне от экрана. `done(false)` — iCloud Drive
+    /// на телефоне выключен или приложению его не дали: тогда остаётся
+    /// выбрать папку самому.
+    func useCloud(_ done: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let box = FileManager.default.url(forUbiquityContainerIdentifier: Vault.cloudContainer)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let box else { return done(false) }
+                let home = box.appendingPathComponent("Documents", isDirectory: true)
+                do {
+                    try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+                } catch {
+                    self.problem = error.localizedDescription
+                    return done(false)
+                }
+                let before = self.root.map { (root: $0, records: Transfer.records(in: $0)) }
+                _ = self.begin(home)
+                self.leaving = before
+                self.use(granted: home, target: home, place: "cloud")
+                done(self.root != nil)
+            }
+        }
+    }
+
+    /// Можно ли завести свою папку в iCloud Drive одной кнопкой. Ответ —
+    /// в стороне от экрана: вопрос к iCloud бывает долгим.
+    static func cloudAvailable(_ done: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let ok = FileManager.default.url(forUbiquityContainerIdentifier: Vault.cloudContainer) != nil
+            DispatchQueue.main.async { done(ok) }
+        }
+    }
+
+    /// Пройти первый запуск заново — в пробной папке (P452). Прежний архив
+    /// запоминается как «прежнее место», в него ничего не пишется.
+    func startTrial() {
+        let home = Vault.trialFolder
+        try? FileManager.default.removeItem(at: home)
+        do {
+            try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        } catch {
+            problem = error.localizedDescription
+            return
+        }
+        _ = begin(home)
+        leaving = nil
+        UserDefaults.standard.set(true, forKey: Vault.trialKey)
+        use(granted: home, target: home, place: "trial")
+    }
+
+    /// Закончить пробу: вернуться к своему архиву, пробную папку стереть.
+    func endTrial() {
+        guard inTrial else { return }
+        UserDefaults.standard.set(false, forKey: Vault.trialKey)
+        goBack()
+        if root?.standardizedFileURL.path != Vault.trialFolder.standardizedFileURL.path {
+            try? FileManager.default.removeItem(at: Vault.trialFolder)
+            // «Прежнее место» теперь — стёртая проба; возвращаться туда незачем.
+            for key in [Vault.previousBookmarkKey, Vault.previousSubpathKey,
+                        Vault.previousPathKey, Vault.previousPlaceKey] {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+    }
+
     /// Человек согласился завести новую папку.
     func acceptProposal() {
         guard let p = proposal else { return }
@@ -473,7 +564,11 @@ final class Vault: ObservableObject {
         return nil
     }
 
-    private func use(granted url: URL, target: URL) {
+    private func use(granted url: URL, target: URL, place: String? = nil) {
+        // Первое место вообще, а не переезд: тогда в пустой архив ложатся
+        // образцы дней (P452).
+        let first = UserDefaults.standard.data(forKey: Vault.bookmarkKey) == nil
+            && UserDefaults.standard.string(forKey: Vault.placeKey) == nil
         do {
             // Прежнее место запоминается целиком: ошибочный выбор должно быть
             // чем отменить, не разыскивая папку заново.
@@ -496,13 +591,25 @@ final class Vault: ObservableObject {
             UserDefaults.standard.set(try url.bookmarkData(), forKey: Vault.bookmarkKey)
             UserDefaults.standard.set(subpath, forKey: Vault.subpathKey)
             UserDefaults.standard.set(target.path, forKey: Vault.lastPathKey)
-            UserDefaults.standard.set(url == Vault.phoneFolder ? "phone" : "folder",
+            UserDefaults.standard.set(place ?? (url == Vault.phoneFolder ? "phone" : "folder"),
                                       forKey: Vault.placeKey)
+            if place != "trial" { UserDefaults.standard.set(false, forKey: Vault.trialKey) }
 
             try makeTree(in: target)
             granted = url
             root = target
             problem = nil
+            if first {
+                // Новый человек: ничего не спрашивать заранее (P452). Погода
+                // (а с ней место) и события Календаря — выключены, пока он
+                // сам не включит их в настройках; тогда iPhone и спросит.
+                let d = UserDefaults.standard
+                if d.object(forKey: Prefs.noWeather) == nil { d.set(true, forKey: Prefs.noWeather) }
+                if d.object(forKey: DayEvents.onKey) == nil { d.set(false, forKey: DayEvents.onKey) }
+            }
+            if (first || place == "trial"), Transfer.records(in: target) == 0 {
+                Samples.seed(self)
+            }
             offerTransfer(to: target)
         } catch {
             problem = error.localizedDescription
@@ -517,6 +624,9 @@ final class Vault: ObservableObject {
     private func offerTransfer(to target: URL) {
         guard let leaving else { return }
         self.leaving = nil
+        // Из пробы первого запуска переносить нечего: там только образцы (P452).
+        guard !leaving.root.standardizedFileURL.path
+                .hasPrefix(Vault.trialFolder.standardizedFileURL.path) else { return }
         guard leaving.records > 0,
               leaving.root.standardizedFileURL != target.standardizedFileURL
         else { return }
@@ -588,6 +698,7 @@ final class Vault: ObservableObject {
         if UserDefaults.standard.string(forKey: Vault.previousPlaceKey) == "phone" {
             return usePhone()
         }
+        let backTo = UserDefaults.standard.string(forKey: Vault.previousPlaceKey)
         guard let data = UserDefaults.standard.data(forKey: Vault.previousBookmarkKey) else {
             return
         }
@@ -605,7 +716,7 @@ final class Vault: ObservableObject {
             let subpath = UserDefaults.standard.string(forKey: Vault.previousSubpathKey) ?? ""
             let target = subpath.isEmpty ? url : url.appendingPathComponent(subpath)
             leaving = before
-            use(granted: url, target: target)
+            use(granted: url, target: target, place: backTo == "cloud" ? "cloud" : nil)
         } catch {
             problem = error.localizedDescription
         }
@@ -641,6 +752,13 @@ final class Vault: ObservableObject {
             return
         }
         guard let data = UserDefaults.standard.data(forKey: Vault.bookmarkKey) else { return }
+        // Своя папка в iCloud: iPhone просит хоть раз за запуск спросить,
+        // где она, — иначе iCloud может не отдавать в неё свежее (P452).
+        if inOwnCloud {
+            DispatchQueue.global(qos: .utility).async {
+                _ = FileManager.default.url(forUbiquityContainerIdentifier: Vault.cloudContainer)
+            }
+        }
         var stale = false
         do {
             let url = try URL(resolvingBookmarkData: data,

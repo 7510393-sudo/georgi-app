@@ -18,43 +18,59 @@ final class Hints: ObservableObject {
         let screen: Shell.Screen
         let title: String
         let text: String
+        /// Когда показывать — не просто «экран открыт», а к месту (P452).
+        var when: When = .always
     }
+
+    enum When { case always, evening, afterPhoto }
 
     static let shared = Hints()
 
-    /// По порядку: сначала то, без чего не начать.
+    /// По одной и к месту (P452): на странице дня сразу — только «листайте»:
+    /// как обращаться с делами и записью, рассказывают образцы дней. Итоги
+    /// дня — вечером, перенос снимка — после первого снимка, карта,
+    /// календарь и поиск — при первом заходе туда.
     static var all: [Hint] {
         [
             Hint(id: "pages", screen: .today,
                  title: T("Листайте дни", "Turn the days"),
-                 text: T("Проведите пальцем вбок — вчера и завтра. «Сегодня» внизу вернёт к сегодняшнему дню.",
-                         "Swipe sideways for yesterday and tomorrow. “Today” at the bottom brings you back.")),
-            Hint(id: "sheet", screen: .today,
-                 title: T("План и дневник — одна страница", "Plan and diary on one page"),
-                 text: T("Сверху — дела на день, ниже — дневник. Прокрутите вниз, чтобы писать.",
-                         "Tasks for the day on top, the diary below. Scroll down to write.")),
-            Hint(id: "tasks", screen: .today,
-                 title: T("Дела", "Tasks"),
-                 text: T("Коснитесь номера — дело сделано. Подержите дело и ведите: вверх-вниз — переставить, вправо — на другой день, влево — удалить.",
-                         "Tap the number to mark a task done. Hold a task and drag: up or down to reorder, right to move it to another day, left to delete.")),
-            Hint(id: "attach", screen: .today,
-                 title: T("Снимки, голос, файлы", "Photos, voice, files"),
-                 text: T("Строка внизу страницы и над клавиатурой: камера, фото, голос, файлы. Снимок из полоски можно пальцем перенести прямо в текст.",
-                         "The strip at the bottom of the page and above the keyboard: camera, photos, voice, files. Drag a photo from the strip straight into your text.")),
-            Hint(id: "files", screen: .today,
-                 title: T("Записи — ваши файлы", "Your entries are your files"),
-                 text: T("Всё лежит обычными файлами в папке, которую вы выбрали. Их видно в «Файлах»; удалите приложение — записи останутся.",
-                         "Everything is kept as plain files in the folder you chose. You can see them in Files; delete the app and your entries stay.")),
+                 text: T("Проведите пальцем вбок — вчера и завтра. Там уже лежат образцы: так выглядит заполненный день. «Сегодня» внизу вернёт обратно.",
+                         "Swipe sideways for yesterday and tomorrow. There are samples there: this is what a filled-in day looks like. “Today” at the bottom brings you back.")),
+            Hint(id: "outcome", screen: .today,
+                 title: T("Итоги дня", "How the day went"),
+                 text: T("В дневнике под каждым делом — строка для итога: что вышло. Одно слово или фраза — и вечер записан.",
+                         "In the diary, each task has a line for its outcome: how it went. A word or a phrase — and the evening is written."),
+                 when: .evening),
+            Hint(id: "photo", screen: .today,
+                 title: T("Снимок — куда угодно", "Put a photo anywhere"),
+                 text: T("Подержите снимок в полоске внизу и перенесите пальцем прямо в текст или под дело.",
+                         "Hold a photo in the strip at the bottom and drag it straight into your text or under a task."),
+                 when: .afterPhoto),
             Hint(id: "map", screen: .map,
                  title: T("Свои места", "Your places"),
-                 text: T("Подержите палец на карте — встанет точка. Её можно назвать, выбрать значок и записать в день.",
-                         "Hold your finger on the map to drop a pin. Name it, pick an icon and add it to the day.")),
+                 text: T("Подержите палец на карте — встанет точка. Её можно назвать, выбрать значок и записать в день. Справа сверху — «Записи»: дни на карте с превью снимков.",
+                         "Hold your finger on the map to drop a pin. Name it, pick an icon and add it to the day. At the top right — “Entries”: days on the map with photo previews.")),
+            Hint(id: "calendar", screen: .calendar,
+                 title: T("Все дни", "All your days"),
+                 text: T("Точки под числом — в этот день есть записи. Коснитесь дня — откроется его страница.",
+                         "Dots under a date mean entries that day. Tap a day to open its page.")),
             Hint(id: "search", screen: .search,
                  title: T("Где искать", "Where to search"),
                  text: T("Три точки справа сверху — искать только в плане или в дневнике, только снимки, видео, голос, файлы или места.",
                          "The three dots at top right: search only the plan or the diary, or only photos, video, voice, files or places.")),
         ]
     }
+
+    private static let photoKey = "hints.photo"
+
+    /// Человек положил первый снимок — пора подсказать, что его можно
+    /// перенести пальцем.
+    func photoAdded() {
+        guard !UserDefaults.standard.bool(forKey: Self.photoKey) else { return }
+        UserDefaults.standard.set(true, forKey: Self.photoKey)
+        photoTick += 1
+    }
+    @Published private(set) var photoTick = 0
 
     private static let seenKey = "hints.seen"
     private static let offKey = "hints.off"
@@ -73,13 +89,21 @@ final class Hints: ObservableObject {
     /// Следующая непоказанная подсказка этого экрана.
     func next(for screen: Shell.Screen) -> Hint? {
         guard !off else { return nil }
-        return Self.all.first { $0.screen == screen && !seen.contains($0.id) }
+        return Self.all.first { $0.screen == screen && !seen.contains($0.id) && ready($0) }
+    }
+
+    private func ready(_ hint: Hint) -> Bool {
+        switch hint.when {
+        case .always: return true
+        case .evening: return Calendar.current.component(.hour, from: Date()) >= 18
+        case .afterPhoto: return UserDefaults.standard.bool(forKey: Self.photoKey)
+        }
     }
 
     /// «3 из 6» — сколько подсказок у этого экрана и какая по счёту.
     func place(of hint: Hint) -> (Int, Int) {
-        let same = Self.all.filter { $0.screen == hint.screen }
-        return ((same.firstIndex(of: hint) ?? 0) + 1, same.count)
+        // Подсказки приходят по одной и к месту — счёта «3 из 6» нет (P452).
+        (1, 1)
     }
 
     func done(_ hint: Hint) {
@@ -99,6 +123,7 @@ final class Hints: ObservableObject {
         seen = []
         off = false
         UserDefaults.standard.removeObject(forKey: Self.seenKey)
+        UserDefaults.standard.removeObject(forKey: Self.photoKey)
         UserDefaults.standard.set(false, forKey: Self.offKey)
     }
 
@@ -203,7 +228,7 @@ struct HintLayer: View {
                 hints.shown = nil
             }
         }
-        .task(id: "\(screen)|\(quiet)|\(hints.shown?.id ?? "")|\(hints.seen.count)|\(hints.off)") {
+        .task(id: "\(screen)|\(quiet)|\(hints.shown?.id ?? "")|\(hints.seen.count)|\(hints.off)|\(hints.photoTick)") {
             await pick()
         }
     }

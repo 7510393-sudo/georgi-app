@@ -297,6 +297,15 @@ def main():
     # мы ни перепробовали. Подписать приложение можно и напрямую.
     with open(decoded, "rb") as f:
         entitlements = plistlib.load(f)["Entitlements"]
+    # Своя папка в iCloud Drive (P452). Профиль перечисляет права iCloud
+    # «на все случаи»: оба окружения и все службы. Приложению App Store
+    # нужно одно окружение и одна служба — документы; лишнее Apple
+    # отвергает при приёме сборки.
+    if "com.apple.developer.icloud-container-environment" in entitlements:
+        entitlements["com.apple.developer.icloud-container-environment"] = "Production"
+    if "com.apple.developer.icloud-services" in entitlements:
+        entitlements["com.apple.developer.icloud-services"] = ["CloudDocuments"]
+    entitlements.pop("com.apple.developer.ubiquity-kvstore-identifier", None)
     ent_path = f"{WORK}/entitlements.plist"
     with open(ent_path, "wb") as f:
         plistlib.dump(entitlements, f)

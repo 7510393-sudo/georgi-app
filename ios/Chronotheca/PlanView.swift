@@ -612,8 +612,9 @@ struct PlanView: View {
 
     private var ghost: some View {
         VStack(spacing: 0) {
+            // Не «Без названия», а предложение помощи (P452).
             PlanRowLine(number: shownEvents.count + store.tasks.count + 1,
-                        row: .task(""),
+                        row: .task(T("Напомню о важном деле", "I’ll remind you of what matters")),
                         bellColor: Ru.dayColor(store.date),
                         onTime: { add(then: .time) },
                         onBell: { add(then: .bell) },

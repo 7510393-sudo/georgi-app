@@ -471,7 +471,8 @@ struct DiaryPage: View {
     /// с начала следующей — во всю ширину, как в тетради (решение P185).
     private var askBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(T("Как прошло?", "How did it go?"))
+            // Не вопрос, а заголовок: вопросы раздражают (P452).
+            Text(T("Итоги дня", "How the day went"))
                 .font(Look.serif(size))
                 .foregroundStyle(Look.inkFaint)
                 .frame(height: size * 1.6, alignment: .leading)

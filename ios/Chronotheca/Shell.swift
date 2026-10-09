@@ -93,6 +93,8 @@ final class Shell: ObservableObject {
     @Published var mapSatellite = UserDefaults.standard.bool(forKey: "map.satellite") {
         didSet { UserDefaults.standard.set(mapSatellite, forKey: "map.satellite") }
     }
+    /// Показать приветствие первого запуска для пробы (P452).
+    @Published var trialWelcome = false
     /// Карта показывает записи — дни с точками, превью и числом, — а не
     /// свои места (P451). Выбор запоминается, как спутник.
     @Published var mapEntries = UserDefaults.standard.bool(forKey: "map.entries") {

@@ -75,6 +75,20 @@ enum Reminders {
     /// уже записано — сегодняшнего нет: напоминать о сделанном незачем.
     /// Расставляется заново, когда приложение открывают и когда день ложится
     /// на диск, — так неделя всегда впереди.
+    /// Вечерние мысли вместо «Запишите день» (P452): напоминание не должно
+    /// ни спрашивать, ни подгонять.
+    static var sayings: [String] {
+        [
+            T("Память — лучшее средство от времени", "Memory is the best remedy for time"),
+            T("Записать легче, чем вспомнить", "Writing it down is easier than remembering"),
+            T("Записанная мысль не пропадает", "A thought written down is never lost"),
+            T("Это электронный дневник — деревья в безопасности", "It’s a digital diary — the trees are safe"),
+            T("Пара строк сегодня — целый день через год", "A few lines today — a whole day a year from now"),
+            T("Завтра этот день станет вчерашним — сохраните его", "Tomorrow this day will be yesterday — keep it"),
+            T("Вечер — лучшее время для итогов дня", "Evening is the best time for the day’s outcome"),
+        ]
+    }
+
     static func evening(todayWritten: Bool) {
         guard !testing else { return }
         let center = UNUserNotificationCenter.current()
@@ -92,8 +106,10 @@ enum Reminders {
                       let when = cal.date(bySettingHour: hour, minute: 0, second: 0, of: day),
                       when > now else { continue }
                 let content = UNMutableNotificationContent()
-                content.title = T("Запишите день", "Write down your day")
-                content.body = T("Пара строк о том, как прошло сегодня.", "A few lines on how today went.")
+                // Не вопрос и не приказ, а мысль — каждый вечер своя (P452).
+                let n = cal.ordinality(of: .day, in: .era, for: day) ?? k
+                content.title = sayings[n % sayings.count]
+                content.body = T("Пара строк — и день останется с вами.", "A couple of lines, and the day stays with you.")
                 content.sound = .default
                 let parts = cal.dateComponents([.year, .month, .day, .hour, .minute], from: when)
                 let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)

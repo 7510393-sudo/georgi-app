@@ -714,6 +714,7 @@ final class DayStore: ObservableObject {
         guard canEdit(tab), let link = vault.addPhoto(data, for: date) else { return false }
         if camera { CameraShots.mark(link) }
         attach(link, to: tab)
+        Hints.shared.photoAdded()
         return true
     }
 
