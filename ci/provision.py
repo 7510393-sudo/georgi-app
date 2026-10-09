@@ -306,6 +306,9 @@ def main():
     if "com.apple.developer.icloud-services" in entitlements:
         entitlements["com.apple.developer.icloud-services"] = ["CloudDocuments"]
     entitlements.pop("com.apple.developer.ubiquity-kvstore-identifier", None)
+    # Пробная среда iCloud App Store не нужна — Apple отвергает сборку с ней
+    # (90045, сборка 105).
+    entitlements.pop("com.apple.developer.icloud-container-development-container-identifiers", None)
     ent_path = f"{WORK}/entitlements.plist"
     with open(ent_path, "wb") as f:
         plistlib.dump(entitlements, f)
