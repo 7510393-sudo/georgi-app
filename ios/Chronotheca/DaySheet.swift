@@ -39,6 +39,9 @@ struct DaySheet<Plan: View, Diary: View>: View {
     @State private var keyboard: CGFloat = 0
     /// Место под ушедшей клавиатурой, которое ещё держит страницу (P446).
     @State private var hold: CGFloat = 0
+    /// Сама прокрутка листа — чтобы, когда клавиатура ушла, плавно опустить
+    /// страницу на место (P457).
+    @State private var scroller = SheetScroller()
 
     private static var top: String { "страница-верх" }
     private static var diaryTop: String { "страница-дневник" }
@@ -113,7 +116,7 @@ struct DaySheet<Plan: View, Diary: View>: View {
                     // пальцем на пару сантиметров и, когда клавиатура уходила,
                     // прыгала обратно (запись экрана автора). Это и был
                     // «скачок».
-                    .background(NoBounce())
+                    .background(NoBounce(box: scroller))
                     // Где лист и какой он высоты без места под клавиатуру —
                     // по ним место отпускается, когда клавиатура ушла (P446).
                     .background(GeometryReader { g in
@@ -143,7 +146,11 @@ struct DaySheet<Plan: View, Diary: View>: View {
             // Запоминается, пока клавиатура ещё открыта: в миг её ухода
             // место уже на месте, и лист не становится короче ни на кадр.
             .onChange(of: keyboard) { _, now in
-                if now > 0 { hold = max(0, covered(outer, now) - Self.stripRoom) }
+                if now > 0 {
+                    hold = max(0, covered(outer, now) - Self.stripRoom)
+                } else if hold > 0 {
+                    release()
+                }
             }
             // Прокрутили вверх — лишнее место отпускается ровно настолько,
             // насколько оно больше не нужно: ничто не прыгает.
@@ -161,6 +168,25 @@ struct DaySheet<Plan: View, Diary: View>: View {
             .animation(.easeOut(duration: 0.25), value: keyboard)
         }
         .keyboardHeight($keyboard)
+    }
+
+    /// Клавиатура ушла (P457): страница плавно опускается так, чтобы её низ
+    /// — полоска вложений — лёг на своё место над нижней строкой, и только
+    /// потом место под клавиатурой отпускается. Прежде (P446) место
+    /// оставалось, и конец записи висел посреди экрана над пустой бумагой
+    /// (запись экрана автора); а если отпустить его сразу, iPhone подтягивает
+    /// страницу одним рывком.
+    private func release() {
+        guard let view = scroller.view else { hold = 0; return }
+        let inset = view.adjustedContentInset
+        let natural = view.contentSize.height - hold
+        let lowest = max(-inset.top, natural - view.bounds.height + inset.bottom)
+        guard view.contentOffset.y > lowest + 0.5 else { hold = 0; return }
+        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+            view.contentOffset.y = lowest
+        } completion: { _ in
+            hold = 0
+        }
     }
 
     /// Сколько страницы закрыто клавиатурой вместе с полоской вложений над
@@ -284,12 +310,29 @@ struct GridSnap: Layout {
     }
 }
 
-/// Выключает у прокрутки, в которой стоит, оттяжку за край (P445).
+/// Прокрутка листа, найденная по месту (P457).
+final class SheetScroller {
+    weak var view: UIScrollView?
+}
+
+/// Выключает у прокрутки, в которой стоит, оттяжку за край (P445) и
+/// запоминает её (P457).
 private struct NoBounce: UIViewRepresentable {
-    func makeUIView(context: Context) -> Finder { Finder() }
-    func updateUIView(_ view: Finder, context: Context) { view.apply() }
+    let box: SheetScroller
+
+    func makeUIView(context: Context) -> Finder {
+        let finder = Finder()
+        finder.box = box
+        return finder
+    }
+    func updateUIView(_ view: Finder, context: Context) {
+        view.box = box
+        view.apply()
+    }
 
     final class Finder: UIView {
+        var box: SheetScroller?
+
         override func didMoveToWindow() {
             super.didMoveToWindow()
             apply()
@@ -303,6 +346,7 @@ private struct NoBounce: UIViewRepresentable {
                 while let here = node {
                     if let scroll = here as? UIScrollView {
                         scroll.bounces = false
+                        self?.box?.view = scroll
                         return
                     }
                     node = here.superview
