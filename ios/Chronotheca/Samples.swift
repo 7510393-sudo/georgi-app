@@ -10,8 +10,8 @@ import Foundation
 ///
 /// Это обычные файлы дней — стираются, как любая запись, или весь день
 /// уходит в корзину. Ложатся только туда, где файла дня ещё нет: поверх
-/// чужого ничего не пишется. Русский и английский; на других языках —
-/// английский.
+/// чужого ничего не пишется. Русский и английский — здесь, ещё восемь
+/// языков — в `SamplesText.swift` (P471).
 enum Samples {
 
     static func seed(_ vault: Vault) {
@@ -23,7 +23,7 @@ enum Samples {
         let yesterday = cal.date(byAdding: .day, value: -1, to: today) ?? today
         let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
 
-        put(vault, .planner, yesterday, body: T("""
+        put(vault, .planner, yesterday, body: SamplesText.text(.yesterdayPlan) ?? T("""
         - [x] 08:30 Купить хлеб и кофе
         - [x] 19:00 Позвонить маме (remind 18:45)
         - [ ] Дочитать главу
@@ -33,7 +33,7 @@ enum Samples {
         - [ ] Finish the chapter
         """))
 
-        var walk = T("""
+        var walk = SamplesText.text(.walk) ?? T("""
         ## How did it go?
 
         - Купить хлеб и кофе: взяли ещё круассаны — и не зря
@@ -61,9 +61,9 @@ enum Samples {
         if let link = vault.addPhoto(Photo.sample(), for: yesterday) {
             walk = walk.replacingOccurrences(of: "\n\n[", with: "\n\n" + Diary.line(link) + "\n\n[")
         }
-        put(vault, .diary, yesterday, body: walk, title: T("Прогулка", "A walk"))
+        put(vault, .diary, yesterday, body: walk, title: SamplesText.text(.walkTitle) ?? T("Прогулка", "A walk"))
 
-        put(vault, .planner, today, body: T("""
+        put(vault, .planner, today, body: SamplesText.text(.todayPlan) ?? T("""
         - [ ] 09:00 Это дело-образец: коснитесь его и пишите своё
               «Ввод» — к следующему делу. Время слева: коснитесь — время и повтор. Колокольчик — напоминание.
         - [ ] Коснитесь номера слева — дело сделано
@@ -87,7 +87,7 @@ enum Samples {
               Dots under a date mean entries that day. “Search” looks through words, photos and places.
         """))
 
-        put(vault, .diary, today, body: T("""
+        put(vault, .diary, today, body: SamplesText.text(.todayDiary) ?? T("""
         Сегодня начинается моя Хронотека. Утром — план, вечером — итоги дня: под каждым делом строка о том, что вышло.
 
         Места. Внизу — «Карта». Подержите палец на карте — встанет точка: назовите её, выберите значок и запишите в день. Справа сверху переключатель: «Мои места» — все ваши точки, «Записи» — дни на карте с превью снимков. В записи точка ставится кнопкой «Место» в строке вложений — вот так:
@@ -111,9 +111,9 @@ enum Samples {
         Where your entries live. Everything is plain files in your folder: you can see them in Files, open them in any editor, and they stay even if you delete the app. Backup is in the settings, one button.
 
         The samples are yesterday, today and tomorrow. Erase them like any text, or move the whole day to the trash: the three dots at top right → “Move the day to the trash”.
-        """), title: T("Начинаю свою Хронотеку!", "Starting my Chronotheca!"))
+        """), title: SamplesText.text(.todayTitle) ?? T("Начинаю свою Хронотеку!", "Starting my Chronotheca!"))
 
-        put(vault, .planner, tomorrow, body: T("""
+        put(vault, .planner, tomorrow, body: SamplesText.text(.tomorrowPlan) ?? T("""
         - [ ] Вечером записать итоги дня
               Они встанут в дневник под каждым делом — одной строкой.
         - [ ] Заглянуть в «Записи» на карте
