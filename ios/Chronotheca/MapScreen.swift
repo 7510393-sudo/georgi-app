@@ -1465,7 +1465,9 @@ enum PlaceLabel {
         let text = ((invisible && given.isEmpty ? T("Место", "Place") : name) as NSString)
         let named = invisible || !given.isEmpty
         let wide = named ? min(text.size(withAttributes: words).width, 150) : 0
-        let plate = named ? CGSize(width: wide + 12, height: font.lineHeight + 6) : .zero
+        // Поля вокруг букв — 3 по бокам и 1 сверху и снизу (P474): шрифт тот же, плашка
+        // теснее (было 6 и 3).
+        let plate = named ? CGSize(width: wide + 6, height: font.lineHeight + 2) : .zero
         let above: CGFloat = invisible ? 0 : big + 4
         let size = CGSize(width: max(invisible ? 0 : big, plate.width) + 4,
                           height: named ? above + plate.height + 3 : big + 4)
@@ -1489,14 +1491,14 @@ enum PlaceLabel {
             // Полупрозрачная: много названий рядом не должны закрывать карту
             // (0.34 — P372; 0.42 — P361; 0.62 — P330; почти непрозрачная — P244).
             UIColor(Look.sticker).withAlphaComponent(chosen ? 1 : solid ? 0.88 : 0.34).setFill()
-            UIBezierPath(roundedRect: box, cornerRadius: 5).fill()
+            UIBezierPath(roundedRect: box, cornerRadius: 4).fill()
             ctx.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             // Кромка — чтобы плашка читалась на пёстрой карте (P244).
             UIColor(Look.inkSoft).withAlphaComponent(0.55).setStroke()
-            let edge = UIBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 5)
+            let edge = UIBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 4)
             edge.lineWidth = 1
             edge.stroke()
-            text.draw(with: CGRect(x: box.minX + 6, y: box.minY + 3, width: wide, height: font.lineHeight),
+            text.draw(with: CGRect(x: box.minX + 3, y: box.minY + 1, width: wide, height: font.lineHeight),
                       options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                       attributes: words, context: nil)
         }
