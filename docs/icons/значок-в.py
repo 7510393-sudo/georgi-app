@@ -63,15 +63,18 @@ for gy in range(T + 3, B - 3, 6): g.line([(px(L), px(gy)), (px(R), px(gy))], fil
 ink = (28, 33, 40, 255); blue = (47, 74, 107, 255); red = (176, 64, 58, 255)
 g.rounded_rectangle([px(32), px(25), px(41), px(34)], radius=px(2), outline=ink, width=px(1.5))
 g.line([(px(33.6), px(30.2)), (px(36), px(32.8)), (px(40.4), px(26.4))], fill=red, width=px(1.9), joint="curve")
-g.line([(px(46), px(29.5)), (px(66), px(29.5))], fill=ink, width=px(1.9))
+for yy_, x1_ in ((27.0, 67), (32.2, 59)):          # две прямые строчки дела
+    g.line([(px(46), px(yy_)), (px(x1_), px(yy_))], fill=ink, width=px(1.7))
 # строки дневника — волнистые, синими чернилами
 def wave(x0, y0, n, w=7.2, a=2.2):
     pts = []
     for i in range(int(n * 24) + 1):
         t = i / 24; pts.append((px(x0 + t * w), px(y0 - a * math.sin(t * math.pi * 2 / 1.0 * 0.5 * 2) * (1 if int(t) % 2 == 0 else 1))))
     return pts
-for (y0, x1) in [(45, 66), (56, 58), (67, 63)]:
-    pts = [(px(32 + i * .3), px(y0 - 1.5 * math.sin(i * .3 / 9 * math.pi * 2))) for i in range(int((x1 - 32) / .3))]
+PER = 9.0                                         # длина волны
+for y0, k in [(46, 3), (57, 2), (68, 3)]:         # k волн: начало внизу, конец на подъёме вверх (не грустный смайлик)
+    n = int((k + .5) * PER / .3)
+    pts = [(px(32 + i * .3), px(y0 - 1.5 * math.sin(-math.pi / 2 + i * .3 / PER * math.pi * 2))) for i in range(n + 1)]
     g.line(pts, fill=blue, width=px(1.5), joint="curve")
     for p in (pts[0], pts[-1]): g.ellipse([p[0] - px(.75), p[1] - px(.75), p[0] + px(.75), p[1] + px(.75)], fill=blue)
 
