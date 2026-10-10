@@ -780,3 +780,8 @@
 "Show again" = "もう一度表示";
 "Tips are on again — they will appear one at a time, where needed." = "ヒントがオンに戻りました。必要な場所で一つずつ表示されます。";
 "Turn off" = "オフにする";
+"Another day" = "別の日へ";
+"Days written: %@ · tasks done: %@" = "書いた日: %@ · 済んだ予定: %@";
+"The week" = "今週";
+"The week at a glance" = "今週をひと目で";
+"Tasks: %@ of %@" = "予定: %@ / %@";

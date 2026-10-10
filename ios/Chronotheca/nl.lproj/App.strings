@@ -780,3 +780,8 @@
 "Show again" = "Opnieuw tonen";
 "Tips are on again — they will appear one at a time, where needed." = "Tips staan weer aan — ze verschijnen één voor één, waar ze nodig zijn.";
 "Turn off" = "Uitschakelen";
+"Another day" = "Andere dag";
+"Days written: %@ · tasks done: %@" = "Geschreven dagen: %@ · taken gedaan: %@";
+"The week" = "De week";
+"The week at a glance" = "De week in één oogopslag";
+"Tasks: %@ of %@" = "Taken: %@ van %@";

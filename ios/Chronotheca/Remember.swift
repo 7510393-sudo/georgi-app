@@ -106,6 +106,7 @@ struct RememberSheet: View {
     let day: Archive.Day
     let ago: Ago
     @Binding var open: Bool
+    @EnvironmentObject private var vault: Vault
 
     var body: some View {
         NavigationStack {
@@ -120,6 +121,19 @@ struct RememberSheet: View {
                         Text(Geo.stripped(day.title))
                             .font(Look.serif(19, weight: .semibold))
                             .foregroundStyle(Look.ink)
+                    }
+                    // Снимки того дня — сверху, до слов (P466): снимок
+                    // возвращает в день сильнее записи.
+                    let photos = Array(day.attachments
+                        .filter { Diary.kind(of: $0) == .photo }.prefix(3))
+                    if !photos.isEmpty {
+                        HStack(spacing: 8) {
+                            ForEach(photos, id: \.self) { link in
+                                PhotoThumb(url: vault.mediaURL(link, for: day.date))
+                                    .frame(width: 104, height: 104)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                        }
                     }
                     Text(day.text)
                         .font(Look.serif(DiaryView.size))

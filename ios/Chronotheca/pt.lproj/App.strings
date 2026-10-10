@@ -780,3 +780,8 @@
 "Show again" = "Mostrar de novo";
 "Tips are on again — they will appear one at a time, where needed." = "As dicas voltaram a estar ativas — aparecem uma de cada vez, onde fazem falta.";
 "Turn off" = "Desativar";
+"Another day" = "Outro dia";
+"Days written: %@ · tasks done: %@" = "Dias escritos: %@ · tarefas feitas: %@";
+"The week" = "A semana";
+"The week at a glance" = "A semana num relance";
+"Tasks: %@ of %@" = "Tarefas: %@ de %@";

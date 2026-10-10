@@ -155,6 +155,14 @@ jobs:
           snap 17-меню-поиска.png       search-menu
           snap 18-подсказка.png         hint
 
+          # Тёмная тема (P466): цвета для неё заданы, но глазами их никто
+          # не видел. Три главных экрана — в тёмном виде телефона.
+          xcrun simctl ui "$UDID" appearance dark || true
+          snap 20-тёмная-план.png       ""
+          snap 21-тёмная-дневник.png    diary
+          snap 22-тёмная-настройки.png  settings
+          xcrun simctl ui "$UDID" appearance light || true
+
           xcrun simctl terminate "$UDID" "$APP_ID" || true
 
           # Отчёты о падении — единственный способ узнать причину пустого кадра.

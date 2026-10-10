@@ -419,6 +419,7 @@ struct RootView: View {
             }
         }
         .sheet(isPresented: $shell.showingFile) { FileSheet() }
+        .sheet(isPresented: $shell.showingWeek) { WeekSheet() }
         .confirmationDialog(trashTitle,
                             isPresented: $shell.trashAsk, titleVisibility: .visible) {
             Button(T("Убрать в корзину", "Move to trash"), role: .destructive) {
@@ -750,6 +751,25 @@ struct RootView: View {
                     .padding(.vertical, -3))
             .frame(maxWidth: .infinity)
             .foregroundStyle(on ? Look.accent : Look.kraftInk)
+        }
+        // Действия дня — и долгим нажатием на «Сегодня» внизу, под большим
+        // пальцем (P466): три точки в верхнем углу на крупном iPhone одной
+        // рукой не достать.
+        .contextMenu {
+            if target == .today, shell.screen == .today {
+                Button { shell.showingFile = true } label: {
+                    Label(T("Показать файл этого дня", "Show this day’s file"), systemImage: "doc.text")
+                }
+                Button { shell.showingWeek = true } label: {
+                    Label(T("Неделя одним взглядом", "The week at a glance"), systemImage: "calendar")
+                }
+                Button { Share.present([store.shareText()]) } label: {
+                    Label(T("Поделиться днём", "Share the day"), systemImage: "square.and.arrow.up")
+                }
+                Button(role: .destructive) { shell.trashAsk = true } label: {
+                    Label(T("Убрать день в корзину", "Move the day to the trash"), systemImage: "trash")
+                }
+            }
         }
     }
 

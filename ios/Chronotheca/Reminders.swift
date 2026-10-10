@@ -146,4 +146,19 @@ final class BellDelegate: NSObject, UNUserNotificationCenterDelegate {
                                 withCompletionHandler done: @escaping (UNNotificationPresentationOptions) -> Void) {
         done([.banner, .list, .sound])
     }
+
+    /// Коснулись вечернего напоминания (P466) — сразу сегодняшний дневник:
+    /// пишут именно туда, искать его не надо.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler done: @escaping () -> Void) {
+        if response.notification.request.identifier.hasPrefix("evening.") {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: BellDelegate.evening, object: nil)
+            }
+        }
+        done()
+    }
+
+    static let evening = Notification.Name("chronotheca.evening")
 }

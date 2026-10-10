@@ -301,10 +301,29 @@ struct CalendarView: View {
             }
             .padding(.horizontal, 10)
 
+            monthStats(cells)
             Rectangle().fill(Look.rule).frame(height: 1).padding(.vertical, 10)
             if current { dayList }
         }
         .padding(.bottom, 20)
+    }
+
+    /// Тихая сводка месяца (P466): сколько дней записано и сколько дел
+    /// сделано. Без серий, наград и «вы пропустили день» — только итог.
+    @ViewBuilder private func monthStats(_ cells: [Date?]) -> some View {
+        let days = cells.compactMap { $0 }.compactMap { archive.day(Vault.stamp($0)) }
+        let written = days.filter {
+            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.photos > 0
+        }.count
+        let done = days.reduce(0) { $0 + $1.tasks.filter(\.done).count }
+        if written + done > 0 {
+            Text(T("Записано дней: \(written) · сделано дел: \(done)",
+                   "Days written: \(written) · tasks done: \(done)"))
+                .font(Look.sans(13))
+                .foregroundStyle(Look.inkSoft)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 10)
+        }
     }
 
     /// Клетка дня. Сегодняшний обведён, выбранный залит: «сегодня» и «то, на
@@ -462,6 +481,9 @@ struct CalendarView: View {
         let stamp = Vault.stamp(date)
         let tasks = entries(stamp, date)
         let open = stamp == selected
+        // Пустой день — тонкой строкой (P466): прежде каждый пустой день
+        // был такой же высоты, как занятый, и дела тонули среди тире.
+        let quiet = tasks.isEmpty && !open && stamp != today
 
         return Button { pick(stamp, date) } label: {
             HStack(alignment: .top, spacing: 12) {
@@ -512,7 +534,8 @@ struct CalendarView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 9)
+            .padding(.vertical, quiet ? 2 : 9)
+            .opacity(quiet ? 0.75 : 1)
             // Строка дня — цвета его страницы (P245); выбранная обведена.
             .background(tint(date))
             .clipShape(RoundedRectangle(cornerRadius: 6))

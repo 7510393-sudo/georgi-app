@@ -89,6 +89,10 @@ struct MenuSticker: View {
                 close()
                 shell.showingFile = true
             }
+            StickerItem(title: T("Неделя одним взглядом", "The week at a glance")) {
+                close()
+                shell.showingWeek = true
+            }
             StickerItem(title: T("Поделиться днём", "Share the day")) {
                 close()
                 // Текстом — план и запись; вложения остаются в папке (P249).

@@ -31,6 +31,16 @@ struct ChronothecaApp: App {
         _archive = StateObject(wrappedValue: Archive(vault: vault))
     }
 
+    /// Сегодняшний день — на плане или на дневнике. План и дневник — одна
+    /// страница (P408): на дневник её прокручивает «приземление».
+    private func openToday(diary: Bool) {
+        store.go(to: DayStore.today())
+        shell.tab = diary ? .diary : .plan
+        shell.landOnDiary = diary
+        shell.landing += 1
+        shell.screen = .today
+    }
+
     var body: some Scene {
         WindowGroup {
             // Сменили язык — всё рисуется заново, на новом (P355).
@@ -44,9 +54,11 @@ struct ChronothecaApp: App {
                 // открыть сегодняшний день на этой вкладке (P382).
                 .onOpenURL { url in
                     guard url.scheme == "chronotheca" else { return }
-                    store.go(to: DayStore.today())
-                    shell.screen = .today
-                    shell.tab = url.lastPathComponent == "diary" ? .diary : .plan
+                    openToday(diary: url.lastPathComponent == "diary")
+                }
+                // Вечернее напоминание — сразу в сегодняшний дневник (P466).
+                .onReceive(NotificationCenter.default.publisher(for: BellDelegate.evening)) { _ in
+                    openToday(diary: true)
                 }
         }
         .onChange(of: phase) { _, now in

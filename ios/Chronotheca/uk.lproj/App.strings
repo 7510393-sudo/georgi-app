@@ -780,3 +780,8 @@
 "Show again" = "Показати знову";
 "Tips are on again — they will appear one at a time, where needed." = "Підказки знову ввімкнені — з’являтимуться по одній, доречно.";
 "Turn off" = "Вимкнути";
+"Another day" = "На інший день";
+"Days written: %@ · tasks done: %@" = "Записано днів: %@ · зроблено справ: %@";
+"The week" = "Тиждень";
+"The week at a glance" = "Тиждень одним поглядом";
+"Tasks: %@ of %@" = "Справи: %@ з %@";

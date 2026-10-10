@@ -152,6 +152,8 @@ final class Shell: ObservableObject {
         }
     }
     @Published var showingFile = false
+    /// Неделя одним взглядом (P466).
+    @Published var showingWeek = false
     @Published var picking = false
 
     /// Только для снимков: показать вместо открытой страницы ту же страницу,

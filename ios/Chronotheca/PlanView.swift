@@ -783,26 +783,44 @@ struct PlanView: View {
         }
     }
 
-    static func swipeBack(_ slide: CGFloat) -> some View {
+    /// Под значком — подпись словами (P465): жесты вбок угадать нельзя,
+    /// подпись говорит, что случится, если отпустить.
+    static func swipeBack(_ slide: CGFloat,
+                          left: String = T("Удалить", "Delete")) -> some View {
         let far = abs(slide) >= Self.swipe
+        let wide = abs(slide) >= 64
         return HStack(spacing: 0) {
             if slide > 0 {
-                Image(systemName: "calendar.badge.clock")
+                swipeMark("calendar.badge.clock", T("На другой день", "Another day"),
+                          words: wide)
                     .frame(width: slide)
                     .frame(maxHeight: .infinity)
                     .background(Look.accent.opacity(far ? 0.9 : 0.45))
                 Spacer(minLength: 0)
             } else {
                 Spacer(minLength: 0)
-                Image(systemName: "trash")
+                swipeMark("trash", left, words: wide)
                     .frame(width: -slide)
                     .frame(maxHeight: .infinity)
                     .background(Color.red.opacity(far ? 0.85 : 0.4))
             }
         }
-        .font(.system(size: 19, weight: .semibold))
         .foregroundStyle(.white)
         .allowsHitTesting(false)
+    }
+
+    private static func swipeMark(_ icon: String, _ words: String, words show: Bool) -> some View {
+        VStack(spacing: 2) {
+            Image(systemName: icon)
+                .font(.system(size: show ? 15 : 19, weight: .semibold))
+            if show {
+                Text(words)
+                    .font(Look.sans(11, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .padding(.horizontal, 4)
+            }
+        }
     }
 
     /// Дело подняли долгим нажатием и ведут (P362). Первый заметный ход
@@ -992,7 +1010,7 @@ struct PlanView: View {
         })
         .offset(x: up ? eventSlide : 0, y: up ? eventDrag : 0)
         .background {
-            if up, eventSlide < 0 { Self.swipeBack(eventSlide) }
+            if up, eventSlide < 0 { Self.swipeBack(eventSlide, left: T("Убрать", "Remove")) }
         }
         .shadow(color: .black.opacity(up && eventDrag != 0 ? 0.18 : 0), radius: 8, y: 3)
         .zIndex(up ? 1 : 0)
