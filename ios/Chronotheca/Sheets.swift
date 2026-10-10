@@ -324,15 +324,9 @@ struct SettingsSticker: View {
         NoteRow(title: T("Перенести архив в другое место", "Move the archive elsewhere")) {
             NoteButton(title: T("Выбрать ›", "Choose ›")) { choosingPlace = true }
         }
-        if let before = vault.previousFriendly {
-            // Куда именно вернёмся — видно до нажатия, а не после.
-            NoteRow(title: T("Вернуться к прежней папке", "Back to the previous folder"), detail: before) {
-                NoteButton(title: T("Вернуть ›", "Go back ›")) {
-                    close()
-                    vault.goBack()
-                }
-            }
-        }
+        // «Вернуться к прежней папке» больше нет (P468): перенос забирает
+        // записи с собой, и прежняя папка после него пуста — возврат туда
+        // открывал пустой архив. Передумал — тот же «Перенести архив».
         // Резервная копия (P368): когда была, сколько, куда. Пора — кнопка
         // мигает красным «Пора сделать» (P428).
         NoteRow(title: T("Резервная копия", "Backup"), detail: Backup.detail(size: storageBytes),

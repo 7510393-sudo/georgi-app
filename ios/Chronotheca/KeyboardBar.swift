@@ -147,20 +147,15 @@ enum KeyboardBar {
         KeyboardBar.fader.box = box
         let centre = NotificationCenter.default
         centre.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil,
-                           queue: .main) { note in
-            KeyboardBar.fader.stop()
-            // Строки втекают в нижние (P440); не вышло — гаснут сразу.
-            let time = (note.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
-            if let window = box.window, box.alpha > 0.02 {
-                let at = box.convert(box.bounds, to: window)
-                if KeyboardBar.glide.start(pill: at.minY + KeyboardBar.attachHeight / 2,
-                                           names: at.minY + KeyboardBar.attachHeight
-                                               + KeyboardBar.sectionsHeight / 2,
-                                           opacity: Double(box.alpha), duration: max(time, 0.2)) {
-                    box.alpha = 0
-                    return
-                }
-            }
+                           queue: .main) { _ in
+            // Строки едут вниз вместе с клавиатурой до самого конца и
+            // встают в нижнюю строку, где та стоит (P468). Прежде на уходе
+            // их подменяли копией, которая догоняла свою анимацию: смахнули
+            // клавиатуру быстро — копия отставала и висела посреди экрана
+            // (запись экрана автора со 108-й). Теперь следит тот же
+            // счётчик кадров, что и при смахивании пальцем, — по видимому
+            // положению клавиатуры, а не по конечному.
+            if KeyboardBar.fader.following { return }
             UIView.animate(withDuration: 0.12) { box.alpha = 0 }
         }
         centre.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil,
@@ -177,6 +172,8 @@ enum KeyboardBar {
         centre.addObserver(forName: UIResponder.keyboardDidHideNotification, object: nil,
                            queue: .main) { _ in
             KeyboardBar.fader.stop()
+            // Ушла совсем — строк над ней нет, где бы счётчик их ни застал.
+            box.alpha = 0
         }
         return box
     }
@@ -213,9 +210,30 @@ enum KeyboardBar {
             link = nil
         }
 
+        /// Следит ли сейчас за строками.
+        var following: Bool { link != nil && box != nil && full > 0 }
+
+        /// Верх строк на экране — там, где их сейчас видно. Пока клавиатура
+        /// уезжает анимацией, её место в окне уже конечное, а видна она
+        /// ещё на пути: считать по видимым слоям (P468).
+        private func shownTop(_ view: UIView) -> CGFloat {
+            var y: CGFloat = 0
+            var layer: CALayer? = view.layer
+            while let current = layer {
+                let shown = current.presentation() ?? current
+                y += shown.frame.minY
+                if let parent = current.superlayer {
+                    y -= (parent.presentation() ?? parent).bounds.minY
+                }
+                layer = current.superlayer
+            }
+            return y
+        }
+
         @objc private func tick() {
             guard let box, let window = box.window, full > 0 else { return }
-            let frame = box.convert(box.bounds, to: window)
+            let top = shownTop(box) - shownTop(window)
+            let frame = CGRect(x: 0, y: top, width: box.bounds.width, height: box.bounds.height)
             // Сколько клавиатуры ещё видно под строками.
             let left = window.bounds.height - frame.maxY
             // Строка вложений не тает, а встаёт в нижнюю (P464): едет с
