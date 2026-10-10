@@ -696,11 +696,20 @@ struct RootView: View {
         // её, второе уже открывает раздел (P342).
         if closeDrawer() { return }
         store.prune()
-        store.save()
+        // Раздел меняется сразу, а запись дня и перечитывание папки идут
+        // следом, в следующем такте (P472): раньше они шли до смены экрана
+        // и держали палец — перечитывание читает каждый файл папки, чем
+        // больше дневник (и iCloud), тем дольше кнопка «думала». Только
+        // уход на другой день пишет прежний день сразу — иначе запись
+        // легла бы не в тот день.
+        let changesDay = target == .today && !store.isToday
+        if changesDay { store.save() }
         // Второе касание по открытому разделу поднимает его и
         // возвращает на «Сегодня» — туда, где было (P262).
         if target != .today, shell.screen == target {
-            return open(.today)
+            open(.today)
+            DispatchQueue.main.async { store.save() }
+            return
         }
         if target == .today {
             if shell.screen == .today && !store.isToday {
@@ -711,10 +720,15 @@ struct RootView: View {
             } else if !store.isToday {
                 store.go(to: DayStore.today())
             }
+            open(target)
+            if !changesDay { DispatchQueue.main.async { store.save() } }
         } else {
-            archive.reload()
+            open(target)
+            DispatchQueue.main.async {
+                store.save()
+                archive.reload()
+            }
         }
-        open(target)
     }
 
     private func section(_ icon: String, _ name: String, _ target: Shell.Screen,
