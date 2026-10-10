@@ -24,7 +24,7 @@ struct TodayWidget: Widget {
         .configurationDisplayName(Words.ru ? "Сегодня" : "Today")
         .description(Words.ru ? "Дата и дела дня; касание — план или дневник."
                               : "The date and today’s tasks; tap for the plan or the diary.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryCircular])
     }
 }
 
@@ -86,6 +86,8 @@ struct TodayView: View {
     private static let paper = Color(red: 0.98, green: 0.92, blue: 0.86)
     private static let ink = Color(red: 0.16, green: 0.2, blue: 0.27)
     private static let accent = Color(red: 0.2, green: 0.29, blue: 0.43)
+    /// Сколько дел помещается в большой виджет — строка с чертой под ней.
+    private static let largeRows = 9
 
     private var weekday: String {
         let f = DateFormatter()
@@ -147,6 +149,44 @@ struct TodayView: View {
                 }
                 Spacer(minLength: 0)
             }
+            .widgetURL(URL(string: "chronotheca://today/plan"))
+            .containerBackground(for: .widget) { Self.paper }
+        case .systemLarge:
+            // Большой виджет (P470): дата сверху, ниже дела дня — по строке
+            // на дело, только текст, без времени. Сделанное — зачёркнуто.
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(day)
+                        .font(.system(size: 34, weight: .semibold, design: .serif))
+                        .foregroundStyle(Self.ink)
+                    Text(dayMonth + ", " + weekday.lowercased())
+                        .font(.system(size: 15))
+                        .foregroundStyle(Self.ink.opacity(0.65))
+                }
+                if let tasks = entry.shared?.tasks {
+                    if tasks.isEmpty {
+                        Text(Words.empty).font(.subheadline).foregroundStyle(Self.ink.opacity(0.6))
+                    }
+                    ForEach(Array(tasks.prefix(Self.largeRows).enumerated()), id: \.offset) { _, t in
+                        Text(t.text)
+                            .font(.system(size: 16))
+                            .lineLimit(1)
+                            .strikethrough(t.done)
+                            .foregroundStyle(Self.ink.opacity(t.done ? 0.45 : 1))
+                        Divider().overlay(Self.ink.opacity(0.08))
+                    }
+                    if tasks.count > Self.largeRows {
+                        Text("+\(tasks.count - Self.largeRows)")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(Self.accent)
+                    }
+                } else {
+                    door(Words.plan, "checklist", "plan")
+                    door(Words.diary, "book", "diary")
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .widgetURL(URL(string: "chronotheca://today/plan"))
             .containerBackground(for: .widget) { Self.paper }
         default:

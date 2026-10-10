@@ -18,7 +18,8 @@ enum WidgetShare {
     static func publish(day: Date, rows: [PlanRow]) {
         guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)
         else { return }
-        let tasks = rows.filter(\.isTask).map { Shared.Task(text: $0.text, time: $0.time, done: $0.done) }
+        // Пустые дела (только начатые) виджету не нужны (P470).
+        let tasks = rows.filter { $0.isTask && !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.map { Shared.Task(text: $0.text, time: $0.time, done: $0.done) }
         let shared = Shared(day: Vault.stamp(day), tasks: tasks)
         guard let data = try? JSONEncoder().encode(shared) else { return }
         try? data.write(to: dir.appendingPathComponent("today.json"), options: .atomic)
