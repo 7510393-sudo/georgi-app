@@ -47,6 +47,7 @@ struct GalleryRow: View {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.system(size: 17))
                         Text(T("все фото", "all photos")).font(Look.sans(9.5))
+                            .lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .foregroundStyle(Look.accent)
                     .frame(width: Self.side, height: Self.side)

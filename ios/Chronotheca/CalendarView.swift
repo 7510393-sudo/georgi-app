@@ -376,7 +376,7 @@ struct CalendarView: View {
     /// сегодня, по дню недели или без цвета.
     private func tint(_ date: Date) -> Color {
         switch UserDefaults.standard.string(forKey: Prefs.calendarTint) ?? "distance" {
-        case "weekday": return Ru.dayColor(date).opacity(0.14)
+        case "weekday": return Ru.dayHue(date).opacity(0.14)
         case "none":    return Look.planBg
         default:        return Ru.tint(date)
         }

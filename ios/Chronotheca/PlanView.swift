@@ -60,7 +60,9 @@ struct PlanRowLine: View {
     var past = false
 
     /// Высота строки без подробностей. По ней считается перестановка.
-    static let height: CGFloat = 54
+    /// Две клетки листа, а не три (P465): четыре дела занимали полэкрана,
+    /// дневник уезжал вниз.
+    static let height: CGFloat = 36
 
     // MARK: - Мера строки
     //
@@ -68,10 +70,12 @@ struct PlanRowLine: View {
     // ширину головы отступает первая строка названия, и разойдись они хоть
     // на точку — название наползёт на колокольчик или отскочит от него.
 
-    static let badgeWidth: CGFloat = 26
+    static let badgeWidth: CGFloat = 24
     static let timeWidth: CGFloat = 64
     static let bellWidth: CGFloat = 40
     static let gap: CGFloat = 8
+    /// Высота площадки для пальца у номера, времени и колокольчика (P465).
+    static let reach: CGFloat = 44
 
     /// Голова строки: номер, время, колокольчик.
     static let headWidth = badgeWidth + gap + timeWidth + gap + bellWidth
@@ -90,7 +94,7 @@ struct PlanRowLine: View {
     /// верхом строки, а верх строки — это номер, а не пустое поле вокруг
     /// колокольчика. Прежде здесь стояла тройка, взятая на глаз, и закладки
     /// сходились со строками лишь приблизительно (решение P177).
-    static let bellRise: CGFloat = 6
+    static let bellRise: CGFloat = 0
 
     /// Дело сейчас держат за номер. Сбрасывается и тогда, когда жест
     /// оборвался сам, — тогда дело опускается на место.
@@ -117,7 +121,8 @@ struct PlanRowLine: View {
             ForEach(Array(row.details.enumerated()), id: \.offset) { _, line in
                 Text(line)
                     .font(Look.sans(13))
-                    .foregroundStyle(Look.inkFaint)
+                    // Подробности — запись человека, а не подсказка (P465).
+                    .foregroundStyle(Look.inkSoft)
                     .lineLimit(2)
                     .padding(.leading, Self.wrap)
             }
@@ -126,7 +131,8 @@ struct PlanRowLine: View {
         // Плашка уже с боков — и содержимое отступает вместе с ней (P413).
         .padding(.trailing, 20)
         .padding(.leading, 18)
-        .padding(.vertical, 8)
+        // Поля плашки тоньше (P465): строка в одну строчку — две клетки.
+        .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         }
         // Каждое дело на своей плашке (P374, P413).
@@ -136,7 +142,8 @@ struct PlanRowLine: View {
     /// Сделанное дело (P383): текст и кнопки бледнеют, а номер остаётся
     /// ярким и перечёркнут косой чертой — по нему видно, что отмечено и
     /// куда нажать, чтобы снять отметку.
-    private var dim: Double { ghost ? 0.3 : (row.done ? 0.42 : 1) }
+    // Пустая плашка — ярче прежнего (P465: на 0,3 подсказка не читалась).
+    private var dim: Double { ghost ? 0.55 : (row.done ? 0.42 : 1) }
 
     /// Плашка дела (P413): выпуклая, как листок стикера, — свет падает с
     /// левого верхнего угла: там она светлее и с бликом по кромке, а тень
@@ -163,7 +170,7 @@ struct PlanRowLine: View {
             // Плашка уже с боков (P413).
             .padding(.leading, 10)
             .padding(.trailing, 10)
-            .padding(.vertical, 3)
+            .padding(.vertical, 2)
             .allowsHitTesting(false)
     }
 
@@ -233,7 +240,12 @@ struct PlanRowLine: View {
         face
         // Номер — рукоять, а не текст: касание по нему не ставит курсор
         // в строку (решение P167), а отмечает дело сделанным (P383).
-        .contentShape(Rectangle())
+        // Попасть можно и чуть мимо квадратика: площадка для пальца — 44
+        // в высоту, как советует Apple (P465); рисунок прежний.
+        .contentShape(Rectangle().size(width: PlanRowLine.badgeWidth + Self.gap,
+                                       height: PlanRowLine.reach)
+                                 .offset(x: -Self.gap / 2,
+                                         y: -(PlanRowLine.reach - PlanRowLine.badgeWidth) / 2))
         .accessibilityAction { onCheck?() }
         .accessibilityLabel(row.done ? T("Дело \(number): сделано", "Task \(number): done")
                                      : T("Дело \(number)", "Task \(number)"))
@@ -272,7 +284,7 @@ struct PlanRowLine: View {
             }
             // У пустой плашки следующего дела и номер бледный (P417; прежде
             // — обычной яркости, P406).
-            .opacity(ghost ? 0.35 : 1)
+            .opacity(ghost ? 0.55 : 1)
     }
 
     private var time: some View {
@@ -292,6 +304,11 @@ struct PlanRowLine: View {
                 // того, назначено время или нет.
                 .frame(width: PlanRowLine.timeWidth, height: PlanRowLine.badgeWidth)
                 .modifier(Panel())
+                // Площадка для пальца — 44 в высоту (P465).
+                .contentShape(Rectangle().size(width: PlanRowLine.timeWidth + PlanRowLine.gap,
+                                               height: PlanRowLine.reach)
+                                         .offset(x: -PlanRowLine.gap / 2,
+                                                 y: -(PlanRowLine.reach - PlanRowLine.badgeWidth) / 2))
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
         }
         .opacity(dim)
@@ -320,12 +337,17 @@ struct PlanRowLine: View {
                 // для пальца вокруг неё прежняя.
                 .frame(width: PlanRowLine.bellWidth - 4, height: PlanRowLine.badgeWidth)
                 .modifier(Panel())
-                .frame(width: PlanRowLine.bellWidth, height: 38)
-                .contentShape(Rectangle())
-                // Площадка колокольчика вдвое выше квадратика номера, но
-                // середины у них общие: иначе колокольчик висит чуть выше
-                // номера, и вся голова строки выглядит нестройно.
-                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 12 }
+                // Площадка колокольчика — той же высоты, что номер (P465:
+                // прежние 38 не давали строке стать двумя клетками); для
+                // пальца — 44, как у номера и времени.
+                .frame(width: PlanRowLine.bellWidth, height: PlanRowLine.badgeWidth)
+                .contentShape(Rectangle().size(width: PlanRowLine.bellWidth + PlanRowLine.gap / 2,
+                                               height: PlanRowLine.reach)
+                                         .offset(x: -PlanRowLine.gap / 4,
+                                                 y: -(PlanRowLine.reach - PlanRowLine.badgeWidth) / 2))
+                // Середины у колокольчика и номера общие: иначе голова
+                // строки выглядит нестройно.
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
         }
         .buttonStyle(.plain)
         .opacity(dim)
@@ -630,7 +652,7 @@ struct PlanView: View {
             // Не «Без названия», а предложение помощи (P452).
             PlanRowLine(number: shownEvents.count + store.tasks.count + 1,
                         row: .task(T("Напомню о важном деле", "I’ll remind you of what matters")),
-                        bellColor: Ru.dayColor(store.date),
+                        bellColor: Look.accent,
                         onTime: { add(then: .time) },
                         onBell: { add(then: .bell) },
                         onDetails: { add() },
@@ -698,7 +720,7 @@ struct PlanView: View {
             number: shown,
             row: row.wrappedValue,
             faded: false,
-            bellColor: Ru.dayColor(store.date),
+            bellColor: Look.accent,
             text: row.text,
             typing: typingIn == id,
             onTime: { openRoller(id, .time) },
@@ -951,7 +973,7 @@ struct PlanView: View {
             PlanRowLine(number: number,
                         row: e.row,
                         faded: false,
-                        bellColor: Ru.dayColor(store.date),
+                        bellColor: Look.accent,
                         stripe: e.color,
                         onTime: { open(e) },
                         onBell: { open(e) },

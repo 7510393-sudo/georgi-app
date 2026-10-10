@@ -108,7 +108,18 @@ enum Ru {
     // MARK: - Цвета
 
     /// Цвет названия дня недели.
-    static func dayColor(_ date: Date) -> Color { dayColours[index(date)] }
+    ///
+    /// Семь цветов на семь дней пестрили (разбор дизайна, P465): будни —
+    /// спокойным серым, выходные — одним тёплым красным.
+    static func dayColor(_ date: Date) -> Color {
+        Calendar.current.isDateInWeekend(date) ? weekendColour : Look.inkSoft
+    }
+
+    private static let weekendColour = Color(light: 0xB0403A, dark: 0xE08B84)
+
+    /// Семь цветов дней — только для календаря, раскрашенного «по дню
+    /// недели» (P290): там их выбрал сам человек.
+    static func dayHue(_ date: Date) -> Color { dayColours[index(date)] }
 
     /// Цвет страницы дня — по тому, прошлое это, сегодня или будущее
     /// (P330; раньше было семь ступеней по удалённости, P245, — решили, что
@@ -176,6 +187,11 @@ enum Look {
     static let ink       = Color(light: 0x1C2128, dark: 0xE8EBEE)
     static let inkSoft   = Color(light: 0x56606D, dark: 0xA3ACB7)
     static let inkFaint  = Color(light: 0xA2AAB4, dark: 0x69717C)
+    /// Подсказки в пустых местах (P465): «Заголовок дня», пустая плашка,
+    /// названия дел в «Итогах дня». Цветом `inkFaint` они на абрикосовой
+    /// бумаге читались хуже, чем 2 к 1 — на улице днём не видно. Этот —
+    /// около 4 к 1: всё ещё подсказка, но читается.
+    static let hint      = Color(light: 0x636B76, dark: 0x8C949E)
     static let rule      = Color(light: 0xE4E5E1, dark: 0x2A3037)
     static let ruleSoft  = Color(light: 0xEFEFEC, dark: 0x222830)
     static let accent    = Color(light: 0x2F4A6B, dark: 0x8FB3E8)
@@ -231,13 +247,40 @@ enum Look {
 
     /// Моноширинный — для цифр: часы и номера должны стоять столбиком.
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        .system(size: step(size) * grow, weight: weight, design: .monospaced)
     }
 
     /// Насыщенный синий дат в поиске (P282).
     static let dateBlue = Color(light: 0x1D5BD8, dark: 0x6FA3FF)
 
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight)
+        .system(size: step(size) * grow, weight: weight)
+    }
+
+    /// Шкала размеров надписей (P465, разбор дизайна 10.10): было около
+    /// тридцати размеров с шагом в полпункта — разница не читалась как
+    /// «главное / второстепенное», а мельче 11 Apple не советует. Теперь
+    /// каждая надпись встаёт на ближайшую ступень, ничего мельче 11.
+    /// Засечный шрифт записи сюда не входит — у него своя настройка.
+    static func step(_ size: CGFloat) -> CGFloat {
+        switch size {
+        case ..<12:   return 11
+        case ..<14:   return 13
+        case ..<16:   return 15
+        case ..<18.5: return 17
+        case ..<21:   return 20
+        case ..<25:   return 22
+        case ..<31:   return 28
+        default:      return size
+        }
+    }
+
+    /// Во сколько раз крупнее текст в настройках iPhone (P465): человек
+    /// увеличил шрифт для всех приложений — растут и наши надписи. Не
+    /// мельче обычного и не больше чем на треть: дальше плашки и строки
+    /// перестают помещаться.
+    static var grow: CGFloat {
+        let scale = UIFontMetrics.default.scaledValue(for: 17) / 17
+        return min(max(scale, 1), 1.3)
     }
 }

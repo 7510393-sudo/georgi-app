@@ -444,7 +444,7 @@ struct FileTile: View {
     var body: some View {
         VStack(spacing: 4) {
             Image(systemName: icon).font(.system(size: 18))
-            Text(label).font(Look.sans(9.5)).lineLimit(1)
+            Text(label).font(Look.sans(9.5)).lineLimit(1).minimumScaleFactor(0.8)
         }
         .foregroundStyle(Look.inkSoft)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

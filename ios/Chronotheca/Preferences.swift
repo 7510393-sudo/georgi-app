@@ -64,7 +64,8 @@ enum Prefs {
         min(max(UserDefaults.standard.integer(forKey: textSize) + 1, 0), textSteps.count - 1)
     }
 
-    static var textScale: CGFloat { textSteps[textStep].scale }
+    /// Своя ступень записи и размер текста iPhone вместе (P465).
+    static var textScale: CGFloat { textSteps[textStep].scale * Look.grow }
 
     /// С какой вкладки открывать (P249, P402): «где был» — та, что была
     /// открыта в прошлый раз; иначе — план или дневник.
@@ -80,7 +81,9 @@ enum Prefs {
         [("georgia", "Georgia"), ("newyork", "New York"), ("system", T("Без засечек", "Sans serif"))]
     }
 
-    static var fontKey: String { UserDefaults.standard.string(forKey: font) ?? "georgia" }
+    /// По умолчанию — New York (P465): засечный шрифт Apple тоньше Georgia
+    /// и легче читается на крупных экранах. Georgia — по выбору.
+    static var fontKey: String { UserDefaults.standard.string(forKey: font) ?? "newyork" }
 
     /// Шрифт записи для полей UIKit.
     static func serifUIFont(_ size: CGFloat) -> UIFont {

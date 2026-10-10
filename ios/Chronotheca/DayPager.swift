@@ -353,7 +353,8 @@ struct DayPage: View {
                 .frame(width: 34, height: 34)
                 .background(Circle().fill(Look.chrome.opacity(0.62)))
                 .overlay(Circle().strokeBorder(Look.inkFaint.opacity(0.35), lineWidth: 0.8))
-                .contentShape(Circle())
+                // Площадка для пальца 44, кружок прежний (P465).
+                .contentShape(Circle().inset(by: -5))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(name)
@@ -951,7 +952,7 @@ struct SideDay: View {
 
     private var plan: some View {
         PlanPage(rows: rows, isPast: date < DayStore.today(),
-                 bellColor: Ru.dayColor(date),
+                 bellColor: Look.accent,
                  events: events,
                  resolve: { [vault, date] in vault.mediaURL($0, for: date) })
     }

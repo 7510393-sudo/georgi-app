@@ -483,7 +483,7 @@ struct DiaryPage: View {
             // Не вопрос, а заголовок: вопросы раздражают (P452).
             Text(T("Итоги дня", "How the day went"))
                 .font(Look.serif(size))
-                .foregroundStyle(Look.inkFaint)
+                .foregroundStyle(Look.hint)
                 .frame(height: size * 1.6, alignment: .leading)
 
             ForEach(asked, id: \.id) { task in
@@ -581,7 +581,7 @@ struct DiaryPage: View {
                 if title.isEmpty {
                     Text(T("Заголовок дня", "Title of the day"))
                         .font(Look.serif(16.5))
-                        .foregroundStyle(Look.inkFaint)
+                        .foregroundStyle(Look.hint)
                         .allowsHitTesting(false)
                 }
                 if editable {

@@ -30,9 +30,10 @@ struct MenuSticker: View {
     /// Меню карты: строки повторяют кнопки полоски — для тех, кто ищет
     /// действие в меню, а не внизу (P219).
     private var mapMenu: some View {
-        // Меню — на голубой бумаге, настройки — на жёлтой (P434).
+        // Меню и настройки — на одной жёлтой бумаге (P465; прежде меню
+        // было голубым, P434): меньше разных материалов на экране.
         Sticker(side: .trailing, title: T("Меню карты", "Map menu"),
-                paper: Look.note, edge: Look.noteEdge, close: close) {
+                paper: Look.sticker, edge: Look.stickerEdge, close: close) {
             StickerItem(title: T("Открыть в навигаторе", "Open in navigation"),
                         note: shell.mapPoint == nil ? T("выберите точку", "choose a place") : "→") {
                 close()
@@ -81,7 +82,7 @@ struct MenuSticker: View {
 
     private var dayMenu: some View {
         Sticker(side: .trailing, title: T("Меню страницы", "Page menu"),
-                paper: Look.note, edge: Look.noteEdge, close: close) {
+                paper: Look.sticker, edge: Look.stickerEdge, close: close) {
             // Режима изменений нет совсем: всё — долгим нажатием, и
             // прошедший день правится так же, как сегодняшний (P362, P381).
             StickerItem(title: T("Показать файл этого дня", "Show this day’s file")) {
@@ -119,7 +120,7 @@ struct MenuSticker: View {
     private var calendarMenu: some View {
         let year = calendarKind == CalendarView.Kind.year.rawValue
         return Sticker(side: .trailing, title: T("Меню календаря", "Calendar menu"),
-                       paper: Look.note, edge: Look.noteEdge, close: close) {
+                       paper: Look.sticker, edge: Look.stickerEdge, close: close) {
             StickerItem(title: year ? T("Вернуться к этому году", "Back to this year")
                                     : T("Вернуться к этому месяцу", "Back to this month")) {
                 close()
@@ -132,7 +133,7 @@ struct MenuSticker: View {
     /// всегда, чтобы рука находила их на одном месте.
     private var searchMenu: some View {
         Sticker(side: .trailing, title: T("Меню поиска", "Search menu"),
-                paper: Look.note, edge: Look.noteEdge, close: close) {
+                paper: Look.sticker, edge: Look.stickerEdge, close: close) {
             scopeItem(T("Искать везде", "Search everywhere"), .all)
             scopeItem(T("Только в дневнике", "Only in the diary"), .diary)
             scopeItem(T("Только в плане", "Only in the plan"), .plan)
@@ -654,7 +655,7 @@ struct SettingsSticker: View {
     @AppStorage(Prefs.navigator) private var navigator = "apple"
     @AppStorage(Prefs.quiet) private var quiet = false
     @AppStorage(Prefs.textSize) private var textSize = 0
-    @AppStorage(Prefs.font) private var fontKey = "georgia"
+    @AppStorage(Prefs.font) private var fontKey = "newyork"
     @AppStorage(Prefs.noWeather) private var noWeather = false
     @AppStorage(Prefs.fahrenheit) private var fahrenheit = false
     @AppStorage(Prefs.noAsk) private var noAsk = false

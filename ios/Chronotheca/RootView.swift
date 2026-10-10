@@ -28,10 +28,12 @@ struct RootView: View {
 
     // Настройки (P249): замок, скрытие страницы, тема.
     @Environment(\.scenePhase) private var phase
+    /// Размер текста iPhone (P465): сменили — страницы собираются заново.
+    @Environment(\.dynamicTypeSize) private var systemText
     @AppStorage(Prefs.lock) private var lockOn = false
     @AppStorage(Prefs.theme) private var theme = "system"
     @AppStorage(Prefs.textSize) private var textSize = 0
-    @AppStorage(Prefs.font) private var fontKey = "georgia"
+    @AppStorage(Prefs.font) private var fontKey = "newyork"
     @State private var locked = UserDefaults.standard.bool(forKey: Prefs.lock)
     /// Приложение открыли на дневнике, пока стоял замок: поле возьмёт ввод,
     /// когда замок откроют, — не поверх него (P403).
@@ -289,7 +291,7 @@ struct RootView: View {
                 canvas
                     // Сменили размер или шрифт записи — страницы собираются
                     // заново: поля UIKit помнят свой шрифт (P274).
-                    .id("\(textSize)|\(fontKey)")
+                    .id("\(textSize)|\(fontKey)|\(systemText)")
                 tabbar
             }
             // Нижний отступ (полоса «домой») — свой, постоянный, а не
@@ -502,7 +504,7 @@ struct RootView: View {
                 hideKeyboard()
                 shell.pullOut(settings: false)
             } label: {
-                Corner(leading: false, paper: Look.note, edge: Look.noteEdge, icon: "ellipsis",
+                Corner(leading: false, paper: Look.sticker, edge: Look.stickerEdge, icon: "ellipsis",
                        tint: dotsLit ? Look.accent : Look.inkSoft)
                     .opacity(shell.showingMenu ? 0 : 1)
             }

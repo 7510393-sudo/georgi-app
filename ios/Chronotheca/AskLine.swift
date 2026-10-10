@@ -244,10 +244,10 @@ struct AskLine: UIViewRepresentable {
         func styled(for view: UITextView, answer: String? = nil) -> NSAttributedString {
             let answer = answer ?? parent.answer
             let out = NSMutableAttributedString(string: parent.label + " ",
-                                                attributes: AskLine.style(Look.inkFaint))
+                                                attributes: AskLine.style(Look.hint))
             if answer.isEmpty && !view.isFirstResponder {
                 out.append(NSAttributedString(string: AskLine.placeholder,
-                                              attributes: AskLine.style(Look.inkFaint)))
+                                              attributes: AskLine.style(Look.hint)))
             } else {
                 out.append(AskLine.dressed(answer, resolve: parent.resolve))
             }
