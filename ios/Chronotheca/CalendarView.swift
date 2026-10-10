@@ -487,7 +487,11 @@ struct CalendarView: View {
 
         return Button { pick(stamp, date) } label: {
             HStack(alignment: .top, spacing: 12) {
-                VStack(spacing: 1) {
+                // Пустой день — число и день недели в одну строку (P466):
+                // так строка и правда тонкая.
+                let stack = quiet ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 5))
+                                  : AnyLayout(VStackLayout(spacing: 1))
+                stack {
                     // Сегодня — белым в синем кружке (P431).
                     Text("\(cal.component(.day, from: date))")
                         .font(stamp == today ? Look.sans(16, weight: .bold) : Look.mono(15))
@@ -498,7 +502,7 @@ struct CalendarView: View {
                         .font(Look.sans(10))
                         .foregroundStyle(Ru.dayColor(date))
                 }
-                .frame(width: 30)
+                .frame(width: quiet ? 52 : 30, alignment: quiet ? .leading : .center)
 
                 VStack(alignment: .leading, spacing: 3) {
                     if tasks.isEmpty {
@@ -534,7 +538,7 @@ struct CalendarView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, quiet ? 2 : 9)
+            .padding(.vertical, quiet ? 4 : 9)
             .opacity(quiet ? 0.75 : 1)
             // Строка дня — цвета его страницы (P245); выбранная обведена.
             .background(tint(date))
