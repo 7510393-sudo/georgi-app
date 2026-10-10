@@ -67,10 +67,16 @@ struct WeekSheet: View {
             shell.screen = .today
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(Ru.weekdayShort(date) + " " + "\(cal.component(.day, from: date))")
-                    .font(Look.mono(13))
-                    .foregroundStyle(Ru.dayColor(date))
-                    .frame(width: 58, alignment: .leading)
+                // Число, справа день недели — как в «Списке» (P467).
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text("\(cal.component(.day, from: date))")
+                        .font(Look.mono(15))
+                        .foregroundStyle(Look.ink)
+                    Text(Ru.weekdayShort(date))
+                        .font(Look.sans(10))
+                        .foregroundStyle(Ru.dayColor(date))
+                }
+                .frame(width: 56, alignment: .leading)
                 VStack(alignment: .leading, spacing: 2) {
                     if let title = day?.title, !title.isEmpty {
                         Text(Geo.stripped(title))

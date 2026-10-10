@@ -199,11 +199,12 @@ struct DayPage: View {
                         .minimumScaleFactor(0.7)
                     // День недели — только у дней с именем («вчера»,
                     // «завтра»…): у дальних он и так написан крупно (P425).
-                    (Text(DayPage.named(date) ? Ru.weekday(date) + ",  " : "")
+                    // Сначала число, справа день недели (P467).
+                    (Text(Ru.headDate(date))
+                        .foregroundColor(Look.inkSoft)
+                     + Text(DayPage.named(date) ? ",  " + Ru.weekday(date) : "")
                         .foregroundColor(Ru.dayColor(date))
-                        .tracking(0.4)
-                     + Text(Ru.headDate(date))
-                        .foregroundColor(Look.inkSoft))
+                        .tracking(0.4))
                         .font(Look.sans(12.5))
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)

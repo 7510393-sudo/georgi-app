@@ -405,9 +405,10 @@ struct CalendarView: View {
         if let stamp = selected, let date = Vault.date(from: stamp) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("\(Ru.weekdayShort(date)) \(Ru.shortDate(date))")
+                    // Сначала число, справа день недели (P467).
+                    (Text(Ru.shortDate(date)).foregroundColor(Look.ink)
+                     + Text("  " + Ru.weekdayShort(date)).foregroundColor(Ru.dayColor(date)))
                         .font(Look.sans(13, weight: .medium))
-                        .foregroundStyle(Look.ink)
                     Spacer()
                     Button(T("Открыть день →", "Open day →")) { open(date) }
                         .font(Look.sans(13))
@@ -486,23 +487,22 @@ struct CalendarView: View {
         let quiet = tasks.isEmpty && !open && stamp != today
 
         return Button { pick(stamp, date) } label: {
-            HStack(alignment: .top, spacing: 12) {
-                // Пустой день — число и день недели в одну строку (P466):
-                // так строка и правда тонкая.
-                let stack = quiet ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 5))
-                                  : AnyLayout(VStackLayout(spacing: 1))
-                stack {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                // Число и справа от него день недели — у всех дней одинаково
+                // (P467): прежде у пустых дней день недели стоял справа, у
+                // занятых — под числом, и столбец дат прыгал.
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
                     // Сегодня — белым в синем кружке (P431).
                     Text("\(cal.component(.day, from: date))")
-                        .font(stamp == today ? Look.sans(16, weight: .bold) : Look.mono(15))
+                        .font(Look.mono(15, weight: stamp == today ? .bold : .regular))
                         .foregroundStyle(stamp == today ? Color.white : Look.ink)
-                        .frame(minWidth: stamp == today ? 28 : nil, minHeight: stamp == today ? 24 : nil)
-                        .background { if stamp == today { Capsule().fill(Look.accent) } }
+                        .padding(.horizontal, stamp == today ? 5 : 0)
+                        .background { if stamp == today { Capsule().fill(Look.accent).padding(.vertical, -3) } }
                     Text(Ru.weekdayShort(date))
                         .font(Look.sans(10))
                         .foregroundStyle(Ru.dayColor(date))
                 }
-                .frame(width: quiet ? 52 : 30, alignment: quiet ? .leading : .center)
+                .frame(width: 56, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 3) {
                     if tasks.isEmpty {
