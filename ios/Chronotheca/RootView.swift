@@ -324,15 +324,18 @@ struct RootView: View {
             // Клавиатура закрыла нижнюю строку на карте или в поиске — над
             // ней та же строка разделов, что на странице дня (P425).
             if keyboard.height > 0, shell.screen == .map || shell.screen == .search {
-                SectionsRow(current: shell.screen) { tapSection($0) }
-                    .padding(.horizontal, KeyboardBar.inset)
-                    // Высота клавиатуры считана от края экрана — и строка
-                    // ставится от края экрана, без мерки полосы «домой»:
-                    // с ней в 106-й строка висела над клавиатурой на ширину
-                    // этой полосы, и под ней просвечивал экран (P462).
-                    .padding(.bottom, keyboard.height + 2)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .ignoresSafeArea(.container, edges: .bottom)
+                // Где низ этого слоя на экране — меряется, а не угадывается
+                // (P469): ни мерка полосы «домой», ни «до края экрана» не
+                // попадали — в 106-й и 108-й строка висела над клавиатурой
+                // на ширину этой полосы. Теперь отступ = высота клавиатуры
+                // минус то, что ниже слоя на самом деле.
+                GeometryReader { g in
+                    let below = max(0, UIScreen.main.bounds.height - g.frame(in: .global).maxY)
+                    SectionsRow(current: shell.screen) { tapSection($0) }
+                        .padding(.horizontal, KeyboardBar.inset)
+                        .padding(.bottom, max(0, keyboard.height - below) + 2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
             }
             // Подсказки для первого знакомства (P427) — поверх всего, когда
             // экран спокоен.
